@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/views/web/main_dashboard_layout.dart';
+import 'package:stellar_pos/presentation/dashboard/main_dashboard_layout.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
