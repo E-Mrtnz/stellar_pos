@@ -24,11 +24,11 @@ class SidebarDrawer extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withAlpha(8),
+            color: AppColors.shadowColor,
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),

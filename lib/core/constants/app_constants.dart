@@ -10,11 +10,15 @@ class AppColors {
   static const Color border = Color(0xFFE2E8F0);
   static const Color inputBackground = Color(0xFFF8FAFC);
   static const Color chipBackground = Color(0xFFF1F5F9);
-
+  static const Color textDarkSecondary = Color(0xFF475569);
   static const Color successGreen = Color(0xFF10B981);
   static const Color dangerRed = Color(0xFFEF4444);
+  static const Color primaryLight = Color(0xFFEFF6FF);
+  static const Color activeNavBackground = Color(0xFFE8ECEF);
 
   static const Color sidebarBackground = Colors.white;
+
+  static const Color shadowColor = Color(0x0D000000);
 }
 
 class AppTextStyles {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'widgets/sidebar_drawer.dart';
-import 'widgets/central_product_grid.dart';
-import 'widgets/sales_summary_panel.dart';
+import 'package:stellar_pos/presentation/inventory/inventory_layout.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
@@ -13,23 +13,16 @@ class MainDashboardLayout extends StatefulWidget {
 }
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
-  bool _isSidebarExpanded = true;
-  int _selectedIndex = 0;
+  int _selectedNavIndex = 0;
   int _selectedCategoryIndex = 0;
+  bool _isSidebarCollapsed =
+      false; // Permite encoger/agrandar el menú lateral
 
-  int _selectedPaymentMethod = 0;
+  // --- ESTADO DEL CARRITO Y PAGOS ---
+  final Map<String, int> _cartQuantities = {};
+  int _selectedPaymentMethod =
+      0; // 0: Efectivo, 1: Tarjeta, 2: Transferencia, 3: Fiado
   String? _selectedDebtor;
-
-  final TextEditingController _discountAmountController =
-      TextEditingController();
-  final TextEditingController _discountPercentController =
-      TextEditingController();
-  final TextEditingController _cashReceivedController =
-      TextEditingController();
-
-  final double _cardFeeRate = 0.0557; // 5.57%
-  double _discountAmount = 0.0;
-  double _cashReceived = 0.0;
 
   final List<String> _categories = [
     'Todos',
@@ -39,76 +32,78 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     'Lácteos',
     'Limpieza',
     'Cuidado Personal',
-    'Mascotas',
   ];
 
   final List<String> _debtorsList = [
-    'Seleccionar Cliente...',
     'Juan Pérez',
     'María López',
-    'Carlos Mendoza',
+    'Carlos Gómez',
     'Ana Martínez',
   ];
 
-  final List<Map<String, dynamic>> _sampleProducts = [
+  // Controladores de texto
+  final TextEditingController _discountAmountController =
+      TextEditingController();
+  final TextEditingController _discountPercentController =
+      TextEditingController();
+  final TextEditingController _cashReceivedController =
+      TextEditingController();
+
+  // Productos del POS
+  final List<Map<String, dynamic>> _productsList = [
     {
-      'id': 'p1',
+      'id': '1',
       'name': 'Coca Cola 354ml',
       'price': 0.80,
-      'category': 'Bebidas',
       'stock': 24,
+      'category': 'Bebidas',
     },
     {
-      'id': 'p2',
+      'id': '2',
       'name': 'Papas Lays 45g',
       'price': 0.65,
-      'category': 'Snacks',
       'stock': 15,
+      'category': 'Snacks',
     },
     {
-      'id': 'p3',
+      'id': '3',
       'name': 'Arroz San Pedro 1lb',
       'price': 0.75,
-      'category': 'Abarrotes',
       'stock': 40,
+      'category': 'Abarrotes',
     },
     {
-      'id': 'p4',
+      'id': '4',
       'name': 'Leche Salud 1L',
       'price': 1.35,
-      'category': 'Lácteos',
       'stock': 8,
+      'category': 'Lácteos',
     },
     {
-      'id': 'p5',
+      'id': '5',
       'name': 'Jabón Axion 250g',
       'price': 0.90,
-      'category': 'Limpieza',
       'stock': 12,
+      'category': 'Limpieza',
     },
     {
-      'id': 'p6',
+      'id': '6',
       'name': 'Shampoo Savilé 750ml',
       'price': 3.50,
-      'category': 'Cuidado Personal',
       'stock': 6,
+      'category': 'Cuidado Personal',
     },
   ];
 
-  final Map<String, int> _cartQuantities = {'p1': 2};
-
-  double get _subtotal {
-    double total = 0.0;
-    _cartQuantities.forEach((id, qty) {
-      final product = _sampleProducts.firstWhere(
-        (p) => p['id'] == id,
-        orElse: () => {'price': 0.0},
-      );
-      total += (product['price'] as double) * qty;
-    });
-    return total;
+  @override
+  void dispose() {
+    _discountAmountController.dispose();
+    _discountPercentController.dispose();
+    _cashReceivedController.dispose();
+    super.dispose();
   }
 
+  // --- MÉTODOS DEL CARRITO ---
   void _addToCart(String productId) {
     setState(() {
       _cartQuantities[productId] =
@@ -118,10 +113,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   void _decrementQuantity(String productId) {
     setState(() {
-      if ((_cartQuantities[productId] ?? 0) > 1) {
-        _cartQuantities[productId] = _cartQuantities[productId]! - 1;
-      } else {
-        _cartQuantities.remove(productId);
+      if (_cartQuantities.containsKey(productId)) {
+        if (_cartQuantities[productId]! > 1) {
+          _cartQuantities[productId] = _cartQuantities[productId]! - 1;
+        } else {
+          _cartQuantities.remove(productId);
+        }
       }
     });
   }
@@ -132,129 +129,297 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     });
   }
 
-  @override
-  void dispose() {
-    _discountAmountController.dispose();
-    _discountPercentController.dispose();
-    _cashReceivedController.dispose();
-    super.dispose();
-  }
-
-  void _onDiscountAmountChanged(String val) {
-    final amount = double.tryParse(val) ?? 0.0;
+  void _clearCart() {
     setState(() {
-      _discountAmount = amount;
-      if (_subtotal > 0) {
-        final percent = (amount / _subtotal) * 100;
-        _discountPercentController.text = percent > 0
-            ? percent.toStringAsFixed(1)
-            : '';
-      }
+      _cartQuantities.clear();
+      _discountAmountController.text = '0.00';
+      _discountPercentController.text = '0';
+      _cashReceivedController.text = '0.00';
+      _selectedDebtor = null;
     });
   }
 
-  void _onDiscountPercentChanged(String val) {
-    final percent = double.tryParse(val) ?? 0.0;
-    setState(() {
-      _discountAmount = (_subtotal * percent) / 100;
-      _discountAmountController.text = _discountAmount > 0
-          ? _discountAmount.toStringAsFixed(2)
-          : '';
+  // --- CÁLCULOS FINANCIEROS EN TIEMPO REAL ---
+  double get _subtotal {
+    double total = 0.0;
+    _cartQuantities.forEach((id, qty) {
+      final product = _productsList.firstWhere(
+        (p) => p['id'] == id,
+        orElse: () => {'price': 0.0},
+      );
+      total += (product['price'] as double) * qty;
     });
+    return total;
+  }
+
+  double get _discountAmount {
+    return double.tryParse(_discountAmountController.text) ?? 0.0;
   }
 
   double get _cardFeeAmount {
-    if (_selectedPaymentMethod != 1) return 0.0;
-    final base = _subtotal - _discountAmount;
-    return base > 0 ? base * _cardFeeRate : 0.0;
+    if (_selectedPaymentMethod == 1) {
+      return (_subtotal - _discountAmount) * 0.05;
+    }
+    return 0.0;
   }
 
   double get _total {
-    double base = _subtotal - _discountAmount;
-    if (base < 0) base = 0;
-    return base + _cardFeeAmount;
+    final computed = _subtotal - _discountAmount + _cardFeeAmount;
+    return computed < 0 ? 0.0 : computed;
   }
 
   double get _change {
-    if (_cashReceived <= 0 || _cashReceived < _total) return 0.0;
-    return _cashReceived - _total;
+    final cash = double.tryParse(_cashReceivedController.text) ?? 0.0;
+    final changeVal = cash - _total;
+    return changeVal > 0 ? changeVal : 0.0;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.inputBackground,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              // 1. PANEL IZQUIERDO
-              SidebarDrawer(
-                isExpanded: _isSidebarExpanded,
-                selectedIndex: _selectedIndex,
-                onToggleExpand: () => setState(
-                  () => _isSidebarExpanded = !_isSidebarExpanded,
-                ),
-                onItemSelected: (index) =>
-                    setState(() => _selectedIndex = index),
-              ),
-              const SizedBox(width: 12),
+        child: Row(
+          children: [
+            // 1. Menú Lateral Fijo con opción a Encoger/Agrandar
+            _buildNavigationSidebar(),
 
-              // 2. PANEL CENTRAL
-              Expanded(
-                flex: 3,
-                child: CentralProductGrid(
-                  categories: _categories,
-                  selectedCategoryIndex: _selectedCategoryIndex,
-                  onCategorySelected: (index) =>
-                      setState(() => _selectedCategoryIndex = index),
-                  products: _sampleProducts,
-                  cartQuantities: _cartQuantities,
-                  onAddToCart: _addToCart,
-                  onRemoveFromCart: _removeFromCart,
-                ),
-              ),
-              const SizedBox(width: 12),
+            // 2. Área Principal Dinámica
+            Expanded(
+              child: _selectedNavIndex == 1
+                  ? const InventoryLayout()
+                  : Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          // Panel Central: Malla de Productos POS
+                          Expanded(
+                            flex: 3,
+                            child: CentralProductGrid(
+                              products: _productsList,
+                              cartQuantities: _cartQuantities,
+                              categories: _categories,
+                              selectedCategoryIndex:
+                                  _selectedCategoryIndex,
+                              onCategorySelected: (index) {
+                                setState(() {
+                                  _selectedCategoryIndex = index;
+                                });
+                              },
+                              onAddToCart: _addToCart,
+                              onRemoveFromCart: _removeFromCart,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
 
-              // 3. PANEL DERECHO
-              Expanded(
-                flex: 1,
-                child: SalesSummaryPanel(
-                  onClearCart: () {
+                          // Panel Derecho: Resumen de Ventas
+                          Expanded(
+                            flex: 1,
+                            child: SalesSummaryPanel(
+                              cartQuantities: _cartQuantities,
+                              products: _productsList,
+                              selectedPaymentMethod:
+                                  _selectedPaymentMethod,
+                              onPaymentMethodChanged: (method) {
+                                setState(() {
+                                  _selectedPaymentMethod = method;
+                                });
+                              },
+                              selectedDebtor: _selectedDebtor,
+                              debtorsList: _debtorsList,
+                              onDebtorChanged: (debtor) {
+                                setState(() {
+                                  _selectedDebtor = debtor;
+                                });
+                              },
+                              discountAmountController:
+                                  _discountAmountController,
+                              discountPercentController:
+                                  _discountPercentController,
+                              cashReceivedController:
+                                  _cashReceivedController,
+                              onDiscountAmountChanged: (val) {
+                                setState(() {});
+                              },
+                              onDiscountPercentChanged: (val) {
+                                setState(() {});
+                              },
+                              onCashReceivedChanged: (val) {
+                                setState(() {});
+                              },
+                              subtotal: _subtotal,
+                              cardFeeAmount: _cardFeeAmount,
+                              total: _total,
+                              change: _change,
+                              onAddToCart: _addToCart,
+                              onDecrementQuantity: _decrementQuantity,
+                              onRemoveFromCart: _removeFromCart,
+                              onClearCart: _clearCart,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- NAVEGACIÓN LATERAL COLAPSABLE ---
+  Widget _buildNavigationSidebar() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: _isSidebarCollapsed ? 70 : 200,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        color: AppColors.sidebarBackground,
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        children: [
+          // Cabecera con botón para Encoger/Agrandar
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8.0,
+              vertical: 16.0,
+            ),
+            child: Row(
+              mainAxisAlignment: _isSidebarCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.spaceBetween,
+              children: [
+                if (!_isSidebarCollapsed)
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.storefront,
+                        color: AppColors.primary,
+                        size: 26,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        AppStrings.appName,
+                        style: AppTextStyles.brandTitle,
+                      ),
+                    ],
+                  ),
+                IconButton(
+                  icon: Icon(
+                    _isSidebarCollapsed
+                        ? Icons.chevron_right
+                        : Icons.chevron_left,
+                    color: AppColors.textSecondary,
+                  ),
+                  onPressed: () {
                     setState(() {
-                      _cartQuantities.clear();
-                      _discountAmount = 0.0;
-                      _discountAmountController.clear();
-                      _discountPercentController.clear();
+                      _isSidebarCollapsed = !_isSidebarCollapsed;
                     });
                   },
-                  cartQuantities: _cartQuantities,
-                  products: _sampleProducts,
-                  selectedPaymentMethod: _selectedPaymentMethod,
-                  onPaymentMethodChanged: (method) =>
-                      setState(() => _selectedPaymentMethod = method),
-                  selectedDebtor: _selectedDebtor,
-                  debtorsList: _debtorsList,
-                  onDebtorChanged: (debtor) =>
-                      setState(() => _selectedDebtor = debtor),
-                  discountAmountController: _discountAmountController,
-                  discountPercentController: _discountPercentController,
-                  cashReceivedController: _cashReceivedController,
-                  onDiscountAmountChanged: _onDiscountAmountChanged,
-                  onDiscountPercentChanged: _onDiscountPercentChanged,
-                  onCashReceivedChanged: (val) => setState(
-                    () => _cashReceived = double.tryParse(val) ?? 0.0,
-                  ),
-                  subtotal: _subtotal,
-                  cardFeeAmount: _cardFeeAmount,
-                  total: _total,
-                  change: _change,
-                  onAddToCart: _addToCart,
-                  onDecrementQuantity: _decrementQuantity,
-                  onRemoveFromCart: _removeFromCart,
+                  tooltip: _isSidebarCollapsed
+                      ? 'Expandir menú'
+                      : 'Encoger menú',
                 ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 12),
+          _buildNavItem(
+            0,
+            Icons.home_outlined,
+            Icons.home,
+            AppStrings.navHome,
+          ),
+          _buildNavItem(
+            1,
+            Icons.inventory_2_outlined,
+            Icons.inventory_2,
+            AppStrings.navInventory,
+          ),
+          _buildNavItem(
+            2,
+            Icons.bar_chart_outlined,
+            Icons.bar_chart,
+            AppStrings.navStats,
+          ),
+          _buildNavItem(
+            3,
+            Icons.shopping_bag_outlined,
+            Icons.shopping_bag,
+            AppStrings.navPurchases,
+          ),
+          const Spacer(),
+          _buildNavItem(
+            4,
+            Icons.settings_outlined,
+            Icons.settings,
+            AppStrings.navSettings,
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    IconData activeIcon,
+    String label,
+  ) {
+    final isSelected = _selectedNavIndex == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedNavIndex = index;
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primaryLight
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: _isSidebarCollapsed
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
+            children: [
+              Icon(
+                isSelected ? activeIcon : icon,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
+                size: 20,
               ),
+              if (!_isSidebarCollapsed) ...[
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

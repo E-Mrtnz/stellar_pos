@@ -22,7 +22,7 @@ class SalesSummaryPanel extends StatelessWidget {
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onDecrementQuantity;
   final ValueChanged<String> onRemoveFromCart;
-  final VoidCallback onClearCart; // <-- Nueva acción para borrar todo
+  final VoidCallback onClearCart;
 
   const SalesSummaryPanel({
     super.key,
@@ -46,7 +46,7 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.onAddToCart,
     required this.onDecrementQuantity,
     required this.onRemoveFromCart,
-    required this.onClearCart, // <-- Agregado en el constructor
+    required this.onClearCart,
   });
 
   @override
@@ -55,11 +55,11 @@ class SalesSummaryPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withAlpha(8),
+            color: AppColors.shadowColor,
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -108,14 +108,14 @@ class SalesSummaryPanel extends StatelessWidget {
                     icon: const Icon(
                       Icons.delete_sweep_outlined,
                       size: 14,
-                      color: Colors.redAccent,
+                      color: AppColors.dangerRed,
                     ),
                     label: const Text(
                       'Borrar todo',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: Colors.redAccent,
+                        color: AppColors.dangerRed,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -124,14 +124,13 @@ class SalesSummaryPanel extends StatelessWidget {
                         vertical: 0,
                       ),
                       side: BorderSide(
-                        color: Colors.redAccent.withAlpha(120),
+                        color: AppColors.dangerRed.withAlpha(120),
                         width: 1,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      backgroundColor:
-                          Colors.transparent, // Sin relleno
+                      backgroundColor: Colors.transparent,
                     ),
                   ),
                 ),
@@ -146,7 +145,7 @@ class SalesSummaryPanel extends StatelessWidget {
             child: cartQuantities.isEmpty
                 ? const Center(
                     child: Text(
-                      'Carrito vacío',
+                      AppStrings.emptyCartMessage,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -230,7 +229,7 @@ class SalesSummaryPanel extends StatelessWidget {
                         vertical: 6,
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppColors.cardBackground,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6),
                         borderSide: const BorderSide(
@@ -268,8 +267,9 @@ class SalesSummaryPanel extends StatelessWidget {
                     ),
                     const Spacer(),
                     SizedBox(
-                      width: 48,
+                      width: 56,
                       height: 24,
+                      //===================================================================================
                       child: TextField(
                         controller: discountAmountController,
                         keyboardType:
@@ -278,18 +278,20 @@ class SalesSummaryPanel extends StatelessWidget {
                             ),
                         style: const TextStyle(fontSize: 10),
                         decoration: InputDecoration(
+                          hintText: '0.00',
                           prefixText: '\$ ',
                           prefixStyle: const TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,
                           ),
+
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 4,
                             vertical: 4,
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: AppColors.cardBackground,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(4),
                             borderSide: const BorderSide(
@@ -298,12 +300,13 @@ class SalesSummaryPanel extends StatelessWidget {
                           ),
                         ),
                         onChanged: onDiscountAmountChanged,
-                      ),
+                      ), //===================================================================================
                     ),
                     const SizedBox(width: 4),
                     SizedBox(
-                      width: 44,
+                      width: 56,
                       height: 24,
+                      //===================================================================================
                       child: TextField(
                         controller: discountPercentController,
                         keyboardType:
@@ -313,6 +316,7 @@ class SalesSummaryPanel extends StatelessWidget {
                         style: const TextStyle(fontSize: 10),
                         decoration: InputDecoration(
                           prefixText: '% ',
+                          hintText: '0',
                           prefixStyle: const TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,
@@ -323,7 +327,7 @@ class SalesSummaryPanel extends StatelessWidget {
                             vertical: 4,
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: AppColors.cardBackground,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(4),
                             borderSide: const BorderSide(
@@ -333,6 +337,7 @@ class SalesSummaryPanel extends StatelessWidget {
                         ),
                         onChanged: onDiscountPercentChanged,
                       ),
+                      //===================================================================================
                     ),
                   ],
                 ),
@@ -384,7 +389,7 @@ class SalesSummaryPanel extends StatelessWidget {
                                       vertical: 4,
                                     ),
                                 filled: true,
-                                fillColor: Colors.white,
+                                fillColor: AppColors.cardBackground,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(
                                     4,
@@ -434,7 +439,7 @@ class SalesSummaryPanel extends StatelessWidget {
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.cardBackground,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -476,7 +481,7 @@ class SalesSummaryPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSelected
                   ? AppColors.primary.withAlpha(20)
-                  : Colors.white,
+                  : AppColors.cardBackground,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isSelected
@@ -520,7 +525,7 @@ class SalesSummaryPanel extends StatelessWidget {
       height: 76,
       margin: const EdgeInsets.only(bottom: 8.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
@@ -614,7 +619,7 @@ class SalesSummaryPanel extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -631,18 +636,18 @@ class SalesSummaryPanel extends StatelessWidget {
                 width: 36,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: const Color.fromRGBO(244, 67, 54, 0.08),
+                  color: AppColors.dangerRed.withAlpha(20),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(12),
                     bottomLeft: Radius.circular(10),
                   ),
                   border: Border.all(
-                    color: const Color.fromRGBO(244, 67, 54, 0.2),
+                    color: AppColors.dangerRed.withAlpha(50),
                   ),
                 ),
                 child: const Icon(
                   Icons.delete_outline,
-                  color: Colors.redAccent,
+                  color: AppColors.dangerRed,
                   size: 16,
                 ),
               ),
@@ -660,7 +665,7 @@ class SalesSummaryPanel extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: AppColors.border),
         ),
