@@ -15,10 +15,10 @@ class AppColors {
   static const Color dangerRed = Color(0xFFEF4444);
   static const Color primaryLight = Color(0xFFEFF6FF);
   static const Color activeNavBackground = Color(0xFFE8ECEF);
-
   static const Color sidebarBackground = Colors.white;
-
   static const Color shadowColor = Color(0x0D000000);
+  static const Color overlayBackground = Color(0x80000000);
+  static const Color cardExtensionBackground = Color(0xFF3B82F6);
 }
 
 class AppTextStyles {
@@ -85,7 +85,6 @@ class AppStrings {
   static const String navStats = 'Estadísticas';
   static const String navPurchases = 'Compras';
   static const String navSettings = 'Ajustes';
-
   static const String searchPlaceholder = 'Buscar producto...';
   static const String salesSummaryTitle = 'Resumen Ventas';
   static const String ticketNumberLabel = 'Nº Factura:';
@@ -93,4 +92,14 @@ class AppStrings {
       'No hay productos seleccionados';
   static const String selectedViewPrefix = 'Vista seleccionada: ';
   static const String createSaleButton = 'Crear Venta';
+
+  // CARD CREAR PRODUCTO
+  static const String createProductTitle = 'Crear Producto';
+  static const String productNameHint = 'Nombre de producto';
+  static const String purchasePriceHint = 'Precio de compra';
+  static const String salePriceHint = 'Precio de venta';
+  static const String barcodeHint = 'Código de barras';
+  static const String selectTagHint = 'Etiqueta';
+  static const String selectDeptHint = 'Departamento';
+  static const String saveButton = 'Guardar';
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/presentation/inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/category_selector.dart';
 
 class InventoryLayout extends StatefulWidget {
@@ -63,53 +64,109 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
         children: [
-          // 1. Buscador + Métricas
-          _buildTopHeader(),
-
-          const SizedBox(height: 12),
-
-          // 2. Selector Reutilizable de Categorías
-          CategorySelector(
-            categories: _categories,
-            selectedCategoryIndex: _selectedCategoryIndex,
-            onCategorySelected: (index) {
-              setState(() {
-                _selectedCategoryIndex = index;
-              });
-            },
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopHeader(),
+                const SizedBox(height: 12),
+                CategorySelector(
+                  categories: _categories,
+                  selectedCategoryIndex: _selectedCategoryIndex,
+                  onCategorySelected: (index) {
+                    setState(() {
+                      _selectedCategoryIndex = index;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildTableHeader(),
+                        const Divider(
+                          height: 1,
+                          color: AppColors.border,
+                        ),
+                        Expanded(
+                          child: _buildInventoryList(_filteredProducts),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          const SizedBox(height: 12),
+          // Columna de Botones Flotantes (FABs)
+          Positioned(
+            right: 20,
+            bottom: 20,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // FAB 1: Tags
+                _buildCircularFab(
+                  heroTag: 'fab_tags',
+                  tooltip: 'Crear Tags/Dpto',
+                  icon: Icons.label_outlined,
+                  onPressed: () {},
+                ),
+                const SizedBox(height: 12),
 
-          // 3. Tabla de Productos con Encabezados Visibles
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                children: [
-                  // --- FILA DE ENCABEZADOS DE LA TABLA ---
-                  _buildTableHeader(),
-                  const Divider(height: 1, color: AppColors.border),
+                // FAB 2: Crear Clientes
+                _buildCircularFab(
+                  heroTag: 'fab_clients',
+                  tooltip: 'Crear Clientes',
+                  icon: Icons.person_add_alt_1_outlined,
+                  onPressed: () {},
+                ),
+                const SizedBox(height: 12),
 
-                  // --- CUERPO DE LA TABLA ---
-                  Expanded(
-                    child: _buildInventoryList(_filteredProducts),
-                  ),
-                ],
-              ),
+                // FAB 3: Crear Producto
+                _buildCircularFab(
+                  heroTag: 'fab_products',
+                  tooltip: 'Crear Productos',
+                  icon: Icons.inventory_2_outlined,
+                  onPressed: () {
+                    CreateProductDialog.show(context);
+                  },
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // Todos los FABs con el mismo color e igual elevación para el efecto de flotación
+  Widget _buildCircularFab({
+    required String heroTag,
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return FloatingActionButton(
+      heroTag: heroTag,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      elevation: 4,
+      shape: const CircleBorder(),
+      backgroundColor: AppColors.primary,
+      child: Icon(icon, color: Colors.white, size: 22),
     );
   }
 
@@ -202,9 +259,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
-          SizedBox(
-            width: 40,
-          ), // Espacio alineado con el icono de la foto
+          SizedBox(width: 40),
           SizedBox(width: 12),
           Expanded(flex: 3, child: Text('Producto', style: style)),
           Expanded(flex: 2, child: Text('Costo', style: style)),
