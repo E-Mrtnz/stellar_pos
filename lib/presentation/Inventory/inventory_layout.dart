@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
-
+import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
+import 'package:stellar_pos/presentation/inventory/widgets/create_catalog_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/category_selector.dart';
 
 class InventoryLayout extends StatefulWidget {
@@ -35,13 +36,41 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         .toList();
   }
 
+  // ============================================================
+  // CREAR PRODUCTO
+  // ============================================================
+
   Future<void> _createProduct() async {
     await CreateProductDialog.show(context);
   }
 
-  Future<void> _editProduct(Map<String, dynamic> product) async {
-    await CreateProductDialog.show(context);
+  // ============================================================
+  // CREAR CLIENTE
+  // ============================================================
+
+  Future<void> _createClient() async {
+    await CreateClientDialog.show(context);
   }
+
+  // ============================================================
+  // CREAR ETIQUETA / DEPARTAMENTO
+  // ============================================================
+
+  Future<void> _createCatalogItem() async {
+    await CreateCatalogDialog.show(context);
+  }
+
+  // ============================================================
+  // EDITAR PRODUCTO
+  // ============================================================
+
+  Future<void> _editProduct(Map<String, dynamic> product) async {
+    await CreateProductDialog.show(context, product: product);
+  }
+
+  // ============================================================
+  // ELIMINAR PRODUCTO
+  // ============================================================
 
   Future<void> _deleteProduct(
     String productId,
@@ -80,6 +109,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
     context.read<ProductProvider>().deleteProduct(productId);
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +166,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       ),
     );
   }
+
+  // ============================================================
+  // HEADER
+  // ============================================================
 
   Widget _buildTopHeader(
     double totalInvestment,
@@ -192,6 +229,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       ],
     );
   }
+
+  // ============================================================
+  // TABLA
+  // ============================================================
 
   Widget _buildInventoryTable(List<Map<String, dynamic>> products) {
     return Container(
@@ -393,6 +434,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     );
   }
 
+  // ============================================================
+  // BOTONES FLOTANTES
+  // ============================================================
+
   Widget _buildFloatingActions() {
     return Positioned(
       right: 20,
@@ -404,14 +449,14 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             heroTag: 'fab_tags',
             tooltip: AppStrings.createTagsTooltip,
             icon: Icons.label_outlined,
-            onPressed: () {},
+            onPressed: _createCatalogItem,
           ),
           const SizedBox(height: 12),
           _buildCircularFab(
             heroTag: 'fab_clients',
             tooltip: AppStrings.createClientsTooltip,
             icon: Icons.person_add_alt_1_outlined,
-            onPressed: () {},
+            onPressed: _createClient,
           ),
           const SizedBox(height: 12),
           _buildCircularFab(

@@ -7,6 +7,8 @@ import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
+// import 'package:stellar_pos/core/providers/product_provider.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
@@ -39,7 +41,13 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   List<String> get _categories => AppCategories.all;
 
-  List<String> get _debtors => const [];
+  List<String> get _debtors {
+    return context
+        .watch<CatalogProvider>()
+        .clients
+        .map((client) => client.name)
+        .toList();
+  }
 
   @override
   void dispose() {

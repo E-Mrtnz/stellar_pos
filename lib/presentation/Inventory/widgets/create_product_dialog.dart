@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/product.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 
 class CreateProductDialog extends StatefulWidget {
@@ -48,20 +49,13 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
   String? _selectedTag;
   String? _selectedDept;
+  List<String> get _tags {
+    return context.watch<CatalogProvider>().tags;
+  }
 
-  final List<String> _tags = [
-    'Sodas',
-    'Jugos',
-    'Sopas Instantáneas',
-    'Snacks',
-  ];
-
-  final List<String> _departments = [
-    'Coca-Cola',
-    'Pepsi',
-    'Maggi',
-    'Sabritas',
-  ];
+  List<String> get _departments {
+    return context.watch<CatalogProvider>().departments;
+  }
 
   // ============================================================
   // CONTROLLERS

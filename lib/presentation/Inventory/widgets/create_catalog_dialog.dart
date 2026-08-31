@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/core/models/client.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 
-class CreateClientDialog extends StatefulWidget {
-  const CreateClientDialog({super.key});
+class CreateCatalogDialog extends StatefulWidget {
+  const CreateCatalogDialog({super.key});
 
   static Future<void> show(BuildContext context) {
     return showDialog(
@@ -17,78 +16,52 @@ class CreateClientDialog extends StatefulWidget {
       builder: (context) => const Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: CreateClientDialog(),
+        child: CreateCatalogDialog(),
       ),
     );
   }
 
   @override
-  State<CreateClientDialog> createState() => _CreateClientDialogState();
+  State<CreateCatalogDialog> createState() =>
+      _CreateCatalogDialogState();
 }
 
-class _CreateClientDialogState extends State<CreateClientDialog> {
+class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
+  static const List<String> _types = ['Etiqueta', 'Departamento'];
+
+  String _selectedType = _types.first;
+
   final TextEditingController _nameController = TextEditingController();
 
-  final TextEditingController _phoneController =
-      TextEditingController();
-
-  final Set<String> _invalidFields = <String>{};
+  bool _nameInvalid = false;
 
   OverlayEntry? _validationOverlay;
   Timer? _validationTimer;
 
   // ============================================================
-  // VALIDACIÓN
+  // CREAR
   // ============================================================
 
-  bool _validate() {
-    final invalidFields = <String>{};
+  void _createCatalogItem() {
+    final name = _nameController.text.trim();
 
-    if (_nameController.text.trim().isEmpty) {
-      invalidFields.add('name');
-    }
+    if (name.isEmpty) {
+      setState(() {
+        _nameInvalid = true;
+      });
 
-    setState(() {
-      _invalidFields
-        ..clear()
-        ..addAll(invalidFields);
-    });
+      _showValidationAlert('El nombre es obligatorio.');
 
-    if (invalidFields.isEmpty) {
-      return true;
-    }
-
-    _showValidationAlert('El nombre del cliente es obligatorio.');
-
-    return false;
-  }
-
-  void _clearError(String field) {
-    if (!_invalidFields.contains(field)) {
       return;
     }
 
-    setState(() {
-      _invalidFields.remove(field);
-    });
-  }
+    final provider = context.read<CatalogProvider>();
 
-  // ============================================================
-  // CREAR CLIENTE
-  // ============================================================
-
-  void _createClient() {
-    if (!_validate()) {
-      return;
+    if (_selectedType == 'Etiqueta') {
+      provider.addTag(name);
+    } else {
+      provider.addDepartment(name);
     }
-
-    final client = Client(
-      id: '',
-      name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
-    );
-
-    context.read<CatalogProvider>().addClient(client);
 
     if (!mounted) {
       return;
@@ -150,7 +123,6 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
     _validationOverlay?.remove();
 
     _nameController.dispose();
-    _phoneController.dispose();
 
     super.dispose();
   }
@@ -192,7 +164,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Crear Cliente',
+                        'Crear Etiqueta / Departamento',
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 17,
@@ -224,21 +196,112 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
                   child: Column(
                     children: [
-                      _buildTextField(
-                        controller: _nameController,
-                        hint: 'Nombre del cliente',
-                        isInvalid: _invalidFields.contains('name'),
-                        onChanged: (_) {
-                          _clearError('name');
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedType,
+                        isDense: true,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'Tipo',
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.inputBackground,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                        ),
+                        items: _types.map((type) {
+                          return DropdownMenuItem<String>(
+                            value: type,
+                            child: Text(type),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+
+                          setState(() {
+                            _selectedType = value;
+                          });
                         },
                       ),
 
                       const SizedBox(height: 10),
 
-                      _buildTextField(
-                        controller: _phoneController,
-                        hint: 'Número de teléfono',
-                        keyboardType: TextInputType.phone,
+                      TextField(
+                        controller: _nameController,
+                        onChanged: (_) {
+                          if (!_nameInvalid) {
+                            return;
+                          }
+
+                          setState(() {
+                            _nameInvalid = false;
+                          });
+                        },
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'Nombre de etiqueta/departamento',
+                          hintStyle: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          filled: true,
+                          fillColor: _nameInvalid
+                              ? AppColors.dangerRed.withOpacity(0.06)
+                              : AppColors.inputBackground,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _nameInvalid
+                                  ? AppColors.dangerRed
+                                  : AppColors.border,
+                              width: _nameInvalid ? 1.8 : 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _nameInvalid
+                                  ? AppColors.dangerRed
+                                  : AppColors.border,
+                              width: _nameInvalid ? 1.8 : 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _nameInvalid
+                                  ? AppColors.dangerRed
+                                  : AppColors.primary,
+                              width: 1.8,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -248,7 +311,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                 // BOTÓN
                 // ==================================================
                 InkWell(
-                  onTap: _createClient,
+                  onTap: _createCatalogItem,
                   child: Container(
                     width: double.infinity,
                     height: 52,
@@ -261,7 +324,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                     ),
                     alignment: Alignment.center,
                     child: const Text(
-                      'Crear Cliente',
+                      'Crear Etiqueta / Departamento',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -272,69 +335,6 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // TEXT FIELD
-  // ============================================================
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    bool isInvalid = false,
-    TextInputType? keyboardType,
-    ValueChanged<String>? onChanged,
-  }) {
-    final borderColor = isInvalid
-        ? AppColors.dangerRed
-        : AppColors.border;
-
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      onChanged: onChanged,
-      style: const TextStyle(
-        fontSize: 12,
-        color: AppColors.textPrimary,
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        hintText: hint,
-        hintStyle: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textMuted,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        filled: true,
-        fillColor: isInvalid
-            ? AppColors.dangerRed.withOpacity(0.06)
-            : AppColors.inputBackground,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: borderColor,
-            width: isInvalid ? 1.8 : 1,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: borderColor,
-            width: isInvalid ? 1.8 : 1,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: isInvalid ? AppColors.dangerRed : AppColors.primary,
-            width: 1.8,
           ),
         ),
       ),
