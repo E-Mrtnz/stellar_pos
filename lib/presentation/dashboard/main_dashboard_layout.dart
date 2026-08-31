@@ -132,9 +132,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _clearCart() {
     setState(() {
       _cartQuantities.clear();
-      _discountAmountController.text = '0.00';
-      _discountPercentController.text = '0';
-      _cashReceivedController.text = '0.00';
+      _discountAmountController;
+      _discountPercentController;
+      _cashReceivedController;
       _selectedDebtor = null;
     });
   }

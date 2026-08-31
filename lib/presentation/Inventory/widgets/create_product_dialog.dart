@@ -23,7 +23,11 @@ class CreateProductDialog extends StatefulWidget {
 }
 
 class _CreateProductDialogState extends State<CreateProductDialog> {
+  // Valores de los 3 contadores
   int _stock = 18;
+  int _minStock = 5;
+  int _maxStock = 40;
+
   String? _selectedTag;
   String? _selectedDept;
 
@@ -41,6 +45,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   ];
 
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _unitController = TextEditingController();
   final TextEditingController _buyPriceController =
       TextEditingController();
   final TextEditingController _sellPriceController =
@@ -48,22 +53,38 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   final TextEditingController _barcodeController =
       TextEditingController();
 
+  // Controladores y FocusNodes para la solapa
   late final TextEditingController _stockController;
+  late final TextEditingController _minStockController;
+  late final TextEditingController _maxStockController;
+
   final FocusNode _stockFocusNode = FocusNode();
+  final FocusNode _minStockFocusNode = FocusNode();
+  final FocusNode _maxStockFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _stockController = TextEditingController(text: '$_stock');
+    _minStockController = TextEditingController(text: '$_minStock');
+    _maxStockController = TextEditingController(text: '$_maxStock');
 
-    // Selección segura del texto diferida al siguiente frame para evitar el error de SchedulerBinding
-    _stockFocusNode.addListener(() {
-      if (_stockFocusNode.hasFocus) {
+    _setupFocusSelection(_stockFocusNode, _stockController);
+    _setupFocusSelection(_minStockFocusNode, _minStockController);
+    _setupFocusSelection(_maxStockFocusNode, _maxStockController);
+  }
+
+  void _setupFocusSelection(
+    FocusNode node,
+    TextEditingController controller,
+  ) {
+    node.addListener(() {
+      if (node.hasFocus) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_stockFocusNode.hasFocus && mounted) {
-            _stockController.selection = TextSelection(
+          if (node.hasFocus && mounted) {
+            controller.selection = TextSelection(
               baseOffset: 0,
-              extentOffset: _stockController.text.length,
+              extentOffset: controller.text.length,
             );
           }
         });
@@ -74,19 +95,41 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _unitController.dispose();
     _buyPriceController.dispose();
     _sellPriceController.dispose();
     _barcodeController.dispose();
     _stockController.dispose();
+    _minStockController.dispose();
+    _maxStockController.dispose();
     _stockFocusNode.dispose();
+    _minStockFocusNode.dispose();
+    _maxStockFocusNode.dispose();
     super.dispose();
   }
 
-  void _updateStock(int newStock) {
-    if (newStock < 0) return;
+  // Métodos para actualizar contadores
+  void _updateStock(int value) {
+    if (value < 0) return;
     setState(() {
-      _stock = newStock;
+      _stock = value;
       _stockController.text = '$_stock';
+    });
+  }
+
+  void _updateMinStock(int value) {
+    if (value < 0) return;
+    setState(() {
+      _minStock = value;
+      _minStockController.text = '$_minStock';
+    });
+  }
+
+  void _updateMaxStock(int value) {
+    if (value < 0) return;
+    setState(() {
+      _maxStock = value;
+      _maxStockController.text = '$_maxStock';
     });
   }
 
@@ -94,24 +137,23 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   Widget build(BuildContext context) {
     const Color flapColor = Color(0xFF3B82F6);
     const Color buttonColor = AppColors.primary;
-
-    const double cardVisibleRightPadding = 70.0;
+    const double cardVisibleRightPadding = 85.0;
 
     return Center(
       child: SingleChildScrollView(
         child: SizedBox(
-          width: 460,
+          width: 480,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               // ==========================================
-              // CAPA 1 (FONDO): SOLAPA LATERAL DERECHA (SÓLIDA)
+              // CAPA 1 (FONDO): SOLAPA LATERAL DERECHA
               // ==========================================
               Positioned(
                 top: 0,
                 bottom: 0,
                 right: 0,
-                width: 140,
+                width: 155,
                 child: Container(
                   decoration: const BoxDecoration(
                     color: flapColor,
@@ -120,129 +162,53 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                       bottomRight: Radius.circular(20),
                     ),
                   ),
-                  padding: const EdgeInsets.only(left: 60),
+                  padding: const EdgeInsets.only(
+                    left: 70,
+                    right: 8,
+                    top: 12,
+                    bottom: 12,
+                  ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      // BOTÓN + (DELINEADO CIRCULAR)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 18),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _updateStock(_stock + 1),
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.6),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
+                      // 1. Contador Stock
+                      _buildCounterCard(
+                        label: 'stock',
+                        controller: _stockController,
+                        focusNode: _stockFocusNode,
+                        onIncrement: () => _updateStock(_stock + 1),
+                        onDecrement: () => _updateStock(_stock - 1),
+                        onChanged: (val) {
+                          _stock = int.tryParse(val) ?? 0;
+                        },
                       ),
 
-                      // FIELD TEXT TRANSPARENTE / EDITABLE PARA EL STOCK (Ajustado a 20px)
-                      SizedBox(
-                        width: 70,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TextField(
-                              controller: _stockController,
-                              focusNode: _stockFocusNode,
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize:
-                                    20, // Fuente reducida para soportar 4+ dígitos
-                                height: 1.2,
-                              ),
-                              cursorColor: Colors.white,
-                              decoration: const InputDecoration(
-                                hintText: '0',
-                                hintStyle: TextStyle(
-                                  color: Colors.white60,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 2,
-                                ),
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                              onChanged: (val) {
-                                final parsed = int.tryParse(val);
-                                if (parsed != null) {
-                                  _stock = parsed;
-                                } else if (val.isEmpty) {
-                                  _stock = 0;
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'stock',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                      // 2. Contador Mínimo
+                      _buildCounterCard(
+                        label: 'mín',
+                        controller: _minStockController,
+                        focusNode: _minStockFocusNode,
+                        onIncrement: () =>
+                            _updateMinStock(_minStock + 1),
+                        onDecrement: () =>
+                            _updateMinStock(_minStock - 1),
+                        onChanged: (val) {
+                          _minStock = int.tryParse(val) ?? 0;
+                        },
                       ),
 
-                      // BOTÓN - (DELINEADO CIRCULAR)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _updateStock(_stock - 1),
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.6),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.remove,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
+                      // 3. Contador Máximo
+                      _buildCounterCard(
+                        label: 'máx',
+                        controller: _maxStockController,
+                        focusNode: _maxStockFocusNode,
+                        onIncrement: () =>
+                            _updateMaxStock(_maxStock + 1),
+                        onDecrement: () =>
+                            _updateMaxStock(_maxStock - 1),
+                        onChanged: (val) {
+                          _maxStock = int.tryParse(val) ?? 0;
+                        },
                       ),
                     ],
                   ),
@@ -267,15 +233,12 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(20),
                           topRight: Radius.circular(20),
-                          bottomLeft: Radius.zero,
-                          bottomRight: Radius.zero,
                         ),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Header con X
                           Row(
                             mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
@@ -305,9 +268,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Carga de Imagen
                           Container(
-                            height: 135,
+                            height: 120,
                             width: double.infinity,
                             decoration: BoxDecoration(
                               color: AppColors.inputBackground,
@@ -323,9 +285,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                 Icon(
                                   Icons.add_a_photo_outlined,
                                   color: AppColors.textMuted,
-                                  size: 36,
+                                  size: 34,
                                 ),
-                                SizedBox(height: 6),
+                                SizedBox(height: 4),
                                 Text(
                                   'Img',
                                   style: TextStyle(
@@ -336,14 +298,30 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
 
-                          // Campos del Formulario
-                          _buildTextField(
-                            _nameController,
-                            AppStrings.productNameHint,
+                          // FILA: Nombre del Producto + Medida / Unidad
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: _buildTextField(
+                                  _nameController,
+                                  AppStrings.productNameHint,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 1,
+                                child: _buildTextField(
+                                  _unitController,
+                                  'Cant.',
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
+
                           Row(
                             children: [
                               Expanded(
@@ -363,7 +341,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           _buildTextField(
                             _barcodeController,
                             AppStrings.barcodeHint,
@@ -373,7 +351,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                               size: 20,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
@@ -437,6 +415,122 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     );
   }
 
+  // WIDGET AUXILIAR PARA CADA TARJETA DE CONTADOR (SOLAPA)
+  Widget _buildCounterCard({
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required VoidCallback onIncrement,
+    required VoidCallback onDecrement,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.5),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Botón +
+          InkWell(
+            onTap: onIncrement,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7),
+                  width: 1.2,
+                ),
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 14,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // Campo numérico y etiqueta
+          SizedBox(
+            width: 55,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    height: 1.1,
+                  ),
+                  cursorColor: Colors.white,
+                  decoration: const InputDecoration(
+                    hintText: '0',
+                    hintStyle: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 16,
+                    ),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 1),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: onChanged,
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // Botón -
+          InkWell(
+            onTap: onDecrement,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7),
+                  width: 1.2,
+                ),
+              ),
+              child: const Icon(
+                Icons.remove,
+                color: Colors.white,
+                size: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTextField(
     TextEditingController controller,
     String hint, {
@@ -466,7 +560,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
-          vertical: 12,
+          vertical: 10,
         ),
         filled: true,
         fillColor: AppColors.inputBackground,
@@ -504,7 +598,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
-          vertical: 12,
+          vertical: 10,
         ),
         filled: true,
         fillColor: AppColors.inputBackground,

@@ -212,7 +212,7 @@ class SalesSummaryPanel extends StatelessWidget {
                     _buildPaymentCardIcon(
                       3,
                       Icons.pending_actions_outlined,
-                      'Pendiente',
+                      'Fiado',
                     ),
                   ],
                 ),
@@ -266,47 +266,10 @@ class SalesSummaryPanel extends StatelessWidget {
                       style: AppTextStyles.ticketLabel,
                     ),
                     const Spacer(),
-                    SizedBox(
-                      width: 56,
-                      height: 24,
-                      //===================================================================================
-                      child: TextField(
-                        controller: discountAmountController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                        style: const TextStyle(fontSize: 10),
-                        decoration: InputDecoration(
-                          hintText: '0.00',
-                          prefixText: '\$ ',
-                          prefixStyle: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
 
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 4,
-                          ),
-                          filled: true,
-                          fillColor: AppColors.cardBackground,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(4),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
-                          ),
-                        ),
-                        onChanged: onDiscountAmountChanged,
-                      ), //===================================================================================
-                    ),
-                    const SizedBox(width: 4),
                     SizedBox(
                       width: 56,
                       height: 24,
-                      //===================================================================================
                       child: TextField(
                         controller: discountPercentController,
                         keyboardType:
@@ -337,7 +300,43 @@ class SalesSummaryPanel extends StatelessWidget {
                         ),
                         onChanged: onDiscountPercentChanged,
                       ),
-                      //===================================================================================
+                    ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 56,
+                      height: 24,
+
+                      child: TextField(
+                        controller: discountAmountController,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                        style: const TextStyle(fontSize: 10),
+                        decoration: InputDecoration(
+                          hintText: '0.00',
+                          prefixText: '\$ ',
+                          prefixStyle: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.cardBackground,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                        ),
+                        onChanged: onDiscountAmountChanged,
+                      ),
                     ),
                   ],
                 ),
@@ -371,12 +370,11 @@ class SalesSummaryPanel extends StatelessWidget {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(fontSize: 10),
                               decoration: InputDecoration(
                                 prefixText: '\$ ',
+                                hintText: '0.00',
+
                                 prefixStyle: const TextStyle(
                                   fontSize: 10,
                                   color: AppColors.textSecondary,
