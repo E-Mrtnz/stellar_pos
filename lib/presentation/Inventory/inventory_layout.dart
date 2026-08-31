@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/core/constants/app_data.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
+
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
 import 'package:stellar_pos/presentation/widgets/category_selector.dart';
@@ -17,46 +19,86 @@ class InventoryLayout extends StatefulWidget {
 class _InventoryLayoutState extends State<InventoryLayout> {
   int _selectedCategoryIndex = 0;
 
-  List<Map<String, dynamic>> get _products => AppData.products;
-
   List<String> get _categories => AppCategories.all;
 
-  List<Map<String, dynamic>> get _filteredProducts {
+  List<Map<String, dynamic>> _filterProducts(
+    List<Map<String, dynamic>> products,
+  ) {
     if (_selectedCategoryIndex == 0) {
-      return _products;
+      return products;
     }
 
     final category = _categories[_selectedCategoryIndex];
 
-    return _products
+    return products
         .where((product) => product['category'] == category)
         .toList();
   }
 
-  double get _totalInvestment {
-    return _products.fold(
-      0,
-      (total, product) =>
-          total +
-          ProductUtils.cost(product) * ProductUtils.stock(product),
-    );
+  Future<void> _createProduct() async {
+    await CreateProductDialog.show(context);
   }
 
-  double get _totalSales {
-    return _products.fold(
-      0,
-      (total, product) =>
-          total +
-          ProductUtils.price(product) * ProductUtils.stock(product),
-    );
+  Future<void> _editProduct(Map<String, dynamic> product) async {
+    await CreateProductDialog.show(context, product: product);
   }
 
-  double get _totalProfit {
-    return _totalSales - _totalInvestment;
+  Future<void> _deleteProduct(
+    String productId,
+    String productName,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Eliminar producto'),
+          content: Text('¿Deseas eliminar "$productName"?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: AppColors.dangerRed),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    context.read<ProductProvider>().deleteProduct(productId);
   }
 
   @override
   Widget build(BuildContext context) {
+    final products = context.watch<ProductProvider>().productMaps;
+
+    final filteredProducts = _filterProducts(products);
+
+    final totalInvestment = products.fold<double>(0, (total, product) {
+      return total +
+          ProductUtils.cost(product) * ProductUtils.stock(product);
+    });
+
+    final totalSales = products.fold<double>(0, (total, product) {
+      return total +
+          ProductUtils.price(product) * ProductUtils.stock(product);
+    });
+
+    final totalProfit = totalSales - totalInvestment;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -66,10 +108,12 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTopHeader(),
-
+                _buildTopHeader(
+                  totalInvestment,
+                  totalSales,
+                  totalProfit,
+                ),
                 const SizedBox(height: 12),
-
                 CategorySelector(
                   categories: _categories,
                   selectedCategoryIndex: _selectedCategoryIndex,
@@ -79,21 +123,22 @@ class _InventoryLayoutState extends State<InventoryLayout> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 12),
-
-                Expanded(child: _buildInventoryTable()),
+                Expanded(child: _buildInventoryTable(filteredProducts)),
               ],
             ),
           ),
-
           _buildFloatingActions(),
         ],
       ),
     );
   }
 
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(
+    double totalInvestment,
+    double totalSales,
+    double totalProfit,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -126,27 +171,21 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             ),
           ),
         ),
-
         const SizedBox(width: 12),
-
         MetricCard(
-          amount: ProductUtils.money(_totalInvestment),
+          amount: ProductUtils.money(totalInvestment),
           label: AppStrings.totalInvestment,
           color: AppColors.textPrimary,
         ),
-
         const SizedBox(width: 8),
-
         MetricCard(
-          amount: ProductUtils.money(_totalSales),
+          amount: ProductUtils.money(totalSales),
           label: AppStrings.totalSales,
           color: AppColors.primary,
         ),
-
         const SizedBox(width: 8),
-
         MetricCard(
-          amount: ProductUtils.money(_totalProfit),
+          amount: ProductUtils.money(totalProfit),
           label: AppStrings.totalProfit,
           color: AppColors.successGreen,
         ),
@@ -154,7 +193,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     );
   }
 
-  Widget _buildInventoryTable() {
+  Widget _buildInventoryTable(List<Map<String, dynamic>> products) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -164,10 +203,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       child: Column(
         children: [
           _buildTableHeader(),
-
           const Divider(height: 1, color: AppColors.border),
-
-          Expanded(child: _buildInventoryList()),
+          Expanded(child: _buildInventoryList(products)),
         ],
       ),
     );
@@ -180,7 +217,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         children: [
           SizedBox(width: 40),
           SizedBox(width: 12),
-
           Expanded(
             flex: 3,
             child: Text(
@@ -188,7 +224,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -196,7 +231,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -204,7 +238,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -212,7 +245,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -220,7 +252,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-
           Expanded(
             flex: 1,
             child: Text(
@@ -228,14 +259,13 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
+          SizedBox(width: 70),
         ],
       ),
     );
   }
 
-  Widget _buildInventoryList() {
-    final products = _filteredProducts;
-
+  Widget _buildInventoryList(List<Map<String, dynamic>> products) {
     if (products.isEmpty) {
       return const Center(
         child: Text(
@@ -258,16 +288,16 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   Widget _buildInventoryRow(Map<String, dynamic> product) {
     final cost = ProductUtils.cost(product);
-
     final price = ProductUtils.price(product);
-
     final stock = ProductUtils.stock(product);
-
     final profit = ProductUtils.profit(product);
 
     final profitPercent = ProductUtils.profitPercentage(
       product,
     ).toStringAsFixed(0);
+
+    final id = product['id'].toString();
+    final name = ProductUtils.cleanName(product);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -285,20 +315,17 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               color: AppColors.textMuted,
             ),
           ),
-
           const SizedBox(width: 12),
-
           Expanded(
             flex: 3,
             child: Text(
-              ProductUtils.cleanName(product),
+              name,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -306,7 +333,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -314,7 +340,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: const TextStyle(color: AppColors.textPrimary),
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -322,7 +347,6 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Text(
@@ -333,12 +357,35 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               ),
             ),
           ),
-
           Expanded(
             flex: 1,
             child: Text(
               '$profitPercent%',
               style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          SizedBox(
+            width: 70,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: 'Editar',
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  color: AppColors.primary,
+                  onPressed: () {
+                    _editProduct(product);
+                  },
+                ),
+                IconButton(
+                  tooltip: 'Eliminar',
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  color: AppColors.dangerRed,
+                  onPressed: () {
+                    _deleteProduct(id, name);
+                  },
+                ),
+              ],
             ),
           ),
         ],
@@ -359,25 +406,19 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             icon: Icons.label_outlined,
             onPressed: () {},
           ),
-
           const SizedBox(height: 12),
-
           _buildCircularFab(
             heroTag: 'fab_clients',
             tooltip: AppStrings.createClientsTooltip,
             icon: Icons.person_add_alt_1_outlined,
             onPressed: () {},
           ),
-
           const SizedBox(height: 12),
-
           _buildCircularFab(
             heroTag: 'fab_products',
             tooltip: AppStrings.createProductsTooltip,
             icon: Icons.inventory_2_outlined,
-            onPressed: () {
-              CreateProductDialog.show(context);
-            },
+            onPressed: _createProduct,
           ),
         ],
       ),

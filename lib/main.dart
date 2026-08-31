@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/presentation/dashboard/main_dashboard_layout.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const StellarPosApp());
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ProductProvider(),
+      child: const StellarPosApp(),
+    ),
+  );
 }
 
 class StellarPosApp extends StatelessWidget {
@@ -22,8 +31,7 @@ class StellarPosApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           primary: AppColors.primary,
-          surface:
-              AppColors.background, // En lugar del antiguo 'background'
+          surface: AppColors.background,
         ),
         useMaterial3: true,
       ),

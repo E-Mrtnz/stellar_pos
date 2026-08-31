@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/core/constants/app_data.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
+
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
@@ -36,11 +38,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   final TextEditingController _cashReceivedController =
       TextEditingController();
 
-  List<Map<String, dynamic>> get _products => AppData.products;
-
   List<String> get _categories => AppCategories.all;
 
-  List<String> get _debtors => AppData.debtors;
+  List<String> get _debtors => const [];
 
   @override
   void dispose() {
@@ -51,14 +51,22 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     super.dispose();
   }
 
-  // ============================================================
-  // CARRITO
-  // ============================================================
-
   void _addToCart(String productId) {
+    final provider = context.read<ProductProvider>();
+    final product = provider.findById(productId);
+
+    if (product == null) {
+      return;
+    }
+
+    final currentQuantity = _cartQuantities[productId] ?? 0;
+
+    if (currentQuantity >= product.stock) {
+      return;
+    }
+
     setState(() {
-      _cartQuantities[productId] =
-          (_cartQuantities[productId] ?? 0) + 1;
+      _cartQuantities[productId] = currentQuantity + 1;
     });
   }
 
@@ -96,32 +104,26 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     });
   }
 
-  // ============================================================
-  // CÁLCULOS
-  // ============================================================
-
   double get _subtotal {
+    final provider = context.read<ProductProvider>();
+
     double total = 0;
 
     for (final entry in _cartQuantities.entries) {
-      final product = _findProduct(entry.key);
+      final product = provider.findById(entry.key);
 
       if (product == null) {
         continue;
       }
 
-      final price = (product['price'] as num).toDouble();
-
-      total += price * entry.value;
+      total += product.price * entry.value;
     }
 
     return total;
   }
 
   double get _discountAmount {
-    final amount = double.tryParse(_discountAmountController.text);
-
-    return amount ?? 0;
+    return double.tryParse(_discountAmountController.text) ?? 0;
   }
 
   double get _cardFeeAmount {
@@ -152,20 +154,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return change > 0 ? change : 0;
   }
 
-  Map<String, dynamic>? _findProduct(String id) {
-    for (final product in _products) {
-      if (product['id'] == id) {
-        return product;
-      }
-    }
-
-    return null;
-  }
-
-  // ============================================================
-  // NAVEGACIÓN
-  // ============================================================
-
   void _onNavigationChanged(int index) {
     setState(() {
       _selectedNavIndex = index;
@@ -178,12 +166,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     });
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
-
   @override
   Widget build(BuildContext context) {
+    final products = context.watch<ProductProvider>().productMaps;
+
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
@@ -199,15 +185,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               },
               onItemSelected: _onNavigationChanged,
             ),
-
-            Expanded(child: _buildMainContent()),
+            Expanded(child: _buildMainContent(products)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMainContent() {
+  Widget _buildMainContent(List<Map<String, dynamic>> products) {
     if (_selectedNavIndex == AppNavigation.inventory) {
       return const InventoryLayout();
     }
@@ -219,7 +204,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           Expanded(
             flex: 3,
             child: CentralProductGrid(
-              products: _products,
+              products: products,
               cartQuantities: _cartQuantities,
               categories: _categories,
               selectedCategoryIndex: _selectedCategoryIndex,
@@ -228,14 +213,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onRemoveFromCart: _removeFromCart,
             ),
           ),
-
           const SizedBox(width: AppDimensions.productGridSpacing),
-
           Expanded(
             flex: 1,
             child: SalesSummaryPanel(
               cartQuantities: _cartQuantities,
-              products: _products,
+              products: products,
               selectedPaymentMethod: _selectedPaymentMethod,
               onPaymentMethodChanged: (method) {
                 setState(() {
