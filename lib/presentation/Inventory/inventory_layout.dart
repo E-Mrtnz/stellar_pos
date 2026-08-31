@@ -40,7 +40,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _editProduct(Map<String, dynamic> product) async {
-    await CreateProductDialog.show(context, product: product);
+    await CreateProductDialog.show(context);
   }
 
   Future<void> _deleteProduct(
