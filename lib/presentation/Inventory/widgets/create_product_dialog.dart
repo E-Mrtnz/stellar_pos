@@ -1,18 +1,29 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/models/product.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 
 class CreateProductDialog extends StatefulWidget {
-  const CreateProductDialog({super.key});
+  final Map<String, dynamic>? product;
 
-  static Future<void> show(BuildContext context) {
+  const CreateProductDialog({super.key, this.product});
+
+  static Future<void> show(
+    BuildContext context, {
+    Map<String, dynamic>? product,
+  }) {
     return showDialog(
       context: context,
       barrierColor: AppColors.overlayBackground,
-      builder: (context) => const Dialog(
+      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: CreateProductDialog(),
+        child: CreateProductDialog(product: product),
       ),
     );
   }
@@ -23,10 +34,17 @@ class CreateProductDialog extends StatefulWidget {
 }
 
 class _CreateProductDialogState extends State<CreateProductDialog> {
-  // Valores de los 3 contadores
-  int _stock = 18;
+  // ============================================================
+  // STOCK
+  // ============================================================
+
+  int _stock = 0;
   int _minStock = 0;
   int _maxStock = 0;
+
+  // ============================================================
+  // OPCIONES
+  // ============================================================
 
   String? _selectedTag;
   String? _selectedDept;
@@ -45,35 +63,123 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     'Sabritas',
   ];
 
+  // ============================================================
+  // CONTROLLERS
+  // ============================================================
+
   final TextEditingController _nameController = TextEditingController();
+
   final TextEditingController _unitController = TextEditingController();
+
   final TextEditingController _buyPriceController =
       TextEditingController();
+
   final TextEditingController _sellPriceController =
       TextEditingController();
+
   final TextEditingController _barcodeController =
       TextEditingController();
 
-  // Controladores y FocusNodes para la solapa
   late final TextEditingController _stockController;
   late final TextEditingController _minStockController;
   late final TextEditingController _maxStockController;
+
+  // ============================================================
+  // FOCUS
+  // ============================================================
 
   final FocusNode _stockFocusNode = FocusNode();
   final FocusNode _minStockFocusNode = FocusNode();
   final FocusNode _maxStockFocusNode = FocusNode();
 
+  // ============================================================
+  // VALIDACIÓN
+  // ============================================================
+
+  final Set<String> _invalidFields = <String>{};
+
+  OverlayEntry? _validationOverlay;
+  Timer? _validationTimer;
+
+  bool get _isEditing => widget.product != null;
+
+  // ============================================================
+  // INIT
+  // ============================================================
+
   @override
   void initState() {
     super.initState();
 
+    final product = widget.product;
+
+    _stock = _readInt(product?['stock']);
+    _minStock = _readInt(product?['minStock']);
+    _maxStock = _readInt(product?['maxStock']);
+
     _stockController = TextEditingController(text: '$_stock');
+
     _minStockController = TextEditingController(text: '$_minStock');
+
     _maxStockController = TextEditingController(text: '$_maxStock');
 
+    _nameController.text = product?['name']?.toString() ?? '';
+
+    _unitController.text = product?['unit']?.toString() ?? '';
+
+    _buyPriceController.text = _formatExistingPrice(product?['cost']);
+
+    _sellPriceController.text = _formatExistingPrice(product?['price']);
+
+    _barcodeController.text = product?['barcode']?.toString() ?? '';
+
+    _selectedTag = _nullableString(product?['category']);
+
+    _selectedDept = _nullableString(product?['department']);
+
     _setupFocusSelection(_stockFocusNode, _stockController);
+
     _setupFocusSelection(_minStockFocusNode, _minStockController);
+
     _setupFocusSelection(_maxStockFocusNode, _maxStockController);
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+
+  int _readInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _formatExistingPrice(dynamic value) {
+    if (value == null) {
+      return '';
+    }
+
+    if (value is num) {
+      return value.toString();
+    }
+
+    return value.toString();
+  }
+
+  String? _nullableString(dynamic value) {
+    final result = value?.toString().trim();
+
+    if (result == null || result.isEmpty) {
+      return null;
+    }
+
+    return result;
   }
 
   void _setupFocusSelection(
@@ -81,21 +187,258 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     TextEditingController controller,
   ) {
     node.addListener(() {
-      if (node.hasFocus) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (node.hasFocus && mounted) {
-            controller.selection = TextSelection(
-              baseOffset: 0,
-              extentOffset: controller.text.length,
-            );
-          }
-        });
+      if (!node.hasFocus) {
+        return;
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!node.hasFocus || !mounted) {
+          return;
+        }
+
+        controller.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: controller.text.length,
+        );
+      });
+    });
+  }
+
+  // ============================================================
+  // VALIDACIÓN
+  // ============================================================
+
+  bool _validateRequiredFields() {
+    final invalidFields = <String>{};
+
+    if (_nameController.text.trim().isEmpty) {
+      invalidFields.add('name');
+    }
+
+    if (_unitController.text.trim().isEmpty) {
+      invalidFields.add('unit');
+    }
+
+    if (_sellPriceController.text.trim().isEmpty) {
+      invalidFields.add('salePrice');
+    }
+
+    if (_stockController.text.trim().isEmpty) {
+      invalidFields.add('stock');
+    }
+
+    if (_minStockController.text.trim().isEmpty) {
+      invalidFields.add('minStock');
+    }
+
+    if (_maxStockController.text.trim().isEmpty) {
+      invalidFields.add('maxStock');
+    }
+
+    setState(() {
+      _invalidFields
+        ..clear()
+        ..addAll(invalidFields);
+    });
+
+    if (invalidFields.isEmpty) {
+      return true;
+    }
+
+    _showValidationAlert(_buildValidationMessage(invalidFields));
+
+    return false;
+  }
+
+  String _buildValidationMessage(Set<String> invalidFields) {
+    final fieldNames = <String>[];
+
+    if (invalidFields.contains('name')) {
+      fieldNames.add('Nombre del producto');
+    }
+
+    if (invalidFields.contains('unit')) {
+      fieldNames.add('Unidad de medida');
+    }
+
+    if (invalidFields.contains('salePrice')) {
+      fieldNames.add('Precio de venta');
+    }
+
+    if (invalidFields.contains('stock')) {
+      fieldNames.add('Stock');
+    }
+
+    if (invalidFields.contains('minStock')) {
+      fieldNames.add('Stock mínimo');
+    }
+
+    if (invalidFields.contains('maxStock')) {
+      fieldNames.add('Stock máximo');
+    }
+
+    return ''
+        '${fieldNames.map((field) => '• $field').join('\n')}';
+  }
+
+  bool _isInvalid(String field) {
+    return _invalidFields.contains(field);
+  }
+
+  void _clearFieldError(String field) {
+    if (!_invalidFields.contains(field)) {
+      return;
+    }
+
+    setState(() {
+      _invalidFields.remove(field);
+    });
+  }
+
+  // ============================================================
+  // GUARDAR PRODUCTO
+  // ============================================================
+
+  Future<void> _saveProduct() async {
+    if (!_validateRequiredFields()) {
+      return;
+    }
+
+    final provider = context.read<ProductProvider>();
+
+    final product = Product(
+      id: widget.product?['id']?.toString() ?? '',
+      name: _nameController.text.trim(),
+      unit: _unitController.text.trim(),
+      department: _selectedDept ?? '',
+      cost: _parsePrice(_buyPriceController.text),
+      price: _parsePrice(_sellPriceController.text),
+      stock: _readInt(_stockController.text),
+      minStock: _readInt(_minStockController.text),
+      maxStock: _readInt(_maxStockController.text),
+      category: _selectedTag ?? '',
+      barcode: _barcodeController.text.trim(),
+    );
+
+    if (_isEditing) {
+      provider.updateProduct(product);
+    } else {
+      provider.addProduct(product);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pop();
+  }
+
+  // ============================================================
+  // STOCK
+  // ============================================================
+
+  void _updateStock(int value) {
+    if (value < 0) {
+      return;
+    }
+
+    setState(() {
+      _stock = value;
+      _stockController.text = '$_stock';
+      _clearFieldError('stock');
+    });
+  }
+
+  void _updateMinStock(int value) {
+    if (value < 0) {
+      return;
+    }
+
+    setState(() {
+      _minStock = value;
+      _minStockController.text = '$_minStock';
+      _clearFieldError('minStock');
+    });
+  }
+
+  void _updateMaxStock(int value) {
+    if (value < 0) {
+      return;
+    }
+
+    setState(() {
+      _maxStock = value;
+      _maxStockController.text = '$_maxStock';
+      _clearFieldError('maxStock');
+    });
+  }
+
+  // ============================================================
+  // PRECIOS
+  // ============================================================
+
+  double _parsePrice(String value) {
+    final normalized = value.trim().replaceAll(',', '.');
+
+    if (normalized.isEmpty) {
+      return 0.0;
+    }
+
+    return double.tryParse(normalized) ?? 0.0;
+  }
+
+  // ============================================================
+  // ALERTA
+  // ============================================================
+
+  void _showValidationAlert(String message) {
+    _validationTimer?.cancel();
+    _validationOverlay?.remove();
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        return Positioned(
+          top: MediaQuery.of(overlayContext).padding.top + 18,
+          left: 20,
+          right: 20,
+          child: IgnorePointer(
+            child: Material(
+              color: Colors.transparent,
+              child: _ValidationAlert(message: message),
+            ),
+          ),
+        );
+      },
+    );
+
+    _validationOverlay = entry;
+
+    overlay.insert(entry);
+
+    _validationTimer = Timer(const Duration(seconds: 4), () {
+      if (entry.mounted) {
+        entry.remove();
+      }
+
+      if (identical(_validationOverlay, entry)) {
+        _validationOverlay = null;
       }
     });
   }
 
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
   @override
   void dispose() {
+    _validationTimer?.cancel();
+    _validationOverlay?.remove();
+
     _nameController.dispose();
     _unitController.dispose();
     _buyPriceController.dispose();
@@ -113,33 +456,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     super.dispose();
   }
 
-  // Métodos para actualizar contadores
-  void _updateStock(int value) {
-    if (value < 0) return;
-
-    setState(() {
-      _stock = value;
-      _stockController.text = '$_stock';
-    });
-  }
-
-  void _updateMinStock(int value) {
-    if (value < 0) return;
-
-    setState(() {
-      _minStock = value;
-      _minStockController.text = '$_minStock';
-    });
-  }
-
-  void _updateMaxStock(int value) {
-    if (value < 0) return;
-
-    setState(() {
-      _maxStock = value;
-      _maxStockController.text = '$_maxStock';
-    });
-  }
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -154,9 +473,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // ==========================================
-              // CAPA 1 (FONDO): SOLAPA LATERAL DERECHA
-              // ==========================================
+              // ==================================================
+              // SOLAPA LATERAL
+              // ==================================================
               Positioned(
                 top: 0,
                 bottom: 0,
@@ -179,43 +498,44 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      // 1. Contador Stock
                       _buildCounterCard(
                         label: 'stock',
                         controller: _stockController,
                         focusNode: _stockFocusNode,
+                        isInvalid: _isInvalid('stock'),
                         onIncrement: () => _updateStock(_stock + 1),
                         onDecrement: () => _updateStock(_stock - 1),
-                        onChanged: (val) {
-                          _stock = int.tryParse(val) ?? 0;
+                        onChanged: (value) {
+                          _stock = _readInt(value);
+                          _clearFieldError('stock');
                         },
                       ),
-
-                      // 2. Contador Mínimo
                       _buildCounterCard(
                         label: 'mín',
                         controller: _minStockController,
                         focusNode: _minStockFocusNode,
+                        isInvalid: _isInvalid('minStock'),
                         onIncrement: () =>
                             _updateMinStock(_minStock + 1),
                         onDecrement: () =>
                             _updateMinStock(_minStock - 1),
-                        onChanged: (val) {
-                          _minStock = int.tryParse(val) ?? 0;
+                        onChanged: (value) {
+                          _minStock = _readInt(value);
+                          _clearFieldError('minStock');
                         },
                       ),
-
-                      // 3. Contador Máximo
                       _buildCounterCard(
                         label: 'máx',
                         controller: _maxStockController,
                         focusNode: _maxStockFocusNode,
+                        isInvalid: _isInvalid('maxStock'),
                         onIncrement: () =>
                             _updateMaxStock(_maxStock + 1),
                         onDecrement: () =>
                             _updateMaxStock(_maxStock - 1),
-                        onChanged: (val) {
-                          _maxStock = int.tryParse(val) ?? 0;
+                        onChanged: (value) {
+                          _maxStock = _readInt(value);
+                          _clearFieldError('maxStock');
                         },
                       ),
                     ],
@@ -223,9 +543,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                 ),
               ),
 
-              // ==========================================
-              // CAPA 2 (FRENTE): CARD BLANCA Y BOTÓN GUARDAR
-              // ==========================================
+              // ==================================================
+              // CARD PRINCIPAL
+              // ==================================================
               Padding(
                 padding: const EdgeInsets.only(
                   right: cardVisibleRightPadding,
@@ -233,7 +553,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // CARD BLANCA DEL FORMULARIO
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
@@ -247,13 +566,18 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // ======================================
+                          // HEADER
+                          // ======================================
                           Row(
                             mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Nuevo Producto',
-                                style: TextStyle(
+                              Text(
+                                _isEditing
+                                    ? 'Editar Producto'
+                                    : 'Nuevo Producto',
+                                style: const TextStyle(
                                   color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 17,
@@ -264,7 +588,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                     Navigator.of(context).pop(),
                                 borderRadius: BorderRadius.circular(15),
                                 child: const Padding(
-                                  padding: EdgeInsets.all(4.0),
+                                  padding: EdgeInsets.all(4),
                                   child: Icon(
                                     Icons.close,
                                     color: AppColors.textSecondary,
@@ -277,6 +601,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
                           const SizedBox(height: 16),
 
+                          // ======================================
+                          // IMAGEN
+                          // ======================================
                           Container(
                             height: 120,
                             width: double.infinity,
@@ -310,7 +637,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
                           const SizedBox(height: 14),
 
-                          // FILA: Nombre del Producto + Medida / Unidad
+                          // ======================================
+                          // NOMBRE + UNIDAD
+                          // ======================================
                           Row(
                             children: [
                               Expanded(
@@ -318,6 +647,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                 child: _buildTextField(
                                   _nameController,
                                   AppStrings.productNameHint,
+                                  isInvalid: _isInvalid('name'),
+                                  onChanged: (_) =>
+                                      _clearFieldError('name'),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -326,6 +658,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                 child: _buildTextField(
                                   _unitController,
                                   'Cant.',
+                                  isInvalid: _isInvalid('unit'),
+                                  onChanged: (_) =>
+                                      _clearFieldError('unit'),
                                 ),
                               ),
                             ],
@@ -333,7 +668,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
                           const SizedBox(height: 10),
 
-                          // FILA: Precio de compra + Precio de venta
+                          // ======================================
+                          // PRECIOS
+                          // ======================================
                           Row(
                             children: [
                               Expanded(
@@ -358,6 +695,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                   _sellPriceController,
                                   AppStrings.salePriceHint,
                                   prefixText: '\$ ',
+                                  isInvalid: _isInvalid('salePrice'),
+                                  onChanged: (_) =>
+                                      _clearFieldError('salePrice'),
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -374,6 +714,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
                           const SizedBox(height: 10),
 
+                          // ======================================
+                          // CÓDIGO DE BARRAS
+                          // OPCIONAL
+                          // ======================================
                           _buildTextField(
                             _barcodeController,
                             AppStrings.barcodeHint,
@@ -386,7 +730,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
                           const SizedBox(height: 10),
 
-                          // Departamento y etiquetas son OPCIONALES.
+                          // ======================================
+                          // ETIQUETA + DEPARTAMENTO
+                          // AMBOS OPCIONALES
+                          // ======================================
                           Row(
                             children: [
                               Expanded(
@@ -394,9 +741,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                   hint: AppStrings.selectTagHint,
                                   value: _selectedTag,
                                   items: _tags,
-                                  onChanged: (val) => setState(
-                                    () => _selectedTag = val,
-                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedTag = value;
+                                    });
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -405,9 +754,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                   hint: AppStrings.selectDeptHint,
                                   value: _selectedDept,
                                   items: _departments,
-                                  onChanged: (val) => setState(
-                                    () => _selectedDept = val,
-                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedDept = value;
+                                    });
+                                  },
                                 ),
                               ),
                             ],
@@ -416,9 +767,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                       ),
                     ),
 
+                    // ==================================================
                     // BOTÓN GUARDAR
+                    // ==================================================
                     InkWell(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: _saveProduct,
                       child: Container(
                         width: double.infinity,
                         height: 52,
@@ -430,9 +783,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           ),
                         ),
                         alignment: Alignment.center,
-                        child: const Text(
-                          AppStrings.saveButton,
-                          style: TextStyle(
+                        child: Text(
+                          _isEditing
+                              ? 'Actualizar'
+                              : AppStrings.saveButton,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -450,7 +805,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     );
   }
 
-  // WIDGET AUXILIAR PARA CADA TARJETA DE CONTADOR (SOLAPA)
+  // ============================================================
+  // COUNTER CARD
+  // ============================================================
+
   Widget _buildCounterCard({
     required String label,
     required TextEditingController controller,
@@ -458,20 +816,24 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     required VoidCallback onIncrement,
     required VoidCallback onDecrement,
     required ValueChanged<String> onChanged,
+    bool isInvalid = false,
   }) {
+    final borderColor = isInvalid
+        ? Colors.red.shade400
+        : Colors.white.withOpacity(0.5);
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: Colors.white.withOpacity(0.5),
-          width: 1.2,
+          color: borderColor,
+          width: isInvalid ? 1.8 : 1.2,
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Botón +
           InkWell(
             onTap: onIncrement,
             borderRadius: BorderRadius.circular(12),
@@ -495,7 +857,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
           const SizedBox(height: 2),
 
-          // Campo numérico y etiqueta
           SizedBox(
             width: 55,
             child: Column(
@@ -542,7 +903,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
           const SizedBox(height: 2),
 
-          // Botón -
           InkWell(
             onTap: onDecrement,
             borderRadius: BorderRadius.circular(12),
@@ -568,6 +928,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     );
   }
 
+  // ============================================================
+  // TEXT FIELD
+  // ============================================================
+
   Widget _buildTextField(
     TextEditingController controller,
     String hint, {
@@ -575,12 +939,22 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     Widget? suffixIcon,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
+    bool isInvalid = false,
+    ValueChanged<String>? onChanged,
   }) {
+    final borderColor = isInvalid
+        ? Colors.red.shade500
+        : AppColors.border;
+
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 12),
+      style: const TextStyle(
+        fontSize: 12,
+        color: AppColors.textPrimary,
+      ),
+      onChanged: onChanged,
       decoration: InputDecoration(
         isDense: true,
         hintText: hint,
@@ -604,18 +978,37 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           vertical: 10,
         ),
         filled: true,
-        fillColor: AppColors.inputBackground,
+        fillColor: isInvalid
+            ? Colors.red.withOpacity(0.06)
+            : AppColors.inputBackground,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(
+            color: borderColor,
+            width: isInvalid ? 1.8 : 1,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(
+            color: borderColor,
+            width: isInvalid ? 1.8 : 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isInvalid ? Colors.red.shade500 : AppColors.primary,
+            width: 1.8,
+          ),
         ),
       ),
     );
   }
+
+  // ============================================================
+  // DROPDOWN
+  // ============================================================
 
   Widget _buildDropdown({
     required String hint,
@@ -654,7 +1047,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       ),
       items: items
           .map(
-            (item) => DropdownMenuItem(
+            (item) => DropdownMenuItem<String>(
               value: item,
               child: Text(item, style: const TextStyle(fontSize: 12)),
             ),
@@ -665,8 +1058,94 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   }
 }
 
-/// Permite cualquier cantidad de dígitos antes del punto decimal
-/// y limita únicamente la cantidad de dígitos después del punto.
+// ================================================================
+// ALERTA DE VALIDACIÓN
+// ================================================================
+
+class _ValidationAlert extends StatelessWidget {
+  final String message;
+
+  const _ValidationAlert({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 13,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.warningOrange,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 12,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.white,
+                  size: 21,
+                ),
+              ),
+
+              const SizedBox(width: 11),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Campos requeridos',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 3),
+
+                    Text(
+                      'Los siguientes campos del producto '
+                      'son obligatorios:\n$message',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================================================================
+// FORMATEADOR DECIMAL
+// ================================================================
+
 class DecimalInputFormatter extends TextInputFormatter {
   final int decimalDigits;
 
@@ -679,15 +1158,10 @@ class DecimalInputFormatter extends TextInputFormatter {
   ) {
     final text = newValue.text;
 
-    // Permitir campo vacío.
     if (text.isEmpty) {
       return newValue;
     }
 
-    // Solo permite:
-    // - cualquier cantidad de dígitos antes del punto
-    // - un único punto decimal
-    // - hasta `decimalDigits` dígitos después del punto
     final pattern = RegExp('^\\d*(\\.\\d{0,$decimalDigits})?\$');
 
     if (pattern.hasMatch(text)) {
