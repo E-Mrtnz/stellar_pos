@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
-
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
@@ -51,6 +50,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     super.dispose();
   }
 
+  // ============================================================
+  // CARRITO
+  // ============================================================
+
   void _addToCart(String productId) {
     final provider = context.read<ProductProvider>();
     final product = provider.findById(productId);
@@ -61,9 +64,18 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
     final currentQuantity = _cartQuantities[productId] ?? 0;
 
-    if (currentQuantity >= product.stock) {
-      return;
-    }
+    // El stock NO limita las ventas.
+    //
+    // Se permite vender aunque el stock registrado sea 0
+    // o incluso aunque la cantidad vendida supere el stock.
+    //
+    // Ejemplo:
+    // Stock registrado: 5
+    // Venta: 10
+    // Stock resultante: -5
+    //
+    // Esto permite registrar ventas aunque todavía no se haya
+    // registrado una compra o actualización de inventario.
 
     setState(() {
       _cartQuantities[productId] = currentQuantity + 1;
@@ -103,6 +115,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _selectedDebtor = null;
     });
   }
+
+  // ============================================================
+  // TOTALES
+  // ============================================================
 
   double get _subtotal {
     final provider = context.read<ProductProvider>();
@@ -154,6 +170,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return change > 0 ? change : 0;
   }
 
+  // ============================================================
+  // NAVEGACIÓN
+  // ============================================================
+
   void _onNavigationChanged(int index) {
     setState(() {
       _selectedNavIndex = index;
@@ -165,6 +185,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _selectedCategoryIndex = index;
     });
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +209,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               },
               onItemSelected: _onNavigationChanged,
             ),
+
             Expanded(child: _buildMainContent(products)),
           ],
         ),
@@ -213,44 +238,65 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onRemoveFromCart: _removeFromCart,
             ),
           ),
+
           const SizedBox(width: AppDimensions.productGridSpacing),
+
           Expanded(
             flex: 1,
             child: SalesSummaryPanel(
               cartQuantities: _cartQuantities,
               products: products,
+
               selectedPaymentMethod: _selectedPaymentMethod,
+
               onPaymentMethodChanged: (method) {
                 setState(() {
                   _selectedPaymentMethod = method;
                 });
               },
+
               selectedDebtor: _selectedDebtor,
+
               debtorsList: _debtors,
+
               onDebtorChanged: (debtor) {
                 setState(() {
                   _selectedDebtor = debtor;
                 });
               },
+
               discountAmountController: _discountAmountController,
+
               discountPercentController: _discountPercentController,
+
               cashReceivedController: _cashReceivedController,
+
               onDiscountAmountChanged: (_) {
                 setState(() {});
               },
+
               onDiscountPercentChanged: (_) {
                 setState(() {});
               },
+
               onCashReceivedChanged: (_) {
                 setState(() {});
               },
+
               subtotal: _subtotal,
+
               cardFeeAmount: _cardFeeAmount,
+
               total: _total,
+
               change: _change,
+
               onAddToCart: _addToCart,
+
               onDecrementQuantity: _decrementQuantity,
+
               onRemoveFromCart: _removeFromCart,
+
               onClearCart: _clearCart,
             ),
           ),
