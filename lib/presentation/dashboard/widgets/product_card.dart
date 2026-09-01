@@ -31,7 +31,7 @@ class ProductCard extends StatelessWidget {
     );
 
     return Material(
-      color: AppColors.inputBackground,
+      color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(
         AppDimensions.largeCardRadius,
       ),
@@ -42,6 +42,7 @@ class ProductCard extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
+            color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(
               AppDimensions.largeCardRadius,
             ),
@@ -53,7 +54,7 @@ class ProductCard extends StatelessWidget {
             ),
             boxShadow: const [
               BoxShadow(
-                color: AppColors.shadowColor,
+                color: Color(0x14000000),
                 blurRadius: 8,
                 offset: Offset(0, 3),
               ),
