@@ -21,6 +21,22 @@ class ProductProvider extends ChangeNotifier {
     return null;
   }
 
+  Product? findByBarcode(String barcode) {
+    final normalizedBarcode = barcode.trim();
+
+    if (normalizedBarcode.isEmpty) {
+      return null;
+    }
+
+    for (final product in _products) {
+      if (product.barcode.trim() == normalizedBarcode) {
+        return product;
+      }
+    }
+
+    return null;
+  }
+
   void addProduct(Product product) {
     final id = product.id.isEmpty
         ? DateTime.now().microsecondsSinceEpoch.toString()

@@ -25,6 +25,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   final Map<String, int> _cartQuantities = {};
 
+  String _barcodeBuffer = '';
+  DateTime? _lastBarcodeInputAt;
+  bool _isBarcodeAlertShowing = false;
+
   int _selectedPaymentMethod = AppPaymentMethods.cash;
   String? _selectedDebtor;
 
@@ -48,6 +52,88 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     _discountPercentController.dispose();
     _cashReceivedController.dispose();
     super.dispose();
+  }
+
+  KeyEventResult _handleBarcodeKey(FocusNode node, KeyEvent event) {
+    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final isEnter = event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+
+    if (isEnter) {
+      final barcode = _barcodeBuffer.trim();
+      _barcodeBuffer = '';
+      _lastBarcodeInputAt = null;
+
+      if (barcode.isNotEmpty) {
+        _handleScannedBarcode(barcode);
+        return KeyEventResult.handled;
+      }
+
+      return KeyEventResult.ignored;
+    }
+
+    final character = event.character;
+
+    if (character == null || character.isEmpty ||
+        character.trim().isEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    final now = DateTime.now();
+    final elapsed = _lastBarcodeInputAt == null
+        ? null
+        : now.difference(_lastBarcodeInputAt!).inMilliseconds;
+
+    // Barcode scanners send their characters in a very short sequence.
+    // A longer pause starts a new scan instead of joining unrelated input.
+    if (elapsed != null && elapsed > 200) {
+      _barcodeBuffer = '';
+    }
+
+    _barcodeBuffer += character;
+    _lastBarcodeInputAt = now;
+
+    return KeyEventResult.ignored;
+  }
+
+  void _handleScannedBarcode(String barcode) {
+    final product = context.read<ProductProvider>().findByBarcode(barcode);
+
+    if (product != null) {
+      _addToCart(product.id);
+      return;
+    }
+
+    _showProductNotFoundAlert(barcode);
+  }
+
+  Future<void> _showProductNotFoundAlert(String barcode) async {
+    if (_isBarcodeAlertShowing || !mounted) return;
+
+    _isBarcodeAlertShowing = true;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Producto no encontrado'),
+          content: Text(
+            'No se encontró ningún producto con el código de barras "$barcode".',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    _isBarcodeAlertShowing = false;
   }
 
   void _addToCart(String productId) {
@@ -148,18 +234,22 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
-        child: Row(
-          children: [
-            SidebarDrawer(
-              isExpanded: _isSidebarExpanded,
-              selectedIndex: _selectedNavIndex,
-              onToggleExpand: () {
-                setState(() => _isSidebarExpanded = !_isSidebarExpanded);
-              },
-              onItemSelected: _onNavigationChanged,
-            ),
-            Expanded(child: _buildMainContent(products)),
-          ],
+        child: Focus(
+          autofocus: true,
+          onKeyEvent: _handleBarcodeKey,
+          child: Row(
+            children: [
+              SidebarDrawer(
+                isExpanded: _isSidebarExpanded,
+                selectedIndex: _selectedNavIndex,
+                onToggleExpand: () {
+                  setState(() => _isSidebarExpanded = !_isSidebarExpanded);
+                },
+                onItemSelected: _onNavigationChanged,
+              ),
+              Expanded(child: _buildMainContent(products)),
+            ],
+          ),
         ),
       ),
     );
