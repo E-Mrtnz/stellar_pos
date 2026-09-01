@@ -31,8 +31,7 @@ class MetricCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
         border: Border.all(color: color),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
           if (icon != null) ...[
             SizedBox(
@@ -49,27 +48,44 @@ class MetricCard extends StatelessWidget {
                       ),
               ),
             ),
-            const SizedBox(height: 1),
+            const SizedBox(width: 4),
           ],
-          Text(
-            amount,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: AppSizes.textLarge,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: AppSizes.textMedium,
-              fontWeight: FontWeight.w600,
-              color: color,
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    amount,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: AppSizes.textLarge,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 1),
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: AppSizes.textMedium,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
