@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
 import 'package:stellar_pos/presentation/inventory/widgets/create_catalog_dialog.dart';
-import 'package:stellar_pos/presentation/widgets/category_selector.dart';
+import 'package:stellar_pos/presentation/Inventory/widgets/product_filter_selector.dart';
 
 class InventoryLayout extends StatefulWidget {
   const InventoryLayout({super.key});
@@ -18,22 +19,75 @@ class InventoryLayout extends StatefulWidget {
 }
 
 class _InventoryLayoutState extends State<InventoryLayout> {
-  int _selectedCategoryIndex = 0;
+  int _selectedTagIndex = 0;
+  String _selectedFilter = 'all';
 
-  List<String> get _categories => AppCategories.all;
+  List<String> get _tags => context.watch<CatalogProvider>().tags;
 
   List<Map<String, dynamic>> _filterProducts(
     List<Map<String, dynamic>> products,
   ) {
-    if (_selectedCategoryIndex == 0) {
-      return products;
+    var filtered = products;
+
+    switch (_selectedFilter) {
+      case 'missing_cost':
+        filtered = filtered.where(_hasMissingCost).toList();
+        break;
+      case 'missing_barcode':
+        filtered = filtered.where(_hasMissingBarcode).toList();
+        break;
+      case 'missing_tag':
+        filtered = filtered.where(_hasMissingTag).toList();
+        break;
+      case 'missing_department':
+        filtered = filtered.where(_hasMissingDepartment).toList();
+        break;
     }
 
-    final category = _categories[_selectedCategoryIndex];
+    if (_selectedTagIndex == 0) {
+      return filtered;
+    }
 
-    return products
-        .where((product) => product['category'] == category)
+    if (_selectedTagIndex > _tags.length) {
+      return filtered;
+    }
+
+    final tag = _tags[_selectedTagIndex - 1];
+
+    return filtered
+        .where((product) => _value(product['category']) == tag)
         .toList();
+  }
+
+  bool _hasMissingCost(Map<String, dynamic> product) {
+    final value = product['cost'];
+
+    if (value == null) {
+      return true;
+    }
+
+    if (value is num) {
+      return value <= 0;
+    }
+
+    final text = value.toString().trim();
+    return text.isEmpty || (double.tryParse(text.replaceAll(',', '.')) ?? 0) <= 0;
+  }
+
+  bool _hasMissingBarcode(Map<String, dynamic> product) {
+    return _value(product['barcode']).isEmpty;
+  }
+
+  bool _hasMissingTag(Map<String, dynamic> product) {
+    return _value(product['category']).isEmpty;
+  }
+
+  bool _hasMissingDepartment(Map<String, dynamic> product) {
+    return _value(product['department']).isEmpty;
+  }
+
+  String _value(dynamic value) {
+    return value?.toString().trim() ?? '';
   }
 
   // ============================================================
@@ -69,55 +123,12 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   // ============================================================
-  // ELIMINAR PRODUCTO
-  // ============================================================
-
-  Future<void> _deleteProduct(
-    String productId,
-    String productName,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Eliminar producto'),
-          content: Text('¿Deseas eliminar "$productName"?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: const Text(
-                'Eliminar',
-                style: TextStyle(color: AppColors.dangerRed),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !mounted) {
-      return;
-    }
-
-    context.read<ProductProvider>().deleteProduct(productId);
-  }
-
-  // ============================================================
   // BUILD
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
     final products = context.watch<ProductProvider>().productMaps;
-
     final filteredProducts = _filterProducts(products);
 
     final totalInvestment = products.fold<double>(0, (total, product) {
@@ -147,12 +158,18 @@ class _InventoryLayoutState extends State<InventoryLayout> {
                   totalProfit,
                 ),
                 const SizedBox(height: 12),
-                CategorySelector(
-                  categories: _categories,
-                  selectedCategoryIndex: _selectedCategoryIndex,
-                  onCategorySelected: (index) {
+                ProductFilterSelector(
+                  tags: _tags,
+                  selectedFilter: _selectedFilter,
+                  onFilterChanged: (filter) {
                     setState(() {
-                      _selectedCategoryIndex = index;
+                      _selectedFilter = filter;
+                    });
+                  },
+                  selectedTagIndex: _selectedTagIndex,
+                  onTagSelected: (index) {
+                    setState(() {
+                      _selectedTagIndex = index;
                     });
                   },
                 ),
@@ -190,9 +207,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               ),
               fillColor: AppColors.cardBackground,
               filled: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(
                   AppDimensions.searchFieldRadius,
@@ -300,7 +315,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-          SizedBox(width: 70),
+          SizedBox(width: 45),
         ],
       ),
     );
@@ -333,11 +348,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final stock = ProductUtils.stock(product);
     final profit = ProductUtils.profit(product);
 
-    final profitPercent = ProductUtils.profitPercentage(
-      product,
-    ).toStringAsFixed(0);
+    final profitPercent = ProductUtils.profitPercentage(product)
+        .toStringAsFixed(0);
 
-    final id = product['id'].toString();
     final name = ProductUtils.cleanName(product);
 
     return Padding(
@@ -406,27 +419,14 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             ),
           ),
           SizedBox(
-            width: 70,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  tooltip: 'Editar',
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.primary,
-                  onPressed: () {
-                    _editProduct(product);
-                  },
-                ),
-                IconButton(
-                  tooltip: 'Eliminar',
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: AppColors.dangerRed,
-                  onPressed: () {
-                    _deleteProduct(id, name);
-                  },
-                ),
-              ],
+            width: 45,
+            child: IconButton(
+              tooltip: 'Editar',
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: AppColors.primary,
+              onPressed: () {
+                _editProduct(product);
+              },
             ),
           ),
         ],
