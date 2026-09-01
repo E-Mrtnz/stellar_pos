@@ -53,14 +53,15 @@ class MetricCard extends StatelessWidget {
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.center,
                   child: Text(
                     amount,
                     maxLines: 1,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: AppSizes.textLarge,
                       fontWeight: FontWeight.bold,
@@ -73,10 +74,11 @@ class MetricCard extends StatelessWidget {
                   width: double.infinity,
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
+                    alignment: Alignment.center,
                     child: Text(
                       label,
                       maxLines: 1,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: AppSizes.textMedium,
                         fontWeight: FontWeight.w600,
