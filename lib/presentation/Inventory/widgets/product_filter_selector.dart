@@ -4,8 +4,8 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 
 class ProductFilterSelector extends StatelessWidget {
   final List<String> tags;
-  final String selectedFilter;
-  final ValueChanged<String> onFilterChanged;
+  final String? selectedFilter;
+  final ValueChanged<String?> onFilterChanged;
   final int selectedTagIndex;
   final ValueChanged<int> onTagSelected;
 
@@ -19,10 +19,6 @@ class ProductFilterSelector extends StatelessWidget {
   });
 
   static const List<_FilterOption> _filterOptions = [
-    _FilterOption(
-      id: 'all',
-      label: 'Filtrar por...',
-    ),
     _FilterOption(
       id: 'missing_cost',
       label: 'Sin precio de compra',
@@ -79,10 +75,6 @@ class ProductFilterSelector extends StatelessWidget {
   }
 
   Widget _buildFilterDropdown() {
-    final selectedExists = _filterOptions.any(
-      (option) => option.id == selectedFilter,
-    );
-
     return Container(
       width: 210,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -92,8 +84,12 @@ class ProductFilterSelector extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedExists ? selectedFilter : 'all',
+        child: DropdownButton<String?>(
+          value: selectedFilter,
+          hint: const Text(
+            'Filtrar por...',
+            overflow: TextOverflow.ellipsis,
+          ),
           isExpanded: true,
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
@@ -107,7 +103,7 @@ class ProductFilterSelector extends StatelessWidget {
           dropdownColor: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(10),
           items: _filterOptions.map((option) {
-            return DropdownMenuItem<String>(
+            return DropdownMenuItem<String?>(
               value: option.id,
               child: Text(
                 option.label,
@@ -115,11 +111,7 @@ class ProductFilterSelector extends StatelessWidget {
               ),
             );
           }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              onFilterChanged(value);
-            }
-          },
+          onChanged: onFilterChanged,
         ),
       ),
     );
