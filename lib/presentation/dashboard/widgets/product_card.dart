@@ -51,6 +51,13 @@ class ProductCard extends StatelessWidget {
                   : AppColors.border,
               width: hasItemsInCart ? 1.5 : 1,
             ),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadowColor,
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              ),
+            ],
           ),
           child: Stack(
             children: [
