@@ -20,7 +20,7 @@ class InventoryLayout extends StatefulWidget {
 
 class _InventoryLayoutState extends State<InventoryLayout> {
   int _selectedTagIndex = 0;
-  String _selectedFilter = 'all';
+  String? _selectedFilter;
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
@@ -71,7 +71,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     }
 
     final text = value.toString().trim();
-    return text.isEmpty || (double.tryParse(text.replaceAll(',', '.')) ?? 0) <= 0;
+    return text.isEmpty ||
+        (double.tryParse(text.replaceAll(',', '.')) ?? 0) <= 0;
   }
 
   bool _hasMissingBarcode(Map<String, dynamic> product) {
@@ -315,7 +316,13 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               style: AppTextStyles.inventoryHeader,
             ),
           ),
-          SizedBox(width: 45),
+          SizedBox(
+            width: 45,
+            child: Text(
+              'Editar',
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
         ],
       ),
     );
