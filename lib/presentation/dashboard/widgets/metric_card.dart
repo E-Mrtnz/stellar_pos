@@ -8,6 +8,7 @@ class MetricCard extends StatelessWidget {
   final Color color;
   final IconData? icon;
   final double iconRotation;
+  final bool paymentArrow;
 
   const MetricCard({
     super.key,
@@ -16,6 +17,7 @@ class MetricCard extends StatelessWidget {
     required this.color,
     this.icon,
     this.iconRotation = 0,
+    this.paymentArrow = false,
   });
 
   @override
@@ -25,7 +27,7 @@ class MetricCard extends StatelessWidget {
       height: 106,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
         border: Border.all(color: color),
       ),
@@ -33,21 +35,18 @@ class MetricCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Container(
+            SizedBox(
               width: 30,
               height: 30,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.72),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
               child: Transform.rotate(
                 angle: iconRotation,
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: color,
-                ),
+                child: paymentArrow
+                    ? _buildPaymentArrowIcon()
+                    : Icon(
+                        icon,
+                        size: 23,
+                        color: color,
+                      ),
               ),
             ),
             const SizedBox(height: 5),
@@ -67,14 +66,36 @@ class MetricCard extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: AppSizes.textMedium,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: color,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaymentArrowIcon() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(
+          Icons.payment_outlined,
+          size: 22,
+          color: color,
+        ),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Icon(
+            Icons.arrow_downward_rounded,
+            size: 14,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
