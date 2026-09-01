@@ -2,44 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
-import 'package:stellar_pos/core/providers/catalog_provider.dart';
-// import 'package:stellar_pos/core/providers/product_provider.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
 
   @override
-  State<MainDashboardLayout> createState() =>
-      _MainDashboardLayoutState();
+  State<MainDashboardLayout> createState() => _MainDashboardLayoutState();
 }
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
-  int _selectedCategoryIndex = 0;
+  int _selectedTagIndex = 0;
+  String? _selectedFilter;
 
   bool _isSidebarExpanded = true;
 
   final Map<String, int> _cartQuantities = {};
 
   int _selectedPaymentMethod = AppPaymentMethods.cash;
-
   String? _selectedDebtor;
 
-  final TextEditingController _discountAmountController =
-      TextEditingController();
+  final TextEditingController _discountAmountController = TextEditingController();
+  final TextEditingController _discountPercentController = TextEditingController();
+  final TextEditingController _cashReceivedController = TextEditingController();
 
-  final TextEditingController _discountPercentController =
-      TextEditingController();
-
-  final TextEditingController _cashReceivedController =
-      TextEditingController();
-
-  List<String> get _categories => AppCategories.all;
+  List<String> get _tags => context.watch<CatalogProvider>().tags;
 
   List<String> get _debtors {
     return context
@@ -54,36 +47,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     _discountAmountController.dispose();
     _discountPercentController.dispose();
     _cashReceivedController.dispose();
-
     super.dispose();
   }
-
-  // ============================================================
-  // CARRITO
-  // ============================================================
 
   void _addToCart(String productId) {
     final provider = context.read<ProductProvider>();
     final product = provider.findById(productId);
 
-    if (product == null) {
-      return;
-    }
+    if (product == null) return;
 
     final currentQuantity = _cartQuantities[productId] ?? 0;
-
-    // El stock NO limita las ventas.
-    //
-    // Se permite vender aunque el stock registrado sea 0
-    // o incluso aunque la cantidad vendida supere el stock.
-    //
-    // Ejemplo:
-    // Stock registrado: 5
-    // Venta: 10
-    // Stock resultante: -5
-    //
-    // Esto permite registrar ventas aunque todavía no se haya
-    // registrado una compra o actualización de inventario.
 
     setState(() {
       _cartQuantities[productId] = currentQuantity + 1;
@@ -93,10 +66,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _decrementQuantity(String productId) {
     setState(() {
       final quantity = _cartQuantities[productId];
-
-      if (quantity == null) {
-        return;
-      }
+      if (quantity == null) return;
 
       if (quantity > 1) {
         _cartQuantities[productId] = quantity - 1;
@@ -115,31 +85,20 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _clearCart() {
     setState(() {
       _cartQuantities.clear();
-
       _discountAmountController.clear();
       _discountPercentController.clear();
       _cashReceivedController.clear();
-
       _selectedDebtor = null;
     });
   }
 
-  // ============================================================
-  // TOTALES
-  // ============================================================
-
   double get _subtotal {
     final provider = context.read<ProductProvider>();
-
     double total = 0;
 
     for (final entry in _cartQuantities.entries) {
       final product = provider.findById(entry.key);
-
-      if (product == null) {
-        continue;
-      }
-
+      if (product == null) continue;
       total += product.price * entry.value;
     }
 
@@ -151,52 +110,36 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   double get _cardFeeAmount {
-    if (_selectedPaymentMethod != AppPaymentMethods.card) {
-      return 0;
-    }
+    if (_selectedPaymentMethod != AppPaymentMethods.card) return 0;
 
     final amount = _subtotal - _discountAmount;
-
-    if (amount <= 0) {
-      return 0;
-    }
+    if (amount <= 0) return 0;
 
     return amount * AppInventory.cardFeePercentage;
   }
 
   double get _total {
     final total = _subtotal - _discountAmount + _cardFeeAmount;
-
     return total < 0 ? 0 : total;
   }
 
   double get _change {
     final cash = double.tryParse(_cashReceivedController.text) ?? 0;
-
     final change = cash - _total;
-
     return change > 0 ? change : 0;
   }
 
-  // ============================================================
-  // NAVEGACIÓN
-  // ============================================================
-
   void _onNavigationChanged(int index) {
-    setState(() {
-      _selectedNavIndex = index;
-    });
+    setState(() => _selectedNavIndex = index);
   }
 
-  void _onCategoryChanged(int index) {
-    setState(() {
-      _selectedCategoryIndex = index;
-    });
+  void _onTagChanged(int index) {
+    setState(() => _selectedTagIndex = index);
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
+  void _onFilterChanged(String? filter) {
+    setState(() => _selectedFilter = filter);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -211,13 +154,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               isExpanded: _isSidebarExpanded,
               selectedIndex: _selectedNavIndex,
               onToggleExpand: () {
-                setState(() {
-                  _isSidebarExpanded = !_isSidebarExpanded;
-                });
+                setState(() => _isSidebarExpanded = !_isSidebarExpanded);
               },
               onItemSelected: _onNavigationChanged,
             ),
-
             Expanded(child: _buildMainContent(products)),
           ],
         ),
@@ -239,72 +179,43 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             child: CentralProductGrid(
               products: products,
               cartQuantities: _cartQuantities,
-              categories: _categories,
-              selectedCategoryIndex: _selectedCategoryIndex,
-              onCategorySelected: _onCategoryChanged,
+              tags: _tags,
+              selectedTagIndex: _selectedTagIndex,
+              onTagSelected: _onTagChanged,
+              selectedFilter: _selectedFilter,
+              onFilterChanged: _onFilterChanged,
               onAddToCart: _addToCart,
               onRemoveFromCart: _removeFromCart,
             ),
           ),
-
           const SizedBox(width: AppDimensions.productGridSpacing),
-
           Expanded(
             flex: 1,
             child: SalesSummaryPanel(
               cartQuantities: _cartQuantities,
               products: products,
-
               selectedPaymentMethod: _selectedPaymentMethod,
-
               onPaymentMethodChanged: (method) {
-                setState(() {
-                  _selectedPaymentMethod = method;
-                });
+                setState(() => _selectedPaymentMethod = method);
               },
-
               selectedDebtor: _selectedDebtor,
-
               debtorsList: _debtors,
-
               onDebtorChanged: (debtor) {
-                setState(() {
-                  _selectedDebtor = debtor;
-                });
+                setState(() => _selectedDebtor = debtor);
               },
-
               discountAmountController: _discountAmountController,
-
               discountPercentController: _discountPercentController,
-
               cashReceivedController: _cashReceivedController,
-
-              onDiscountAmountChanged: (_) {
-                setState(() {});
-              },
-
-              onDiscountPercentChanged: (_) {
-                setState(() {});
-              },
-
-              onCashReceivedChanged: (_) {
-                setState(() {});
-              },
-
+              onDiscountAmountChanged: (_) => setState(() {}),
+              onDiscountPercentChanged: (_) => setState(() {}),
+              onCashReceivedChanged: (_) => setState(() {}),
               subtotal: _subtotal,
-
               cardFeeAmount: _cardFeeAmount,
-
               total: _total,
-
               change: _change,
-
               onAddToCart: _addToCart,
-
               onDecrementQuantity: _decrementQuantity,
-
               onRemoveFromCart: _removeFromCart,
-
               onClearCart: _clearCart,
             ),
           ),

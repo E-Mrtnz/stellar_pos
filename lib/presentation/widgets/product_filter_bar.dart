@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 
-class ProductFilterSelector extends StatelessWidget {
+class ProductFilterBar extends StatelessWidget {
   final List<String> tags;
   final String? selectedFilter;
   final ValueChanged<String?> onFilterChanged;
   final int selectedTagIndex;
   final ValueChanged<int> onTagSelected;
 
-  const ProductFilterSelector({
+  const ProductFilterBar({
     super.key,
     required this.tags,
     required this.selectedFilter,
