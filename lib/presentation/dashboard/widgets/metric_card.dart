@@ -23,9 +23,9 @@ class MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 148,
-      height: 106,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 122,
+      height: 78,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
@@ -36,20 +36,20 @@ class MetricCard extends StatelessWidget {
         children: [
           if (icon != null) ...[
             SizedBox(
-              width: 30,
-              height: 30,
+              width: 24,
+              height: 24,
               child: Transform.rotate(
                 angle: iconRotation,
                 child: paymentArrow
                     ? _buildPaymentArrowIcon()
                     : Icon(
                         icon,
-                        size: 23,
+                        size: 20,
                         color: color,
                       ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 2),
           ],
           Text(
             amount,
@@ -61,7 +61,7 @@ class MetricCard extends StatelessWidget {
               color: color,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             label,
             maxLines: 1,
@@ -83,7 +83,7 @@ class MetricCard extends StatelessWidget {
       children: [
         Icon(
           Icons.payment_outlined,
-          size: 22,
+          size: 20,
           color: color,
         ),
         Positioned(
@@ -91,7 +91,7 @@ class MetricCard extends StatelessWidget {
           bottom: 0,
           child: Icon(
             Icons.arrow_downward_rounded,
-            size: 14,
+            size: 12,
             color: color,
           ),
         ),

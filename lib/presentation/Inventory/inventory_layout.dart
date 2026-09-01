@@ -188,7 +188,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         MetricCard(
           amount: productCount.toString(),
           label: 'Productos',
-          color: const Color(0xFF8B5CF6),
+          color: const Color(0xFFF59E0B),
           icon: Icons.inventory_2_outlined,
         ),
         const SizedBox(width: 8),
