@@ -289,56 +289,13 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       bottom: 20,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _buildActionButton(
-            label: 'Crear etiqueta',
-            icon: Icons.label_outlined,
-            onPressed: _createCatalogItem,
-          ),
+          _buildCircularFab(heroTag: 'fab_tags', tooltip: AppStrings.createTagsTooltip, icon: Icons.label_outlined, onPressed: _createCatalogItem),
           const SizedBox(height: 12),
-          _buildActionButton(
-            label: 'Crear cliente',
-            icon: Icons.person_add_alt_1_outlined,
-            onPressed: _createClient,
-          ),
+          _buildCircularFab(heroTag: 'fab_clients', tooltip: AppStrings.createClientsTooltip, icon: Icons.person_add_alt_1_outlined, onPressed: _createClient),
           const SizedBox(height: 12),
-          _buildCircularFab(
-            heroTag: 'fab_products',
-            tooltip: AppStrings.createProductsTooltip,
-            icon: Icons.inventory_2_outlined,
-            onPressed: _createProduct,
-          ),
+          _buildCircularFab(heroTag: 'fab_products', tooltip: AppStrings.createProductsTooltip, icon: Icons.inventory_2_outlined, onPressed: _createProduct),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: 180,
-      height: 44,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: AppSizes.iconMedium),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: AppDimensions.inventoryFabElevation,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ),
     );
   }
