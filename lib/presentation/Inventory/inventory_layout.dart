@@ -131,7 +131,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTopHeader(totalInvestment, totalSales, totalProfit),
+                _buildTopHeader(totalInvestment, totalSales, totalProfit, products.length),
                 const SizedBox(height: 12),
                 ProductFilterBar(
                   tags: _tags,
@@ -159,6 +159,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     double totalInvestment,
     double totalSales,
     double totalProfit,
+    int productCount,
   ) {
     return Row(
       children: [
@@ -184,11 +185,34 @@ class _InventoryLayoutState extends State<InventoryLayout> {
           ),
         ),
         const SizedBox(width: 12),
-        MetricCard(amount: ProductUtils.money(totalInvestment), label: AppStrings.totalInvestment, color: AppColors.textPrimary),
+        MetricCard(
+          amount: ProductUtils.money(totalInvestment),
+          label: 'Inversión total',
+          color: AppColors.dangerRed,
+          icon: Icons.arrow_downward_rounded,
+          iconRotation: 4.88692,
+        ),
         const SizedBox(width: 8),
-        MetricCard(amount: ProductUtils.money(totalSales), label: AppStrings.totalSales, color: AppColors.primary),
+        MetricCard(
+          amount: ProductUtils.money(totalSales),
+          label: 'Ingreso estimado',
+          color: AppColors.primary,
+          icon: Icons.arrow_downward_rounded,
+        ),
         const SizedBox(width: 8),
-        MetricCard(amount: ProductUtils.money(totalProfit), label: AppStrings.totalProfit, color: AppColors.successGreen),
+        MetricCard(
+          amount: ProductUtils.money(totalProfit),
+          label: 'Ganancia estimada',
+          color: AppColors.successGreen,
+          icon: Icons.trending_up_rounded,
+        ),
+        const SizedBox(width: 8),
+        MetricCard(
+          amount: productCount.toString(),
+          label: 'Productos',
+          color: const Color(0xFF8B5CF6),
+          icon: Icons.inventory_2_outlined,
+        ),
       ],
     );
   }
