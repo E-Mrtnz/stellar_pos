@@ -22,6 +22,8 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelWithLineBreak = label.replaceFirst(' ', '\n');
+
     return Container(
       width: 100,
       height: 64,
@@ -76,8 +78,8 @@ class MetricCard extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.center,
                     child: Text(
-                      label,
-                      maxLines: 1,
+                      labelWithLineBreak,
+                      maxLines: 2,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: AppSizes.textMedium,

@@ -20,7 +20,7 @@ class InventoryLayout extends StatefulWidget {
 
 class _InventoryLayoutState extends State<InventoryLayout> {
   int _selectedTagIndex = 0;
-  String? _selectedFilter;
+  String? _selectedFilter = 'all';
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 

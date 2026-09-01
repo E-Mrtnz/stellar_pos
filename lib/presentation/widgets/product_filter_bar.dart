@@ -20,6 +20,10 @@ class ProductFilterBar extends StatelessWidget {
 
   static const List<_FilterOption> _filterOptions = [
     _FilterOption(
+      id: 'all',
+      label: 'Todos',
+    ),
+    _FilterOption(
       id: 'missing_cost',
       label: 'Sin precio de compra',
     ),
