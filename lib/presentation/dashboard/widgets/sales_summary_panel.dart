@@ -126,7 +126,6 @@ class SalesSummaryPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Container(
-            margin: const EdgeInsets.only(left: -12, right: -12, bottom: -12),
             padding: const EdgeInsets.all(8.0),
             decoration: BoxDecoration(
               color: AppColors.inputBackground,
