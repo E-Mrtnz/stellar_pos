@@ -211,7 +211,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         const SizedBox(width: 8),
         MetricCard(
           amount: ProductUtils.money(totalProfit),
-          label: 'Balance estimado',
+          label: 'Ganancia estimada',
           color: AppColors.successGreen,
           icon: Icons.account_balance_wallet_outlined,
         ),
