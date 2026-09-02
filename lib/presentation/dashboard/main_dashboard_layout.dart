@@ -21,6 +21,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
+  String _searchQuery = '';
 
   bool _isSidebarExpanded = true;
 
@@ -277,6 +278,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onFilterChanged: _onFilterChanged,
               onAddToCart: _addToCart,
               onRemoveFromCart: _removeFromCart,
+              searchQuery: _searchQuery,
+              onSearchChanged: (value) {
+                setState(() => _searchQuery = value);
+              },
             ),
           ),
           const SizedBox(width: AppDimensions.productGridSpacing),

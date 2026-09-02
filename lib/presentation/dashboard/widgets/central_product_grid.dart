@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
+import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
 class CentralProductGrid extends StatelessWidget {
   final List<Map<String, dynamic>> products;
@@ -14,7 +15,8 @@ class CentralProductGrid extends StatelessWidget {
   final ValueChanged<String?> onFilterChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onRemoveFromCart;
-  final TextEditingController? searchController;
+  final ValueChanged<String>? onSearchChanged;
+  final String searchQuery;
 
   const CentralProductGrid({
     super.key,
@@ -27,7 +29,8 @@ class CentralProductGrid extends StatelessWidget {
     required this.onFilterChanged,
     required this.onAddToCart,
     required this.onRemoveFromCart,
-    this.searchController,
+    this.onSearchChanged,
+    this.searchQuery = '',
   });
 
   @override
@@ -44,7 +47,9 @@ class CentralProductGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSearchField(),
+          ProductSearchBar(
+            onChanged: onSearchChanged ?? (_) {},
+          ),
           const SizedBox(height: 12),
           ProductFilterBar(
             tags: tags,
@@ -68,6 +73,15 @@ class CentralProductGrid extends StatelessWidget {
 
   List<Map<String, dynamic>> get _filteredProducts {
     var filtered = products;
+
+    final query = searchQuery.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      filtered = filtered.where((product) {
+        final name = _value(product['name']).toLowerCase();
+        final barcode = _value(product['barcode']).toLowerCase();
+        return name.startsWith(query) || barcode.startsWith(query);
+      }).toList();
+    }
 
     switch (selectedFilter) {
       case 'missing_cost':
@@ -116,28 +130,6 @@ class CentralProductGrid extends StatelessWidget {
   }
 
   String _value(dynamic value) => value?.toString().trim() ?? '';
-
-  Widget _buildSearchField() {
-    return TextField(
-      controller: searchController,
-      decoration: InputDecoration(
-        hintText: AppStrings.searchPlaceholder,
-        hintStyle: AppTextStyles.searchHint,
-        prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-        fillColor: AppColors.inputBackground,
-        filled: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.searchFieldRadius),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.searchFieldRadius),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyState() {
     return const Center(

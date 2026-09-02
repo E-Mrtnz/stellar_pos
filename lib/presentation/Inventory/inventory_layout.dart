@@ -10,6 +10,7 @@ import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
 import 'package:stellar_pos/presentation/inventory/widgets/create_catalog_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
+import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
 class InventoryLayout extends StatefulWidget {
   const InventoryLayout({super.key});
@@ -21,6 +22,7 @@ class InventoryLayout extends StatefulWidget {
 class _InventoryLayoutState extends State<InventoryLayout> {
   int _selectedTagIndex = 0;
   String? _selectedFilter = 'all';
+  String _searchQuery = '';
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
@@ -28,6 +30,15 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     List<Map<String, dynamic>> products,
   ) {
     var filtered = products;
+
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      filtered = filtered.where((product) {
+        final name = _value(product['name']).toLowerCase();
+        final barcode = _value(product['barcode']).toLowerCase();
+        return name.startsWith(query) || barcode.startsWith(query);
+      }).toList();
+    }
 
     switch (_selectedFilter) {
       case 'missing_cost':
@@ -165,23 +176,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       children: [
         Expanded(
           flex: 2,
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: AppStrings.searchPlaceholder,
-              hintStyle: AppTextStyles.searchHint,
-              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-              fillColor: AppColors.cardBackground,
-              filled: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.searchFieldRadius),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.searchFieldRadius),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-            ),
+          child: ProductSearchBar(
+            onChanged: (value) {
+              setState(() => _searchQuery = value);
+            },
           ),
         ),
         const SizedBox(width: 12),
