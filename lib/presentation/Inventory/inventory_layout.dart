@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,7 +8,7 @@ import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
-import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
+import 'package:stellar_pos/presentation/Inventory/widgets/create_product_with_image_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
 import 'package:stellar_pos/presentation/inventory/widgets/create_catalog_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
@@ -33,13 +35,17 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
     final query = _searchQuery.trim().toLowerCase();
     if (query.isNotEmpty) {
-      final terms = query.split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
+      final terms = query
+          .split(RegExp(r'\s+'))
+          .where((term) => term.isNotEmpty);
 
       filtered = filtered.where((product) {
         final name = _value(product['name']).toLowerCase();
         final barcode = _value(product['barcode']).toLowerCase();
 
-        return terms.any((term) => name.contains(term) || barcode.contains(term));
+        return terms.any(
+          (term) => name.contains(term) || barcode.contains(term),
+        );
       }).toList();
     }
 
@@ -106,7 +112,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _createProduct() async {
-    await CreateProductDialog.show(context);
+    await CreateProductWithImageDialog.show(context);
   }
 
   Future<void> _createClient() async {
@@ -118,7 +124,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _editProduct(Map<String, dynamic> product) async {
-    await CreateProductDialog.show(context, product: product);
+    await CreateProductWithImageDialog.show(context, product: product);
   }
 
   @override
@@ -145,7 +151,12 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTopHeader(totalInvestment, totalSales, totalProfit, products.length),
+                _buildTopHeader(
+                  totalInvestment,
+                  totalSales,
+                  totalProfit,
+                  products.length,
+                ),
                 const SizedBox(height: 12),
                 ProductFilterBar(
                   tags: _tags,
@@ -244,13 +255,52 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         children: [
           SizedBox(width: 40),
           SizedBox(width: 12),
-          Expanded(flex: 3, child: Text(AppStrings.inventoryProductHeader, style: AppTextStyles.inventoryHeader)),
-          Expanded(flex: 2, child: Text(AppStrings.inventoryCostHeader, style: AppTextStyles.inventoryHeader)),
-          Expanded(flex: 2, child: Text(AppStrings.inventorySalePriceHeader, style: AppTextStyles.inventoryHeader)),
-          Expanded(flex: 2, child: Text(AppStrings.inventoryStockHeader, style: AppTextStyles.inventoryHeader)),
-          Expanded(flex: 2, child: Text(AppStrings.inventoryProfitHeader, style: AppTextStyles.inventoryHeader)),
-          Expanded(flex: 1, child: Text(AppStrings.inventoryMarginHeader, style: AppTextStyles.inventoryHeader)),
-          SizedBox(width: 45, child: Text('Editar', style: AppTextStyles.inventoryHeader)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              AppStrings.inventoryProductHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventoryCostHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventorySalePriceHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventoryStockHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventoryProfitHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Text(
+              AppStrings.inventoryMarginHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          SizedBox(
+            width: 45,
+            child: Text('Editar', style: AppTextStyles.inventoryHeader),
+          ),
         ],
       ),
     );
@@ -259,14 +309,18 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   Widget _buildInventoryList(List<Map<String, dynamic>> products) {
     if (products.isEmpty) {
       return const Center(
-        child: Text(AppStrings.inventoryEmptyMessage, style: TextStyle(color: AppColors.textSecondary)),
+        child: Text(
+          AppStrings.inventoryEmptyMessage,
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: products.length,
-      separatorBuilder: (_, __) => const Divider(color: AppColors.chipBackground),
+      separatorBuilder: (_, __) =>
+          const Divider(color: AppColors.chipBackground),
       itemBuilder: (context, index) => _buildInventoryRow(products[index]),
     );
   }
@@ -276,26 +330,65 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final price = ProductUtils.price(product);
     final stock = ProductUtils.stock(product);
     final profit = ProductUtils.profit(product);
-    final profitPercent = ProductUtils.profitPercentage(product).toStringAsFixed(0);
+    final profitPercent =
+        ProductUtils.profitPercentage(product).toStringAsFixed(0);
     final name = ProductUtils.cleanName(product);
+    final imageData = _value(product['imageData']);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Container(
-            width: AppDimensions.inventoryImageSize,
-            height: AppDimensions.inventoryImageSize,
-            decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
-          ),
+          _buildInventoryImage(imageData),
           const SizedBox(width: 12),
-          Expanded(flex: 3, child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary))),
-          Expanded(flex: 2, child: Text(ProductUtils.money(cost), style: const TextStyle(color: AppColors.textSecondary))),
-          Expanded(flex: 2, child: Text(ProductUtils.money(price), style: const TextStyle(color: AppColors.textPrimary))),
-          Expanded(flex: 2, child: Text('$stock', style: const TextStyle(color: AppColors.textSecondary))),
-          Expanded(flex: 2, child: Text(ProductUtils.money(profit), style: const TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.w600))),
-          Expanded(flex: 1, child: Text('$profitPercent%', style: const TextStyle(color: AppColors.textSecondary))),
+          Expanded(
+            flex: 3,
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              ProductUtils.money(cost),
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              ProductUtils.money(price),
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              '$stock',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              ProductUtils.money(profit),
+              style: const TextStyle(
+                color: AppColors.successGreen,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Text(
+              '$profitPercent%',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
           SizedBox(
             width: 45,
             child: IconButton(
@@ -310,6 +403,37 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     );
   }
 
+  Widget _buildInventoryImage(String imageData) {
+    if (imageData.isNotEmpty) {
+      try {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(
+            base64Decode(imageData),
+            width: AppDimensions.inventoryImageSize,
+            height: AppDimensions.inventoryImageSize,
+            fit: BoxFit.cover,
+          ),
+        );
+      } catch (_) {
+        // Fall back to the standard inventory icon.
+      }
+    }
+
+    return Container(
+      width: AppDimensions.inventoryImageSize,
+      height: AppDimensions.inventoryImageSize,
+      decoration: BoxDecoration(
+        color: AppColors.chipBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(
+        Icons.image_outlined,
+        color: AppColors.textMuted,
+      ),
+    );
+  }
+
   Widget _buildFloatingActions() {
     return Positioned(
       right: 20,
@@ -317,11 +441,26 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildCircularFab(heroTag: 'fab_tags', tooltip: AppStrings.createTagsTooltip, icon: Icons.label_outlined, onPressed: _createCatalogItem),
+          _buildCircularFab(
+            heroTag: 'fab_tags',
+            tooltip: AppStrings.createTagsTooltip,
+            icon: Icons.label_outlined,
+            onPressed: _createCatalogItem,
+          ),
           const SizedBox(height: 12),
-          _buildCircularFab(heroTag: 'fab_clients', tooltip: AppStrings.createClientsTooltip, icon: Icons.person_add_alt_1_outlined, onPressed: _createClient),
+          _buildCircularFab(
+            heroTag: 'fab_clients',
+            tooltip: AppStrings.createClientsTooltip,
+            icon: Icons.person_add_alt_1_outlined,
+            onPressed: _createClient,
+          ),
           const SizedBox(height: 12),
-          _buildCircularFab(heroTag: 'fab_products', tooltip: AppStrings.createProductsTooltip, icon: Icons.inventory_2_outlined, onPressed: _createProduct),
+          _buildCircularFab(
+            heroTag: 'fab_products',
+            tooltip: AppStrings.createProductsTooltip,
+            icon: Icons.inventory_2_outlined,
+            onPressed: _createProduct,
+          ),
         ],
       ),
     );

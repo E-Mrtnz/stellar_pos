@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -20,9 +22,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasItemsInCart = quantityInCart > 0;
-
     final int stock = ProductUtils.stock(product);
-
     final int minStock = ProductUtils.minStock(product);
 
     final Color stockColor = _getStockColor(
@@ -32,24 +32,16 @@ class ProductCard extends StatelessWidget {
 
     return Material(
       color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(
-        AppDimensions.largeCardRadius,
-      ),
+      borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
       child: InkWell(
         onTap: onAdd,
-        borderRadius: BorderRadius.circular(
-          AppDimensions.largeCardRadius,
-        ),
+        borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(
-              AppDimensions.largeCardRadius,
-            ),
+            borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
             border: Border.all(
-              color: hasItemsInCart
-                  ? AppColors.primary
-                  : AppColors.border,
+              color: hasItemsInCart ? AppColors.primary : AppColors.border,
               width: hasItemsInCart ? 1.5 : 1,
             ),
             boxShadow: const [
@@ -66,7 +58,6 @@ class ProductCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: _buildProductImage()),
-
                   Padding(
                     padding: const EdgeInsets.all(10),
                     child: _buildProductInfo(
@@ -76,7 +67,6 @@ class ProductCard extends StatelessWidget {
                   ),
                 ],
               ),
-
               if (hasItemsInCart) _buildDeleteButton(),
             ],
           ),
@@ -86,6 +76,27 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildProductImage() {
+    final imageData = product['imageData']?.toString().trim() ?? '';
+
+    if (imageData.isNotEmpty) {
+      try {
+        return ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(15),
+            topRight: Radius.circular(15),
+          ),
+          child: Image.memory(
+            base64Decode(imageData),
+            width: double.infinity,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
+        );
+      } catch (_) {
+        // Fall back to the default product icon if the stored image is invalid.
+      }
+    }
+
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -110,11 +121,8 @@ class ProductCard extends StatelessWidget {
     required Color stockColor,
   }) {
     final name = ProductUtils.cleanName(product);
-
     final unit = ProductUtils.unit(product);
-
     final department = ProductUtils.department(product);
-
     final price = ProductUtils.price(product);
 
     return Column(
@@ -126,22 +134,16 @@ class ProductCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.productName,
         ),
-
         const SizedBox(height: 2),
-
         Text(
           '$unit | $department',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.productMetadata,
         ),
-
         const SizedBox(height: 7),
-
         _buildStockBadge(stock: stock, color: stockColor),
-
         const SizedBox(height: 7),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -149,7 +151,6 @@ class ProductCard extends StatelessWidget {
               ProductUtils.money(price),
               style: AppTextStyles.productPrice,
             ),
-
             _buildCartCounter(),
           ],
         ),

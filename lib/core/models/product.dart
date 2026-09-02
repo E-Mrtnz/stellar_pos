@@ -10,6 +10,7 @@ class Product {
   final int maxStock;
   final String category;
   final String barcode;
+  final String imageData;
 
   const Product({
     required this.id,
@@ -23,6 +24,7 @@ class Product {
     required this.maxStock,
     required this.category,
     required this.barcode,
+    this.imageData = '',
   });
 
   Product copyWith({
@@ -37,6 +39,7 @@ class Product {
     int? maxStock,
     String? category,
     String? barcode,
+    String? imageData,
   }) {
     return Product(
       id: id ?? this.id,
@@ -50,6 +53,7 @@ class Product {
       maxStock: maxStock ?? this.maxStock,
       category: category ?? this.category,
       barcode: barcode ?? this.barcode,
+      imageData: imageData ?? this.imageData,
     );
   }
 
@@ -66,6 +70,7 @@ class Product {
       'maxStock': maxStock,
       'category': category,
       'barcode': barcode,
+      'imageData': imageData,
     };
   }
 
@@ -82,6 +87,7 @@ class Product {
       maxStock: _toInt(map['maxStock'], fallback: 40),
       category: map['category']?.toString() ?? '',
       barcode: map['barcode']?.toString() ?? '',
+      imageData: map['imageData']?.toString() ?? '',
     );
   }
 
