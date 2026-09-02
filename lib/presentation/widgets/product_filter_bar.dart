@@ -106,15 +106,24 @@ class ProductFilterBar extends StatelessWidget {
           ),
           dropdownColor: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(10),
-          items: _filterOptions.map((option) {
-            return DropdownMenuItem<String?>(
-              value: option.id,
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
               child: Text(
-                option.label,
+                'Sin filtro',
                 overflow: TextOverflow.ellipsis,
               ),
-            );
-          }).toList(),
+            ),
+            ..._filterOptions.map((option) {
+              return DropdownMenuItem<String?>(
+                value: option.id,
+                child: Text(
+                  option.label,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }),
+          ],
           onChanged: onFilterChanged,
         ),
       ),
