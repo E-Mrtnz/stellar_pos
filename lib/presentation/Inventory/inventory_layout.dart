@@ -8,7 +8,7 @@ import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
-import 'package:stellar_pos/presentation/Inventory/widgets/create_product_with_image_dialog.dart';
+import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
 import 'package:stellar_pos/presentation/inventory/widgets/create_catalog_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
@@ -64,13 +64,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         break;
     }
 
-    if (_selectedTagIndex == 0) {
-      return filtered;
-    }
-
-    if (_selectedTagIndex > _tags.length) {
-      return filtered;
-    }
+    if (_selectedTagIndex == 0) return filtered;
+    if (_selectedTagIndex > _tags.length) return filtered;
 
     final tag = _tags[_selectedTagIndex - 1];
 
@@ -81,38 +76,27 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   bool _hasMissingCost(Map<String, dynamic> product) {
     final value = product['cost'];
-
-    if (value == null) {
-      return true;
-    }
-
-    if (value is num) {
-      return value <= 0;
-    }
+    if (value == null) return true;
+    if (value is num) return value <= 0;
 
     final text = value.toString().trim();
     return text.isEmpty ||
         (double.tryParse(text.replaceAll(',', '.')) ?? 0) <= 0;
   }
 
-  bool _hasMissingBarcode(Map<String, dynamic> product) {
-    return _value(product['barcode']).isEmpty;
-  }
+  bool _hasMissingBarcode(Map<String, dynamic> product) =>
+      _value(product['barcode']).isEmpty;
 
-  bool _hasMissingTag(Map<String, dynamic> product) {
-    return _value(product['category']).isEmpty;
-  }
+  bool _hasMissingTag(Map<String, dynamic> product) =>
+      _value(product['category']).isEmpty;
 
-  bool _hasMissingDepartment(Map<String, dynamic> product) {
-    return _value(product['department']).isEmpty;
-  }
+  bool _hasMissingDepartment(Map<String, dynamic> product) =>
+      _value(product['department']).isEmpty;
 
-  String _value(dynamic value) {
-    return value?.toString().trim() ?? '';
-  }
+  String _value(dynamic value) => value?.toString().trim() ?? '';
 
   Future<void> _createProduct() async {
-    await CreateProductWithImageDialog.show(context);
+    await CreateProductDialog.show(context);
   }
 
   Future<void> _createClient() async {
@@ -124,7 +108,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _editProduct(Map<String, dynamic> product) async {
-    await CreateProductWithImageDialog.show(context, product: product);
+    await CreateProductDialog.show(context, product: product);
   }
 
   @override
@@ -415,9 +399,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             fit: BoxFit.cover,
           ),
         );
-      } catch (_) {
-        // Fall back to the standard inventory icon.
-      }
+      } catch (_) {}
     }
 
     return Container(
@@ -427,10 +409,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         color: AppColors.chipBackground,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(
-        Icons.image_outlined,
-        color: AppColors.textMuted,
-      ),
+      child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
     );
   }
 
