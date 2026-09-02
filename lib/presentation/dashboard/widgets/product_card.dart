@@ -88,7 +88,8 @@ class ProductCard extends StatelessWidget {
           child: Image.memory(
             base64Decode(imageData),
             width: double.infinity,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
             gaplessPlayback: true,
           ),
         );
