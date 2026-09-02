@@ -137,7 +137,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           child: IgnorePointer(
             child: Material(
               color: Colors.transparent,
-              child: _ProductNotFoundAlert(),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: const _ProductNotFoundAlert(),
+                ),
+              ),
             ),
           ),
         );
@@ -147,7 +152,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     _productNotFoundOverlay = entry;
     overlay.insert(entry);
 
-    _productNotFoundTimer = Timer(const Duration(seconds: 3), () {
+    _productNotFoundTimer = Timer(const Duration(seconds: 4), () {
       if (entry.mounted) {
         entry.remove();
       }
@@ -347,34 +352,44 @@ class _ProductNotFoundAlert extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 13,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: AppColors.warningOrange,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            color: Color(0x33000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: AppColors.dangerRed,
-            size: 22,
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.white,
+              size: 21,
+            ),
           ),
-          SizedBox(width: 10),
-          Expanded(
+          const SizedBox(width: 11),
+          const Expanded(
             child: Text(
               'Producto no encontrado',
               style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
