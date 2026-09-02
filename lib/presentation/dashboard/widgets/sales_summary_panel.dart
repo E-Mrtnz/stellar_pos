@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 
@@ -119,6 +121,7 @@ class SalesSummaryPanel extends StatelessWidget {
                         name: product['name'] as String,
                         unit: product['unit'] as String,
                         unitPrice: product['price'] as double,
+                        imageData: product['imageData']?.toString() ?? '',
                         quantity: entry.value,
                       );
                     }).toList(),
@@ -372,9 +375,11 @@ class SalesSummaryPanel extends StatelessWidget {
     required String name,
     required String unit,
     required double unitPrice,
+    required String imageData,
     required int quantity,
   }) {
     final double subtotalItem = unitPrice * quantity;
+
     return Container(
       height: 76,
       margin: const EdgeInsets.only(bottom: 8.0),
@@ -396,14 +401,7 @@ class SalesSummaryPanel extends StatelessWidget {
             left: 8,
             top: 8,
             bottom: 8,
-            child: Container(
-              width: 56,
-              decoration: BoxDecoration(
-                color: AppColors.inputBackground,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.image_outlined, color: AppColors.textSecondary, size: 24),
-            ),
+            child: _buildCartItemImage(imageData),
           ),
           Positioned(
             left: 72,
@@ -479,6 +477,36 @@ class SalesSummaryPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCartItemImage(String imageData) {
+    if (imageData.trim().isNotEmpty) {
+      try {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(
+            base64Decode(imageData),
+            width: 56,
+            height: 60,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
+        );
+      } catch (_) {}
+    }
+
+    return Container(
+      width: 56,
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(
+        Icons.image_outlined,
+        color: AppColors.textSecondary,
+        size: 24,
       ),
     );
   }
