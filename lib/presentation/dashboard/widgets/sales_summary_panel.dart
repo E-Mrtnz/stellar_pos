@@ -151,26 +151,45 @@ class SalesSummaryPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 if (selectedPaymentMethod == 3) ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedDebtor ?? debtorsList.first,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      filled: true,
-                      fillColor: AppColors.cardBackground,
-                      border: OutlineInputBorder(
+                  if (debtorsList.isEmpty)
+                    Container(
+                      height: 34,
+                      width: double.infinity,
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBackground,
                         borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        border: Border.all(color: AppColors.border),
                       ),
+                      child: const Text(
+                        'No hay clientes registrados',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      initialValue: debtorsList.contains(selectedDebtor)
+                          ? selectedDebtor
+                          : debtorsList.first,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        filled: true,
+                        fillColor: AppColors.cardBackground,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                      items: debtorsList.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value, style: const TextStyle(fontSize: 11)),
+                        );
+                      }).toList(),
+                      onChanged: onDebtorChanged,
                     ),
-                    items: debtorsList.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value, style: const TextStyle(fontSize: 11)),
-                      );
-                    }).toList(),
-                    onChanged: onDebtorChanged,
-                  ),
                   const SizedBox(height: 6),
                 ],
                 _buildSummaryRow('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
@@ -468,14 +487,10 @@ class SalesSummaryPanel extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Icon(icon, size: 10, color: AppColors.textPrimary),
+      child: SizedBox(
+        width: 20,
+        height: 20,
+        child: Icon(icon, size: 13, color: AppColors.primary),
       ),
     );
   }
