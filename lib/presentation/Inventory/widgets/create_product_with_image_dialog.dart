@@ -53,9 +53,6 @@ class CreateProductWithImageDialog {
     if (productId != null) {
       final currentProduct = provider.findById(productId);
 
-      // CreateProductDialog replaces the Product instance only when the
-      // user actually saves. This prevents an image change from being
-      // applied when the dialog is simply closed.
       if (currentProduct != null &&
           !identical(currentProduct, originalProduct)) {
         provider.updateProduct(
@@ -129,13 +126,16 @@ class _ProductImagePickerOverlayState
   Future<void> _pickImage() async {
     if (_isPicking) return;
 
+    // Keep the picker call directly inside the pointer event. This is
+    // important on the web because browsers may block file dialogs that are
+    // no longer associated with a user gesture.
     setState(() => _isPicking = true);
 
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(
+      final image = await ImagePicker().pickImage(
         source: ImageSource.gallery,
         imageQuality: 85,
+        requestFullMetadata: false,
       );
 
       if (image == null) {
@@ -144,16 +144,16 @@ class _ProductImagePickerOverlayState
 
       final bytes = await image.readAsBytes();
 
-      if (bytes.isEmpty) {
+      if (bytes.isEmpty || !mounted) {
         return;
       }
 
       final encoded = base64Encode(bytes);
 
-      if (!mounted) return;
-
       setState(() => _imageData = encoded);
       widget.onImageChanged(encoded);
+    } catch (error) {
+      debugPrint('Error al seleccionar imagen: $error');
     } finally {
       if (mounted) {
         setState(() => _isPicking = false);
@@ -168,80 +168,89 @@ class _ProductImagePickerOverlayState
 
   @override
   Widget build(BuildContext context) {
+    const borderRadius = BorderRadius.all(Radius.circular(12));
+
     return Positioned(
       left: 22,
       right: 107,
       top: 82,
       height: 120,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
         child: Material(
           color: Colors.transparent,
-          child: InkWell(
-            onTap: _pickImage,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_imageData != null) _buildImage(),
-                if (_imageData == null)
-                  const ColoredBox(color: Colors.transparent),
-                if (_isPicking)
-                  Container(
-                    color: Colors.black.withOpacity(0.35),
-                    alignment: Alignment.center,
-                    child: const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: AppColors.inputBackground,
+              borderRadius: borderRadius,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: InkWell(
+              onTap: _pickImage,
+              borderRadius: borderRadius,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_imageData != null)
+                    ClipRRect(
+                      borderRadius: borderRadius,
+                      child: _buildImage(),
+                    )
+                  else
+                    const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_a_photo_outlined,
+                          color: AppColors.textMuted,
+                          size: 42,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Img',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (_isPicking)
+                    Container(
+                      color: Colors.black.withOpacity(0.35),
+                      alignment: Alignment.center,
+                      child: const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                if (!_isPicking)
-                  Positioned(
-                    right: 8,
-                    bottom: 8,
-                    child: Material(
-                      color: AppColors.primary,
-                      shape: const CircleBorder(),
-                      elevation: 2,
-                      child: InkWell(
-                        onTap: _pickImage,
-                        customBorder: const CircleBorder(),
-                        child: const Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Icon(
-                            Icons.photo_library_outlined,
-                            color: Colors.white,
-                            size: 18,
+                  if (_imageData != null && !_isPicking)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Material(
+                        color: AppColors.dangerRed,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: _removeImage,
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                if (_imageData != null && !_isPicking)
-                  Positioned(
-                    left: 8,
-                    top: 8,
-                    child: Material(
-                      color: AppColors.dangerRed,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: _removeImage,
-                        customBorder: const CircleBorder(),
-                        child: const Padding(
-                          padding: EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -253,11 +262,19 @@ class _ProductImagePickerOverlayState
     try {
       return Image.memory(
         base64Decode(_imageData!),
+        width: double.infinity,
+        height: double.infinity,
         fit: BoxFit.cover,
         gaplessPlayback: true,
       );
     } catch (_) {
-      return const SizedBox.shrink();
+      return const Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: AppColors.textMuted,
+          size: 42,
+        ),
+      );
     }
   }
 }
