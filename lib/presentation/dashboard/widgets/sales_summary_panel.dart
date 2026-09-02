@@ -23,6 +23,7 @@ class SalesSummaryPanel extends StatelessWidget {
   final double change;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onDecrementQuantity;
+  final void Function(String productId, int quantity) onQuantityChanged;
   final ValueChanged<String> onRemoveFromCart;
   final VoidCallback onClearCart;
 
@@ -47,6 +48,7 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.change,
     required this.onAddToCart,
     required this.onDecrementQuantity,
+    required this.onQuantityChanged,
     required this.onRemoveFromCart,
     required this.onClearCart,
   });
@@ -172,9 +174,11 @@ class SalesSummaryPanel extends StatelessWidget {
                     )
                   else
                     DropdownButtonFormField<String>(
-                      initialValue: debtorsList.contains(selectedDebtor)
-                          ? selectedDebtor
-                          : debtorsList.first,
+                      initialValue: debtorsList.contains(selectedDebtor) ? selectedDebtor : null,
+                      hint: const Text(
+                        'Seleccionar un cliente',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -441,9 +445,9 @@ class SalesSummaryPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildQtyBtn(Icons.remove, () => onDecrementQuantity(productId)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                    child: Text('$quantity', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  _QuantityInput(
+                    quantity: quantity,
+                    onChanged: (value) => onQuantityChanged(productId, value),
                   ),
                   _buildQtyBtn(Icons.add, () => onAddToCart(productId)),
                 ],
@@ -519,6 +523,78 @@ class SalesSummaryPanel extends StatelessWidget {
         width: 20,
         height: 20,
         child: Icon(icon, size: 13, color: AppColors.primary),
+      ),
+    );
+  }
+}
+
+class _QuantityInput extends StatefulWidget {
+  final int quantity;
+  final ValueChanged<int> onChanged;
+
+  const _QuantityInput({
+    required this.quantity,
+    required this.onChanged,
+  });
+
+  @override
+  State<_QuantityInput> createState() => _QuantityInputState();
+}
+
+class _QuantityInputState extends State<_QuantityInput> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.quantity.toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuantityInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.quantity != widget.quantity &&
+        _controller.text != widget.quantity.toString()) {
+      _controller.value = TextEditingValue(
+        text: widget.quantity.toString(),
+        selection: TextSelection.collapsed(
+          offset: widget.quantity.toString().length,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleChanged(String value) {
+    final quantity = int.tryParse(value);
+    if (quantity != null && quantity > 0) {
+      widget.onChanged(quantity);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 20,
+      child: TextField(
+        controller: _controller,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        textInputAction: TextInputAction.done,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        decoration: const InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        onChanged: _handleChanged,
       ),
     );
   }
