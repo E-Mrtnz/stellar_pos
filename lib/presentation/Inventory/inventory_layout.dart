@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/utils/product_filter_utils.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
@@ -31,69 +32,14 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   List<Map<String, dynamic>> _filterProducts(
     List<Map<String, dynamic>> products,
   ) {
-    var filtered = products;
-
-    final query = _searchQuery.trim().toLowerCase();
-    if (query.isNotEmpty) {
-      final terms = query
-          .split(RegExp(r'\s+'))
-          .where((term) => term.isNotEmpty);
-
-      filtered = filtered.where((product) {
-        final name = _value(product['name']).toLowerCase();
-        final barcode = _value(product['barcode']).toLowerCase();
-
-        return terms.any(
-          (term) => name.contains(term) || barcode.contains(term),
-        );
-      }).toList();
-    }
-
-    switch (_selectedFilter) {
-      case 'missing_cost':
-        filtered = filtered.where(_hasMissingCost).toList();
-        break;
-      case 'missing_barcode':
-        filtered = filtered.where(_hasMissingBarcode).toList();
-        break;
-      case 'missing_tag':
-        filtered = filtered.where(_hasMissingTag).toList();
-        break;
-      case 'missing_department':
-        filtered = filtered.where(_hasMissingDepartment).toList();
-        break;
-    }
-
-    if (_selectedTagIndex == 0) return filtered;
-    if (_selectedTagIndex > _tags.length) return filtered;
-
-    final tag = _tags[_selectedTagIndex - 1];
-
-    return filtered
-        .where((product) => _value(product['category']) == tag)
-        .toList();
+    return ProductFilterUtils.apply(
+      products: products,
+      searchQuery: _searchQuery,
+      selectedFilter: _selectedFilter,
+      tags: _tags,
+      selectedTagIndex: _selectedTagIndex,
+    );
   }
-
-  bool _hasMissingCost(Map<String, dynamic> product) {
-    final value = product['cost'];
-    if (value == null) return true;
-    if (value is num) return value <= 0;
-
-    final text = value.toString().trim();
-    return text.isEmpty ||
-        (double.tryParse(text.replaceAll(',', '.')) ?? 0) <= 0;
-  }
-
-  bool _hasMissingBarcode(Map<String, dynamic> product) =>
-      _value(product['barcode']).isEmpty;
-
-  bool _hasMissingTag(Map<String, dynamic> product) =>
-      _value(product['category']).isEmpty;
-
-  bool _hasMissingDepartment(Map<String, dynamic> product) =>
-      _value(product['department']).isEmpty;
-
-  String _value(dynamic value) => value?.toString().trim() ?? '';
 
   Future<void> _createProduct() async {
     await CreateProductDialog.show(context);
@@ -317,7 +263,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final profitPercent =
         ProductUtils.profitPercentage(product).toStringAsFixed(0);
     final name = ProductUtils.cleanName(product);
-    final imageData = _value(product['imageData']);
+    final imageData = ProductUtils.asString(product['imageData']);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

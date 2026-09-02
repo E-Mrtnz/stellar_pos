@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/utils/product_filter_utils.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
@@ -35,7 +36,13 @@ class CentralProductGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filteredProducts = _filteredProducts;
+    final filteredProducts = ProductFilterUtils.apply(
+      products: products,
+      searchQuery: searchQuery,
+      selectedFilter: selectedFilter,
+      tags: tags,
+      selectedTagIndex: selectedTagIndex,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -70,69 +77,6 @@ class CentralProductGrid extends StatelessWidget {
       ),
     );
   }
-
-  List<Map<String, dynamic>> get _filteredProducts {
-    var filtered = products;
-
-    final query = searchQuery.trim().toLowerCase();
-    if (query.isNotEmpty) {
-      final terms = query.split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
-
-      filtered = filtered.where((product) {
-        final name = _value(product['name']).toLowerCase();
-        final barcode = _value(product['barcode']).toLowerCase();
-
-        return terms.any((term) => name.contains(term) || barcode.contains(term));
-      }).toList();
-    }
-
-    switch (selectedFilter) {
-      case 'missing_cost':
-        filtered = filtered.where(_hasMissingCost).toList();
-        break;
-      case 'missing_barcode':
-        filtered = filtered.where(_hasMissingBarcode).toList();
-        break;
-      case 'missing_tag':
-        filtered = filtered.where(_hasMissingTag).toList();
-        break;
-      case 'missing_department':
-        filtered = filtered.where(_hasMissingDepartment).toList();
-        break;
-    }
-
-    if (selectedTagIndex == 0 || selectedTagIndex > tags.length) {
-      return filtered;
-    }
-
-    final tag = tags[selectedTagIndex - 1];
-    return filtered
-        .where((product) => _value(product['category']) == tag)
-        .toList();
-  }
-
-  bool _hasMissingCost(Map<String, dynamic> product) {
-    final value = product['cost'];
-    if (value == null) return true;
-    if (value is num) return value <= 0;
-    final text = value.toString().trim();
-    return text.isEmpty ||
-        (double.tryParse(text.replaceAll(',', '.')) ?? 0) <= 0;
-  }
-
-  bool _hasMissingBarcode(Map<String, dynamic> product) {
-    return _value(product['barcode']).isEmpty;
-  }
-
-  bool _hasMissingTag(Map<String, dynamic> product) {
-    return _value(product['category']).isEmpty;
-  }
-
-  bool _hasMissingDepartment(Map<String, dynamic> product) {
-    return _value(product['department']).isEmpty;
-  }
-
-  String _value(dynamic value) => value?.toString().trim() ?? '';
 
   Widget _buildEmptyState() {
     return const Center(
