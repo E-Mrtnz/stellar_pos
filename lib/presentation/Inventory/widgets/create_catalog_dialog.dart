@@ -28,7 +28,7 @@ class CreateCatalogDialog extends StatefulWidget {
 class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
   static const List<String> _types = ['Etiqueta', 'Departamento'];
 
-  String _selectedType = _types.first;
+  String? _selectedType = _types.first;
 
   final TextEditingController _nameController = TextEditingController();
 
@@ -39,6 +39,11 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
 
   void _createCatalogItem() {
     final name = _nameController.text.trim();
+
+    if (_selectedType == null) {
+      _showValidationAlert('Selecciona un tipo de catálogo.');
+      return;
+    }
 
     if (name.isEmpty) {
       setState(() {
@@ -161,7 +166,7 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
                   child: Column(
                     children: [
-                      DropdownButtonFormField<String>(
+                      DropdownButtonFormField<String?>(
                         initialValue: _selectedType,
                         isDense: true,
                         style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
@@ -180,9 +185,22 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                             borderSide: const BorderSide(color: AppColors.border),
                           ),
                         ),
-                        items: _types.map((type) => DropdownMenuItem<String>(value: type, child: Text(type))).toList(),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text(
+                              'Deseleccionar tipo',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          ..._types.map(
+                            (type) => DropdownMenuItem<String?>(
+                              value: type,
+                              child: Text(type),
+                            ),
+                          ),
+                        ],
                         onChanged: (value) {
-                          if (value == null) return;
                           setState(() => _selectedType = value);
                         },
                       ),
