@@ -76,10 +76,13 @@ class CentralProductGrid extends StatelessWidget {
 
     final query = searchQuery.trim().toLowerCase();
     if (query.isNotEmpty) {
+      final terms = query.split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
+
       filtered = filtered.where((product) {
         final name = _value(product['name']).toLowerCase();
         final barcode = _value(product['barcode']).toLowerCase();
-        return name.startsWith(query) || barcode.startsWith(query);
+
+        return terms.any((term) => name.contains(term) || barcode.contains(term));
       }).toList();
     }
 
