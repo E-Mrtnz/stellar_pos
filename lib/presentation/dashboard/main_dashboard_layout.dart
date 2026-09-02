@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
@@ -29,7 +31,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   String _barcodeBuffer = '';
   DateTime? _lastBarcodeInputAt;
-  bool _isBarcodeAlertShowing = false;
+  OverlayEntry? _productNotFoundOverlay;
+  Timer? _productNotFoundTimer;
 
   int _selectedPaymentMethod = AppPaymentMethods.cash;
   String? _selectedDebtor;
@@ -50,6 +53,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   @override
   void dispose() {
+    _productNotFoundTimer?.cancel();
+    _productNotFoundOverlay?.remove();
     _discountAmountController.dispose();
     _discountPercentController.dispose();
     _cashReceivedController.dispose();
@@ -109,33 +114,48 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return;
     }
 
-    _showProductNotFoundAlert(barcode);
+    _showProductNotFoundAlert();
   }
 
-  Future<void> _showProductNotFoundAlert(String barcode) async {
-    if (_isBarcodeAlertShowing || !mounted) return;
+  void _showProductNotFoundAlert() {
+    if (!mounted) return;
 
-    _isBarcodeAlertShowing = true;
+    _productNotFoundTimer?.cancel();
+    _productNotFoundOverlay?.remove();
+    _productNotFoundOverlay = null;
 
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Producto no encontrado'),
-          content: Text(
-            'No se encontró ningún producto con el código de barras "$barcode".',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Aceptar'),
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        return Positioned(
+          top: MediaQuery.of(overlayContext).padding.top + 18,
+          left: 20,
+          right: 20,
+          child: IgnorePointer(
+            child: Material(
+              color: Colors.transparent,
+              child: _ProductNotFoundAlert(),
             ),
-          ],
+          ),
         );
       },
     );
 
-    _isBarcodeAlertShowing = false;
+    _productNotFoundOverlay = entry;
+    overlay.insert(entry);
+
+    _productNotFoundTimer = Timer(const Duration(seconds: 3), () {
+      if (entry.mounted) {
+        entry.remove();
+      }
+
+      if (identical(_productNotFoundOverlay, entry)) {
+        _productNotFoundOverlay = null;
+      }
+    });
   }
 
   void _addToCart(String productId) {
@@ -313,6 +333,49 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onDecrementQuantity: _decrementQuantity,
               onRemoveFromCart: _removeFromCart,
               onClearCart: _clearCart,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductNotFoundAlert extends StatelessWidget {
+  const _ProductNotFoundAlert();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.dangerRed,
+            size: 22,
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Producto no encontrado',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
