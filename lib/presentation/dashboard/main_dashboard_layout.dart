@@ -94,8 +94,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         ? null
         : now.difference(_lastBarcodeInputAt!).inMilliseconds;
 
-    // Barcode scanners send their characters in a very short sequence.
-    // A longer pause starts a new scan instead of joining unrelated input.
     if (elapsed != null && elapsed > 200) {
       _barcodeBuffer = '';
     }
@@ -173,6 +171,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
     setState(() {
       _cartQuantities[productId] = currentQuantity + 1;
+    });
+  }
+
+  void _setCartQuantity(String productId, int quantity) {
+    if (quantity <= 0) return;
+
+    setState(() {
+      _cartQuantities[productId] = quantity;
     });
   }
 
@@ -336,6 +342,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               change: _change,
               onAddToCart: _addToCart,
               onDecrementQuantity: _decrementQuantity,
+              onQuantityChanged: _setCartQuantity,
               onRemoveFromCart: _removeFromCart,
               onClearCart: _clearCart,
             ),
