@@ -209,7 +209,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       // image_picker so iOS/Android/macOS continue using their native image
       // library/file selection UI.
       if (kIsWeb) {
-        final result = await FilePicker.platform.pickFiles(
+        final result = await FilePicker.pickFiles(
           type: FileType.image,
           allowMultiple: false,
           withData: true,
@@ -228,10 +228,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         bytes = await image.readAsBytes();
       }
 
-      if (bytes == null || bytes.isEmpty || !mounted) return;
+      final imageBytes = bytes;
+      if (imageBytes == null || imageBytes.isEmpty || !mounted) return;
 
       setState(() {
-        _imageData = base64Encode(bytes!);
+        _imageData = base64Encode(imageBytes);
       });
     } catch (error) {
       debugPrint('Error al seleccionar imagen: $error');
@@ -1039,7 +1040,7 @@ class DecimalInputFormatter extends TextInputFormatter {
 
     if (text.isEmpty) return newValue;
 
-    final pattern = RegExp('^\\d*(\\.\\d{0,$decimalDigits})?\\$');
+    final pattern = RegExp('^\\d*(\\.\\d{0,$decimalDigits})?\$');
 
     if (pattern.hasMatch(text)) return newValue;
     return oldValue;
