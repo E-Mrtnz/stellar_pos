@@ -173,7 +173,7 @@ class SalesSummaryPanel extends StatelessWidget {
                       ),
                     )
                   else
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String?>(
                       initialValue: debtorsList.contains(selectedDebtor) ? selectedDebtor : null,
                       hint: const Text(
                         'Seleccionar un cliente',
@@ -189,12 +189,21 @@ class SalesSummaryPanel extends StatelessWidget {
                           borderSide: const BorderSide(color: AppColors.border),
                         ),
                       ),
-                      items: debtorsList.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value, style: const TextStyle(fontSize: 11)),
-                        );
-                      }).toList(),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(
+                            'Deseleccionar cliente',
+                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ),
+                        ...debtorsList.map((String value) {
+                          return DropdownMenuItem<String?>(
+                            value: value,
+                            child: Text(value, style: const TextStyle(fontSize: 11)),
+                          );
+                        }),
+                      ],
                       onChanged: onDebtorChanged,
                     ),
                   const SizedBox(height: 6),
