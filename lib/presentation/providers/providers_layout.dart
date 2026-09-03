@@ -92,9 +92,8 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: rowCount,
-                    itemBuilder: (context, rowIndex) {
-                      return _buildCalendarRow(rowIndex + 1, byDay);
-                    },
+                    itemBuilder: (context, rowIndex) =>
+                        _buildCalendarRow(rowIndex + 1, byDay),
                   ),
           ),
         ],
@@ -128,10 +127,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildCalendarRow(
-    int rowNumber,
-    List<List<ProviderPerson>> byDay,
-  ) {
+  Widget _buildCalendarRow(int rowNumber, List<List<ProviderPerson>> byDay) {
     return SizedBox(
       height: 64,
       child: Row(
@@ -149,27 +145,21 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
               ),
             ),
           ),
-          ...List<Widget>.generate(
-            7,
-            (dayIndex) {
-              final dayPeople = byDay[dayIndex];
-              final person = rowNumber <= dayPeople.length
-                  ? dayPeople[rowNumber - 1]
-                  : null;
+          ...List<Widget>.generate(7, (dayIndex) {
+            final dayPeople = byDay[dayIndex];
+            final person = rowNumber <= dayPeople.length
+                ? dayPeople[rowNumber - 1]
+                : null;
 
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 3,
-                    vertical: 5,
-                  ),
-                  child: person == null
-                      ? const SizedBox.expand()
-                      : _buildEventCard(person),
-                ),
-              );
-            },
-          ),
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+                child: person == null
+                    ? const SizedBox.expand()
+                    : _buildEventCard(person),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -235,9 +225,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 ),
               ),
               IconButton(
-                tooltip: 'Crear distribuidora',
-                onPressed: _manageDistributors,
-                icon: const Icon(Icons.add_circle_outline_rounded),
+                tooltip: 'Crear ruta de Proveedor',
+                onPressed: _createRoute,
+                icon: const Icon(Icons.route_outlined),
                 color: AppColors.primary,
               ),
             ],
@@ -351,13 +341,13 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
-            heroTag: 'fab_create_provider_route',
-            tooltip: 'Crear ruta de Proveedor',
-            onPressed: _createRoute,
+            heroTag: 'fab_manage_distributors',
+            tooltip: 'Administrar distribuidoras',
+            onPressed: _manageDistributors,
             elevation: AppDimensions.inventoryFabElevation,
             shape: const CircleBorder(),
             backgroundColor: AppColors.primary,
-            child: const Icon(Icons.add_rounded, color: Colors.white),
+            child: const Icon(Icons.business_outlined, color: Colors.white),
           ),
         ],
       ),
