@@ -220,13 +220,14 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Text(
-                  title,
-                  style: const TextStyle(
+                  'Distribuidora',
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -234,12 +235,21 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 ),
               ),
               IconButton(
-                tooltip: 'Crear ruta de Proveedor',
-                onPressed: _createRoute,
+                tooltip: 'Crear distribuidora',
+                onPressed: _manageDistributors,
                 icon: const Icon(Icons.add_circle_outline_rounded),
                 color: AppColors.primary,
               ),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
           const Divider(height: 1, color: AppColors.border),
@@ -325,16 +335,6 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
-            heroTag: 'fab_distributors',
-            tooltip: 'Crear distribuidora',
-            onPressed: _manageDistributors,
-            elevation: AppDimensions.inventoryFabElevation,
-            shape: const CircleBorder(),
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.business_outlined, color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
             heroTag: 'fab_provider_switch',
             tooltip: 'Alternar repartidores y vendedores',
             onPressed: () {
@@ -348,6 +348,16 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             shape: const CircleBorder(),
             backgroundColor: AppColors.primary,
             child: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'fab_create_provider_route',
+            tooltip: 'Crear ruta de Proveedor',
+            onPressed: _createRoute,
+            elevation: AppDimensions.inventoryFabElevation,
+            shape: const CircleBorder(),
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add_rounded, color: Colors.white),
           ),
         ],
       ),
