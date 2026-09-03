@@ -11,6 +11,7 @@ import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
+import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 
 class MainDashboardLayout extends StatefulWidget {
@@ -296,6 +297,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Widget _buildMainContent(List<Map<String, dynamic>> products) {
     if (_selectedNavIndex == AppNavigation.inventory) {
       return const InventoryLayout();
+    }
+
+    if (_selectedNavIndex == AppNavigation.electronicBalance) {
+      return const ElectronicBalanceLayout();
     }
 
     if (_selectedNavIndex == AppNavigation.providers) {
