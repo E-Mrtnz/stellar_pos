@@ -225,9 +225,15 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 ),
               ),
               IconButton(
-                tooltip: 'Asignar ruta de Proveedor',
-                onPressed: _createRoute,
-                icon: const Icon(Icons.route_outlined),
+                tooltip: 'Alternar repartidores y vendedores',
+                onPressed: () {
+                  setState(() {
+                    _selectedType = _showDeliveryPeople
+                        ? 'Vendedor'
+                        : 'Repartidor';
+                  });
+                },
+                icon: const Icon(Icons.swap_horiz_rounded),
                 color: AppColors.primary,
               ),
             ],
@@ -341,22 +347,6 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
-            heroTag: 'fab_provider_switch',
-            tooltip: 'Alternar repartidores y vendedores',
-            onPressed: () {
-              setState(() {
-                _selectedType = _showDeliveryPeople
-                    ? 'Vendedor'
-                    : 'Repartidor';
-              });
-            },
-            elevation: AppDimensions.inventoryFabElevation,
-            shape: const CircleBorder(),
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
             heroTag: 'fab_manage_distributors',
             tooltip: 'Administrar distribuidoras',
             onPressed: _manageDistributors,
@@ -364,6 +354,16 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             shape: const CircleBorder(),
             backgroundColor: AppColors.primary,
             child: const Icon(Icons.business_outlined, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'fab_provider_route',
+            tooltip: 'Asignar ruta de Proveedor',
+            onPressed: _createRoute,
+            elevation: AppDimensions.inventoryFabElevation,
+            shape: const CircleBorder(),
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.route_outlined, color: Colors.white),
           ),
         ],
       ),
