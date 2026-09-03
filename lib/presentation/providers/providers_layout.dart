@@ -5,6 +5,7 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/presentation/providers/widgets/create_provider_dialog.dart';
+import 'package:stellar_pos/presentation/providers/widgets/manage_distributors_dialog.dart';
 
 class ProvidersLayout extends StatefulWidget {
   const ProvidersLayout({super.key});
@@ -28,8 +29,16 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
 
   bool get _showDeliveryPeople => _selectedType == 'Repartidor';
 
-  Future<void> _createPerson() async {
+  Future<void> _createRoute() async {
     await CreateProviderDialog.show(context);
+  }
+
+  Future<void> _editRoute(ProviderPerson person) async {
+    await CreateProviderDialog.show(context, person: person);
+  }
+
+  Future<void> _manageDistributors() async {
+    await ManageDistributorsDialog.show(context);
   }
 
   @override
@@ -38,20 +47,34 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: const EdgeInsets.all(AppDimensions.pagePadding),
-        child: Row(
-          children: [
-            Expanded(flex: 3, child: _buildCalendarCard(people)),
-            const SizedBox(width: AppDimensions.productGridSpacing),
-            Expanded(flex: 1, child: _buildPeopleCard(people)),
-          ],
-        ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppDimensions.pagePadding),
+            child: Row(
+              children: [
+                Expanded(flex: 3, child: _buildCalendarCard(people)),
+                const SizedBox(width: AppDimensions.productGridSpacing),
+                Expanded(flex: 1, child: _buildPeopleCard(people)),
+              ],
+            ),
+          ),
+          _buildFloatingActions(),
+        ],
       ),
     );
   }
 
   Widget _buildCalendarCard(List<ProviderPerson> people) {
+    final byDay = List<List<ProviderPerson>>.generate(
+      7,
+      (day) => people.where((person) => person.weekday == day).toList(),
+    );
+    final rowCount = byDay.fold<int>(
+      0,
+      (max, dayPeople) => dayPeople.length > max ? dayPeople.length : max,
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -64,15 +87,14 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           _buildCalendarHeader(),
           const Divider(height: 1, color: AppColors.border),
           Expanded(
-            child: people.isEmpty
+            child: rowCount == 0
                 ? _buildEmptyCalendar()
-                : ListView.separated(
+                : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: people.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, color: AppColors.chipBackground),
-                    itemBuilder: (context, index) =>
-                        _buildCalendarRow(index, people[index]),
+                    itemCount: rowCount,
+                    itemBuilder: (context, rowIndex) {
+                      return _buildCalendarRow(rowIndex + 1, byDay);
+                    },
                   ),
           ),
         ],
@@ -106,7 +128,10 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildCalendarRow(int index, ProviderPerson person) {
+  Widget _buildCalendarRow(
+    int rowNumber,
+    List<List<ProviderPerson>> byDay,
+  ) {
     return SizedBox(
       height: 64,
       child: Row(
@@ -115,7 +140,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             width: 34,
             child: Center(
               child: Text(
-                '${index + 1}',
+                '$rowNumber',
                 style: const TextStyle(
                   color: AppColors.textMuted,
                   fontSize: 11,
@@ -126,14 +151,24 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           ),
           ...List<Widget>.generate(
             7,
-            (dayIndex) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-                child: dayIndex == person.weekday
-                    ? _buildEventCard(person)
-                    : const SizedBox.expand(),
-              ),
-            ),
+            (dayIndex) {
+              final dayPeople = byDay[dayIndex];
+              final person = rowNumber <= dayPeople.length
+                  ? dayPeople[rowNumber - 1]
+                  : null;
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 5,
+                  ),
+                  child: person == null
+                      ? const SizedBox.expand()
+                      : _buildEventCard(person),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -142,6 +177,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
 
   Widget _buildEventCard(ProviderPerson person) {
     final color = Color(person.colorValue);
+    final icon = person.isDeliveryPerson
+        ? Icons.local_shipping_outlined
+        : Icons.storefront_outlined;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
@@ -152,13 +190,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
       ),
       child: Row(
         children: [
-          Icon(
-            person.isDeliveryPerson
-                ? Icons.local_shipping_outlined
-                : Icons.storefront_outlined,
-            color: color,
-            size: 15,
-          ),
+          Icon(icon, color: color, size: 15),
           const SizedBox(width: 5),
           Expanded(
             child: Text(
@@ -202,20 +234,8 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 ),
               ),
               IconButton(
-                tooltip: 'Alternar entre repartidores y vendedores',
-                onPressed: () {
-                  setState(() {
-                    _selectedType = _showDeliveryPeople
-                        ? 'Vendedor'
-                        : 'Repartidor';
-                  });
-                },
-                icon: const Icon(Icons.swap_horiz_rounded),
-                color: AppColors.primary,
-              ),
-              IconButton(
-                tooltip: 'Crear $title',
-                onPressed: _createPerson,
+                tooltip: 'Crear ruta de Proveedor',
+                onPressed: _createRoute,
                 icon: const Icon(Icons.add_circle_outline_rounded),
                 color: AppColors.primary,
               ),
@@ -284,6 +304,50 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 fontWeight: FontWeight.w700,
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Editar ruta',
+            onPressed: () => _editRoute(person),
+            icon: const Icon(Icons.edit_outlined, size: 17),
+            color: AppColors.primary,
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActions() {
+    return Positioned(
+      right: 20,
+      bottom: 20,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'fab_distributors',
+            tooltip: 'Crear distribuidora',
+            onPressed: _manageDistributors,
+            elevation: AppDimensions.inventoryFabElevation,
+            shape: const CircleBorder(),
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.business_outlined, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'fab_provider_switch',
+            tooltip: 'Alternar repartidores y vendedores',
+            onPressed: () {
+              setState(() {
+                _selectedType = _showDeliveryPeople
+                    ? 'Vendedor'
+                    : 'Repartidor';
+              });
+            },
+            elevation: AppDimensions.inventoryFabElevation,
+            shape: const CircleBorder(),
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
           ),
         ],
       ),
