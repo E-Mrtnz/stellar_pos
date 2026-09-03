@@ -54,6 +54,10 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     Color(0xFFEC4899),
   ];
 
+  // Recent custom colors are kept during the current app session so a
+  // previously selected tone can be reused without searching for it again.
+  static final List<Color> _recentColors = [];
+
   String? _selectedType;
   String? _selectedDistributor;
   int? _selectedWeekday;
@@ -103,7 +107,16 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     );
 
     if (color != null && mounted) {
+      _rememberRecentColor(color);
       setState(() => _selectedColor = color);
+    }
+  }
+
+  void _rememberRecentColor(Color color) {
+    _recentColors.removeWhere((item) => item.value == color.value);
+    _recentColors.insert(0, color);
+    if (_recentColors.length > 8) {
+      _recentColors.removeLast();
     }
   }
 
@@ -185,7 +198,9 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      isEditing ? 'Editar ruta de Proveedor' : 'Crear ruta de Proveedor',
+                      isEditing
+                          ? 'Editar ruta de Proveedor'
+                          : 'Crear ruta de Proveedor',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 17,
@@ -241,22 +256,20 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 ],
               ),
               const SizedBox(height: 16),
+              const Text(
+                'Color',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
               Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 7,
                 runSpacing: 7,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(right: 5),
-                    child: Text(
-                      'Color',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                   ..._defaultColors.map(_buildColorOption),
                   InkWell(
                     onTap: _pickColor,
@@ -278,6 +291,23 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                   ),
                 ],
               ),
+              if (_recentColors.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Colores usados recientemente',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: _recentColors.map(_buildColorOption).toList(),
+                ),
+              ],
               if (!hasDistributors) ...[
                 const SizedBox(height: 10),
                 const Text(
