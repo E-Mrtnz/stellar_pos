@@ -1,31 +1,52 @@
 enum ElectronicBalanceTransactionType { purchase, sale }
 
+class ElectronicBalanceSaleOption {
+  final String category;
+  final double amount;
+
+  const ElectronicBalanceSaleOption({
+    required this.category,
+    required this.amount,
+  });
+}
+
 class ElectronicBalanceAccount {
   final String id;
   final String companyName;
   final double commissionRate;
   final double balance;
+  final List<ElectronicBalanceSaleOption> saleOptions;
 
   const ElectronicBalanceAccount({
     required this.id,
     required this.companyName,
     required this.commissionRate,
     required this.balance,
+    this.saleOptions = const [],
   });
 
   double get commissionMultiplier => commissionRate / 100;
+
+  List<double> amountsForCategory(String category) {
+    return saleOptions
+        .where((option) => option.category == category)
+        .map((option) => option.amount)
+        .toList();
+  }
 
   ElectronicBalanceAccount copyWith({
     String? id,
     String? companyName,
     double? commissionRate,
     double? balance,
+    List<ElectronicBalanceSaleOption>? saleOptions,
   }) {
     return ElectronicBalanceAccount(
       id: id ?? this.id,
       companyName: companyName ?? this.companyName,
       commissionRate: commissionRate ?? this.commissionRate,
       balance: balance ?? this.balance,
+      saleOptions: saleOptions ?? this.saleOptions,
     );
   }
 }
