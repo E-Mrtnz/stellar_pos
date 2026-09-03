@@ -7,13 +7,13 @@ import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 
 class CreateProviderDialog extends StatefulWidget {
-  final ProviderPerson? person;
+  final ProviderRoute? route;
 
-  const CreateProviderDialog({super.key, this.person});
+  const CreateProviderDialog({super.key, this.route});
 
   static Future<void> show(
     BuildContext context, {
-    ProviderPerson? person,
+    ProviderRoute? route,
   }) {
     return showDialog<void>(
       context: context,
@@ -21,7 +21,7 @@ class CreateProviderDialog extends StatefulWidget {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: CreateProviderDialog(person: person),
+        child: CreateProviderDialog(route: route),
       ),
     );
   }
@@ -54,28 +54,30 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     Color(0xFFEC4899),
   ];
 
-  // Recent custom colors are kept during the current app session so a
-  // previously selected tone can be reused without searching for it again.
   static final List<Color> _recentColors = [];
 
   String? _selectedType;
   String? _selectedDistributor;
-  int? _selectedWeekday;
+  final Set<int> _selectedWeekdays = {};
   Color _selectedColor = _defaultColors.first;
 
   @override
   void initState() {
     super.initState();
-    final person = widget.person;
-    _selectedType = person?.type;
-    _selectedDistributor = person?.name;
-    _selectedWeekday = person?.weekday;
-    if (person != null) _selectedColor = Color(person.colorValue);
+    final route = widget.route;
+    _selectedType = route?.type;
+    _selectedDistributor = route?.distributorName;
+    if (route != null) {
+      _selectedWeekdays.addAll(route.weekdays);
+      _selectedColor = Color(route.colorValue);
+    }
   }
 
-  IconData get _selectedTypeIcon => _selectedType == 'Repartidor'
-      ? Icons.local_shipping_outlined
-      : Icons.storefront_outlined;
+  IconData? get _selectedTypeIcon {
+    if (_selectedType == 'Repartidor') return Icons.local_shipping_outlined;
+    if (_selectedType == 'Vendedor') return Icons.storefront_outlined;
+    return null;
+  }
 
   Future<void> _pickColor() async {
     var pickerColor = _selectedColor;
@@ -115,38 +117,54 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   void _rememberRecentColor(Color color) {
     _recentColors.removeWhere((item) => item.value == color.value);
     _recentColors.insert(0, color);
-    if (_recentColors.length > 8) {
-      _recentColors.removeLast();
-    }
+    if (_recentColors.length > 8) _recentColors.removeLast();
+  }
+
+  void _toggleWeekday(int weekday) {
+    setState(() {
+      if (_selectedWeekdays.contains(weekday)) {
+        _selectedWeekdays.remove(weekday);
+      } else {
+        _selectedWeekdays.add(weekday);
+      }
+    });
   }
 
   void _save() {
     final provider = context.read<ProvidersProvider>();
+    final isEditing = widget.route != null;
 
-    if (_selectedType == null ||
-        _selectedDistributor == null ||
-        _selectedWeekday == null) {
-      _showMessage('Selecciona el tipo, la distribuidora y el día.');
+    if (_selectedType == null || _selectedDistributor == null) {
+      _showMessage('Selecciona el tipo y la distribuidora.');
       return;
     }
 
-    final success = widget.person == null
-        ? provider.addPerson(
+    if (_selectedWeekdays.isEmpty) {
+      _showMessage('Selecciona al menos un día de visita.');
+      return;
+    }
+
+    final success = isEditing
+        ? provider.updateRoute(
+            id: widget.route!.id,
             type: _selectedType!,
-            name: _selectedDistributor!,
-            weekday: _selectedWeekday!,
+            distributorName: _selectedDistributor!,
+            weekdays: _selectedWeekdays.toList(),
             colorValue: _selectedColor.value,
           )
-        : provider.updatePerson(
-            id: widget.person!.id,
+        : provider.addRoute(
             type: _selectedType!,
-            name: _selectedDistributor!,
-            weekday: _selectedWeekday!,
+            distributorName: _selectedDistributor!,
+            weekdays: _selectedWeekdays.toList(),
             colorValue: _selectedColor.value,
           );
 
     if (!success) {
-      _showMessage('No se pudo guardar la ruta.');
+      _showMessage(
+        isEditing
+            ? 'No se pudo actualizar la ruta. Revisa si ya existe otra ruta para esa distribuidora y tipo.'
+            : 'No se pudo asignar la ruta.',
+      );
       return;
     }
 
@@ -157,17 +175,14 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     setState(() {
       _selectedType = null;
       _selectedDistributor = null;
-      _selectedWeekday = null;
+      _selectedWeekdays.clear();
       _selectedColor = _defaultColors.first;
     });
   }
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -177,7 +192,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     final selectedDistributor = distributors.contains(_selectedDistributor)
         ? _selectedDistributor
         : null;
-    final isEditing = widget.person != null;
+    final isEditing = widget.route != null;
     final hasDistributors = distributors.isNotEmpty;
 
     return Center(
@@ -200,7 +215,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                     child: Text(
                       isEditing
                           ? 'Editar ruta de Proveedor'
-                          : 'Crear ruta de Proveedor',
+                          : 'Asignar ruta de Proveedor',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 17,
@@ -211,10 +226,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                   IconButton(
                     tooltip: 'Cerrar',
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.close,
-                      color: AppColors.textSecondary,
-                    ),
+                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -227,33 +239,52 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 onChanged: (value) => setState(() => _selectedType = value),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDropdown<String>(
-                      value: selectedDistributor,
-                      items: distributors,
-                      hint: hasDistributors
-                          ? 'Distribuidora'
-                          : 'Crea una distribuidora primero',
-                      onChanged: hasDistributors
-                          ? (value) =>
-                              setState(() => _selectedDistributor = value)
-                          : null,
+              _buildDropdown<String>(
+                value: selectedDistributor,
+                items: distributors,
+                hint: hasDistributors
+                    ? 'Distribuidora'
+                    : 'Crea una distribuidora primero',
+                onChanged: hasDistributors
+                    ? (value) =>
+                        setState(() => _selectedDistributor = value)
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Días de visita',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: List<Widget>.generate(7, (index) {
+                  final selected = _selectedWeekdays.contains(index);
+                  return ChoiceChip(
+                    label: Text(_weekdays[index]),
+                    selected: selected,
+                    onSelected: (_) => _toggleWeekday(index),
+                    visualDensity: VisualDensity.compact,
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: selected
+                          ? Colors.white
+                          : AppColors.textSecondary,
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildDropdown<int>(
-                      value: _selectedWeekday,
-                      items: List<int>.generate(7, (index) => index),
-                      itemLabel: (index) => _weekdays[index],
-                      hint: 'Día de la semana',
-                      onChanged: (value) =>
-                          setState(() => _selectedWeekday = value),
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.inputBackground,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ),
-                ],
+                  );
+                }),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -311,11 +342,8 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
               if (!hasDistributors) ...[
                 const SizedBox(height: 10),
                 const Text(
-                  'Primero crea al menos una distribuidora con el botón de abajo.',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                  ),
+                  'Primero crea al menos una distribuidora con el botón inferior.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
               ],
               const SizedBox(height: 22),
@@ -327,13 +355,11 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppDimensions.buttonRadius,
-                      ),
+                      borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
                     ),
                   ),
                   child: Text(
-                    isEditing ? 'Guardar cambios' : 'Crear ruta',
+                    isEditing ? 'Guardar cambios' : 'Asignar ruta',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -369,10 +395,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
             : Icon(icon, size: 19, color: AppColors.textSecondary),
         filled: true,
         fillColor: AppColors.inputBackground,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border),
