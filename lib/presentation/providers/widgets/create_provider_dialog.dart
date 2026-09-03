@@ -73,6 +73,18 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     }
   }
 
+  String get _weekdayLabel {
+    if (_selectedType == 'Repartidor') return 'Días de entrega';
+    return 'Días de visita';
+  }
+
+  String get _weekdayValidationMessage {
+    if (_selectedType == 'Repartidor') {
+      return 'Selecciona al menos un día de entrega.';
+    }
+    return 'Selecciona al menos un día de visita.';
+  }
+
   IconData? get _selectedTypeIcon {
     if (_selectedType == 'Repartidor') return Icons.local_shipping_outlined;
     if (_selectedType == 'Vendedor') return Icons.storefront_outlined;
@@ -140,7 +152,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     }
 
     if (_selectedWeekdays.isEmpty) {
-      _showMessage('Selecciona al menos un día de visita.');
+      _showMessage(_weekdayValidationMessage);
       return;
     }
 
@@ -236,7 +248,9 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 items: _types,
                 icon: _selectedTypeIcon,
                 hint: 'Tipo de ruta',
-                onChanged: (value) => setState(() => _selectedType = value),
+                onChanged: (value) => setState(() {
+                  _selectedType = value;
+                }),
               ),
               const SizedBox(height: 10),
               _buildDropdown<String>(
@@ -251,9 +265,9 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                     : null,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Días de visita',
-                style: TextStyle(
+              Text(
+                _weekdayLabel,
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
