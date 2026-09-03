@@ -4,14 +4,14 @@ import 'package:stellar_pos/core/models/provider_person.dart';
 
 class ProvidersProvider extends ChangeNotifier {
   final List<String> _distributors = [];
-  final List<ProviderPerson> _people = [];
+  final List<ProviderRoute> _routes = [];
 
   List<String> get distributors => List.unmodifiable(_distributors);
 
-  List<ProviderPerson> get people => List.unmodifiable(_people);
+  List<ProviderRoute> get routes => List.unmodifiable(_routes);
 
-  List<ProviderPerson> byType(String type) {
-    return _people.where((person) => person.type == type).toList();
+  List<ProviderRoute> byType(String type) {
+    return _routes.where((route) => route.type == type).toList();
   }
 
   bool addDistributor(String name) {
@@ -39,16 +39,10 @@ class ProvidersProvider extends ChangeNotifier {
 
     _distributors[index] = value;
 
-    for (var i = 0; i < _people.length; i++) {
-      final person = _people[i];
-      if (person.name.toLowerCase() == oldName.toLowerCase()) {
-        _people[i] = ProviderPerson(
-          id: person.id,
-          type: person.type,
-          name: value,
-          weekday: person.weekday,
-          colorValue: person.colorValue,
-        );
+    for (var i = 0; i < _routes.length; i++) {
+      final route = _routes[i];
+      if (route.distributorName.toLowerCase() == oldName.toLowerCase()) {
+        _routes[i] = route.copyWith(distributorName: value);
       }
     }
 
@@ -57,8 +51,9 @@ class ProvidersProvider extends ChangeNotifier {
   }
 
   bool removeDistributor(String name) {
-    final inUse = _people.any(
-      (person) => person.name.toLowerCase() == name.toLowerCase(),
+    final inUse = _routes.any(
+      (route) =>
+          route.distributorName.toLowerCase() == name.toLowerCase(),
     );
     if (inUse) return false;
 
@@ -73,44 +68,79 @@ class ProvidersProvider extends ChangeNotifier {
     return true;
   }
 
-  bool addPerson({
+  /// Creates a route only when that distributor/type combination does not
+  /// already exist. A route owns all of its assigned weekdays.
+  bool addRoute({
     required String type,
-    required String name,
-    required int weekday,
+    required String distributorName,
+    required List<int> weekdays,
     required int colorValue,
   }) {
-    final normalizedName = name.trim();
-    if (normalizedName.isEmpty) return false;
+    final normalizedName = distributorName.trim();
+    final normalizedDays = _normalizeWeekdays(weekdays);
+    if (normalizedName.isEmpty || normalizedDays.isEmpty) return false;
 
-    _people.add(
-      ProviderPerson(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        type: type,
-        name: normalizedName,
-        weekday: weekday,
-        colorValue: colorValue,
-      ),
+    final existingIndex = _routes.indexWhere(
+      (route) =>
+          route.type == type &&
+          route.distributorName.toLowerCase() == normalizedName.toLowerCase(),
     );
+
+    if (existingIndex >= 0) {
+      final existing = _routes[existingIndex];
+      final mergedDays = _normalizeWeekdays([
+        ...existing.weekdays,
+        ...normalizedDays,
+      ]);
+      _routes[existingIndex] = existing.copyWith(
+        weekdays: mergedDays,
+        colorValue: colorValue,
+      );
+    } else {
+      _routes.add(
+        ProviderRoute(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          type: type,
+          distributorName: normalizedName,
+          weekdays: List.unmodifiable(normalizedDays),
+          colorValue: colorValue,
+        ),
+      );
+    }
 
     notifyListeners();
     return true;
   }
 
-  bool updatePerson({
+  /// Replaces the complete weekday assignment of an existing route.
+  bool updateRoute({
     required String id,
     required String type,
-    required String name,
-    required int weekday,
+    required String distributorName,
+    required List<int> weekdays,
     required int colorValue,
   }) {
-    final index = _people.indexWhere((person) => person.id == id);
-    if (index < 0) return false;
+    final index = _routes.indexWhere((route) => route.id == id);
+    final normalizedName = distributorName.trim();
+    final normalizedDays = _normalizeWeekdays(weekdays);
+    if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) {
+      return false;
+    }
 
-    _people[index] = ProviderPerson(
+    final duplicate = _routes.asMap().entries.any(
+      (entry) =>
+          entry.key != index &&
+          entry.value.type == type &&
+          entry.value.distributorName.toLowerCase() ==
+              normalizedName.toLowerCase(),
+    );
+    if (duplicate) return false;
+
+    _routes[index] = ProviderRoute(
       id: id,
       type: type,
-      name: name.trim(),
-      weekday: weekday,
+      distributorName: normalizedName,
+      weekdays: List.unmodifiable(normalizedDays),
       colorValue: colorValue,
     );
 
@@ -118,9 +148,17 @@ class ProvidersProvider extends ChangeNotifier {
     return true;
   }
 
-  void removePerson(String id) {
-    _people.removeWhere((person) => person.id == id);
+  void removeRoute(String id) {
+    _routes.removeWhere((route) => route.id == id);
     notifyListeners();
+  }
+
+  List<int> _normalizeWeekdays(List<int> weekdays) {
+    return weekdays
+        .where((day) => day >= 0 && day <= 6)
+        .toSet()
+        .toList()
+      ..sort();
   }
 
   bool _containsIgnoreCase(List<String> values, String value) {
