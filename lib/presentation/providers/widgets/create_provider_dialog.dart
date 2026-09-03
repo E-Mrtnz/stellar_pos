@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 
 class CreateProviderDialog extends StatefulWidget {
-  const CreateProviderDialog({super.key});
+  final ProviderPerson? person;
 
-  static Future<void> show(BuildContext context) {
+  const CreateProviderDialog({super.key, this.person});
+
+  static Future<void> show(
+    BuildContext context, {
+    ProviderPerson? person,
+  }) {
     return showDialog<void>(
       context: context,
       barrierColor: AppColors.overlayBackground,
-      builder: (context) => const Dialog(
+      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: CreateProviderDialog(),
+        child: CreateProviderDialog(person: person),
       ),
     );
   }
@@ -47,49 +54,97 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     Color(0xFFEC4899),
   ];
 
-  final TextEditingController _nameController = TextEditingController();
-
-  String _selectedType = _types.first;
-  int _selectedWeekday = 0;
+  String? _selectedType;
+  String? _selectedDistributor;
+  int? _selectedWeekday;
   Color _selectedColor = _defaultColors.first;
-  bool _isNameInvalid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final person = widget.person;
+    _selectedType = person?.type;
+    _selectedDistributor = person?.name;
+    _selectedWeekday = person?.weekday;
+    if (person != null) _selectedColor = Color(person.colorValue);
+  }
 
   IconData get _selectedTypeIcon => _selectedType == 'Repartidor'
       ? Icons.local_shipping_outlined
       : Icons.storefront_outlined;
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
+  Future<void> _pickColor() async {
+    var pickerColor = _selectedColor;
+
+    final color = await showDialog<Color>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Seleccionar color'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: pickerColor,
+            onColorChanged: (color) => pickerColor = color,
+            enableAlpha: false,
+            pickerAreaHeightPercent: 0.75,
+            hexInputBar: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(pickerColor),
+            child: const Text('Seleccionar'),
+          ),
+        ],
+      ),
+    );
+
+    if (color != null && mounted) {
+      setState(() => _selectedColor = color);
+    }
   }
 
-  void _create() {
-    final name = _nameController.text.trim();
+  void _save() {
+    final provider = context.read<ProvidersProvider>();
 
-    if (name.isEmpty) {
-      setState(() => _isNameInvalid = true);
+    if (_selectedType == null ||
+        _selectedDistributor == null ||
+        _selectedWeekday == null) {
+      _showMessage('Selecciona el tipo, la distribuidora y el día.');
       return;
     }
 
-    final created = context.read<ProvidersProvider>().addPerson(
-          type: _selectedType,
-          name: name,
-          weekday: _selectedWeekday,
-          colorValue: _selectedColor.value,
-        );
+    final success = widget.person == null
+        ? provider.addPerson(
+            type: _selectedType!,
+            name: _selectedDistributor!,
+            weekday: _selectedWeekday!,
+            colorValue: _selectedColor.value,
+          )
+        : provider.updatePerson(
+            id: widget.person!.id,
+            type: _selectedType!,
+            name: _selectedDistributor!,
+            weekday: _selectedWeekday!,
+            colorValue: _selectedColor.value,
+          );
 
-    if (!created) {
-      _showMessage('Ya existe un $_selectedType con ese nombre.');
+    if (!success) {
+      _showMessage('No se pudo guardar la ruta.');
       return;
     }
 
-    // Keep the dialog open so several entries can be created consecutively.
-    _nameController.clear();
+    _resetForm();
+  }
+
+  void _resetForm() {
     setState(() {
-      _isNameInvalid = false;
-      _selectedType = _types.first;
-      _selectedWeekday = 0;
+      _selectedType = null;
+      _selectedDistributor = null;
+      _selectedWeekday = null;
       _selectedColor = _defaultColors.first;
     });
   }
@@ -103,19 +158,15 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     );
   }
 
-  Future<void> _pickColor() async {
-    final color = await showDialog<Color>(
-      context: context,
-      builder: (context) => _ColorPickerDialog(initialColor: _selectedColor),
-    );
-
-    if (color != null && mounted) {
-      setState(() => _selectedColor = color);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final distributors = context.watch<ProvidersProvider>().distributors;
+    final selectedDistributor = distributors.contains(_selectedDistributor)
+        ? _selectedDistributor
+        : null;
+    final isEditing = widget.person != null;
+    final hasDistributors = distributors.isNotEmpty;
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
@@ -132,10 +183,10 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Crear Vendedor/Repartidor',
-                      style: TextStyle(
+                      isEditing ? 'Editar ruta de Proveedor' : 'Crear ruta de Proveedor',
+                      style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
@@ -157,27 +208,34 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 value: _selectedType,
                 items: _types,
                 icon: _selectedTypeIcon,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedType = value);
-                  }
-                },
+                hint: 'Tipo de ruta',
+                onChanged: (value) => setState(() => _selectedType = value),
               ),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Expanded(child: _buildNameField()),
+                  Expanded(
+                    child: _buildDropdown<String>(
+                      value: selectedDistributor,
+                      items: distributors,
+                      hint: hasDistributors
+                          ? 'Distribuidora'
+                          : 'Crea una distribuidora primero',
+                      onChanged: hasDistributors
+                          ? (value) =>
+                              setState(() => _selectedDistributor = value)
+                          : null,
+                    ),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _buildDropdown<int>(
                       value: _selectedWeekday,
                       items: List<int>.generate(7, (index) => index),
                       itemLabel: (index) => _weekdays[index],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _selectedWeekday = value);
-                        }
-                      },
+                      hint: 'Día de la semana',
+                      onChanged: (value) =>
+                          setState(() => _selectedWeekday = value),
                     ),
                   ),
                 ],
@@ -220,12 +278,22 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                   ),
                 ],
               ),
+              if (!hasDistributors) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'Primero crea al menos una distribuidora con el botón de abajo.',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: FilledButton(
-                  onPressed: _create,
+                  onPressed: _save,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
@@ -235,7 +303,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                     ),
                   ),
                   child: Text(
-                    'Crear ${_selectedType.toLowerCase()}',
+                    isEditing ? 'Guardar cambios' : 'Crear ruta',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -250,48 +318,13 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     );
   }
 
-  Widget _buildNameField() {
-    final borderColor = _isNameInvalid ? AppColors.dangerRed : AppColors.border;
-
-    return TextField(
-      controller: _nameController,
-      onChanged: (_) {
-        if (_isNameInvalid) setState(() => _isNameInvalid = false);
-      },
-      decoration: InputDecoration(
-        isDense: true,
-        hintText: 'Nombre',
-        hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-        filled: true,
-        fillColor: _isNameInvalid
-            ? AppColors.dangerRed.withOpacity(0.06)
-            : AppColors.inputBackground,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 11,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
-        ),
-      ),
-    );
-  }
-
   Widget _buildDropdown<T>({
-    required T value,
+    required T? value,
     required List<T> items,
-    required ValueChanged<T?> onChanged,
-    IconData? icon,
+    required ValueChanged<T?>? onChanged,
     String Function(T value)? itemLabel,
+    IconData? icon,
+    String? hint,
   }) {
     return DropdownButtonFormField<T>(
       initialValue: value,
@@ -300,6 +333,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
       style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
       decoration: InputDecoration(
         isDense: true,
+        hintText: hint,
         prefixIcon: icon == null
             ? null
             : Icon(icon, size: 19, color: AppColors.textSecondary),
@@ -359,72 +393,6 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 size: 16,
               )
             : null,
-      ),
-    );
-  }
-}
-
-class _ColorPickerDialog extends StatelessWidget {
-  final Color initialColor;
-
-  const _ColorPickerDialog({required this.initialColor});
-
-  static const List<Color> _palette = [
-    Color(0xFFEF4444), Color(0xFFDC2626), Color(0xFFB91C1C), Color(0xFFF43F5E),
-    Color(0xFFF97316), Color(0xFFEA580C), Color(0xFFC2410C), Color(0xFFF59E0B),
-    Color(0xFFEAB308), Color(0xFFCA8A04), Color(0xFF84CC16), Color(0xFF65A30D),
-    Color(0xFF22C55E), Color(0xFF16A34A), Color(0xFF10B981), Color(0xFF059669),
-    Color(0xFF14B8A6), Color(0xFF0D9488), Color(0xFF06B6D4), Color(0xFF0891B2),
-    Color(0xFF0EA5E9), Color(0xFF0284C7), Color(0xFF3B82F6), Color(0xFF2563EB),
-    Color(0xFF6366F1), Color(0xFF4F46E5), Color(0xFF8B5CF6), Color(0xFF7C3AED),
-    Color(0xFFA855F7), Color(0xFFC026D3), Color(0xFFEC4899), Color(0xFFDB2777),
-    Color(0xFFF43F5E), Color(0xFF64748B), Color(0xFF475569), Color(0xFF334155),
-    Color(0xFF1E293B), Color(0xFF111827), Color(0xFF000000), Color(0xFFFFFFFF),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Seleccionar color'),
-      content: SizedBox(
-        width: 360,
-        child: GridView.builder(
-          shrinkWrap: true,
-          itemCount: _palette.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 8,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-          ),
-          itemBuilder: (context, index) {
-            final color = _palette[index];
-            final selected = color.value == initialColor.value;
-
-            return InkWell(
-              onTap: () => Navigator.of(context).pop(color),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: selected ? AppColors.textPrimary : AppColors.border,
-                    width: selected ? 2.5 : 1,
-                  ),
-                ),
-                child: selected
-                    ? Icon(
-                        Icons.check,
-                        color: color.computeLuminance() > 0.55
-                            ? AppColors.textPrimary
-                            : Colors.white,
-                        size: 17,
-                      )
-                    : null,
-              ),
-            );
-          },
-        ),
       ),
     );
   }
