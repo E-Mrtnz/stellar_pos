@@ -33,8 +33,8 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     await CreateProviderDialog.show(context);
   }
 
-  Future<void> _editRoute(ProviderPerson person) async {
-    await CreateProviderDialog.show(context, person: person);
+  Future<void> _editRoute(ProviderRoute route) async {
+    await CreateProviderDialog.show(context, route: route);
   }
 
   Future<void> _manageDistributors() async {
@@ -43,7 +43,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final people = context.watch<ProvidersProvider>().byType(_selectedType);
+    final routes = context.watch<ProvidersProvider>().byType(_selectedType);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -53,9 +53,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             padding: const EdgeInsets.all(AppDimensions.pagePadding),
             child: Row(
               children: [
-                Expanded(flex: 3, child: _buildCalendarCard(people)),
+                Expanded(flex: 3, child: _buildCalendarCard(routes)),
                 const SizedBox(width: AppDimensions.productGridSpacing),
-                Expanded(flex: 1, child: _buildPeopleCard(people)),
+                Expanded(flex: 1, child: _buildPeopleCard(routes)),
               ],
             ),
           ),
@@ -65,14 +65,14 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildCalendarCard(List<ProviderPerson> people) {
-    final byDay = List<List<ProviderPerson>>.generate(
+  Widget _buildCalendarCard(List<ProviderRoute> routes) {
+    final byDay = List<List<ProviderRoute>>.generate(
       7,
-      (day) => people.where((person) => person.weekday == day).toList(),
+      (day) => routes.where((route) => route.hasWeekday(day)).toList(),
     );
     final rowCount = byDay.fold<int>(
       0,
-      (max, dayPeople) => dayPeople.length > max ? dayPeople.length : max,
+      (max, dayRoutes) => dayRoutes.length > max ? dayRoutes.length : max,
     );
 
     return Container(
@@ -127,7 +127,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildCalendarRow(int rowNumber, List<List<ProviderPerson>> byDay) {
+  Widget _buildCalendarRow(int rowNumber, List<List<ProviderRoute>> byDay) {
     return SizedBox(
       height: 64,
       child: Row(
@@ -146,17 +146,17 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             ),
           ),
           ...List<Widget>.generate(7, (dayIndex) {
-            final dayPeople = byDay[dayIndex];
-            final person = rowNumber <= dayPeople.length
-                ? dayPeople[rowNumber - 1]
+            final dayRoutes = byDay[dayIndex];
+            final route = rowNumber <= dayRoutes.length
+                ? dayRoutes[rowNumber - 1]
                 : null;
 
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-                child: person == null
+                child: route == null
                     ? const SizedBox.expand()
-                    : _buildEventCard(person),
+                    : _buildEventCard(route),
               ),
             );
           }),
@@ -165,9 +165,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildEventCard(ProviderPerson person) {
-    final color = Color(person.colorValue);
-    final icon = person.isDeliveryPerson
+  Widget _buildEventCard(ProviderRoute route) {
+    final color = Color(route.colorValue);
+    final icon = route.isDeliveryPerson
         ? Icons.local_shipping_outlined
         : Icons.storefront_outlined;
 
@@ -184,7 +184,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           const SizedBox(width: 5),
           Expanded(
             child: Text(
-              person.name,
+              route.distributorName,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -199,7 +199,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildPeopleCard(List<ProviderPerson> people) {
+  Widget _buildPeopleCard(List<ProviderRoute> routes) {
     final title = _showDeliveryPeople ? 'Repartidores' : 'Vendedores';
 
     return Container(
@@ -225,7 +225,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                 ),
               ),
               IconButton(
-                tooltip: 'Crear ruta de Proveedor',
+                tooltip: 'Asignar ruta de Proveedor',
                 onPressed: _createRoute,
                 icon: const Icon(Icons.route_outlined),
                 color: AppColors.primary,
@@ -245,7 +245,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 8),
           Expanded(
-            child: people.isEmpty
+            child: routes.isEmpty
                 ? Center(
                     child: Text(
                       'No hay ${title.toLowerCase()} registrados.',
@@ -257,10 +257,10 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
                     ),
                   )
                 : ListView.separated(
-                    itemCount: people.length,
+                    itemCount: routes.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) =>
-                        _buildPersonListItem(people[index]),
+                        _buildRouteListItem(routes[index]),
                   ),
           ),
         ],
@@ -268,11 +268,12 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     );
   }
 
-  Widget _buildPersonListItem(ProviderPerson person) {
-    final color = Color(person.colorValue);
-    final icon = person.isDeliveryPerson
+  Widget _buildRouteListItem(ProviderRoute route) {
+    final color = Color(route.colorValue);
+    final icon = route.isDeliveryPerson
         ? Icons.local_shipping_outlined
         : Icons.storefront_outlined;
+    final days = route.weekdays.map((day) => _weekdays[day]).join(' · ');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
@@ -294,20 +295,35 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              person.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  route.distributorName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  days,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 9,
+                  ),
+                ),
+              ],
             ),
           ),
           IconButton(
             tooltip: 'Editar ruta',
-            onPressed: () => _editRoute(person),
+            onPressed: () => _editRoute(route),
             icon: const Icon(Icons.edit_outlined, size: 17),
             color: AppColors.primary,
             visualDensity: VisualDensity.compact,
