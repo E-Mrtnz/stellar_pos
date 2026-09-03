@@ -11,6 +11,7 @@ import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
+import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
@@ -37,9 +38,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedPaymentMethod = AppPaymentMethods.cash;
   String? _selectedDebtor;
 
-  final TextEditingController _discountAmountController = TextEditingController();
-  final TextEditingController _discountPercentController = TextEditingController();
-  final TextEditingController _cashReceivedController = TextEditingController();
+  final TextEditingController _discountAmountController =
+      TextEditingController();
+  final TextEditingController _discountPercentController =
+      TextEditingController();
+  final TextEditingController _cashReceivedController =
+      TextEditingController();
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
@@ -84,7 +88,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
     final character = event.character;
 
-    if (character == null || character.isEmpty ||
+    if (character == null ||
+        character.isEmpty ||
         character.trim().isEmpty) {
       return KeyEventResult.ignored;
     }
@@ -293,6 +298,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return const InventoryLayout();
     }
 
+    if (_selectedNavIndex == AppNavigation.providers) {
+      return const ProvidersLayout();
+    }
+
+    if (_selectedNavIndex != AppNavigation.home) {
+      return const _EmptySectionPanel();
+    }
+
     return Padding(
       padding: const EdgeInsets.all(AppDimensions.pagePadding),
       child: Row(
@@ -350,6 +363,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         ],
       ),
     );
+  }
+}
+
+class _EmptySectionPanel extends StatelessWidget {
+  const _EmptySectionPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox.expand();
   }
 }
 
