@@ -45,8 +45,6 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     Color(0xFF6366F1),
     Color(0xFF8B5CF6),
     Color(0xFFEC4899),
-    Color(0xFF14B8A6),
-    Color(0xFF84CC16),
   ];
 
   final TextEditingController _nameController = TextEditingController();
@@ -86,8 +84,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
       return;
     }
 
-    // The dialog intentionally remains open so several people can be created
-    // without having to reopen it after every entry.
+    // Keep the dialog open so several entries can be created consecutively.
     _nameController.clear();
     setState(() {
       _isNameInvalid = false;
@@ -186,17 +183,22 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 7,
+                runSpacing: 7,
                 children: [
-                  const Text(
-                    'Color',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  const Padding(
+                    padding: EdgeInsets.only(right: 5),
+                    child: Text(
+                      'Color',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   ..._defaultColors.map(_buildColorOption),
                   InkWell(
                     onTap: _pickColor,
@@ -334,26 +336,29 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   Widget _buildColorOption(Color color) {
     final selected = _selectedColor.value == color.value;
 
-    return Padding(
-      padding: const EdgeInsets.only(right: 7),
-      child: InkWell(
-        onTap: () => setState(() => _selectedColor = color),
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: selected ? AppColors.textPrimary : Colors.transparent,
-              width: 2,
-            ),
+    return InkWell(
+      onTap: () => setState(() => _selectedColor = color),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : Colors.transparent,
+            width: 2,
           ),
-          child: selected
-              ? const Icon(Icons.check, color: Colors.white, size: 16)
-              : null,
         ),
+        child: selected
+            ? Icon(
+                Icons.check,
+                color: color.computeLuminance() > 0.55
+                    ? AppColors.textPrimary
+                    : Colors.white,
+                size: 16,
+              )
+            : null,
       ),
     );
   }
