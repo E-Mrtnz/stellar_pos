@@ -46,11 +46,17 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
         ? providers.addDistributor(value)
         : providers.updateDistributor(_editingName!, value);
 
-    if (!success) return;
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ya existe una distribuidora con ese nombre.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     if (_editingName == null) {
-      // Keep the legacy catalog source synchronized until product fields are
-      // migrated from the old department terminology.
       catalog.addDistributor(value);
     } else {
       catalog.removeDistributor(_editingName!);
@@ -79,7 +85,19 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
   }
 
   void _delete(String name) {
-    context.read<ProvidersProvider>().removeDistributor(name);
+    final success = context.read<ProvidersProvider>().removeDistributor(name);
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No puedes eliminar esta distribuidora porque tiene rutas asignadas.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     context.read<CatalogProvider>().removeDistributor(name);
 
     if (_editingName?.toLowerCase() == name.toLowerCase()) {
