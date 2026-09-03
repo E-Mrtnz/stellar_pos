@@ -38,15 +38,39 @@ class ProvidersProvider extends ChangeNotifier {
     if (duplicate) return false;
 
     _distributors[index] = value;
+
+    for (var i = 0; i < _people.length; i++) {
+      final person = _people[i];
+      if (person.name.toLowerCase() == oldName.toLowerCase()) {
+        _people[i] = ProviderPerson(
+          id: person.id,
+          type: person.type,
+          name: value,
+          weekday: person.weekday,
+          colorValue: person.colorValue,
+        );
+      }
+    }
+
     notifyListeners();
     return true;
   }
 
-  void removeDistributor(String name) {
+  bool removeDistributor(String name) {
+    final inUse = _people.any(
+      (person) => person.name.toLowerCase() == name.toLowerCase(),
+    );
+    if (inUse) return false;
+
+    final before = _distributors.length;
     _distributors.removeWhere(
       (item) => item.toLowerCase() == name.toLowerCase(),
     );
+
+    if (_distributors.length == before) return false;
+
     notifyListeners();
+    return true;
   }
 
   bool addPerson({
