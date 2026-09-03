@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 
 class ManageDistributorsDialog extends StatefulWidget {
@@ -38,12 +39,23 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     final value = _controller.text.trim();
     if (value.isEmpty) return;
 
-    final provider = context.read<ProvidersProvider>();
+    final providers = context.read<ProvidersProvider>();
+    final catalog = context.read<CatalogProvider>();
+
     final success = _editingName == null
-        ? provider.addDistributor(value)
-        : provider.updateDistributor(_editingName!, value);
+        ? providers.addDistributor(value)
+        : providers.updateDistributor(_editingName!, value);
 
     if (!success) return;
+
+    if (_editingName == null) {
+      // Keep the legacy catalog source synchronized until product fields are
+      // migrated from the old department terminology.
+      catalog.addDistributor(value);
+    } else {
+      catalog.removeDistributor(_editingName!);
+      catalog.addDistributor(value);
+    }
 
     _controller.clear();
     setState(() => _editingName = null);
@@ -64,6 +76,15 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
       _editingName = null;
       _controller.clear();
     });
+  }
+
+  void _delete(String name) {
+    context.read<ProvidersProvider>().removeDistributor(name);
+    context.read<CatalogProvider>().removeDistributor(name);
+
+    if (_editingName?.toLowerCase() == name.toLowerCase()) {
+      _cancelEdit();
+    }
   }
 
   @override
@@ -130,7 +151,9 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: editing ? 'Guardar cambios' : 'Agregar distribuidora',
+                  tooltip: editing
+                      ? 'Guardar cambios'
+                      : 'Agregar distribuidora',
                   onPressed: _save,
                   style: IconButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -202,9 +225,7 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
                               size: 19,
                               color: AppColors.dangerRed,
                             ),
-                            onPressed: () => context
-                                .read<ProvidersProvider>()
-                                .removeDistributor(name),
+                            onPressed: () => _delete(name),
                           ),
                         ],
                       ),
