@@ -2,6 +2,20 @@ import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/models/electronic_balance.dart';
 
+class ElectronicBalanceSale {
+  final double amount;
+  final int quantity;
+  final String category;
+  final String description;
+
+  const ElectronicBalanceSale({
+    required this.amount,
+    required this.quantity,
+    required this.category,
+    this.description = '',
+  });
+}
+
 class ElectronicBalanceProvider extends ChangeNotifier {
   final List<ElectronicBalanceAccount> _accounts = [];
   final List<ElectronicBalanceTransaction> _transactions = [];
@@ -82,6 +96,44 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     return true;
   }
 
+  bool setSaleOptions({
+    required String accountId,
+    required List<ElectronicBalanceSaleOption> options,
+  }) {
+    final index = _accounts.indexWhere((account) => account.id == accountId);
+    if (index < 0) return false;
+
+    final normalized = <ElectronicBalanceSaleOption>[];
+    final seen = <String>{};
+
+    for (final option in options) {
+      if (option.amount <= 0) continue;
+      final category = option.category.trim();
+      if (!{'Saldo', 'Internet', 'Llamada'}.contains(category)) continue;
+
+      final key = '$category|${option.amount.toStringAsFixed(4)}';
+      if (seen.add(key)) {
+        normalized.add(
+          ElectronicBalanceSaleOption(
+            category: category,
+            amount: option.amount,
+          ),
+        );
+      }
+    }
+
+    normalized.sort((a, b) {
+      final categoryCompare = _categoryOrder(a.category)
+          .compareTo(_categoryOrder(b.category));
+      if (categoryCompare != 0) return categoryCompare;
+      return a.amount.compareTo(b.amount);
+    });
+
+    _accounts[index] = _accounts[index].copyWith(saleOptions: normalized);
+    notifyListeners();
+    return true;
+  }
+
   /// Adds face-value balance. The provider cost is calculated using the
   /// company's commission, e.g. $20 at 5% costs $19 and leaves $20 available.
   bool registerPurchase({
@@ -119,42 +171,74 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     return true;
   }
 
-  /// Consumes face-value balance. The customer pays exactly [amount].
-  /// Profit is the configured commission percentage; no markup is added.
+  /// Consumes face-value balance. Negative balance is intentionally allowed,
+  /// matching the physical-product inventory behavior.
   bool registerSale({
     required String accountId,
     required double amount,
     required String category,
     String description = '',
   }) {
-    if (amount <= 0) return false;
+    return registerSales(
+      accountId: accountId,
+      sales: [
+        ElectronicBalanceSale(
+          amount: amount,
+          quantity: 1,
+          category: category,
+          description: description,
+        ),
+      ],
+    );
+  }
+
+  /// Registers several selected electronic sales in one operation.
+  /// Each selected option remains an individual transaction, while the
+  /// account balance is reduced by the combined face value.
+  bool registerSales({
+    required String accountId,
+    required List<ElectronicBalanceSale> sales,
+  }) {
+    if (sales.isEmpty) return false;
 
     final index = _accounts.indexWhere((account) => account.id == accountId);
     if (index < 0) return false;
 
     final account = _accounts[index];
-    if (amount > account.balance) return false;
+    final now = DateTime.now();
+    final pending = <ElectronicBalanceTransaction>[];
+    var totalAmount = 0.0;
 
-    final profit = amount * account.commissionMultiplier;
-    final providerCost = amount - profit;
+    for (final sale in sales) {
+      if (sale.amount <= 0 || sale.quantity <= 0) return false;
+
+      final category = sale.category.trim();
+      if (!{'Saldo', 'Internet', 'Llamada'}.contains(category)) return false;
+
+      final amount = sale.amount * sale.quantity;
+      final profit = amount * account.commissionMultiplier;
+      final providerCost = amount - profit;
+      totalAmount += amount;
+
+      pending.add(
+        ElectronicBalanceTransaction(
+          id: _newId(),
+          accountId: accountId,
+          type: ElectronicBalanceTransactionType.sale,
+          amount: amount,
+          providerCost: providerCost,
+          profit: profit,
+          category: category,
+          description: sale.description.trim(),
+          createdAt: now,
+        ),
+      );
+    }
 
     _accounts[index] = account.copyWith(
-      balance: account.balance - amount,
+      balance: account.balance - totalAmount,
     );
-
-    _transactions.add(
-      ElectronicBalanceTransaction(
-        id: _newId(),
-        accountId: accountId,
-        type: ElectronicBalanceTransactionType.sale,
-        amount: amount,
-        providerCost: providerCost,
-        profit: profit,
-        category: category.trim().isEmpty ? 'Saldo' : category.trim(),
-        description: description.trim(),
-        createdAt: DateTime.now(),
-      ),
-    );
+    _transactions.addAll(pending);
 
     notifyListeners();
     return true;
@@ -195,6 +279,19 @@ class ElectronicBalanceProvider extends ChangeNotifier {
         .where((transaction) => transaction.accountId == accountId)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  int _categoryOrder(String category) {
+    switch (category) {
+      case 'Saldo':
+        return 0;
+      case 'Internet':
+        return 1;
+      case 'Llamada':
+        return 2;
+      default:
+        return 99;
+    }
   }
 
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
