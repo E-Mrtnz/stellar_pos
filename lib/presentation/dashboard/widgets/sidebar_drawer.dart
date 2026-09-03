@@ -77,16 +77,21 @@ class SidebarDrawer extends StatelessWidget {
                     ),
                     _buildSidebarItem(
                       2,
+                      Icons.sim_card_outlined,
+                      AppStrings.navElectronicBalance,
+                    ),
+                    _buildSidebarItem(
+                      3,
                       Icons.bar_chart_rounded,
                       AppStrings.navStats,
                     ),
                     _buildSidebarItem(
-                      3,
+                      4,
                       Icons.shopping_bag_rounded,
                       AppStrings.navPurchases,
                     ),
                     _buildSidebarItem(
-                      4,
+                      5,
                       Icons.local_shipping_outlined,
                       AppStrings.navProviders,
                     ),
@@ -101,7 +106,7 @@ class SidebarDrawer extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               _buildSidebarItem(
-                5,
+                6,
                 Icons.settings_rounded,
                 AppStrings.navSettings,
               ),
