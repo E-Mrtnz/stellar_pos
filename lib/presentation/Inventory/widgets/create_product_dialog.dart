@@ -12,6 +12,7 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/providers/providers_provider.dart';
 
 class CreateProductDialog extends StatefulWidget {
   final Map<String, dynamic>? product;
@@ -43,11 +44,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   int _maxStock = 0;
 
   String? _selectedTag;
-  String? _selectedDept;
+  String? _selectedDistributor;
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
-  List<String> get _departments =>
-      context.watch<CatalogProvider>().departments;
+  List<String> get _distributors =>
+      context.watch<ProvidersProvider>().distributors;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
@@ -93,7 +94,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     _barcodeController.text = product?['barcode']?.toString() ?? '';
 
     _selectedTag = _nullableString(product?['category']);
-    _selectedDept = _nullableString(product?['department']);
+    _selectedDistributor = _nullableString(product?['department']);
     _imageData = _readImageData(product?['imageData']);
 
     _setupFocusSelection(_stockFocusNode, _stockController);
@@ -205,9 +206,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     try {
       List<int>? bytes;
 
-      // Web uses a browser file input directly. Native platforms keep using
-      // image_picker so iOS/Android/macOS continue using their native image
-      // library/file selection UI.
       if (kIsWeb) {
         final result = await FilePicker.pickFiles(
           type: FileType.image,
@@ -256,7 +254,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       id: widget.product?['id']?.toString() ?? '',
       name: _nameController.text.trim(),
       unit: _unitController.text.trim(),
-      department: _selectedDept ?? '',
+      department: _selectedDistributor ?? '',
       cost: _parsePrice(_buyPriceController.text),
       price: _parsePrice(_sellPriceController.text),
       stock: _readInt(_stockController.text),
@@ -418,10 +416,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                         controller: _minStockController,
                         focusNode: _minStockFocusNode,
                         isInvalid: _isInvalid('minStock'),
-                        onIncrement: () =>
-                            _updateMinStock(_minStock + 1),
-                        onDecrement: () =>
-                            _updateMinStock(_minStock - 1),
+                        onIncrement: () => _updateMinStock(_minStock + 1),
+                        onDecrement: () => _updateMinStock(_minStock - 1),
                         onChanged: (value) {
                           _minStock = _readInt(value);
                           _clearFieldError('minStock');
@@ -432,10 +428,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                         controller: _maxStockController,
                         focusNode: _maxStockFocusNode,
                         isInvalid: _isInvalid('maxStock'),
-                        onIncrement: () =>
-                            _updateMaxStock(_maxStock + 1),
-                        onDecrement: () =>
-                            _updateMaxStock(_maxStock - 1),
+                        onIncrement: () => _updateMaxStock(_maxStock + 1),
+                        onDecrement: () => _updateMaxStock(_maxStock - 1),
                         onChanged: (value) {
                           _maxStock = _readInt(value);
                           _clearFieldError('maxStock');
@@ -466,13 +460,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                _isEditing
-                                    ? 'Editar Producto'
-                                    : 'Nuevo Producto',
+                                _isEditing ? 'Editar Producto' : 'Nuevo Producto',
                                 style: const TextStyle(
                                   color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
@@ -504,8 +495,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                   _nameController,
                                   AppStrings.productNameHint,
                                   isInvalid: _isInvalid('name'),
-                                  onChanged: (_) =>
-                                      _clearFieldError('name'),
+                                  onChanged: (_) => _clearFieldError('name'),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -515,8 +505,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                   _unitController,
                                   'Cant.',
                                   isInvalid: _isInvalid('unit'),
-                                  onChanged: (_) =>
-                                      _clearFieldError('unit'),
+                                  onChanged: (_) => _clearFieldError('unit'),
                                 ),
                               ),
                             ],
@@ -585,10 +574,13 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                               Expanded(
                                 child: _buildDropdown(
                                   hint: AppStrings.selectDeptHint,
-                                  value: _selectedDept,
-                                  items: _departments,
+                                  value: _distributors.contains(_selectedDistributor)
+                                      ? _selectedDistributor
+                                      : null,
+                                  items: _distributors,
                                   onChanged: (value) {
-                                    setState(() => _selectedDept = value);
+                                    setState(() =>
+                                        _selectedDistributor = value);
                                   },
                                 ),
                               ),
