@@ -150,14 +150,14 @@ class AppStrings {
   static const String navInventory = 'Inventario';
   static const String navStats = 'Estadísticas';
   static const String navPurchases = 'Compras';
+  static const String navProviders = 'Proveedores';
   static const String navSettings = 'Ajustes';
 
   static const String searchPlaceholder = 'Buscar producto...';
 
   static const String salesSummaryTitle = 'Resumen Ventas';
   static const String ticketNumberLabel = 'Nº Factura:';
-  static const String emptyCartMessage =
-      'No hay productos seleccionados';
+  static const String emptyCartMessage = 'No hay productos seleccionados';
 
   static const String createSaleButton = 'Crear Venta';
 
@@ -222,7 +222,8 @@ class AppNavigation {
   static const int inventory = 1;
   static const int stats = 2;
   static const int purchases = 3;
-  static const int settings = 4;
+  static const int providers = 4;
+  static const int settings = 5;
 }
 
 class AppPaymentMethods {
