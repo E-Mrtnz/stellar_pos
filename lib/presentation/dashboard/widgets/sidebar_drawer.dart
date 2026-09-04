@@ -67,9 +67,15 @@ class SidebarDrawer extends StatelessWidget {
               const SizedBox(height: 30),
               Expanded(
                 child: ListView(
+                  scrollDirection: Axis.vertical,
+                  physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSidebarItem(0, Icons.point_of_sale_rounded, AppStrings.navHome),
+                    _buildSidebarItem(
+                      0,
+                      Icons.point_of_sale_rounded,
+                      AppStrings.navHome,
+                    ),
                     _buildSidebarItem(
                       1,
                       Icons.shopping_bag_rounded,
@@ -97,6 +103,17 @@ class SidebarDrawer extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppColors.border,
+              ),
+              _buildSidebarItem(
+                AppNavigation.settings,
+                Icons.settings_outlined,
+                AppStrings.navSettings,
               ),
               const SizedBox(height: 16),
             ],
