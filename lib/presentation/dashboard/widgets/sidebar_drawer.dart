@@ -69,16 +69,16 @@ class SidebarDrawer extends StatelessWidget {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSidebarItem(0, Icons.home_rounded, AppStrings.navHome),
+                    _buildSidebarItem(0, Icons.point_of_sale_rounded, AppStrings.navHome),
                     _buildSidebarItem(
                       1,
-                      Icons.inventory_2_rounded,
-                      AppStrings.navInventory,
+                      Icons.shopping_bag_rounded,
+                      AppStrings.navPurchases,
                     ),
                     _buildSidebarItem(
                       2,
-                      Icons.sim_card_outlined,
-                      AppStrings.navElectronicBalance,
+                      Icons.receipt_long_outlined,
+                      AppStrings.navDebts,
                     ),
                     _buildSidebarItem(
                       3,
@@ -87,28 +87,16 @@ class SidebarDrawer extends StatelessWidget {
                     ),
                     _buildSidebarItem(
                       4,
-                      Icons.shopping_bag_rounded,
-                      AppStrings.navPurchases,
-                    ),
-                    _buildSidebarItem(
-                      5,
                       Icons.local_shipping_outlined,
                       AppStrings.navProviders,
                     ),
+                    _buildSidebarItem(
+                      5,
+                      Icons.inventory_2_rounded,
+                      AppStrings.navInventory,
+                    ),
                   ],
                 ),
-              ),
-              const Divider(
-                indent: 16,
-                endIndent: 16,
-                height: 1,
-                color: AppColors.border,
-              ),
-              const SizedBox(height: 10),
-              _buildSidebarItem(
-                6,
-                Icons.settings_rounded,
-                AppStrings.navSettings,
               ),
               const SizedBox(height: 16),
             ],
