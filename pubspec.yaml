@@ -14,6 +14,8 @@ dependencies:
   image_picker: ^1.2.2
   file_picker: ^11.0.3
   flutter_colorpicker: ^1.1.0
+  print_bluetooth_thermal: 1.2.1
+  esc_pos_utils_plus: ^2.0.4
 
 dev_dependencies:
   flutter_test:
