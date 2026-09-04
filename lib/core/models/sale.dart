@@ -95,13 +95,10 @@ class SaleRecord {
 
   SaleTicketData toTicketData() {
     final date = '${createdAt.day.toString().padLeft(2, '0')}/'
-        '${createdAt.month.toString().padLeft(2, '0')}/'
-        '${createdAt.year}';
+        '${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
     final hour = createdAt.hour % 12 == 0 ? 12 : createdAt.hour % 12;
     final period = createdAt.hour >= 12 ? 'PM' : 'AM';
-    final time = '${hour.toString().padLeft(2, '0')}: '
-        '${createdAt.minute.toString().padLeft(2, '0')} $period'
-        .replaceFirst(': ', ':');
+    final time = '${hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} $period';
 
     return SaleTicketData(
       ticketNumber: ticketNumber,
@@ -121,6 +118,7 @@ class SaleRecord {
           .toList(growable: false),
       subtotal: subtotal,
       discount: discountAmount,
+      cardFee: cardFeeAmount,
       total: total,
       paymentMethod: paymentMethod,
       received: received,
