@@ -67,69 +67,78 @@ class SalesSummaryPanel extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(AppStrings.salesSummaryTitle, style: AppTextStyles.sectionTitle),
-              Icon(Icons.shopping_cart_outlined, color: AppColors.primary, size: 20),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Text(AppStrings.ticketNumberLabel, style: AppTextStyles.ticketLabel),
-                  SizedBox(width: 4),
-                  Text('#000102', style: AppTextStyles.ticketValue),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(AppStrings.salesSummaryTitle, style: AppTextStyles.sectionTitle),
+                      Icon(Icons.shopping_cart_outlined, color: AppColors.primary, size: 20),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Text(AppStrings.ticketNumberLabel, style: AppTextStyles.ticketLabel),
+                          SizedBox(width: 4),
+                          Text('#000102', style: AppTextStyles.ticketValue),
+                        ],
+                      ),
+                      if (cartQuantities.isNotEmpty)
+                        SizedBox(
+                          height: 26,
+                          child: OutlinedButton.icon(
+                            onPressed: onClearCart,
+                            icon: const Icon(Icons.delete_sweep_outlined, size: 14, color: AppColors.dangerRed),
+                            label: const Text('Borrar todo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.dangerRed)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                              side: BorderSide(color: AppColors.dangerRed.withAlpha(120), width: 1),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              backgroundColor: Colors.transparent,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Divider(color: AppColors.border, height: 1),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: cartQuantities.isEmpty
+                        ? const Center(
+                            child: Text(AppStrings.emptyCartMessage, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          )
+                        : ListView(
+                            padding: EdgeInsets.zero,
+                            children: cartQuantities.entries.map((entry) {
+                              final product = products.firstWhere((p) => p['id'] == entry.key);
+                              return _buildCartItemTile(
+                                productId: product['id'] as String,
+                                name: product['name'] as String,
+                                unit: product['unit'] as String,
+                                unitPrice: product['price'] as double,
+                                imageData: product['imageData']?.toString() ?? '',
+                                quantity: entry.value,
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
-              if (cartQuantities.isNotEmpty)
-                SizedBox(
-                  height: 26,
-                  child: OutlinedButton.icon(
-                    onPressed: onClearCart,
-                    icon: const Icon(Icons.delete_sweep_outlined, size: 14, color: AppColors.dangerRed),
-                    label: const Text('Borrar todo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.dangerRed)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      side: BorderSide(color: AppColors.dangerRed.withAlpha(120), width: 1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      backgroundColor: Colors.transparent,
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
-          const SizedBox(height: 6),
-          const Divider(color: AppColors.border, height: 1),
-          const SizedBox(height: 6),
-          Expanded(
-            child: cartQuantities.isEmpty
-                ? const Center(
-                    child: Text(AppStrings.emptyCartMessage, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  )
-                : ListView(
-                    padding: EdgeInsets.zero,
-                    children: cartQuantities.entries.map((entry) {
-                      final product = products.firstWhere((p) => p['id'] == entry.key);
-                      return _buildCartItemTile(
-                        productId: product['id'] as String,
-                        name: product['name'] as String,
-                        unit: product['unit'] as String,
-                        unitPrice: product['price'] as double,
-                        imageData: product['imageData']?.toString() ?? '',
-                        quantity: entry.value,
-                      );
-                    }).toList(),
-                  ),
-          ),
-          const SizedBox(height: 8),
           _buildPaymentSection(context),
         ],
       ),
@@ -138,7 +147,6 @@ class SalesSummaryPanel extends StatelessWidget {
 
   Widget _buildPaymentSection(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(-12, 0, -12, -12),
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 12),
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
