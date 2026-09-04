@@ -87,11 +87,11 @@ class TicketGenerator {
     bytes.addAll(generator.feed(1));
     bytes.addAll(
       generator.row([
-        _center('CANT', 2),
-        _left('DESCRIPCION', 5),
-        _right('P.UNIT', 2),
-        _right('DESC.', 1),
-        _right('TOTAL', 2),
+        _center('CANT', 1),
+        _left('DESCRIPCION', 4),
+        _right('P.U', 2),
+        _right('DCTO', 2),
+        _right('TOTAL', 3),
       ]),
     );
     bytes.addAll(generator.hr(ch: '-'));
@@ -99,11 +99,11 @@ class TicketGenerator {
     for (final item in ticket.items) {
       bytes.addAll(
         generator.row([
-          _center('${item.quantity}', 2),
-          _left(item.description, 5),
+          _center('${item.quantity}', 1),
+          _left(item.description, 4),
           _right(_money(item.unitPrice), 2),
-          _right(_money(item.discount), 1),
-          _right(_money(item.total), 2),
+          _right(_money(item.discount), 2),
+          _right(_money(item.total), 3),
         ]),
       );
     }
