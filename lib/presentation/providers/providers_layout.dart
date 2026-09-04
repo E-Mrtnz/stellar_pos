@@ -6,6 +6,8 @@ import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/presentation/providers/widgets/create_provider_dialog.dart';
 import 'package:stellar_pos/presentation/providers/widgets/manage_distributors_dialog.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
 class ProvidersLayout extends StatefulWidget {
   const ProvidersLayout({super.key});
@@ -35,6 +37,23 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
 
   Future<void> _editRoute(ProviderRoute route) async {
     await CreateProviderDialog.show(context, route: route);
+  }
+
+  Future<void> _deleteRoute(ProviderRoute route) async {
+    final confirmed = await AppConfirmDialog.delete(
+      context,
+      itemName: 'esta ruta',
+    );
+    if (!confirmed || !mounted) return;
+
+    context.read<ProvidersProvider>().removeRoute(route.id);
+
+    AppAlert.show(
+      context,
+      'La ruta se eliminó correctamente.',
+      title: 'Ruta eliminada',
+      type: AppAlertType.success,
+    );
   }
 
   Future<void> _manageDistributors() async {
@@ -332,6 +351,13 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             onPressed: () => _editRoute(route),
             icon: const Icon(Icons.edit_outlined, size: 17),
             color: AppColors.primary,
+            visualDensity: VisualDensity.compact,
+          ),
+          IconButton(
+            tooltip: 'Eliminar ruta',
+            onPressed: () => _deleteRoute(route),
+            icon: const Icon(Icons.delete_outline, size: 18),
+            color: AppColors.dangerRed,
             visualDensity: VisualDensity.compact,
           ),
         ],
