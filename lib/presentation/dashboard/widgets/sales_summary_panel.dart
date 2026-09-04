@@ -138,11 +138,15 @@ class SalesSummaryPanel extends StatelessWidget {
 
   Widget _buildPaymentSection(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
-      decoration: BoxDecoration(
+      margin: const EdgeInsets.fromLTRB(-12, 0, -12, -12),
+      padding: const EdgeInsets.fromLTRB(22, 10, 22, 12),
+      decoration: const BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border(top: BorderSide(color: AppColors.border)),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,10 +243,7 @@ class SalesSummaryPanel extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 8),
-          Container(
-            height: 1,
-            color: AppColors.border,
-          ),
+          Container(height: 1, color: AppColors.border),
           const SizedBox(height: 7),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
