@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class CreateProviderDialog extends StatefulWidget {
   final ProviderRoute? route;
@@ -193,8 +194,11 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    AppAlert.show(
+      context,
+      message,
+      title: 'Revisa los datos',
+      type: AppAlertType.warning,
     );
   }
 
