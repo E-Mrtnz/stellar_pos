@@ -111,6 +111,9 @@ class TicketGenerator {
     bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(_summary(generator, 'Subtotal', ticket.subtotal));
     bytes.addAll(_summary(generator, 'Descuento', ticket.discount));
+    if (ticket.cardFee > 0) {
+      bytes.addAll(_summary(generator, 'Cargo tarjeta', ticket.cardFee));
+    }
     bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(
       generator.row([
@@ -126,11 +129,12 @@ class TicketGenerator {
         styles: const PosStyles(bold: true, codeTable: 'CP1252'),
       ),
     );
-    bytes.addAll(_summary(generator, 'Recibido', ticket.received));
-    bytes.addAll(_summary(generator, 'Cambio', ticket.change));
+    if (ticket.paymentMethod.toUpperCase() == 'EFECTIVO') {
+      bytes.addAll(_summary(generator, 'Recibido', ticket.received));
+      bytes.addAll(_summary(generator, 'Cambio', ticket.change));
+    }
 
     bytes.addAll(generator.feed(1));
-    bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(
       generator.text(
         'GRACIAS POR SU COMPRA',
@@ -143,11 +147,19 @@ class TicketGenerator {
       ),
     );
 
-    bytes.addAll(generator.text(
-      '#${ticket.ticketNumber}',
-      styles: const PosStyles(align: PosAlign.center, codeTable: 'CP1252'),
-      linesAfter: 1,
-    ));
+    // El codigo de barras representa exclusivamente el numero de ticket.
+    final barcodeData = ticket.ticketNumber.codeUnits;
+    if (barcodeData.isNotEmpty) {
+      bytes.addAll(
+        generator.barcode(
+          Barcode.code128(barcodeData),
+          width: 2,
+          height: 60,
+          textPos: BarcodeText.below,
+          align: PosAlign.center,
+        ),
+      );
+    }
 
     bytes.addAll(generator.feed(3));
     bytes.addAll(generator.cut());
