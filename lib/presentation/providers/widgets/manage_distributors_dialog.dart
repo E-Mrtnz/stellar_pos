@@ -5,6 +5,7 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
 class ManageDistributorsDialog extends StatefulWidget {
   const ManageDistributorsDialog({super.key});
@@ -36,16 +37,25 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     final value = _controller.text.trim();
     if (value.isEmpty) return;
 
     final providers = context.read<ProvidersProvider>();
     final catalog = context.read<CatalogProvider>();
+    final isEditing = _editingName != null;
 
-    final success = _editingName == null
-        ? providers.addDistributor(value)
-        : providers.updateDistributor(_editingName!, value);
+    if (isEditing) {
+      final confirmed = await AppConfirmDialog.update(
+        context,
+        itemName: 'esta distribuidora',
+      );
+      if (!confirmed || !mounted) return;
+    }
+
+    final success = isEditing
+        ? providers.updateDistributor(_editingName!, value)
+        : providers.addDistributor(value);
 
     if (!success) {
       AppAlert.show(
@@ -57,12 +67,21 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
       return;
     }
 
-    if (_editingName == null) {
+    if (!isEditing) {
       catalog.addDistributor(value);
     } else {
       catalog.removeDistributor(_editingName!);
       catalog.addDistributor(value);
     }
+
+    AppAlert.show(
+      context,
+      isEditing
+          ? 'La distribuidora se actualizó correctamente.'
+          : 'La distribuidora se creó correctamente.',
+      title: isEditing ? 'Distribuidora actualizada' : 'Distribuidora creada',
+      type: AppAlertType.success,
+    );
 
     _controller.clear();
     setState(() => _editingName = null);
@@ -85,7 +104,13 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     });
   }
 
-  void _delete(String name) {
+  Future<void> _delete(String name) async {
+    final confirmed = await AppConfirmDialog.delete(
+      context,
+      itemName: 'esta distribuidora',
+    );
+    if (!confirmed || !mounted) return;
+
     final success = context.read<ProvidersProvider>().removeDistributor(name);
     if (!success) {
       AppAlert.show(
@@ -102,6 +127,13 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     if (_editingName?.toLowerCase() == name.toLowerCase()) {
       _cancelEdit();
     }
+
+    AppAlert.show(
+      context,
+      'La distribuidora se eliminó correctamente.',
+      title: 'Distribuidora eliminada',
+      type: AppAlertType.success,
+    );
   }
 
   @override
