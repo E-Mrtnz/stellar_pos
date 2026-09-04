@@ -6,6 +6,7 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
 class CreateProviderDialog extends StatefulWidget {
   final ProviderRoute? route;
@@ -143,7 +144,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
     });
   }
 
-  void _save() {
+  Future<void> _save() async {
     final provider = context.read<ProvidersProvider>();
     final isEditing = widget.route != null;
 
@@ -157,30 +158,56 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
       return;
     }
 
-    final success = isEditing
-        ? provider.updateRoute(
-            id: widget.route!.id,
-            type: _selectedType!,
-            distributorName: _selectedDistributor!,
-            weekdays: _selectedWeekdays.toList(),
-            colorValue: _selectedColor.value,
-          )
-        : provider.addRoute(
-            type: _selectedType!,
-            distributorName: _selectedDistributor!,
-            weekdays: _selectedWeekdays.toList(),
-            colorValue: _selectedColor.value,
-          );
-
-    if (!success) {
-      _showMessage(
-        isEditing
-            ? 'No se pudo actualizar la ruta. Revisa si ya existe otra ruta para esa distribuidora y tipo.'
-            : 'No se pudo asignar la ruta.',
+    if (isEditing) {
+      final confirmed = await AppConfirmDialog.update(
+        context,
+        itemName: 'esta ruta',
       );
+      if (!confirmed || !mounted) return;
+
+      final success = provider.updateRoute(
+        id: widget.route!.id,
+        type: _selectedType!,
+        distributorName: _selectedDistributor!,
+        weekdays: _selectedWeekdays.toList(),
+        colorValue: _selectedColor.value,
+      );
+
+      if (!success) {
+        _showMessage(
+          'No se pudo actualizar la ruta. Revisa si ya existe otra ruta para esa distribuidora y tipo.',
+        );
+        return;
+      }
+
+      AppAlert.show(
+        context,
+        'La ruta se actualizó correctamente.',
+        title: 'Ruta actualizada',
+        type: AppAlertType.success,
+      );
+      Navigator.of(context).pop();
       return;
     }
 
+    final success = provider.addRoute(
+      type: _selectedType!,
+      distributorName: _selectedDistributor!,
+      weekdays: _selectedWeekdays.toList(),
+      colorValue: _selectedColor.value,
+    );
+
+    if (!success) {
+      _showMessage('No se pudo asignar la ruta.');
+      return;
+    }
+
+    AppAlert.show(
+      context,
+      'La ruta se asignó correctamente.',
+      title: 'Ruta creada',
+      type: AppAlertType.success,
+    );
     _resetForm();
   }
 
