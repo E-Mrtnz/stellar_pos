@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
 class CatalogManagementDialog extends StatefulWidget {
   final bool isDepartment;
@@ -57,7 +59,42 @@ class _CatalogManagementDialogState
       catalog.addTag(value);
     }
 
+    AppAlert.show(
+      context,
+      widget.isDepartment
+          ? 'El departamento se creó correctamente.'
+          : 'La etiqueta se creó correctamente.',
+      title: widget.isDepartment ? 'Departamento creado' : 'Etiqueta creada',
+      type: AppAlertType.success,
+    );
+
     _controller.clear();
+  }
+
+  Future<void> _delete(String value) async {
+    final confirmed = await AppConfirmDialog.delete(
+      context,
+      itemName: widget.isDepartment
+          ? 'este departamento'
+          : 'esta etiqueta',
+    );
+    if (!confirmed || !mounted) return;
+
+    final catalog = context.read<CatalogProvider>();
+    if (widget.isDepartment) {
+      catalog.removeDepartment(value);
+    } else {
+      catalog.removeTag(value);
+    }
+
+    AppAlert.show(
+      context,
+      widget.isDepartment
+          ? 'El departamento se eliminó correctamente.'
+          : 'La etiqueta se eliminó correctamente.',
+      title: widget.isDepartment ? 'Departamento eliminado' : 'Etiqueta eliminada',
+      type: AppAlertType.success,
+    );
   }
 
   @override
@@ -105,9 +142,7 @@ class _CatalogManagementDialogState
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
           Row(
             children: [
               Expanded(
@@ -133,9 +168,7 @@ class _CatalogManagementDialogState
                   ),
                 ),
               ),
-
               const SizedBox(width: 8),
-
               IconButton(
                 onPressed: _save,
                 tooltip: 'Agregar',
@@ -147,9 +180,7 @@ class _CatalogManagementDialogState
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
           if (values.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18),
@@ -196,13 +227,7 @@ class _CatalogManagementDialogState
                         size: 19,
                         color: AppColors.dangerRed,
                       ),
-                      onPressed: () {
-                        if (widget.isDepartment) {
-                          catalog.removeDepartment(value);
-                        } else {
-                          catalog.removeTag(value);
-                        }
-                      },
+                      onPressed: () => _delete(value),
                     ),
                   );
                 },
