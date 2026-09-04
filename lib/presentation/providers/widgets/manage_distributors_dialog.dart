@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class ManageDistributorsDialog extends StatefulWidget {
   const ManageDistributorsDialog({super.key});
@@ -47,11 +48,11 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
         : providers.updateDistributor(_editingName!, value);
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ya existe una distribuidora con ese nombre.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppAlert.show(
+        context,
+        'Ya existe una distribuidora con ese nombre.',
+        title: 'No se pudo guardar',
+        type: AppAlertType.warning,
       );
       return;
     }
@@ -87,13 +88,11 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
   void _delete(String name) {
     final success = context.read<ProvidersProvider>().removeDistributor(name);
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No puedes eliminar esta distribuidora porque tiene rutas asignadas.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppAlert.show(
+        context,
+        'No puedes eliminar esta distribuidora porque tiene rutas asignadas.',
+        title: 'No se puede eliminar',
+        type: AppAlertType.warning,
       );
       return;
     }
