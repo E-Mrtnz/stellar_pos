@@ -129,213 +129,150 @@ class SalesSummaryPanel extends StatelessWidget {
                     }).toList(),
                   ),
           ),
+          const SizedBox(height: 8),
+          _buildPaymentSection(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSection(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Detalles de pago', style: AppTextStyles.sectionTitle),
+              ),
+              Text(
+                _paymentMethodLabel,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildPaymentMethod(0, Icons.payments_outlined, 'Efectivo'),
+              const SizedBox(width: 5),
+              _buildPaymentMethod(1, Icons.credit_card_outlined, 'Tarjeta'),
+              const SizedBox(width: 5),
+              _buildPaymentMethod(2, Icons.account_balance_outlined, 'Transferencia'),
+              const SizedBox(width: 5),
+              _buildPaymentMethod(3, Icons.pending_actions_outlined, 'Fiado'),
+            ],
+          ),
+          const SizedBox(height: 9),
+          if (selectedPaymentMethod == AppPaymentMethods.credit) ...[
+            _buildDebtorSelector(),
+            const SizedBox(height: 8),
+          ],
+          _buildSummaryLine('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              color: AppColors.inputBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Expanded(
+                child: Text('Descuento', style: AppTextStyles.ticketLabel),
+              ),
+              _buildCompactInput(
+                controller: discountPercentController,
+                width: 52,
+                prefix: '% ',
+                hint: '0',
+                onChanged: onDiscountPercentChanged,
+              ),
+              const SizedBox(width: 5),
+              _buildCompactInput(
+                controller: discountAmountController,
+                width: 64,
+                prefix: '\$ ',
+                hint: '0.00',
+                onChanged: onDiscountAmountChanged,
+              ),
+            ],
+          ),
+          if (selectedPaymentMethod == AppPaymentMethods.card) ...[
+            const SizedBox(height: 6),
+            _buildSummaryLine(
+              'Cargo tarjeta',
+              '\$${cardFeeAmount.toStringAsFixed(2)}',
+              muted: true,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+          ],
+          if (selectedPaymentMethod == AppPaymentMethods.cash) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text('Detalles de Pago', style: AppTextStyles.sectionTitle),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    _buildPaymentCardIcon(0, Icons.payments_outlined, 'Efectivo'),
-                    const SizedBox(width: 4),
-                    _buildPaymentCardIcon(1, Icons.credit_card_outlined, 'Tarjeta'),
-                    const SizedBox(width: 4),
-                    _buildPaymentCardIcon(2, Icons.account_balance_outlined, 'Transferencia'),
-                    const SizedBox(width: 4),
-                    _buildPaymentCardIcon(3, Icons.pending_actions_outlined, 'Fiado'),
-                  ],
+                const Expanded(
+                  child: Text('Recibido', style: AppTextStyles.ticketLabel),
                 ),
-                const SizedBox(height: 8),
-                if (selectedPaymentMethod == 3) ...[
-                  if (debtorsList.isEmpty)
-                    Container(
-                      height: 34,
-                      width: double.infinity,
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBackground,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Text(
-                        'No hay clientes registrados',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                    )
-                  else
-                    DropdownButtonFormField<String?>(
-                      initialValue: debtorsList.contains(selectedDebtor) ? selectedDebtor : null,
-                      hint: const Text(
-                        'Seleccionar un cliente',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        filled: true,
-                        fillColor: AppColors.cardBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                      ),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text(
-                            'Deseleccionar cliente',
-                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                          ),
-                        ),
-                        ...debtorsList.map((String value) {
-                          return DropdownMenuItem<String?>(
-                            value: value,
-                            child: Text(value, style: const TextStyle(fontSize: 11)),
-                          );
-                        }),
-                      ],
-                      onChanged: onDebtorChanged,
-                    ),
-                  const SizedBox(height: 6),
-                ],
-                _buildSummaryRow('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Text('Descuento', style: AppTextStyles.ticketLabel),
-                    const Spacer(),
-                    SizedBox(
-                      width: 56,
-                      height: 24,
-                      child: TextField(
-                        controller: discountPercentController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        style: const TextStyle(fontSize: 10),
-                        decoration: InputDecoration(
-                          prefixText: '% ',
-                          hintText: '0',
-                          prefixStyle: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                          filled: true,
-                          fillColor: AppColors.cardBackground,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(4),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                        ),
-                        onChanged: onDiscountPercentChanged,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    SizedBox(
-                      width: 56,
-                      height: 24,
-                      child: TextField(
-                        controller: discountAmountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        style: const TextStyle(fontSize: 10),
-                        decoration: InputDecoration(
-                          hintText: '0.00',
-                          prefixText: '\$ ',
-                          prefixStyle: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                          filled: true,
-                          fillColor: AppColors.cardBackground,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(4),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                        ),
-                        onChanged: onDiscountAmountChanged,
-                      ),
-                    ),
-                  ],
+                _buildCompactInput(
+                  controller: cashReceivedController,
+                  width: 72,
+                  prefix: '\$ ',
+                  hint: '0.00',
+                  onChanged: onCashReceivedChanged,
                 ),
-                const SizedBox(height: 4),
-                if (selectedPaymentMethod == 1) ...[
-                  _buildSummaryRow('Tarifa Tarjeta (5.57%)', '\$${cardFeeAmount.toStringAsFixed(2)}'),
-                  const SizedBox(height: 4),
-                ],
-                if (selectedPaymentMethod == 0) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Cambio:', style: AppTextStyles.ticketLabel),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 58,
-                            height: 24,
-                            child: TextField(
-                              controller: cashReceivedController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              style: const TextStyle(fontSize: 10),
-                              decoration: InputDecoration(
-                                prefixText: '\$ ',
-                                hintText: '0.00',
-                                prefixStyle: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                filled: true,
-                                fillColor: AppColors.cardBackground,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                  borderSide: const BorderSide(color: AppColors.border),
-                                ),
-                              ),
-                              onChanged: onCashReceivedChanged,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text('\$${change.toStringAsFixed(2)}', style: AppTextStyles.changeValue),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                const Divider(color: AppColors.border, height: 1),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total', style: AppTextStyles.totalLabel),
-                    Text('\$${total.toStringAsFixed(2)}', style: AppTextStyles.totalValue),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  height: 34,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.cardBackground,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Text(
-                      AppStrings.createSaleButton,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                  ),
+                const SizedBox(width: 8),
+                const Text('Cambio', style: AppTextStyles.ticketLabel),
+                const SizedBox(width: 5),
+                Text(
+                  '\$${change.toStringAsFixed(2)}',
+                  style: AppTextStyles.changeValue,
                 ),
               ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Container(
+            height: 1,
+            color: AppColors.border,
+          ),
+          const SizedBox(height: 7),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Expanded(
+                child: Text('Total', style: AppTextStyles.totalLabel),
+              ),
+              Text(
+                '\$${total.toStringAsFixed(2)}',
+                style: AppTextStyles.totalValue.copyWith(fontSize: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 36,
+            child: ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text(
+                AppStrings.createSaleButton,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
             ),
           ),
         ],
@@ -343,11 +280,26 @@ class SalesSummaryPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentCardIcon(int index, IconData icon, String tooltip) {
+  String get _paymentMethodLabel {
+    switch (selectedPaymentMethod) {
+      case AppPaymentMethods.card:
+        return AppStrings.cardPayment;
+      case AppPaymentMethods.transfer:
+        return AppStrings.transferPayment;
+      case AppPaymentMethods.credit:
+        return AppStrings.creditPayment;
+      case AppPaymentMethods.cash:
+      default:
+        return AppStrings.cashPayment;
+    }
+  }
+
+  Widget _buildPaymentMethod(int index, IconData icon, String label) {
     final isSelected = selectedPaymentMethod == index;
+
     return Expanded(
       child: Tooltip(
-        message: tooltip,
+        message: label,
         child: InkWell(
           onTap: () => onPaymentMethodChanged(index),
           borderRadius: BorderRadius.circular(8),
@@ -355,11 +307,13 @@ class SalesSummaryPanel extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             height: 34,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary.withAlpha(20) : AppColors.cardBackground,
+              color: isSelected
+                  ? AppColors.primary.withAlpha(16)
+                  : AppColors.inputBackground,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isSelected ? AppColors.primary : AppColors.border,
-                width: isSelected ? 1.5 : 1.0,
+                width: isSelected ? 1.4 : 1,
               ),
             ),
             child: Icon(
@@ -373,13 +327,115 @@ class SalesSummaryPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value) {
+  Widget _buildDebtorSelector() {
+    if (debtorsList.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 34,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(
+          color: AppColors.inputBackground,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Text(
+          'No hay clientes registrados',
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+      );
+    }
+
+    return DropdownButtonFormField<String?>(
+      initialValue: debtorsList.contains(selectedDebtor) ? selectedDebtor : null,
+      hint: const Text(
+        'Seleccionar un cliente',
+        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      ),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        filled: true,
+        fillColor: AppColors.inputBackground,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+      ),
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text(
+            'Deseleccionar cliente',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+        ),
+        ...debtorsList.map(
+          (value) => DropdownMenuItem<String?>(
+            value: value,
+            child: Text(value, style: const TextStyle(fontSize: 11)),
+          ),
+        ),
+      ],
+      onChanged: onDebtorChanged,
+    );
+  }
+
+  Widget _buildSummaryLine(String label, String value, {bool muted = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTextStyles.ticketLabel),
-        Text(value, style: AppTextStyles.ticketValue),
+        Text(
+          label,
+          style: muted
+              ? AppTextStyles.ticketLabel.copyWith(color: AppColors.textMuted)
+              : AppTextStyles.ticketLabel,
+        ),
+        Text(
+          value,
+          style: muted
+              ? AppTextStyles.ticketValue.copyWith(color: AppColors.textSecondary)
+              : AppTextStyles.ticketValue,
+        ),
       ],
+    );
+  }
+
+  Widget _buildCompactInput({
+    required TextEditingController controller,
+    required double width,
+    required String prefix,
+    required String hint,
+    required ValueChanged<String> onChanged,
+  }) {
+    return SizedBox(
+      width: width,
+      height: 25,
+      child: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textAlign: TextAlign.right,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          prefixText: prefix,
+          hintText: hint,
+          prefixStyle: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          hintStyle: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+          filled: true,
+          fillColor: AppColors.inputBackground,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+        ),
+        onChanged: onChanged,
+      ),
     );
   }
 
