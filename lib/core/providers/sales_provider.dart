@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/models/sale.dart';
-import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 
 class SalesProvider extends ChangeNotifier {
@@ -11,10 +10,12 @@ class SalesProvider extends ChangeNotifier {
   List<SaleRecord> get sales => List.unmodifiable(_sales);
   SaleRecord? get latestSale => _sales.isEmpty ? null : _sales.last;
 
+  String get nextTicketNumberPreview =>
+      _nextTicketNumber.toString().padLeft(8, '0');
+
   SaleRecord createSale({
     required Map<String, int> cartQuantities,
     required ProductProvider productProvider,
-    required int paymentMethod,
     required String paymentMethodLabel,
     required String? clientId,
     required String clientName,
@@ -44,6 +45,10 @@ class SalesProvider extends ChangeNotifier {
       }
 
       final lineSubtotal = product.price * quantity;
+      final lineDiscount = subtotal <= 0
+          ? 0.0
+          : discountAmount * (lineSubtotal / subtotal);
+      final lineTotal = lineSubtotal - lineDiscount;
 
       items.add(
         SaleItemRecord(
@@ -55,14 +60,14 @@ class SalesProvider extends ChangeNotifier {
           unitPrice: product.price,
           quantity: quantity,
           lineSubtotal: lineSubtotal,
-          discount: 0,
-          lineTotal: lineSubtotal,
+          discount: lineDiscount,
+          lineTotal: lineTotal,
         ),
       );
     }
 
     final now = DateTime.now();
-    final ticketNumber = _nextTicketNumber.toString().padLeft(8, '0');
+    final ticketNumber = nextTicketNumberPreview;
 
     final sale = SaleRecord(
       id: '${now.microsecondsSinceEpoch}-$ticketNumber',
