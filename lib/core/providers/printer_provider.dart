@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
+import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/models/sale_ticket.dart';
 import 'package:stellar_pos/core/services/printer/thermal_printer_service.dart';
 import 'package:stellar_pos/core/services/printer/ticket_generator.dart';
@@ -91,6 +92,43 @@ class PrinterProvider extends ChangeNotifier {
       await _service.disconnect();
     } finally {
       _isConnected = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> printSaleTicket(SaleRecord sale) async {
+    if (kIsWeb) {
+      _errorMessage = 'La impresion Bluetooth no esta disponible en Web.';
+      notifyListeners();
+      return false;
+    }
+
+    _isPrinting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final connected = await _service.isConnected();
+      if (!connected) {
+        _isConnected = false;
+        _errorMessage = 'Conecta una impresora antes de imprimir.';
+        return false;
+      }
+
+      final bytes = await _ticketGenerator.generate(sale.toTicketData());
+      final printed = await _service.printBytes(bytes);
+
+      if (!printed) {
+        _isConnected = false;
+        _errorMessage = 'La impresora no acepto el trabajo de impresion.';
+      }
+
+      return printed;
+    } catch (e) {
+      _errorMessage = 'Ocurrio un error al imprimir el ticket.';
+      return false;
+    } finally {
+      _isPrinting = false;
       notifyListeners();
     }
   }
