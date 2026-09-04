@@ -7,6 +7,7 @@ import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/dashboard/main_dashboard_layout.dart';
 
 void main() {
@@ -20,6 +21,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ProvidersProvider()),
         ChangeNotifierProvider(create: (_) => ElectronicBalanceProvider()),
         ChangeNotifierProvider(create: (_) => PrinterProvider()),
+        ChangeNotifierProvider(create: (_) => SalesProvider()),
       ],
       child: const StellarPosApp(),
     ),
