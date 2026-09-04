@@ -13,6 +13,8 @@ import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
 class CreateProductDialog extends StatefulWidget {
   final Map<String, dynamic>? product;
@@ -266,12 +268,46 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     );
 
     if (_isEditing) {
+      final confirmed = await AppConfirmDialog.update(
+        context,
+        itemName: 'este producto',
+      );
+      if (!confirmed || !mounted) return;
+
       provider.updateProduct(product);
+
+      AppAlert.show(
+        context,
+        'El producto se actualizó correctamente.',
+        title: 'Producto actualizado',
+        type: AppAlertType.success,
+      );
     } else {
       provider.addProduct(product);
     }
 
     if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _deleteProduct() async {
+    if (!_isEditing) return;
+
+    final confirmed = await AppConfirmDialog.delete(
+      context,
+      itemName: 'este producto',
+    );
+    if (!confirmed || !mounted) return;
+
+    context.read<ProductProvider>().deleteProduct(widget.product!['id'].toString());
+
+    AppAlert.show(
+      context,
+      'El producto se eliminó correctamente.',
+      title: 'Producto eliminado',
+      type: AppAlertType.success,
+    );
+
     Navigator.of(context).pop();
   }
 
@@ -462,14 +498,26 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _isEditing ? 'Editar Producto' : 'Nuevo Producto',
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
+                              Expanded(
+                                child: Text(
+                                  _isEditing ? 'Editar Producto' : 'Nuevo Producto',
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                  ),
                                 ),
                               ),
+                              if (_isEditing)
+                                IconButton(
+                                  tooltip: 'Eliminar producto',
+                                  onPressed: _deleteProduct,
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: AppColors.dangerRed,
+                                    size: 21,
+                                  ),
+                                ),
                               InkWell(
                                 onTap: () => Navigator.of(context).pop(),
                                 borderRadius: BorderRadius.circular(15),
