@@ -346,16 +346,23 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
 
     final catalog = context.read<CatalogProvider>();
-    final selectedClient = _selectedDebtor == null
-        ? null
-        : catalog.clients.cast<dynamic>().firstWhere(
-              (client) => client.name == _selectedDebtor,
-              orElse: () => null,
-            );
+    String? clientId;
+    if (_selectedDebtor != null) {
+      for (final client in catalog.clients) {
+        if (client.name == _selectedDebtor) {
+          clientId = client.id;
+          break;
+        }
+      }
+    }
 
-    final clientId = selectedClient?.id as String?;
     final clientName = _selectedDebtor ?? 'Consumidor final';
     final received = double.tryParse(_cashReceivedController.text) ?? 0;
+    final subtotal = _subtotal;
+    final discountAmount = _discountAmount;
+    final cardFeeAmount = _cardFeeAmount;
+    final total = _total;
+    final change = _change;
 
     SaleRecord sale;
 
@@ -366,16 +373,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             paymentMethodLabel: _paymentMethodLabel(_selectedPaymentMethod),
             clientId: clientId,
             clientName: clientName,
-            subtotal: _subtotal,
+            subtotal: subtotal,
             discountPercent: _discountPercent,
-            discountAmount: _discountAmount,
-            cardFeeAmount: _cardFeeAmount,
-            total: _total,
+            discountAmount: discountAmount,
+            cardFeeAmount: cardFeeAmount,
+            total: total,
             received: _selectedPaymentMethod == AppPaymentMethods.cash
                 ? received
                 : 0,
             change: _selectedPaymentMethod == AppPaymentMethods.cash
-                ? _change
+                ? change
                 : 0,
           );
     } catch (error) {
@@ -513,35 +520,51 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           const SizedBox(width: AppDimensions.productGridSpacing),
           Expanded(
             flex: 1,
-            child: SalesSummaryPanel(
-              cartQuantities: _cartQuantities,
-              products: products,
-              ticketNumber: context.watch<SalesProvider>().nextTicketNumberPreview,
-              selectedPaymentMethod: _selectedPaymentMethod,
-              onPaymentMethodChanged: (method) {
-                setState(() => _selectedPaymentMethod = method);
-              },
-              selectedDebtor: _selectedDebtor,
-              debtorsList: _debtors,
-              onDebtorChanged: (debtor) {
-                setState(() => _selectedDebtor = debtor);
-              },
-              discountAmountController: _discountAmountController,
-              discountPercentController: _discountPercentController,
-              cashReceivedController: _cashReceivedController,
-              onDiscountAmountChanged: _onDiscountAmountChanged,
-              onDiscountPercentChanged: _onDiscountPercentChanged,
-              onCashReceivedChanged: (_) => setState(() {}),
-              subtotal: _subtotal,
-              cardFeeAmount: _cardFeeAmount,
-              total: _total,
-              change: _change,
-              onCreateSale: _createSale,
-              onAddToCart: _addToCart,
-              onDecrementQuantity: _decrementQuantity,
-              onQuantityChanged: _setCartQuantity,
-              onRemoveFromCart: _removeFromCart,
-              onClearCart: _clearCart,
+            child: Stack(
+              children: [
+                SalesSummaryPanel(
+                  cartQuantities: _cartQuantities,
+                  products: products,
+                  selectedPaymentMethod: _selectedPaymentMethod,
+                  onPaymentMethodChanged: (method) {
+                    setState(() => _selectedPaymentMethod = method);
+                  },
+                  selectedDebtor: _selectedDebtor,
+                  debtorsList: _debtors,
+                  onDebtorChanged: (debtor) {
+                    setState(() => _selectedDebtor = debtor);
+                  },
+                  discountAmountController: _discountAmountController,
+                  discountPercentController: _discountPercentController,
+                  cashReceivedController: _cashReceivedController,
+                  onDiscountAmountChanged: _onDiscountAmountChanged,
+                  onDiscountPercentChanged: _onDiscountPercentChanged,
+                  onCashReceivedChanged: (_) => setState(() {}),
+                  subtotal: _subtotal,
+                  cardFeeAmount: _cardFeeAmount,
+                  total: _total,
+                  change: _change,
+                  onAddToCart: _addToCart,
+                  onDecrementQuantity: _decrementQuantity,
+                  onQuantityChanged: _setCartQuantity,
+                  onRemoveFromCart: _removeFromCart,
+                  onClearCart: _clearCart,
+                ),
+                Positioned(
+                  left: 22,
+                  right: 22,
+                  bottom: 12,
+                  height: 36,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _createSale,
+                      borderRadius: BorderRadius.circular(8),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
