@@ -5,6 +5,7 @@ import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class PrinterSettingsLayout extends StatefulWidget {
   const PrinterSettingsLayout({super.key});
@@ -309,15 +310,15 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                 : () async {
                     final connected = await printer.connect(device);
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          connected
-                              ? 'Impresora conectada correctamente.'
-                              : printer.errorMessage ?? 'No se pudo conectar.',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppAlert.show(
+                      context,
+                      connected
+                          ? 'Impresora conectada correctamente.'
+                          : printer.errorMessage ?? 'No se pudo conectar.',
+                      title: connected ? 'Conexión completada' : 'No se pudo conectar',
+                      type: connected
+                          ? AppAlertType.success
+                          : AppAlertType.error,
                     );
                   },
             style: ElevatedButton.styleFrom(
@@ -348,15 +349,13 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
     final result = await printer.printTestTicket();
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result
-              ? 'Ticket de prueba enviado a la impresora.'
-              : printer.errorMessage ?? 'No se pudo imprimir el ticket.',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppAlert.show(
+      context,
+      result
+          ? 'Ticket de prueba enviado a la impresora.'
+          : printer.errorMessage ?? 'No se pudo imprimir el ticket.',
+      title: result ? 'Impresión completada' : 'No se pudo imprimir',
+      type: result ? AppAlertType.success : AppAlertType.error,
     );
   }
 }
