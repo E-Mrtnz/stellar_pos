@@ -22,6 +22,7 @@ class SaleTicketData {
   final List<SaleTicketItem> items;
   final double subtotal;
   final double discount;
+  final double cardFee;
   final double total;
   final String paymentMethod;
   final double received;
@@ -35,6 +36,7 @@ class SaleTicketData {
     required this.items,
     required this.subtotal,
     required this.discount,
+    this.cardFee = 0,
     required this.total,
     required this.paymentMethod,
     required this.received,
