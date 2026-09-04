@@ -122,12 +122,13 @@ class AppTextStyles {
 
 class AppStrings {
   static const String appName = 'Stellar POS';
-  static const String navHome = 'Inicio';
+  static const String navHome = 'Ventas';
   static const String navInventory = 'Inventario';
   static const String navElectronicBalance = 'Saldo electrónico';
   static const String navStats = 'Estadísticas';
   static const String navPurchases = 'Compras';
   static const String navProviders = 'Proveedores';
+  static const String navDebts = 'Deudas';
   static const String navSettings = 'Ajustes';
   static const String searchPlaceholder = 'Buscar producto...';
   static const String salesSummaryTitle = 'Resumen Ventas';
@@ -184,12 +185,13 @@ class AppCategories {
 
 class AppNavigation {
   static const int home = 0;
-  static const int inventory = 1;
-  static const int electronicBalance = 2;
+  static const int purchases = 1;
+  static const int debts = 2;
   static const int stats = 3;
-  static const int purchases = 4;
-  static const int providers = 5;
-  static const int settings = 6;
+  static const int providers = 4;
+  static const int inventory = 5;
+  static const int electronicBalance = 6;
+  static const int settings = 7;
 }
 
 class AppPaymentMethods {
