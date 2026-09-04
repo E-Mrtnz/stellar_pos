@@ -5,15 +5,20 @@ import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
@@ -235,6 +240,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return double.tryParse(_discountAmountController.text) ?? 0;
   }
 
+  double get _discountPercent {
+    return double.tryParse(_discountPercentController.text) ?? 0;
+  }
+
   double get _cardFeeAmount {
     if (_selectedPaymentMethod != AppPaymentMethods.card) return 0;
 
@@ -253,6 +262,169 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final cash = double.tryParse(_cashReceivedController.text) ?? 0;
     final change = cash - _total;
     return change > 0 ? change : 0;
+  }
+
+  void _onDiscountPercentChanged(String value) {
+    final percent = double.tryParse(value) ?? 0;
+    final amount = _subtotal * percent / 100;
+
+    _discountAmountController.text = amount > 0
+        ? amount.toStringAsFixed(2)
+        : '';
+
+    setState(() {});
+  }
+
+  void _onDiscountAmountChanged(String value) {
+    final amount = double.tryParse(value) ?? 0;
+    final percent = _subtotal <= 0 ? 0 : amount / _subtotal * 100;
+
+    _discountPercentController.text = percent > 0
+        ? percent.toStringAsFixed(2)
+        : '';
+
+    setState(() {});
+  }
+
+  String _paymentMethodLabel(int method) {
+    switch (method) {
+      case AppPaymentMethods.card:
+        return AppStrings.cardPayment;
+      case AppPaymentMethods.transfer:
+        return AppStrings.transferPayment;
+      case AppPaymentMethods.credit:
+        return AppStrings.creditPayment;
+      case AppPaymentMethods.cash:
+      default:
+        return AppStrings.cashPayment;
+    }
+  }
+
+  Future<void> _createSale() async {
+    if (_cartQuantities.isEmpty) {
+      AppAlert.show(
+        context,
+        'Agrega al menos un producto antes de crear la venta.',
+        title: 'No se puede crear la venta',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+
+    if (_discountAmount < 0 || _discountAmount > _subtotal) {
+      AppAlert.show(
+        context,
+        'El descuento no puede ser negativo ni superar el subtotal.',
+        title: 'Descuento inválido',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+
+    if (_selectedPaymentMethod == AppPaymentMethods.cash) {
+      final received = double.tryParse(_cashReceivedController.text) ?? 0;
+      if (received < _total) {
+        AppAlert.show(
+          context,
+          'El monto recibido es menor que el total de la venta.',
+          title: 'Pago insuficiente',
+          type: AppAlertType.warning,
+        );
+        return;
+      }
+    }
+
+    if (_selectedPaymentMethod == AppPaymentMethods.credit &&
+        (_selectedDebtor == null || _selectedDebtor!.trim().isEmpty)) {
+      AppAlert.show(
+        context,
+        'Selecciona un cliente para registrar una venta a crédito.',
+        title: 'Cliente requerido',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+
+    final catalog = context.read<CatalogProvider>();
+    final selectedClient = _selectedDebtor == null
+        ? null
+        : catalog.clients.cast<dynamic>().firstWhere(
+              (client) => client.name == _selectedDebtor,
+              orElse: () => null,
+            );
+
+    final clientId = selectedClient?.id as String?;
+    final clientName = _selectedDebtor ?? 'Consumidor final';
+    final received = double.tryParse(_cashReceivedController.text) ?? 0;
+
+    SaleRecord sale;
+
+    try {
+      sale = context.read<SalesProvider>().createSale(
+            cartQuantities: Map<String, int>.from(_cartQuantities),
+            productProvider: context.read<ProductProvider>(),
+            paymentMethodLabel: _paymentMethodLabel(_selectedPaymentMethod),
+            clientId: clientId,
+            clientName: clientName,
+            subtotal: _subtotal,
+            discountPercent: _discountPercent,
+            discountAmount: _discountAmount,
+            cardFeeAmount: _cardFeeAmount,
+            total: _total,
+            received: _selectedPaymentMethod == AppPaymentMethods.cash
+                ? received
+                : 0,
+            change: _selectedPaymentMethod == AppPaymentMethods.cash
+                ? _change
+                : 0,
+          );
+    } catch (error) {
+      AppAlert.show(
+        context,
+        error is StateError ? error.message : 'No se pudo registrar la venta.',
+        title: 'Error al crear la venta',
+        type: AppAlertType.error,
+      );
+      return;
+    }
+
+    _clearCart();
+    setState(() {
+      _selectedPaymentMethod = AppPaymentMethods.cash;
+    });
+
+    if (!mounted) return;
+
+    await SaleSuccessDialog.show(
+      context,
+      sale: sale,
+      onPrint: () => _printSale(sale),
+    );
+  }
+
+  Future<bool> _printSale(SaleRecord sale) async {
+    final printerProvider = context.read<PrinterProvider>();
+    final printed = await printerProvider.printSaleTicket(sale);
+
+    if (!mounted) return printed;
+
+    if (printed) {
+      AppAlert.show(
+        context,
+        'El ticket fue enviado a la impresora.',
+        title: 'Impresión completada',
+        type: AppAlertType.success,
+      );
+    } else {
+      AppAlert.show(
+        context,
+        printerProvider.errorMessage ?? 'No se pudo imprimir el ticket.',
+        title: 'No se pudo imprimir',
+        type: AppAlertType.warning,
+      );
+    }
+
+    return printed;
   }
 
   void _onNavigationChanged(int index) {
@@ -344,6 +516,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             child: SalesSummaryPanel(
               cartQuantities: _cartQuantities,
               products: products,
+              ticketNumber: context.watch<SalesProvider>().nextTicketNumberPreview,
               selectedPaymentMethod: _selectedPaymentMethod,
               onPaymentMethodChanged: (method) {
                 setState(() => _selectedPaymentMethod = method);
@@ -356,13 +529,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               discountAmountController: _discountAmountController,
               discountPercentController: _discountPercentController,
               cashReceivedController: _cashReceivedController,
-              onDiscountAmountChanged: (_) => setState(() {}),
-              onDiscountPercentChanged: (_) => setState(() {}),
+              onDiscountAmountChanged: _onDiscountAmountChanged,
+              onDiscountPercentChanged: _onDiscountPercentChanged,
               onCashReceivedChanged: (_) => setState(() {}),
               subtotal: _subtotal,
               cardFeeAmount: _cardFeeAmount,
               total: _total,
               change: _change,
+              onCreateSale: _createSale,
               onAddToCart: _addToCart,
               onDecrementQuantity: _decrementQuantity,
               onQuantityChanged: _setCartQuantity,
