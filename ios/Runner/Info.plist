@@ -26,6 +26,10 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Stellar POS necesita acceso a tus fotos para agregar imágenes a los productos.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Stellar POS necesita Bluetooth para conectar impresoras térmicas de tickets.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Stellar POS necesita Bluetooth para comunicarse con la impresora térmica.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
