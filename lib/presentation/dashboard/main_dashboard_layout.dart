@@ -13,6 +13,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.d
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
+import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
@@ -305,6 +306,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
     if (_selectedNavIndex == AppNavigation.providers) {
       return const ProvidersLayout();
+    }
+
+    if (_selectedNavIndex == AppNavigation.settings) {
+      return const PrinterSettingsLayout();
     }
 
     if (_selectedNavIndex != AppNavigation.home) {
