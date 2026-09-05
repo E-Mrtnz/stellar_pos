@@ -22,6 +22,7 @@ class PrinterProvider extends ChangeNotifier {
   bool _isConnected = false;
   bool _isPrinting = false;
   bool _bluetoothEnabled = false;
+  bool _printAutomaticallyOnSale = false;
   String? _errorMessage;
 
   List<BluetoothInfo> get printers => List.unmodifiable(_printers);
@@ -30,7 +31,13 @@ class PrinterProvider extends ChangeNotifier {
   bool get isConnected => _isConnected;
   bool get isPrinting => _isPrinting;
   bool get bluetoothEnabled => _bluetoothEnabled;
+  bool get printAutomaticallyOnSale => _printAutomaticallyOnSale;
   String? get errorMessage => _errorMessage;
+
+  void setPrintAutomaticallyOnSale(bool value) {
+    _printAutomaticallyOnSale = value;
+    notifyListeners();
+  }
 
   Future<void> refreshPrinters() async {
     if (kIsWeb) {
@@ -96,7 +103,10 @@ class PrinterProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> printSaleTicket(SaleRecord sale) async {
+  Future<bool> printSaleTicket(
+    SaleRecord sale, {
+    bool openCashDrawer = false,
+  }) async {
     if (kIsWeb) {
       _errorMessage = 'La impresion Bluetooth no esta disponible en Web.';
       notifyListeners();
@@ -115,7 +125,10 @@ class PrinterProvider extends ChangeNotifier {
         return false;
       }
 
-      final bytes = await _ticketGenerator.generate(sale.toTicketData());
+      final bytes = await _ticketGenerator.generate(
+        sale.toTicketData(),
+        openCashDrawer: openCashDrawer,
+      );
       final printed = await _service.printBytes(bytes);
 
       if (!printed) {
