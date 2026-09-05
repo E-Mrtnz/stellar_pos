@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_detail_dialog.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class SaleSuccessDialog extends StatelessWidget {
   final SaleRecord sale;
@@ -18,8 +21,30 @@ class SaleSuccessDialog extends StatelessWidget {
     BuildContext context, {
     required SaleRecord sale,
     required Future<bool> Function() onPrint,
-  }) {
-    return showDialog(
+  }) async {
+    // La impresion automatica ocurre una sola vez al completar la venta,
+    // antes de mostrar el comprobante de exito. La reimpresion desde la card
+    // usa onPrint() y no vuelve a abrir la caja.
+    final printer = context.read<PrinterProvider>();
+    if (printer.printAutomaticallyOnSale) {
+      final printed = await printer.printSaleTicket(
+        sale,
+        openCashDrawer: true,
+      );
+
+      if (!printed && context.mounted) {
+        AppAlert.show(
+          context,
+          printer.errorMessage ?? 'No se pudo imprimir el ticket automáticamente.',
+          title: 'No se pudo imprimir',
+          type: AppAlertType.warning,
+        );
+      }
+    }
+
+    if (!context.mounted) return;
+
+    await showDialog(
       context: context,
       barrierDismissible: false,
       barrierColor: AppColors.overlayBackground,
