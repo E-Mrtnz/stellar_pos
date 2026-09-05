@@ -63,10 +63,12 @@ class SalesSummaryWithKeypad extends StatefulWidget {
 class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   TextEditingController? _activeController;
   ValueChanged<String>? _activeOnChanged;
+  OverlayEntry? _keypadOverlayEntry;
 
-  // Keep the keypad in the same tap-region group as the TextFields.
+  // The keypad is rendered in the app overlay so it remains hit-testable even
+  // though it is visually positioned outside the sales summary's bounds.
+  final LayerLink _keypadLayerLink = LayerLink();
   final Object _keypadTapRegionGroup = EditableText;
-  final GlobalKey _keypadKey = GlobalKey();
 
   void _activate(
     TextEditingController controller,
@@ -80,33 +82,57 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     });
 
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showKeypadOverlay();
+    });
+  }
+
+  void _showKeypadOverlay() {
+    if (!mounted || _activeController == null || _keypadOverlayEntry != null) {
+      return;
+    }
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    _keypadOverlayEntry = OverlayEntry(
+      builder: (context) {
+        return CompositedTransformFollower(
+          link: _keypadLayerLink,
+          targetAnchor: Alignment.bottomLeft,
+          followerAnchor: Alignment.bottomRight,
+          offset: const Offset(-8, -10),
+          showWhenUnlinked: false,
+          child: TapRegion(
+            groupId: _keypadTapRegionGroup,
+            child: Focus(
+              canRequestFocus: false,
+              skipTraversal: true,
+              child: NumericKeypad(
+                onInput: _input,
+                onBackspace: _backspace,
+                onClear: _clear,
+                onDecimal: _decimal,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(_keypadOverlayEntry!);
   }
 
   void _closeKeypad() {
+    _keypadOverlayEntry?.remove();
+    _keypadOverlayEntry = null;
+
     if (!mounted) return;
     setState(() {
       _activeController = null;
       _activeOnChanged = null;
     });
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
-  }
-
-  bool _isInsideKeypad(Offset globalPosition) {
-    final context = _keypadKey.currentContext;
-    final renderObject = context?.findRenderObject();
-    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
-
-    final localPosition = renderObject.globalToLocal(globalPosition);
-    return renderObject.size.contains(localPosition);
-  }
-
-  void _handleKeypadTapOutside(PointerDownEvent event) {
-    // Some desktop/web pointer configurations can report a child button as
-    // outside its TapRegion group. Never close the keypad when the pointer is
-    // physically inside the keypad itself, otherwise its InkWell never gets
-    // the chance to fire its onTap callback.
-    if (_isInsideKeypad(event.position)) return;
-    _closeKeypad();
   }
 
   void _setText(String value) {
@@ -142,68 +168,53 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   void _clear() => _setText('');
 
   @override
+  void dispose() {
+    _keypadOverlayEntry?.remove();
+    _keypadOverlayEntry = null;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        SalesSummaryPanel(
-          cartQuantities: widget.cartQuantities,
-          products: widget.products,
-          selectedPaymentMethod: widget.selectedPaymentMethod,
-          onPaymentMethodChanged: (value) {
-            _closeKeypad();
-            widget.onPaymentMethodChanged(value);
-          },
-          selectedDebtor: widget.selectedDebtor,
-          debtorsList: widget.debtorsList,
-          onDebtorChanged: widget.onDebtorChanged,
-          discountAmountController: widget.discountAmountController,
-          discountPercentController: widget.discountPercentController,
-          cashReceivedController: widget.cashReceivedController,
-          onDiscountAmountChanged: widget.onDiscountAmountChanged,
-          onDiscountPercentChanged: widget.onDiscountPercentChanged,
-          onCashReceivedChanged: widget.onCashReceivedChanged,
-          onPaymentInputFocused: (controller) {
-            if (controller == widget.discountPercentController) {
-              _activate(controller, widget.onDiscountPercentChanged);
-            } else if (controller == widget.discountAmountController) {
-              _activate(controller, widget.onDiscountAmountChanged);
-            } else if (controller == widget.cashReceivedController) {
-              _activate(controller, widget.onCashReceivedChanged);
-            }
-          },
-          subtotal: widget.subtotal,
-          cardFeeAmount: widget.cardFeeAmount,
-          total: widget.total,
-          change: widget.change,
-          onAddToCart: widget.onAddToCart,
-          onDecrementQuantity: widget.onDecrementQuantity,
-          onQuantityChanged: widget.onQuantityChanged,
-          onRemoveFromCart: widget.onRemoveFromCart,
-          onClearCart: widget.onClearCart,
-          ticketNumber: widget.ticketNumber,
-        ),
-        if (_activeController != null)
-          Positioned(
-            left: -172,
-            bottom: 10,
-            child: TapRegion(
-              groupId: _keypadTapRegionGroup,
-              onTapOutside: _handleKeypadTapOutside,
-              child: Focus(
-                canRequestFocus: false,
-                skipTraversal: true,
-                child: NumericKeypad(
-                  key: _keypadKey,
-                  onInput: _input,
-                  onBackspace: _backspace,
-                  onClear: _clear,
-                  onDecimal: _decimal,
-                ),
-              ),
-            ),
-          ),
-      ],
+    return CompositedTransformTarget(
+      link: _keypadLayerLink,
+      child: SalesSummaryPanel(
+        cartQuantities: widget.cartQuantities,
+        products: widget.products,
+        selectedPaymentMethod: widget.selectedPaymentMethod,
+        onPaymentMethodChanged: (value) {
+          _closeKeypad();
+          widget.onPaymentMethodChanged(value);
+        },
+        selectedDebtor: widget.selectedDebtor,
+        debtorsList: widget.debtorsList,
+        onDebtorChanged: widget.onDebtorChanged,
+        discountAmountController: widget.discountAmountController,
+        discountPercentController: widget.discountPercentController,
+        cashReceivedController: widget.cashReceivedController,
+        onDiscountAmountChanged: widget.onDiscountAmountChanged,
+        onDiscountPercentChanged: widget.onDiscountPercentChanged,
+        onCashReceivedChanged: widget.onCashReceivedChanged,
+        onPaymentInputFocused: (controller) {
+          if (controller == widget.discountPercentController) {
+            _activate(controller, widget.onDiscountPercentChanged);
+          } else if (controller == widget.discountAmountController) {
+            _activate(controller, widget.onDiscountAmountChanged);
+          } else if (controller == widget.cashReceivedController) {
+            _activate(controller, widget.onCashReceivedChanged);
+          }
+        },
+        subtotal: widget.subtotal,
+        cardFeeAmount: widget.cardFeeAmount,
+        total: widget.total,
+        change: widget.change,
+        onAddToCart: widget.onAddToCart,
+        onDecrementQuantity: widget.onDecrementQuantity,
+        onQuantityChanged: widget.onQuantityChanged,
+        onRemoveFromCart: widget.onRemoveFromCart,
+        onClearCart: widget.onClearCart,
+        ticketNumber: widget.ticketNumber,
+      ),
     );
   }
 }
