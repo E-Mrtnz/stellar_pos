@@ -85,10 +85,8 @@ class SaleSuccessDialog extends StatelessWidget {
                   children: [
                     _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
                     _infoRow('Método de pago', sale.paymentMethod),
-                    _infoRow(
-                      'Fecha / hora',
-                      '${_formatDate(sale.createdAt)}  ${_formatTime(sale.createdAt)}',
-                    ),
+                    _infoRow('Fecha', _formatDate(sale.createdAt)),
+                    _infoRow('Hora', _formatTime(sale.createdAt)),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -117,7 +115,9 @@ class SaleSuccessDialog extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
