@@ -185,7 +185,11 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                 ),
                 Checkbox(
                   value: printer.printAutomaticallyOnSale,
-                  onChanged: printer.setPrintAutomaticallyOnSale,
+                  onChanged: (value) {
+                    if (value != null) {
+                      printer.setPrintAutomaticallyOnSale(value);
+                    }
+                  },
                   activeColor: AppColors.primary,
                 ),
               ],
