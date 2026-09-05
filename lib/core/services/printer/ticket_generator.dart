@@ -16,6 +16,12 @@ class TicketGenerator {
     final bytes = <int>[];
 
     bytes.addAll(generator.reset());
+
+    // ================================================================
+    // ENCABEZADO
+    // ================================================================
+    // El espacio para el logo queda reservado para la futura configuracion
+    // de imagen/logo. El resto del encabezado ya usa la estructura oficial.
     bytes.addAll(
       generator.text(
         'STELLAR POS',
@@ -54,11 +60,10 @@ class TicketGenerator {
           align: PosAlign.center,
           codeTable: 'CP1252',
         ),
-        linesAfter: 1,
       ),
     );
 
-    bytes.addAll(generator.hr(ch: '-'));
+    bytes.addAll(generator.feed(1));
     bytes.addAll(
       generator.text(
         'COMPROBANTE DE VENTA',
@@ -71,27 +76,46 @@ class TicketGenerator {
     );
     bytes.addAll(generator.hr(ch: '-'));
 
+    // ================================================================
+    // DATOS DE LA VENTA
+    // ================================================================
     bytes.addAll(
-      generator.row([
-        _left('Ticket: #${ticket.ticketNumber}', 6),
-        _right('Fecha: ${ticket.date}', 6),
-      ]),
+      generator.text(
+        'Ticket: #${ticket.ticketNumber}',
+        styles: const PosStyles(bold: true, codeTable: 'CP1252'),
+      ),
     );
     bytes.addAll(
-      generator.row([
-        _left('Hora: ${ticket.time}', 6),
-        _right('Cliente: ${ticket.client}', 6),
-      ]),
+      generator.text(
+        'Fecha: ${ticket.date}',
+        styles: const PosStyles(codeTable: 'CP1252'),
+      ),
+    );
+    bytes.addAll(
+      generator.text(
+        'Hora: ${ticket.time}',
+        styles: const PosStyles(codeTable: 'CP1252'),
+      ),
+    );
+    bytes.addAll(
+      generator.text(
+        'Cliente: ${ticket.client}',
+        styles: const PosStyles(codeTable: 'CP1252'),
+      ),
     );
 
     bytes.addAll(generator.feed(1));
+
+    // ================================================================
+    // DETALLE DE PRODUCTOS
+    // ================================================================
     bytes.addAll(
       generator.row([
-        _center('CANT', 1),
-        _left('DESCRIPCION', 4),
-        _right('P.U', 2),
-        _right('DCTO', 2),
-        _right('TOTAL', 3),
+        _center('CANT', 1, bold: true),
+        _left('DESCRIPCION', 4, bold: true),
+        _right('P.UNIT', 2, bold: true),
+        _right('DCTO.', 2, bold: true),
+        _right('TOTAL', 3, bold: true),
       ]),
     );
     bytes.addAll(generator.hr(ch: '-'));
@@ -109,12 +133,12 @@ class TicketGenerator {
     }
 
     bytes.addAll(generator.hr(ch: '-'));
+
+    // ================================================================
+    // TOTALES
+    // ================================================================
     bytes.addAll(_summary(generator, 'Subtotal', ticket.subtotal));
     bytes.addAll(_summary(generator, 'Descuento', ticket.discount));
-    if (ticket.cardFee > 0) {
-      bytes.addAll(_summary(generator, 'Cargo tarjeta', ticket.cardFee));
-    }
-    bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(
       generator.row([
         _left('TOTAL', 8, bold: true),
@@ -123,16 +147,18 @@ class TicketGenerator {
     );
 
     bytes.addAll(generator.feed(1));
+
+    // ================================================================
+    // PAGO
+    // ================================================================
     bytes.addAll(
       generator.text(
         'FORMA DE PAGO: ${ticket.paymentMethod}',
         styles: const PosStyles(bold: true, codeTable: 'CP1252'),
       ),
     );
-    if (ticket.paymentMethod.toUpperCase() == 'EFECTIVO') {
-      bytes.addAll(_summary(generator, 'Recibido', ticket.received));
-      bytes.addAll(_summary(generator, 'Cambio', ticket.change));
-    }
+    bytes.addAll(_summary(generator, 'Recibido', ticket.received));
+    bytes.addAll(_summary(generator, 'Cambio', ticket.change));
 
     bytes.addAll(generator.feed(1));
     bytes.addAll(
@@ -143,11 +169,16 @@ class TicketGenerator {
           bold: true,
           codeTable: 'CP1252',
         ),
-        linesAfter: 1,
       ),
     );
 
-    // El codigo de barras representa exclusivamente el numero de ticket.
+    bytes.addAll(generator.feed(1));
+
+    // ================================================================
+    // CODIGO DE BARRAS DEL TICKET
+    // ================================================================
+    // El codigo representa exclusivamente el numero de ticket para poder
+    // localizar/verificar la venta posteriormente.
     final barcodeData = ticket.ticketNumber.codeUnits;
     if (barcodeData.isNotEmpty) {
       bytes.addAll(

@@ -321,18 +321,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return;
     }
 
-    if (_selectedPaymentMethod == AppPaymentMethods.cash) {
-      final received = double.tryParse(_cashReceivedController.text) ?? 0;
-      if (received < _total) {
-        AppAlert.show(
-          context,
-          'El monto recibido es menor que el total de la venta.',
-          title: 'Pago insuficiente',
-          type: AppAlertType.warning,
-        );
-        return;
-      }
-    }
+    // El campo "Recibido" y el calculo de "Cambio" son una ayuda para
+    // agilizar el cobro. El monto recibido no es obligatorio para registrar
+    // la venta; si se deja vacio, simplemente se guarda en cero y el cambio
+    // permanece en cero. Si se escribe un monto, el sistema calcula el cambio
+    // automaticamente sin bloquear la venta.
 
     if (_selectedPaymentMethod == AppPaymentMethods.credit &&
         (_selectedDebtor == null || _selectedDebtor!.trim().isEmpty)) {
