@@ -5,7 +5,10 @@ import 'package:stellar_pos/core/models/sale_ticket.dart';
 class TicketGenerator {
   const TicketGenerator();
 
-  Future<List<int>> generate(SaleTicketData ticket) async {
+  Future<List<int>> generate(
+    SaleTicketData ticket, {
+    bool openCashDrawer = false,
+  }) async {
     final profile = await CapabilityProfile.load();
     final generator = Generator(
       PaperSize.mm80,
@@ -18,10 +21,10 @@ class TicketGenerator {
     bytes.addAll(generator.reset());
 
     // ================================================================
-    // ENCABEZADO
+    // ENCABEZADO DEL BOCETO
     // ================================================================
-    // El espacio para el logo queda reservado para la futura configuracion
-    // de imagen/logo. El resto del encabezado ya usa la estructura oficial.
+    // Se mantiene el encabezado como un bloque independiente: identificacion
+    // del negocio, direccion y telefono, antes del comprobante.
     bytes.addAll(
       generator.text(
         'STELLAR POS',
@@ -109,13 +112,14 @@ class TicketGenerator {
     // ================================================================
     // DETALLE DE PRODUCTOS
     // ================================================================
+    // Orden del boceto: DESCRIPCION, CANT, P.UNIT, DCTO., TOTAL.
     bytes.addAll(
       generator.row([
+        _left('DESCRIPCION', 5, bold: true),
         _center('CANT', 1, bold: true),
-        _left('DESCRIPCION', 4, bold: true),
         _right('P.UNIT', 2, bold: true),
         _right('DCTO.', 2, bold: true),
-        _right('TOTAL', 3, bold: true),
+        _right('TOTAL', 2, bold: true),
       ]),
     );
     bytes.addAll(generator.hr(ch: '-'));
@@ -123,11 +127,11 @@ class TicketGenerator {
     for (final item in ticket.items) {
       bytes.addAll(
         generator.row([
+          _left(item.description, 5),
           _center('${item.quantity}', 1),
-          _left(item.description, 4),
           _right(_money(item.unitPrice), 2),
           _right(_money(item.discount), 2),
-          _right(_money(item.total), 3),
+          _right(_money(item.total), 2),
         ]),
       );
     }
@@ -177,8 +181,6 @@ class TicketGenerator {
     // ================================================================
     // CODIGO DE BARRAS DEL TICKET
     // ================================================================
-    // El codigo representa exclusivamente el numero de ticket para poder
-    // localizar/verificar la venta posteriormente.
     final barcodeData = ticket.ticketNumber.codeUnits;
     if (barcodeData.isNotEmpty) {
       bytes.addAll(
@@ -190,6 +192,12 @@ class TicketGenerator {
           align: PosAlign.center,
         ),
       );
+    }
+
+    // La apertura de caja se solicita solamente para la impresion automatica
+    // de una venta. Una reimpresion manual no vuelve a abrir la caja.
+    if (openCashDrawer) {
+      bytes.addAll(generator.drawer(pin: PosDrawer.pin2));
     }
 
     bytes.addAll(generator.feed(3));
