@@ -61,14 +61,16 @@ class SalesSummaryWithKeypad extends StatefulWidget {
 }
 
 class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
+  static const double _keypadGap = 8;
+  static const double _screenPadding = 8;
+
+  final GlobalKey _panelKey = GlobalKey();
+  final Object _keypadGroup = EditableText;
+
   TextEditingController? _activeController;
   ValueChanged<String>? _activeOnChanged;
   OverlayEntry? _keypadOverlayEntry;
-
-  // The keypad is rendered in the app overlay so it remains hit-testable even
-  // though it is visually positioned outside the sales summary's bounds.
-  final LayerLink _keypadLayerLink = LayerLink();
-  final Object _keypadTapRegionGroup = EditableText;
+  Offset _keypadPosition = Offset.zero;
 
   void _activate(
     TextEditingController controller,
@@ -84,8 +86,43 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _showKeypadOverlay();
+      if (!mounted) return;
+      _updateKeypadPosition();
+      if (_keypadOverlayEntry == null) {
+        _showKeypadOverlay();
+      } else {
+        _keypadOverlayEntry!.markNeedsBuild();
+      }
     });
+  }
+
+  void _updateKeypadPosition() {
+    final renderObject = _panelKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final size = renderObject.size;
+    final screenSize = MediaQuery.sizeOf(context);
+
+    // Keep the keypad independent from the dashboard's layout constraints.
+    // It is placed just to the left of the sales panel and aligned to its
+    // bottom edge, matching the compact keypad placement used by the POS UI.
+    final desiredLeft = topLeft.dx - NumericKeypad.width - _keypadGap;
+    final desiredTop = topLeft.dy + size.height - NumericKeypad.height;
+
+    final maxLeft = screenSize.width - NumericKeypad.width - _screenPadding;
+    final maxTop = screenSize.height - NumericKeypad.height - _screenPadding;
+
+    _keypadPosition = Offset(
+      desiredLeft.clamp(
+        _screenPadding,
+        maxLeft < _screenPadding ? _screenPadding : maxLeft,
+      ),
+      desiredTop.clamp(
+        _screenPadding,
+        maxTop < _screenPadding ? _screenPadding : maxTop,
+      ),
+    );
   }
 
   void _showKeypadOverlay() {
@@ -97,14 +134,13 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
 
     _keypadOverlayEntry = OverlayEntry(
       builder: (context) {
-        return CompositedTransformFollower(
-          link: _keypadLayerLink,
-          targetAnchor: Alignment.bottomLeft,
-          followerAnchor: Alignment.bottomRight,
-          offset: const Offset(-8, -10),
-          showWhenUnlinked: false,
+        return Positioned(
+          left: _keypadPosition.dx,
+          top: _keypadPosition.dy,
+          width: NumericKeypad.width,
+          height: NumericKeypad.height,
           child: TapRegion(
-            groupId: _keypadTapRegionGroup,
+            groupId: _keypadGroup,
             child: Focus(
               canRequestFocus: false,
               skipTraversal: true,
@@ -176,44 +212,48 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _keypadLayerLink,
-      child: SalesSummaryPanel(
-        cartQuantities: widget.cartQuantities,
-        products: widget.products,
-        selectedPaymentMethod: widget.selectedPaymentMethod,
-        onPaymentMethodChanged: (value) {
-          _closeKeypad();
-          widget.onPaymentMethodChanged(value);
-        },
-        selectedDebtor: widget.selectedDebtor,
-        debtorsList: widget.debtorsList,
-        onDebtorChanged: widget.onDebtorChanged,
-        discountAmountController: widget.discountAmountController,
-        discountPercentController: widget.discountPercentController,
-        cashReceivedController: widget.cashReceivedController,
-        onDiscountAmountChanged: widget.onDiscountAmountChanged,
-        onDiscountPercentChanged: widget.onDiscountPercentChanged,
-        onCashReceivedChanged: widget.onCashReceivedChanged,
-        onPaymentInputFocused: (controller) {
-          if (controller == widget.discountPercentController) {
-            _activate(controller, widget.onDiscountPercentChanged);
-          } else if (controller == widget.discountAmountController) {
-            _activate(controller, widget.onDiscountAmountChanged);
-          } else if (controller == widget.cashReceivedController) {
-            _activate(controller, widget.onCashReceivedChanged);
-          }
-        },
-        subtotal: widget.subtotal,
-        cardFeeAmount: widget.cardFeeAmount,
-        total: widget.total,
-        change: widget.change,
-        onAddToCart: widget.onAddToCart,
-        onDecrementQuantity: widget.onDecrementQuantity,
-        onQuantityChanged: widget.onQuantityChanged,
-        onRemoveFromCart: widget.onRemoveFromCart,
-        onClearCart: widget.onClearCart,
-        ticketNumber: widget.ticketNumber,
+    return TapRegion(
+      groupId: _keypadGroup,
+      onTapOutside: (_) => _closeKeypad(),
+      child: KeyedSubtree(
+        key: _panelKey,
+        child: SalesSummaryPanel(
+          cartQuantities: widget.cartQuantities,
+          products: widget.products,
+          selectedPaymentMethod: widget.selectedPaymentMethod,
+          onPaymentMethodChanged: (value) {
+            _closeKeypad();
+            widget.onPaymentMethodChanged(value);
+          },
+          selectedDebtor: widget.selectedDebtor,
+          debtorsList: widget.debtorsList,
+          onDebtorChanged: widget.onDebtorChanged,
+          discountAmountController: widget.discountAmountController,
+          discountPercentController: widget.discountPercentController,
+          cashReceivedController: widget.cashReceivedController,
+          onDiscountAmountChanged: widget.onDiscountAmountChanged,
+          onDiscountPercentChanged: widget.onDiscountPercentChanged,
+          onCashReceivedChanged: widget.onCashReceivedChanged,
+          onPaymentInputFocused: (controller) {
+            if (controller == widget.discountPercentController) {
+              _activate(controller, widget.onDiscountPercentChanged);
+            } else if (controller == widget.discountAmountController) {
+              _activate(controller, widget.onDiscountAmountChanged);
+            } else if (controller == widget.cashReceivedController) {
+              _activate(controller, widget.onCashReceivedChanged);
+            }
+          },
+          subtotal: widget.subtotal,
+          cardFeeAmount: widget.cardFeeAmount,
+          total: widget.total,
+          change: widget.change,
+          onAddToCart: widget.onAddToCart,
+          onDecrementQuantity: widget.onDecrementQuantity,
+          onQuantityChanged: widget.onQuantityChanged,
+          onRemoveFromCart: widget.onRemoveFromCart,
+          onClearCart: widget.onClearCart,
+          ticketNumber: widget.ticketNumber,
+        ),
       ),
     );
   }
