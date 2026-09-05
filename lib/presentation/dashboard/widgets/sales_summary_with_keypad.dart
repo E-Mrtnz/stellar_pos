@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/numeric_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 
@@ -65,15 +64,9 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   TextEditingController? _activeController;
   ValueChanged<String>? _activeOnChanged;
 
-  // Use the same TapRegion group used by TextFieldTapRegion/EditableText.
-  // This keeps the custom keypad open while interacting with its buttons or
-  // the payment fields, and closes it when tapping outside that group.
+  // Keep the keypad in the same tap-region group as the TextFields.
   final Object _keypadTapRegionGroup = EditableText;
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
+  final GlobalKey _keypadKey = GlobalKey();
 
   void _activate(
     TextEditingController controller,
@@ -96,6 +89,24 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
       _activeOnChanged = null;
     });
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+  }
+
+  bool _isInsideKeypad(Offset globalPosition) {
+    final context = _keypadKey.currentContext;
+    final renderObject = context?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
+
+    final localPosition = renderObject.globalToLocal(globalPosition);
+    return renderObject.size.contains(localPosition);
+  }
+
+  void _handleKeypadTapOutside(PointerDownEvent event) {
+    // Some desktop/web pointer configurations can report a child button as
+    // outside its TapRegion group. Never close the keypad when the pointer is
+    // physically inside the keypad itself, otherwise its InkWell never gets
+    // the chance to fire its onTap callback.
+    if (_isInsideKeypad(event.position)) return;
+    _closeKeypad();
   }
 
   void _setText(String value) {
@@ -178,11 +189,12 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
             bottom: 10,
             child: TapRegion(
               groupId: _keypadTapRegionGroup,
-              onTapOutside: (_) => _closeKeypad(),
+              onTapOutside: _handleKeypadTapOutside,
               child: Focus(
                 canRequestFocus: false,
                 skipTraversal: true,
                 child: NumericKeypad(
+                  key: _keypadKey,
                   onInput: _input,
                   onBackspace: _backspace,
                   onClear: _clear,
