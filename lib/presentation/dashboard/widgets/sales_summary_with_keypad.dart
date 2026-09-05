@@ -64,7 +64,11 @@ class SalesSummaryWithKeypad extends StatefulWidget {
 class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   TextEditingController? _activeController;
   ValueChanged<String>? _activeOnChanged;
-  final Object _keypadTapRegionGroup = Object();
+
+  // Use the same TapRegion group used by TextFieldTapRegion/EditableText.
+  // This keeps the custom keypad open while interacting with its buttons or
+  // the payment fields, and closes it when tapping outside that group.
+  final Object _keypadTapRegionGroup = EditableText;
 
   @override
   void dispose() {
