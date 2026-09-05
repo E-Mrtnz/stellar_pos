@@ -144,6 +144,54 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
             ),
             const SizedBox(height: 12),
           ],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.inputBackground,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.print_rounded,
+                  size: 19,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Imprimir al crear una venta',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Imprime automáticamente el ticket al completar la venta.',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Checkbox(
+                  value: printer.printAutomaticallyOnSale,
+                  onChanged: printer.setPrintAutomaticallyOnSale,
+                  activeColor: AppColors.primary,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -212,7 +260,7 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                 SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    'La primera prueba imprime un comprobante de ejemplo basado en el boceto acordado. Todavia no modifica ni crea ventas reales.',
+                    'La prueba imprime un comprobante de ejemplo con la misma plantilla utilizada por las ventas reales. No crea ni modifica ventas.',
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.textDarkSecondary,
