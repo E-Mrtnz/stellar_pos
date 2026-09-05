@@ -18,69 +18,32 @@ class NumericKeypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
+    const keys = ['1','2','3','4','5','6','7','8','9'];
     return Material(
       color: Colors.transparent,
       child: Container(
         width: 164,
-        height: 214,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowColor,
-              blurRadius: 14,
-              offset: Offset(0, 5),
-            ),
-          ],
+          boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 14, offset: Offset(0, 5))],
         ),
-        child: Column(
+        child: GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 7,
+          crossAxisSpacing: 7,
+          childAspectRatio: 1,
           children: [
-            _row([
-              for (final key in keys.sublist(0, 3))
-                _Key(label: key, onTap: () => onInput(key)),
-            ]),
-            const SizedBox(height: 7),
-            _row([
-              for (final key in keys.sublist(3, 6))
-                _Key(label: key, onTap: () => onInput(key)),
-            ]),
-            const SizedBox(height: 7),
-            _row([
-              for (final key in keys.sublist(6, 9))
-                _Key(label: key, onTap: () => onInput(key)),
-            ]),
-            const SizedBox(height: 7),
-            _row([
-              _Key(
-                icon: Icons.backspace_outlined,
-                emphasized: true,
-                onTap: onBackspace,
-                onLongPress: onClear,
-              ),
-              _Key(label: '0', onTap: () => onInput('0')),
-              _Key(label: '.', emphasized: true, onTap: onDecimal),
-            ]),
+            ...keys.map((key) => _Key(label: key, onTap: () => onInput(key))),
+            _Key(icon: Icons.backspace_outlined, emphasized: true, onTap: onBackspace, onLongPress: onClear),
+            _Key(label: '0', onTap: () => onInput('0')),
+            _Key(label: '.', emphasized: true, onTap: onDecimal),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _row(List<Widget> children) {
-    return SizedBox(
-      height: 45,
-      child: Row(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            Expanded(child: children[i]),
-            if (i < children.length - 1) const SizedBox(width: 7),
-          ],
-        ],
       ),
     );
   }
@@ -93,20 +56,12 @@ class _Key extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool emphasized;
 
-  const _Key({
-    this.label,
-    this.icon,
-    required this.onTap,
-    this.onLongPress,
-    this.emphasized = false,
-  });
+  const _Key({this.label, this.icon, required this.onTap, this.onLongPress, this.emphasized = false});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: emphasized
-          ? AppColors.warningOrange.withAlpha(18)
-          : AppColors.inputBackground,
+      color: emphasized ? AppColors.warningOrange.withAlpha(18) : AppColors.inputBackground,
       borderRadius: BorderRadius.circular(9),
       child: InkWell(
         onTap: onTap,
@@ -114,23 +69,8 @@ class _Key extends StatelessWidget {
         borderRadius: BorderRadius.circular(9),
         child: Center(
           child: icon != null
-              ? Icon(
-                  icon,
-                  size: 18,
-                  color: emphasized
-                      ? AppColors.warningOrange
-                      : AppColors.textPrimary,
-                )
-              : Text(
-                  label!,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: emphasized
-                        ? AppColors.warningOrange
-                        : AppColors.textPrimary,
-                  ),
-                ),
+              ? Icon(icon, size: 18, color: emphasized ? AppColors.warningOrange : AppColors.textPrimary)
+              : Text(label!, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: emphasized ? AppColors.warningOrange : AppColors.textPrimary)),
         ),
       ),
     );
