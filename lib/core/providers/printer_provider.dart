@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/models/sale_ticket.dart';
@@ -7,14 +10,19 @@ import 'package:stellar_pos/core/services/printer/thermal_printer_service.dart';
 import 'package:stellar_pos/core/services/printer/ticket_generator.dart';
 
 class PrinterProvider extends ChangeNotifier {
+  static const _autoPrintPreferenceKey = 'printer.auto_print_on_sale';
+
   final ThermalPrinterService _service;
   final TicketGenerator _ticketGenerator;
+  final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
 
   PrinterProvider({
     ThermalPrinterService? service,
     TicketGenerator? ticketGenerator,
   })  : _service = service ?? ThermalPrinterService(),
-        _ticketGenerator = ticketGenerator ?? const TicketGenerator();
+        _ticketGenerator = ticketGenerator ?? const TicketGenerator() {
+    unawaited(_loadPreferences());
+  }
 
   List<BluetoothInfo> _printers = [];
   BluetoothInfo? _selectedPrinter;
@@ -34,9 +42,22 @@ class PrinterProvider extends ChangeNotifier {
   bool get printAutomaticallyOnSale => _printAutomaticallyOnSale;
   String? get errorMessage => _errorMessage;
 
+  Future<void> _loadPreferences() async {
+    try {
+      final value = await _preferences.getBool(_autoPrintPreferenceKey);
+      if (value == null) return;
+
+      _printAutomaticallyOnSale = value;
+      notifyListeners();
+    } catch (_) {
+      // La preferencia es opcional; el valor seguro por defecto es false.
+    }
+  }
+
   void setPrintAutomaticallyOnSale(bool value) {
     _printAutomaticallyOnSale = value;
     notifyListeners();
+    unawaited(_preferences.setBool(_autoPrintPreferenceKey, value));
   }
 
   Future<void> refreshPrinters() async {
