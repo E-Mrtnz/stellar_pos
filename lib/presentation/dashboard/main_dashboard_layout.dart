@@ -22,7 +22,6 @@ import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
-
   @override
   State<MainDashboardLayout> createState() => _MainDashboardLayoutState();
 }
@@ -45,7 +44,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   final TextEditingController _cashReceivedController = TextEditingController();
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
-
   List<String> get _debtors => context.watch<CatalogProvider>().clients.map((client) => client.name).toList();
 
   @override
@@ -225,7 +223,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       AppAlert.show(context, 'Selecciona un cliente para registrar una venta a crédito.', title: 'Cliente requerido', type: AppAlertType.warning);
       return;
     }
-
     final catalog = context.read<CatalogProvider>();
     String? clientId;
     if (_selectedDebtor != null) {
@@ -236,7 +233,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         }
       }
     }
-
     final received = double.tryParse(_cashReceivedController.text) ?? 0;
     SaleRecord sale;
     try {
@@ -258,7 +254,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       AppAlert.show(context, error is StateError ? error.message : 'No se pudo registrar la venta.', title: 'Error al crear la venta', type: AppAlertType.error);
       return;
     }
-
     _clearCart();
     setState(() => _selectedPaymentMethod = AppPaymentMethods.cash);
     if (!mounted) return;
@@ -363,6 +358,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   onQuantityChanged: _setCartQuantity,
                   onRemoveFromCart: _removeFromCart,
                   onClearCart: _clearCart,
+                  ticketNumber: context.watch<SalesProvider>().nextTicketNumberPreview,
                 ),
                 Positioned(
                   left: 22,
