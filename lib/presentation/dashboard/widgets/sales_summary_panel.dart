@@ -17,6 +17,7 @@ class SalesSummaryPanel extends StatelessWidget {
   final ValueChanged<String> onDiscountAmountChanged;
   final ValueChanged<String> onDiscountPercentChanged;
   final ValueChanged<String> onCashReceivedChanged;
+  final ValueChanged<TextEditingController> onPaymentInputFocused;
   final double subtotal;
   final double cardFeeAmount;
   final double total;
@@ -26,6 +27,7 @@ class SalesSummaryPanel extends StatelessWidget {
   final void Function(String productId, int quantity) onQuantityChanged;
   final ValueChanged<String> onRemoveFromCart;
   final VoidCallback onClearCart;
+  final String ticketNumber;
 
   const SalesSummaryPanel({
     super.key,
@@ -42,6 +44,7 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.onDiscountAmountChanged,
     required this.onDiscountPercentChanged,
     required this.onCashReceivedChanged,
+    required this.onPaymentInputFocused,
     required this.subtotal,
     required this.cardFeeAmount,
     required this.total,
@@ -51,6 +54,7 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.onQuantityChanged,
     required this.onRemoveFromCart,
     required this.onClearCart,
+    required this.ticketNumber,
   });
 
   @override
@@ -88,10 +92,10 @@ class SalesSummaryPanel extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
-                        children: const [
-                          Text(AppStrings.ticketNumberLabel, style: AppTextStyles.ticketLabel),
-                          SizedBox(width: 4),
-                          Text('#000102', style: AppTextStyles.ticketValue),
+                        children: [
+                          const Text(AppStrings.ticketNumberLabel, style: AppTextStyles.ticketLabel),
+                          const SizedBox(width: 4),
+                          Text('#$ticketNumber', style: AppTextStyles.ticketValue),
                         ],
                       ),
                       if (cartQuantities.isNotEmpty)
@@ -417,33 +421,36 @@ class SalesSummaryPanel extends StatelessWidget {
     required String hint,
     required ValueChanged<String> onChanged,
   }) {
-    return SizedBox(
-      width: width,
-      height: 25,
-      child: TextField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-        decoration: InputDecoration(
-          prefixText: prefix,
-          hintText: hint,
-          prefixStyle: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-          hintStyle: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-          filled: true,
-          fillColor: AppColors.inputBackground,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: const BorderSide(color: AppColors.border),
+    return TapRegion(
+      onTapInside: (_) => onPaymentInputFocused(controller),
+      child: SizedBox(
+        width: width,
+        height: 25,
+        child: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            prefixText: prefix,
+            hintText: hint,
+            prefixStyle: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            hintStyle: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+            filled: true,
+            fillColor: AppColors.inputBackground,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(5),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(5),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
+          onChanged: onChanged,
         ),
-        onChanged: onChanged,
       ),
     );
   }
