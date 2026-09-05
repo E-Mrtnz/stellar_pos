@@ -64,46 +64,23 @@ class SalesSummaryWithKeypad extends StatefulWidget {
 class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   TextEditingController? _activeController;
   ValueChanged<String>? _activeOnChanged;
-
-  @override
-  void initState() {
-    super.initState();
-    FocusManager.instance.addListener(_handleFocusChanged);
-  }
+  final Object _keypadTapRegionGroup = Object();
 
   @override
   void dispose() {
-    FocusManager.instance.removeListener(_handleFocusChanged);
     super.dispose();
-  }
-
-  void _handleFocusChanged() {
-    final node = FocusManager.instance.primaryFocus;
-    final focusContext = node?.context;
-    if (focusContext == null) return;
-
-    final editable = focusContext.findAncestorWidgetOfExactType<EditableText>();
-    final controller = editable?.controller;
-
-    if (controller == widget.discountPercentController) {
-      _activate(controller!, widget.onDiscountPercentChanged);
-    } else if (controller == widget.discountAmountController) {
-      _activate(controller!, widget.onDiscountAmountChanged);
-    } else if (controller == widget.cashReceivedController) {
-      _activate(controller!, widget.onCashReceivedChanged);
-    }
   }
 
   void _activate(
     TextEditingController controller,
     ValueChanged<String> onChanged,
   ) {
-    if (_activeController != controller) {
-      setState(() {
-        _activeController = controller;
-        _activeOnChanged = onChanged;
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _activeController = controller;
+      _activeOnChanged = onChanged;
+    });
 
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
   }
@@ -171,6 +148,15 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onDiscountAmountChanged: widget.onDiscountAmountChanged,
           onDiscountPercentChanged: widget.onDiscountPercentChanged,
           onCashReceivedChanged: widget.onCashReceivedChanged,
+          onPaymentInputFocused: (controller) {
+            if (controller == widget.discountPercentController) {
+              _activate(controller, widget.onDiscountPercentChanged);
+            } else if (controller == widget.discountAmountController) {
+              _activate(controller, widget.onDiscountAmountChanged);
+            } else if (controller == widget.cashReceivedController) {
+              _activate(controller, widget.onCashReceivedChanged);
+            }
+          },
           subtotal: widget.subtotal,
           cardFeeAmount: widget.cardFeeAmount,
           total: widget.total,
@@ -180,35 +166,24 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onQuantityChanged: widget.onQuantityChanged,
           onRemoveFromCart: widget.onRemoveFromCart,
           onClearCart: widget.onClearCart,
-        ),
-        Positioned(
-          left: 70,
-          top: 38,
-          child: IgnorePointer(
-            child: Container(
-              width: 78,
-              height: 20,
-              color: AppColors.cardBackground,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '#${widget.ticketNumber}',
-                style: AppTextStyles.ticketValue,
-              ),
-            ),
-          ),
+          ticketNumber: widget.ticketNumber,
         ),
         if (_activeController != null)
           Positioned(
             left: -172,
             bottom: 10,
-            child: Focus(
-              canRequestFocus: false,
-              skipTraversal: true,
-              child: NumericKeypad(
-                onInput: _input,
-                onBackspace: _backspace,
-                onClear: _clear,
-                onDecimal: _decimal,
+            child: TapRegion(
+              groupId: _keypadTapRegionGroup,
+              onTapOutside: (_) => _closeKeypad(),
+              child: Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                child: NumericKeypad(
+                  onInput: _input,
+                  onBackspace: _backspace,
+                  onClear: _clear,
+                  onDecimal: _decimal,
+                ),
               ),
             ),
           ),
