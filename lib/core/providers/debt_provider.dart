@@ -1,11 +1,70 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/models/debt.dart';
+import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 
 class DebtProvider extends ChangeNotifier {
+  final SalesProvider _salesProvider;
   final List<DebtMovement> _payments = [];
 
-  List<DebtMovement> get payments => List.unmodifiable(_payments.reversed);
+  DebtProvider(this._salesProvider) {
+    _salesProvider.addListener(_onSalesChanged);
+  }
+
+  List<DebtAccount> get accounts {
+    final byClient = <String, DebtAccount>{};
+    for (final sale in _creditSales) {
+      final clientId = sale.clientId;
+      if (clientId == null || clientId.isEmpty) continue;
+      final current = byClient[clientId];
+      final paid = paidForClient(clientId);
+      byClient[clientId] = DebtAccount(
+        clientId: clientId,
+        clientName: sale.clientName,
+        totalDebt: (current?.totalDebt ?? 0) + sale.total,
+        totalPaid: paid,
+      );
+    }
+    return List.unmodifiable(byClient.values);
+  }
+
+  List<DebtMovement> get movements {
+    final result = <DebtMovement>[
+      ..._creditSales.map(
+        (sale) => DebtMovement(
+          id: sale.id,
+          clientId: sale.clientId ?? '',
+          clientName: sale.clientName,
+          type: DebtMovementType.debt,
+          amount: sale.total,
+          createdAt: sale.createdAt,
+          reference: sale.ticketNumber,
+        ),
+      ),
+      ..._payments,
+    ];
+    result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return List.unmodifiable(result);
+  }
+
+  double get totalDebt => _creditSales.fold(0, (sum, sale) => sum + sale.total);
+  double get totalPaid => _payments.fold(0, (sum, payment) => sum + payment.amount);
+  double get totalRemaining => totalDebt - totalPaid < 0 ? 0 : totalDebt - totalPaid;
+
+  int get clientsWithDebt => accounts.where((account) => account.remaining > 0.005).length;
+
+  DebtAccount? accountFor(String clientId) {
+    final sales = _creditSales.where((sale) => sale.clientId == clientId).toList();
+    if (sales.isEmpty) return null;
+    final total = sales.fold(0.0, (sum, sale) => sum + sale.total);
+    return DebtAccount(
+      clientId: clientId,
+      clientName: sales.last.clientName,
+      totalDebt: total,
+      totalPaid: paidForClient(clientId),
+    );
+  }
 
   double paidForClient(String clientId) => _payments
       .where((movement) => movement.clientId == clientId)
@@ -17,8 +76,13 @@ class DebtProvider extends ChangeNotifier {
     required double amount,
     double? maxAmount,
   }) {
-    if (clientId.trim().isEmpty || amount <= 0) return false;
-    if (maxAmount != null && amount > maxAmount + 0.005) return false;
+    final account = accountFor(clientId);
+    final remaining = account?.remaining ?? 0;
+    final limit = maxAmount ?? remaining;
+
+    if (clientId.trim().isEmpty || amount <= 0 || amount > limit + 0.005) {
+      return false;
+    }
 
     _payments.add(
       DebtMovement(
@@ -51,5 +115,17 @@ class DebtProvider extends ChangeNotifier {
       changed = true;
     }
     if (changed) notifyListeners();
+  }
+
+  List<SaleRecord> get _creditSales => _salesProvider.sales
+      .where((sale) => sale.paymentMethod == 'Fiado' && sale.clientId != null)
+      .toList(growable: false);
+
+  void _onSalesChanged() => notifyListeners();
+
+  @override
+  void dispose() {
+    _salesProvider.removeListener(_onSalesChanged);
+    super.dispose();
   }
 }
