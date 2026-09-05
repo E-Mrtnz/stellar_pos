@@ -72,32 +72,37 @@ class SidebarDrawer extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   children: [
                     _buildSidebarItem(
-                      0,
+                      AppNavigation.home,
                       Icons.point_of_sale_rounded,
                       AppStrings.navHome,
                     ),
                     _buildSidebarItem(
-                      1,
+                      AppNavigation.electronicBalance,
+                      Icons.phone_android_outlined,
+                      AppStrings.navElectronicBalance,
+                    ),
+                    _buildSidebarItem(
+                      AppNavigation.purchases,
                       Icons.shopping_bag_rounded,
                       AppStrings.navPurchases,
                     ),
                     _buildSidebarItem(
-                      2,
+                      AppNavigation.debts,
                       Icons.receipt_long_outlined,
                       AppStrings.navDebts,
                     ),
                     _buildSidebarItem(
-                      3,
+                      AppNavigation.stats,
                       Icons.bar_chart_rounded,
                       AppStrings.navStats,
                     ),
                     _buildSidebarItem(
-                      4,
+                      AppNavigation.providers,
                       Icons.local_shipping_outlined,
                       AppStrings.navProviders,
                     ),
                     _buildSidebarItem(
-                      5,
+                      AppNavigation.inventory,
                       Icons.inventory_2_rounded,
                       AppStrings.navInventory,
                     ),
