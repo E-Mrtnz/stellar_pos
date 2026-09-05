@@ -62,6 +62,24 @@ class CatalogProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool updateClient(Client client) {
+    final index = _clients.indexWhere((item) => item.id == client.id);
+    if (index < 0) return false;
+
+    final name = client.name.trim();
+    if (name.isEmpty) return false;
+
+    final duplicate = _clients.any(
+      (item) =>
+          item.id != client.id && item.name.toLowerCase() == name.toLowerCase(),
+    );
+    if (duplicate) return false;
+
+    _clients[index] = client.copyWith(name: name, phone: client.phone.trim());
+    notifyListeners();
+    return true;
+  }
+
   void removeClient(String clientId) {
     _clients.removeWhere((client) => client.id == clientId);
     notifyListeners();
