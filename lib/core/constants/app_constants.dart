@@ -124,7 +124,7 @@ class AppStrings {
   static const String appName = 'Stellar POS';
   static const String navHome = 'Ventas';
   static const String navInventory = 'Inventario';
-  static const String navElectronicBalance = 'Saldo electrónico';
+  static const String navElectronicBalance = 'Venta de saldo';
   static const String navStats = 'Estadísticas';
   static const String navPurchases = 'Compras';
   static const String navProviders = 'Proveedores';
@@ -185,12 +185,12 @@ class AppCategories {
 
 class AppNavigation {
   static const int home = 0;
-  static const int purchases = 1;
-  static const int debts = 2;
-  static const int stats = 3;
-  static const int providers = 4;
-  static const int inventory = 5;
-  static const int electronicBalance = 6;
+  static const int electronicBalance = 1;
+  static const int purchases = 2;
+  static const int debts = 3;
+  static const int stats = 4;
+  static const int providers = 5;
+  static const int inventory = 6;
   static const int settings = 7;
 }
 
