@@ -15,6 +15,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
+import 'package:stellar_pos/presentation/debts/debts_layout.dart';
 import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
@@ -306,6 +307,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex == AppNavigation.inventory) return const InventoryLayout();
     if (_selectedNavIndex == AppNavigation.electronicBalance) return const ElectronicBalanceLayout();
     if (_selectedNavIndex == AppNavigation.providers) return const ProvidersLayout();
+    if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
     if (_selectedNavIndex == AppNavigation.settings) return const PrinterSettingsLayout();
     if (_selectedNavIndex != AppNavigation.home) return const _EmptySectionPanel();
 
