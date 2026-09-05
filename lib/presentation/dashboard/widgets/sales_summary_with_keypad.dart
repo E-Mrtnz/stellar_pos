@@ -28,6 +28,7 @@ class SalesSummaryWithKeypad extends StatefulWidget {
   final void Function(String productId, int quantity) onQuantityChanged;
   final ValueChanged<String> onRemoveFromCart;
   final VoidCallback onClearCart;
+  final int ticketNumber;
 
   const SalesSummaryWithKeypad({
     super.key,
@@ -53,6 +54,7 @@ class SalesSummaryWithKeypad extends StatefulWidget {
     required this.onQuantityChanged,
     required this.onRemoveFromCart,
     required this.onClearCart,
+    required this.ticketNumber,
   });
 
   @override
@@ -81,7 +83,6 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     if (context == null) return;
     final editable = context.findAncestorWidgetOfExactType<EditableText>();
     final controller = editable?.controller;
-
     if (controller == widget.discountPercentController) {
       _activate(controller!, widget.onDiscountPercentChanged);
     } else if (controller == widget.discountAmountController) {
@@ -170,6 +171,19 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onQuantityChanged: widget.onQuantityChanged,
           onRemoveFromCart: widget.onRemoveFromCart,
           onClearCart: widget.onClearCart,
+        ),
+        Positioned(
+          left: 92,
+          top: 38,
+          child: IgnorePointer(
+            child: Container(
+              width: 64,
+              height: 20,
+              color: AppColors.cardBackground,
+              alignment: Alignment.centerLeft,
+              child: Text('#${widget.ticketNumber}', style: AppTextStyles.ticketValue),
+            ),
+          ),
         ),
         if (_activeController != null)
           Positioned(
