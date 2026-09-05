@@ -23,8 +23,6 @@ class TicketGenerator {
     // ================================================================
     // ENCABEZADO DEL BOCETO
     // ================================================================
-    // Se mantiene el encabezado como un bloque independiente: identificacion
-    // del negocio, direccion y telefono, antes del comprobante.
     bytes.addAll(
       generator.text(
         'STELLAR POS',
@@ -200,7 +198,9 @@ class TicketGenerator {
       bytes.addAll(generator.drawer(pin: PosDrawer.pin2));
     }
 
-    bytes.addAll(generator.feed(3));
+    // Solo dejamos una linea de avance antes del corte para evitar desperdicio
+    // de papel debajo del codigo de barras.
+    bytes.addAll(generator.feed(1));
     bytes.addAll(generator.cut());
 
     return bytes;
