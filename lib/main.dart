@@ -23,7 +23,9 @@ void main() {
         ChangeNotifierProvider(create: (_) => ElectronicBalanceProvider()),
         ChangeNotifierProvider(create: (_) => PrinterProvider()),
         ChangeNotifierProvider(create: (_) => SalesProvider()),
-        ChangeNotifierProvider(create: (_) => DebtProvider()),
+        ChangeNotifierProvider(
+          create: (context) => DebtProvider(context.read<SalesProvider>()),
+        ),
       ],
       child: const StellarPosApp(),
     ),
