@@ -48,11 +48,12 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   void _handleFocusChanged() {
     final node = FocusManager.instance.primaryFocus;
     final context = node?.context;
-    if (context == null) return;
+    if (context == null) { if (_activeController != null) _closeKeypad(); return; }
     final controller = context.findAncestorWidgetOfExactType<EditableText>()?.controller;
     if (controller == widget.discountPercentController) _activate(controller!, widget.onDiscountPercentChanged);
     else if (controller == widget.discountAmountController) _activate(controller!, widget.onDiscountAmountChanged);
     else if (controller == widget.cashReceivedController) _activate(controller!, widget.onCashReceivedChanged);
+    else if (_activeController != null) _closeKeypad();
   }
 
   void _activate(TextEditingController controller, ValueChanged<String> onChanged) {
@@ -61,6 +62,7 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   }
 
   void _closeKeypad() {
+    if (!mounted) return;
     setState(() { _activeController = null; _activeOnChanged = null; });
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
   }
@@ -106,21 +108,8 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
             onRemoveFromCart: widget.onRemoveFromCart,
             onClearCart: widget.onClearCart,
           ),
-          Positioned(
-            left: 70,
-            top: 38,
-            child: IgnorePointer(
-              child: Container(
-                width: 78,
-                height: 20,
-                color: AppColors.cardBackground,
-                alignment: Alignment.centerLeft,
-                child: Text('#${widget.ticketNumber}', style: AppTextStyles.ticketValue),
-              ),
-            ),
-          ),
-          if (_activeController != null)
-            Positioned(left: -172, bottom: 10, child: NumericKeypad(onInput: _input, onBackspace: _backspace, onClear: _clear, onDecimal: _decimal)),
+          Positioned(left: 70, top: 38, child: IgnorePointer(child: Container(width: 78, height: 20, color: AppColors.cardBackground, alignment: Alignment.centerLeft, child: Text('#${widget.ticketNumber}', style: AppTextStyles.ticketValue)))),
+          if (_activeController != null) Positioned(left: -172, bottom: 10, child: NumericKeypad(onInput: _input, onBackspace: _backspace, onClear: _clear, onDecimal: _decimal)),
         ],
       );
 }
