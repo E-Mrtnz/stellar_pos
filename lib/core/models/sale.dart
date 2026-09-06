@@ -12,6 +12,9 @@ class SaleItemRecord {
   final double discount;
   final double lineTotal;
   final String imageData;
+  final bool isElectronicBalance;
+  final String? electronicBalanceAccountId;
+  final String? electronicBalanceCategory;
 
   const SaleItemRecord({
     required this.productId,
@@ -25,6 +28,9 @@ class SaleItemRecord {
     required this.discount,
     required this.lineTotal,
     this.imageData = '',
+    this.isElectronicBalance = false,
+    this.electronicBalanceAccountId,
+    this.electronicBalanceCategory,
   });
 
   Map<String, dynamic> toMap() {
@@ -40,6 +46,9 @@ class SaleItemRecord {
       'discount': discount,
       'lineTotal': lineTotal,
       'imageData': imageData,
+      'isElectronicBalance': isElectronicBalance,
+      'electronicBalanceAccountId': electronicBalanceAccountId,
+      'electronicBalanceCategory': electronicBalanceCategory,
     };
   }
 }
