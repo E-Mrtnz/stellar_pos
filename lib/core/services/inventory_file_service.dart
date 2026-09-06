@@ -91,8 +91,6 @@ class InventoryFileService {
     await FilePicker.saveFile(
       fileName: 'inventario_${_dateStamp()}.xlsx',
       bytes: Uint8List.fromList(bytes),
-      mimeType:
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       type: FileType.custom,
       allowedExtensions: const ['xlsx'],
     );
@@ -182,7 +180,6 @@ class InventoryFileService {
     await FilePicker.saveFile(
       fileName: 'inventario_${_dateStamp()}.pdf',
       bytes: Uint8List.fromList(bytes),
-      mimeType: 'application/pdf',
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
     );
