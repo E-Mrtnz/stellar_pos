@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
@@ -16,6 +17,9 @@ class CentralProductGrid extends StatelessWidget {
   final ValueChanged<String?> onFilterChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onRemoveFromCart;
+  final ValueChanged<List<ElectronicBalanceCartItem>>? onElectronicBalanceSelectionChanged;
+  final List<ElectronicBalanceCartItem> electronicBalanceSelection;
+  final VoidCallback? onElectronicBalanceTap;
   final ValueChanged<String>? onSearchChanged;
   final String searchQuery;
 
@@ -30,6 +34,9 @@ class CentralProductGrid extends StatelessWidget {
     required this.onFilterChanged,
     required this.onAddToCart,
     required this.onRemoveFromCart,
+    this.onElectronicBalanceSelectionChanged,
+    this.electronicBalanceSelection = const [],
+    this.onElectronicBalanceTap,
     this.onSearchChanged,
     this.searchQuery = '',
   });
@@ -69,7 +76,7 @@ class CentralProductGrid extends StatelessWidget {
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 12),
           Expanded(
-            child: filteredProducts.isEmpty
+            child: filteredProducts.isEmpty && onElectronicBalanceTap == null
                 ? _buildEmptyState()
                 : _buildProductGrid(filteredProducts),
           ),
@@ -89,7 +96,7 @@ class CentralProductGrid extends StatelessWidget {
 
   Widget _buildProductGrid(List<Map<String, dynamic>> products) {
     return GridView.builder(
-      itemCount: products.length,
+      itemCount: products.length + 1,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         childAspectRatio: AppDimensions.productCardAspectRatio,
@@ -97,7 +104,14 @@ class CentralProductGrid extends StatelessWidget {
         mainAxisSpacing: AppDimensions.productGridSpacing,
       ),
       itemBuilder: (context, index) {
-        final product = products[index];
+        if (index == 0) {
+          return _ElectronicBalanceCard(
+            selection: electronicBalanceSelection,
+            onTap: onElectronicBalanceTap,
+          );
+        }
+
+        final product = products[index - 1];
         final productId = product['id'].toString();
 
         return ProductCard(
@@ -107,6 +121,111 @@ class CentralProductGrid extends StatelessWidget {
           onRemove: () => onRemoveFromCart(productId),
         );
       },
+    );
+  }
+}
+
+class _ElectronicBalanceCard extends StatelessWidget {
+  final List<ElectronicBalanceCartItem> selection;
+  final VoidCallback? onTap;
+
+  const _ElectronicBalanceCard({
+    required this.selection,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final quantity = selection.fold<int>(0, (sum, item) => sum + item.quantity);
+    final total = selection.fold<double>(
+      0,
+      (sum, item) => sum + item.amount * item.quantity,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: selection.isEmpty
+                ? AppColors.primary.withAlpha(10)
+                : AppColors.primary.withAlpha(18),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selection.isEmpty
+                  ? AppColors.primary.withAlpha(70)
+                  : AppColors.primary,
+              width: selection.isEmpty ? 1 : 1.4,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(22),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.phone_android_outlined,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
+              const Spacer(),
+              const Text(
+                'Venta de saldo',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                selection.isEmpty
+                    ? 'Recargas móviles'
+                    : '$quantity recarga${quantity == 1 ? '' : 's'} · \$${total.toStringAsFixed(2)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selection.isEmpty ? 'Tocar para seleccionar' : 'Tocar para editar',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 17,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
