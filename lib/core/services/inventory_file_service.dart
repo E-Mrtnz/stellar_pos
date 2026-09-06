@@ -1,0 +1,364 @@
+import 'dart:typed_data';
+
+import 'package:excel_plus/excel_plus.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+
+import 'package:stellar_pos/core/models/product.dart';
+
+class InventoryImportResult {
+  final List<Product> products;
+  final List<String> errors;
+
+  const InventoryImportResult({
+    required this.products,
+    required this.errors,
+  });
+
+  bool get hasErrors => errors.isNotEmpty;
+}
+
+class InventoryFileService {
+  static const List<String> headers = [
+    'ID',
+    'Producto',
+    'Unidad',
+    'Categoría',
+    'Distribuidora',
+    'Precio de compra',
+    'Precio de venta',
+    'Stock',
+    'Stock mínimo',
+    'Stock máximo',
+    'Código de barras',
+  ];
+
+  static Future<void> saveExcel(List<Product> products) async {
+    final workbook = Excel.createExcel();
+    final sheet = workbook['Inventario'];
+
+    for (var column = 0; column < headers.length; column++) {
+      sheet.updateCell(
+        CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
+        TextCellValue(headers[column]),
+        cellStyle: CellStyle(bold: true),
+      );
+    }
+
+    for (var rowIndex = 0; rowIndex < products.length; rowIndex++) {
+      final product = products[rowIndex];
+      final values = <CellValue>[
+        TextCellValue(product.id),
+        TextCellValue(product.name),
+        TextCellValue(product.unit),
+        TextCellValue(product.category),
+        TextCellValue(product.department),
+        DoubleCellValue(product.cost),
+        DoubleCellValue(product.price),
+        IntCellValue(product.stock),
+        IntCellValue(product.minStock),
+        IntCellValue(product.maxStock),
+        TextCellValue(product.barcode),
+      ];
+
+      for (var column = 0; column < values.length; column++) {
+        sheet.updateCell(
+          CellIndex.indexByColumnRow(
+            columnIndex: column,
+            rowIndex: rowIndex + 1,
+          ),
+          values[column],
+        );
+      }
+    }
+
+    for (var column = 0; column < headers.length; column++) {
+      sheet.setColumnAutoFit(column);
+    }
+
+    final bytes = workbook.save();
+    if (bytes == null || bytes.isEmpty) {
+      throw StateError('No se pudo generar el archivo Excel.');
+    }
+
+    await FileSaver.instance.saveFile(
+      name: 'inventario_${_dateStamp()}',
+      bytes: Uint8List.fromList(bytes),
+      fileExtension: 'xlsx',
+      mimeType: MimeType.microsoftExcel,
+    );
+  }
+
+  static Future<void> savePdf(List<Product> products) async {
+    final document = pw.Document();
+
+    final rows = products
+        .map(
+          (product) => <String>[
+            product.name,
+            product.unit,
+            product.category,
+            product.department,
+            _money(product.cost),
+            _money(product.price),
+            product.stock.toString(),
+            product.minStock.toString(),
+            product.maxStock.toString(),
+            product.barcode,
+          ],
+        )
+        .toList();
+
+    document.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(24),
+        header: (_) => pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 12),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Inventario',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text(
+                _dateLabel(),
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+            ],
+          ),
+        ),
+        footer: (context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Text(
+            'Página ${context.pageNumber} de ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8),
+          ),
+        ),
+        build: (_) => [
+          pw.TableHelper.fromTextArray(
+            headers: const [
+              'Producto',
+              'Unidad',
+              'Categoría',
+              'Distribuidora',
+              'Compra',
+              'Venta',
+              'Stock',
+              'Mín.',
+              'Máx.',
+              'Código',
+            ],
+            data: rows,
+            headerStyle: pw.TextStyle(
+              fontSize: 7,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 6.5),
+            cellPadding: const pw.EdgeInsets.symmetric(
+              horizontal: 4,
+              vertical: 4,
+            ),
+            headerDecoration: const pw.BoxDecoration(
+              color: PdfColors.grey300,
+            ),
+            border: pw.TableBorder.all(
+              color: PdfColors.grey400,
+              width: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final bytes = await document.save();
+    await FileSaver.instance.saveFile(
+      name: 'inventario_${_dateStamp()}',
+      bytes: Uint8List.fromList(bytes),
+      fileExtension: 'pdf',
+      mimeType: MimeType.pdf,
+    );
+  }
+
+  static Future<InventoryImportResult> parseExcel(
+    Uint8List bytes,
+    String extension,
+  ) async {
+    final normalizedExtension = extension.toLowerCase().replaceFirst('.', '');
+    if (!{'xlsx', 'xlsm', 'xls'}.contains(normalizedExtension)) {
+      return const InventoryImportResult(
+        products: [],
+        errors: [
+          'Formato no compatible. Solo se aceptan archivos .xlsx, .xlsm y .xls (Excel 97-2003).',
+        ],
+      );
+    }
+
+    try {
+      final workbook = await Excel.decodeBytesAsync(bytes);
+      if (workbook.tables.isEmpty) {
+        return const InventoryImportResult(
+          products: [],
+          errors: ['El archivo Excel no contiene ninguna hoja.'],
+        );
+      }
+
+      final sheetName = workbook.tables.keys.first;
+      final rows = workbook[sheetName].rows;
+      if (rows.isEmpty) {
+        return const InventoryImportResult(
+          products: [],
+          errors: ['La hoja de Excel está vacía.'],
+        );
+      }
+
+      final headerMap = _buildHeaderMap(rows.first);
+      if (!headerMap.containsKey('producto')) {
+        return const InventoryImportResult(
+          products: [],
+          errors: [
+            'No se encontró la columna "Producto". Usa el archivo exportado por STELLAR POS como plantilla.',
+          ],
+        );
+      }
+
+      final products = <Product>[];
+      final errors = <String>[];
+
+      for (var index = 1; index < rows.length; index++) {
+        final row = rows[index];
+        if (_rowIsEmpty(row)) continue;
+
+        final excelRow = index + 1;
+        final name = _read(row, headerMap, 'producto').trim();
+        if (name.isEmpty) {
+          errors.add('Fila $excelRow: falta el nombre del producto.');
+          continue;
+        }
+
+        final cost = _readDouble(row, headerMap, 'precio de compra');
+        final price = _readDouble(row, headerMap, 'precio de venta');
+        final stock = _readInt(row, headerMap, 'stock');
+        final minStock = _readInt(row, headerMap, 'stock mínimo', fallback: 5);
+        final maxStock = _readInt(row, headerMap, 'stock máximo', fallback: 40);
+
+        if (cost < 0 || price < 0 || stock < 0 || minStock < 0 || maxStock < 0) {
+          errors.add('Fila $excelRow: los valores numéricos no pueden ser negativos.');
+          continue;
+        }
+
+        products.add(
+          Product(
+            id: _read(row, headerMap, 'id').trim(),
+            name: name,
+            unit: _read(row, headerMap, 'unidad').trim(),
+            category: _read(row, headerMap, 'categoría').trim(),
+            department: _read(row, headerMap, 'distribuidora').trim(),
+            cost: cost,
+            price: price,
+            stock: stock,
+            minStock: minStock,
+            maxStock: maxStock,
+            barcode: _read(row, headerMap, 'código de barras').trim(),
+          ),
+        );
+      }
+
+      if (products.isEmpty && errors.isEmpty) {
+        errors.add('No se encontraron productos para importar.');
+      }
+
+      return InventoryImportResult(products: products, errors: errors);
+    } catch (error) {
+      return InventoryImportResult(
+        products: const [],
+        errors: [
+          'No se pudo leer el archivo Excel. Verifica que sea un .xlsx, .xlsm o un .xls de Excel 97-2003 válido.',
+        ],
+      );
+    }
+  }
+
+  static Map<String, int> _buildHeaderMap(List<CellValue?> row) {
+    final map = <String, int>{};
+    for (var index = 0; index < row.length; index++) {
+      final value = _cellText(row[index]);
+      final normalized = _normalizeHeader(value);
+      if (normalized.isNotEmpty) map[normalized] = index;
+    }
+    return map;
+  }
+
+  static String _normalizeHeader(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u');
+  }
+
+  static String _read(
+    List<CellValue?> row,
+    Map<String, int> headers,
+    String key,
+  ) {
+    final index = headers[_normalizeHeader(key)];
+    if (index == null || index >= row.length) return '';
+    return _cellText(row[index]);
+  }
+
+  static double _readDouble(
+    List<CellValue?> row,
+    Map<String, int> headers,
+    String key,
+  ) {
+    final value = _read(row, headers, key).replaceAll(',', '.');
+    return double.tryParse(value) ?? 0;
+  }
+
+  static int _readInt(
+    List<CellValue?> row,
+    Map<String, int> headers,
+    String key, {
+    int fallback = 0,
+  }) {
+    final value = _read(row, headers, key).replaceAll(',', '.');
+    return int.tryParse(value) ?? double.tryParse(value)?.toInt() ?? fallback;
+  }
+
+  static String _cellText(CellValue? cell) {
+    if (cell == null) return '';
+    try {
+      return cell.displayText;
+    } catch (_) {
+      return cell.value?.toString() ?? '';
+    }
+  }
+
+  static bool _rowIsEmpty(List<CellValue?> row) {
+    return row.every((cell) => _cellText(cell).trim().isEmpty);
+  }
+
+  static String _money(double value) => '\$${value.toStringAsFixed(2)}';
+
+  static String _dateStamp() {
+    final now = DateTime.now();
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${now.year}${two(now.month)}${two(now.day)}_${two(now.hour)}${two(now.minute)}';
+  }
+
+  static String _dateLabel() {
+    final now = DateTime.now();
+    return '${now.day.toString().padLeft(2, '0')}/'
+        '${now.month.toString().padLeft(2, '0')}/${now.year}';
+  }
+}
