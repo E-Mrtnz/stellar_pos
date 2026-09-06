@@ -20,7 +20,16 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   final List<ElectronicBalanceAccount> _accounts = [];
   final List<ElectronicBalanceTransaction> _transactions = [];
 
-  List<ElectronicBalanceAccount> get accounts => List.unmodifiable(_accounts);
+  List<ElectronicBalanceAccount> get accounts {
+    final result = List<ElectronicBalanceAccount>.from(_accounts);
+    result.sort(
+      (a, b) => a.companyName.toLowerCase().compareTo(
+        b.companyName.toLowerCase(),
+      ),
+    );
+    return List.unmodifiable(result);
+  }
+
   List<ElectronicBalanceTransaction> get transactions =>
       List.unmodifiable(_transactions);
 
@@ -123,8 +132,8 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     }
 
     normalized.sort((a, b) {
-      final categoryCompare = _categoryOrder(a.category)
-          .compareTo(_categoryOrder(b.category));
+      final categoryCompare =
+          _categoryOrder(a.category).compareTo(_categoryOrder(b.category));
       if (categoryCompare != 0) return categoryCompare;
       return a.amount.compareTo(b.amount);
     });
