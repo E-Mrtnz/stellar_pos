@@ -1,11 +1,16 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/core/services/inventory_file_service.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
@@ -25,10 +30,14 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   int _selectedTagIndex = 0;
   String? _selectedFilter = 'all';
   String _searchQuery = '';
+  bool _isImporting = false;
+  bool _isExporting = false;
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
-  List<Map<String, dynamic>> _filterProducts(List<Map<String, dynamic>> products) {
+  List<Map<String, dynamic>> _filterProducts(
+    List<Map<String, dynamic>> products,
+  ) {
     return ProductFilterUtils.apply(
       products: products,
       searchQuery: _searchQuery,
@@ -40,14 +49,221 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   Future<void> _createProduct() async => CreateProductDialog.show(context);
   Future<void> _createCatalogItem() async => CreateCatalogDialog.show(context);
-  Future<void> _editProduct(Map<String, dynamic> product) async => CreateProductDialog.show(context, product: product);
+  Future<void> _editProduct(Map<String, dynamic> product) async =>
+      CreateProductDialog.show(context, product: product);
+
+  Future<void> _importInventory() async {
+    if (_isImporting) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx', 'xlsm', 'xls'],
+      allowMultiple: false,
+      withData: true,
+    );
+
+    if (result == null || result.files.isEmpty || !mounted) return;
+
+    final file = result.files.single;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      _showFileMessage(
+        'No se pudo leer el archivo seleccionado.',
+        title: 'Importación',
+      );
+      return;
+    }
+
+    setState(() => _isImporting = true);
+
+    try {
+      final extension = _fileExtension(file.name);
+      final parsed = await InventoryFileService.parseExcel(
+        Uint8List.fromList(bytes),
+        extension,
+      );
+
+      if (!mounted) return;
+
+      if (parsed.products.isEmpty) {
+        _showFileMessage(
+          parsed.errors.isEmpty
+              ? 'No se encontraron productos para importar.'
+              : parsed.errors.join('\n'),
+          title: 'No se importó el inventario',
+        );
+        return;
+      }
+
+      final importResult = _applyImportedProducts(parsed.products);
+      final messages = <String>[];
+      messages.add(
+        '${importResult.added} producto(s) agregado(s) y '
+        '${importResult.updated} actualizado(s).',
+      );
+      if (parsed.errors.isNotEmpty) {
+        messages.add('\nFilas omitidas:\n${parsed.errors.join('\n')}');
+      }
+
+      _showFileMessage(
+        messages.join('\n'),
+        title: parsed.errors.isEmpty
+            ? 'Inventario importado'
+            : 'Importación completada con avisos',
+      );
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  _ImportCounters _applyImportedProducts(List<Product> imported) {
+    final productProvider = context.read<ProductProvider>();
+    final catalogProvider = context.read<CatalogProvider>();
+    final providersProvider = context.read<ProvidersProvider>();
+
+    var added = 0;
+    var updated = 0;
+
+    final existing = List<Product>.from(productProvider.products);
+
+    for (final product in imported) {
+      if (product.category.trim().isNotEmpty) {
+        catalogProvider.addTag(product.category);
+      }
+      if (product.department.trim().isNotEmpty) {
+        providersProvider.addDistributor(product.department);
+      }
+
+      final match = _findExistingProduct(existing, product);
+      if (match == null) {
+        productProvider.addProduct(product);
+        existing.add(product);
+        added++;
+      } else {
+        final updatedProduct = product.copyWith(
+          id: match.id,
+          imageData: match.imageData,
+        );
+        productProvider.updateProduct(updatedProduct);
+        final index = existing.indexWhere((item) => item.id == match.id);
+        if (index >= 0) existing[index] = updatedProduct;
+        updated++;
+      }
+    }
+
+    return _ImportCounters(added: added, updated: updated);
+  }
+
+  Product? _findExistingProduct(List<Product> products, Product incoming) {
+    if (incoming.id.trim().isNotEmpty) {
+      for (final product in products) {
+        if (product.id == incoming.id.trim()) return product;
+      }
+    }
+
+    final barcode = incoming.barcode.trim();
+    if (barcode.isNotEmpty) {
+      for (final product in products) {
+        if (product.barcode.trim() == barcode) return product;
+      }
+    }
+
+    final name = incoming.name.trim().toLowerCase();
+    for (final product in products) {
+      if (product.name.trim().toLowerCase() == name) return product;
+    }
+
+    return null;
+  }
+
+  Future<void> _exportExcel() async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+
+    try {
+      await InventoryFileService.saveExcel(
+        context.read<ProductProvider>().products,
+      );
+      if (mounted) {
+        _showFileMessage(
+          'El inventario se exportó correctamente en formato Excel.',
+          title: 'Exportación completada',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        _showFileMessage(
+          'No se pudo exportar el inventario.\n$error',
+          title: 'Error al exportar',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  Future<void> _exportPdf() async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+
+    try {
+      await InventoryFileService.savePdf(
+        context.read<ProductProvider>().products,
+      );
+      if (mounted) {
+        _showFileMessage(
+          'El inventario se exportó correctamente en formato PDF.',
+          title: 'Exportación completada',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        _showFileMessage(
+          'No se pudo exportar el inventario.\n$error',
+          title: 'Error al exportar',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  void _showFileMessage(String message, {required String title}) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(child: Text(message)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fileExtension(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    if (dot < 0 || dot == fileName.length - 1) return '';
+    return fileName.substring(dot + 1).toLowerCase();
+  }
 
   @override
   Widget build(BuildContext context) {
     final products = context.watch<ProductProvider>().productMaps;
     final filteredProducts = _filterProducts(products);
-    final totalInvestment = products.fold<double>(0, (total, product) => total + ProductUtils.cost(product) * ProductUtils.stock(product));
-    final totalSales = products.fold<double>(0, (total, product) => total + ProductUtils.price(product) * ProductUtils.stock(product));
+    final totalInvestment = products.fold<double>(
+      0,
+      (total, product) =>
+          total + ProductUtils.cost(product) * ProductUtils.stock(product),
+    );
+    final totalSales = products.fold<double>(
+      0,
+      (total, product) =>
+          total + ProductUtils.price(product) * ProductUtils.stock(product),
+    );
     final totalProfit = totalSales - totalInvestment;
 
     return Scaffold(
@@ -59,14 +275,23 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTopHeader(totalInvestment, totalSales, totalProfit, products.length),
+                _buildTopHeader(
+                  totalInvestment,
+                  totalSales,
+                  totalProfit,
+                  products.length,
+                ),
+                const SizedBox(height: 10),
+                _buildFileActions(),
                 const SizedBox(height: 12),
                 ProductFilterBar(
                   tags: _tags,
                   selectedFilter: _selectedFilter,
-                  onFilterChanged: (filter) => setState(() => _selectedFilter = filter),
+                  onFilterChanged: (filter) =>
+                      setState(() => _selectedFilter = filter),
                   selectedTagIndex: _selectedTagIndex,
-                  onTagSelected: (index) => setState(() => _selectedTagIndex = index),
+                  onTagSelected: (index) =>
+                      setState(() => _selectedTagIndex = index),
                 ),
                 const SizedBox(height: 12),
                 Expanded(child: _buildInventoryTable(filteredProducts)),
@@ -79,51 +304,215 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     );
   }
 
-  Widget _buildTopHeader(double totalInvestment, double totalSales, double totalProfit, int productCount) {
+  Widget _buildTopHeader(
+    double totalInvestment,
+    double totalSales,
+    double totalProfit,
+    int productCount,
+  ) {
     return Row(
       children: [
-        Expanded(flex: 2, child: ProductSearchBar(onChanged: (value) => setState(() => _searchQuery = value))),
+        Expanded(
+          flex: 2,
+          child: ProductSearchBar(
+            onChanged: (value) => setState(() => _searchQuery = value),
+          ),
+        ),
         const SizedBox(width: 12),
-        MetricCard(amount: productCount.toString(), label: 'Productos', color: const Color(0xFFF59E0B), icon: Icons.inventory_2_outlined),
+        MetricCard(
+          amount: productCount.toString(),
+          label: 'Productos',
+          color: const Color(0xFFF59E0B),
+          icon: Icons.inventory_2_outlined,
+        ),
         const SizedBox(width: 8),
-        MetricCard(amount: ProductUtils.money(totalInvestment), label: 'Inversión total', color: AppColors.dangerRed, icon: Icons.payment_outlined, iconRotation: 3.141592653589793, paymentArrow: true),
+        MetricCard(
+          amount: ProductUtils.money(totalInvestment),
+          label: 'Inversión total',
+          color: AppColors.dangerRed,
+          icon: Icons.payment_outlined,
+          iconRotation: 3.141592653589793,
+          paymentArrow: true,
+        ),
         const SizedBox(width: 8),
-        MetricCard(amount: ProductUtils.money(totalSales), label: 'Ingreso estimado', color: AppColors.primary, icon: Icons.payment_outlined, paymentArrow: true),
+        MetricCard(
+          amount: ProductUtils.money(totalSales),
+          label: 'Ingreso estimado',
+          color: AppColors.primary,
+          icon: Icons.payment_outlined,
+          paymentArrow: true,
+        ),
         const SizedBox(width: 8),
-        MetricCard(amount: ProductUtils.money(totalProfit), label: 'Ganancia estimada', color: AppColors.successGreen, icon: Icons.account_balance_wallet_outlined),
+        MetricCard(
+          amount: ProductUtils.money(totalProfit),
+          label: 'Ganancia estimada',
+          color: AppColors.successGreen,
+          icon: Icons.account_balance_wallet_outlined,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFileActions() {
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: AppColors.textPrimary,
+      side: const BorderSide(color: AppColors.border),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _isImporting || _isExporting ? null : _importInventory,
+          style: buttonStyle,
+          icon: _isImporting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload_file_outlined, size: 18),
+          label: const Text('Subir inventario'),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<String>(
+          enabled: !_isImporting && !_isExporting,
+          onSelected: (value) {
+            if (value == 'excel') {
+              _exportExcel();
+            } else {
+              _exportPdf();
+            }
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem<String>(
+              value: 'excel',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.table_chart_outlined),
+                title: Text('Descargar Excel'),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'pdf',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.picture_as_pdf_outlined),
+                title: Text('Descargar PDF'),
+              ),
+            ),
+          ],
+          child: OutlinedButton.icon(
+            onPressed: null,
+            style: buttonStyle,
+            icon: _isExporting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined, size: 18),
+            label: const Text('Descargar inventario'),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildInventoryTable(List<Map<String, dynamic>> products) {
     return Container(
-      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.cardRadius), border: Border.all(color: AppColors.border)),
-      child: Column(children: [_buildTableHeader(), const Divider(height: 1, color: AppColors.border), Expanded(child: _buildInventoryList(products))]),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          _buildTableHeader(),
+          const Divider(height: 1, color: AppColors.border),
+          Expanded(child: _buildInventoryList(products)),
+        ],
+      ),
     );
   }
 
   Widget _buildTableHeader() {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(children: [
-        SizedBox(width: 40), SizedBox(width: 12),
-        Expanded(flex: 3, child: Text(AppStrings.inventoryProductHeader, style: AppTextStyles.inventoryHeader)),
-        Expanded(flex: 2, child: Text(AppStrings.inventoryCostHeader, style: AppTextStyles.inventoryHeader)),
-        Expanded(flex: 2, child: Text(AppStrings.inventorySalePriceHeader, style: AppTextStyles.inventoryHeader)),
-        Expanded(flex: 2, child: Text(AppStrings.inventoryStockHeader, style: AppTextStyles.inventoryHeader)),
-        Expanded(flex: 2, child: Text(AppStrings.inventoryProfitHeader, style: AppTextStyles.inventoryHeader)),
-        Expanded(flex: 1, child: Text(AppStrings.inventoryMarginHeader, style: AppTextStyles.inventoryHeader)),
-        SizedBox(width: 45, child: Text('Editar', style: AppTextStyles.inventoryHeader)),
-      ]),
+      child: Row(
+        children: [
+          SizedBox(width: 40),
+          SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: Text(
+              AppStrings.inventoryProductHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventoryCostHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventorySalePriceHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventoryStockHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              AppStrings.inventoryProfitHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Text(
+              AppStrings.inventoryMarginHeader,
+              style: AppTextStyles.inventoryHeader,
+            ),
+          ),
+          SizedBox(
+            width: 45,
+            child: Text('Editar', style: AppTextStyles.inventoryHeader),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildInventoryList(List<Map<String, dynamic>> products) {
-    if (products.isEmpty) return const Center(child: Text(AppStrings.inventoryEmptyMessage, style: TextStyle(color: AppColors.textSecondary)));
+    if (products.isEmpty) {
+      return const Center(
+        child: Text(
+          AppStrings.inventoryEmptyMessage,
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: products.length,
-      separatorBuilder: (_, __) => const Divider(color: AppColors.chipBackground),
+      separatorBuilder: (_, __) =>
+          const Divider(color: AppColors.chipBackground),
       itemBuilder: (context, index) => _buildInventoryRow(products[index]),
     );
   }
@@ -133,33 +522,103 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final price = ProductUtils.price(product);
     final stock = ProductUtils.stock(product);
     final profit = ProductUtils.profit(product);
-    final profitPercent = ProductUtils.profitPercentage(product).toStringAsFixed(0);
+    final profitPercent =
+        ProductUtils.profitPercentage(product).toStringAsFixed(0);
     final name = ProductUtils.cleanName(product);
     final imageData = ProductUtils.asString(product['imageData']);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(children: [
-        _buildInventoryImage(imageData),
-        const SizedBox(width: 12),
-        Expanded(flex: 3, child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary))),
-        Expanded(flex: 2, child: Text(ProductUtils.money(cost), style: const TextStyle(color: AppColors.textSecondary))),
-        Expanded(flex: 2, child: Text(ProductUtils.money(price), style: const TextStyle(color: AppColors.textPrimary))),
-        Expanded(flex: 2, child: Text('$stock', style: const TextStyle(color: AppColors.textSecondary))),
-        Expanded(flex: 2, child: Text(ProductUtils.money(profit), style: const TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.w600))),
-        Expanded(flex: 1, child: Text('$profitPercent%', style: const TextStyle(color: AppColors.textSecondary))),
-        SizedBox(width: 45, child: IconButton(tooltip: 'Editar', icon: const Icon(Icons.edit_outlined, size: 18), color: AppColors.primary, onPressed: () => _editProduct(product))),
-      ]),
+      child: Row(
+        children: [
+          _buildInventoryImage(imageData),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              ProductUtils.money(cost),
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              ProductUtils.money(price),
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              '$stock',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              ProductUtils.money(profit),
+              style: const TextStyle(
+                color: AppColors.successGreen,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Text(
+              '$profitPercent%',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          SizedBox(
+            width: 45,
+            child: IconButton(
+              tooltip: 'Editar',
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: AppColors.primary,
+              onPressed: () => _editProduct(product),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildInventoryImage(String imageData) {
     if (imageData.isNotEmpty) {
       try {
-        return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(base64Decode(imageData), width: AppDimensions.inventoryImageSize, height: AppDimensions.inventoryImageSize, fit: BoxFit.cover));
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(
+            base64Decode(imageData),
+            width: AppDimensions.inventoryImageSize,
+            height: AppDimensions.inventoryImageSize,
+            fit: BoxFit.cover,
+          ),
+        );
       } catch (_) {}
     }
-    return Container(width: AppDimensions.inventoryImageSize, height: AppDimensions.inventoryImageSize, decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.image_outlined, color: AppColors.textMuted));
+
+    return Container(
+      width: AppDimensions.inventoryImageSize,
+      height: AppDimensions.inventoryImageSize,
+      decoration: BoxDecoration(
+        color: AppColors.chipBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+    );
   }
 
   Widget _buildFloatingActions() {
@@ -169,15 +628,30 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildCircularFab(heroTag: 'fab_tags', tooltip: AppStrings.createTagsTooltip, icon: Icons.label_outlined, onPressed: _createCatalogItem),
+          _buildCircularFab(
+            heroTag: 'fab_tags',
+            tooltip: AppStrings.createTagsTooltip,
+            icon: Icons.label_outlined,
+            onPressed: _createCatalogItem,
+          ),
           const SizedBox(height: 12),
-          _buildCircularFab(heroTag: 'fab_products', tooltip: AppStrings.createProductsTooltip, icon: Icons.inventory_2_outlined, onPressed: _createProduct),
+          _buildCircularFab(
+            heroTag: 'fab_products',
+            tooltip: AppStrings.createProductsTooltip,
+            icon: Icons.inventory_2_outlined,
+            onPressed: _createProduct,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCircularFab({required String heroTag, required String tooltip, required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildCircularFab({
+    required String heroTag,
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
     return FloatingActionButton(
       heroTag: heroTag,
       tooltip: tooltip,
@@ -188,4 +662,11 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       child: Icon(icon, color: Colors.white, size: AppSizes.iconLarge),
     );
   }
+}
+
+class _ImportCounters {
+  final int added;
+  final int updated;
+
+  const _ImportCounters({required this.added, required this.updated});
 }
