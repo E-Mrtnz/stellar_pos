@@ -74,10 +74,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent) {
       return KeyEventResult.ignored;
     }
-
     final isEnter = event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter;
-
     if (isEnter) {
       final barcode = _barcodeBuffer.trim();
       _barcodeBuffer = '';
@@ -88,12 +86,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       }
       return KeyEventResult.ignored;
     }
-
     final character = event.character;
     if (character == null || character.isEmpty || character.trim().isEmpty) {
       return KeyEventResult.ignored;
     }
-
     final now = DateTime.now();
     final elapsed = _lastBarcodeInputAt == null
         ? null
@@ -117,14 +113,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (!mounted) return;
     _productNotFoundTimer?.cancel();
     _productNotFoundOverlay?.remove();
-
     final overlay = Overlay.of(context, rootOverlay: true);
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (overlayContext) => Positioned(
-        top: MediaQuery.sizeOf(overlayContext).height > 60
-            ? MediaQuery.of(overlayContext).padding.top + 18
-            : 18,
+        top: MediaQuery.of(overlayContext).padding.top + 18,
         left: 20,
         right: 20,
         child: IgnorePointer(
@@ -140,7 +133,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         ),
       ),
     );
-
     _productNotFoundOverlay = entry;
     overlay.insert(entry);
     _productNotFoundTimer = Timer(const Duration(seconds: 4), () {
@@ -182,7 +174,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       }
       return;
     }
-
     setState(() {
       final quantity = _cartQuantities[productId];
       if (quantity == null) return;
@@ -252,7 +243,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final products = List<Map<String, dynamic>>.from(
       context.read<ProductProvider>().productMaps,
     );
-
     for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
@@ -268,22 +258,18 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   double get _subtotal {
     final provider = context.read<ProductProvider>();
     double total = 0;
-
     for (final entry in _cartQuantities.entries) {
       final product = provider.findById(entry.key);
       if (product != null) total += product.price * entry.value;
     }
-
     for (final item in _electronicBalanceSelection) {
       total += item.amount * item.quantity;
     }
-
     return total;
   }
 
   double get _discountAmount =>
       double.tryParse(_discountAmountController.text) ?? 0;
-
   double get _discountPercent =>
       double.tryParse(_discountPercentController.text) ?? 0;
 
@@ -371,7 +357,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       );
       return;
     }
-
     if (_discountAmount < 0 || _discountAmount > _subtotal) {
       AppAlert.show(
         context,
@@ -381,7 +366,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       );
       return;
     }
-
     if (_selectedPaymentMethod == AppPaymentMethods.credit &&
         (_selectedDebtor == null || _selectedDebtor!.trim().isEmpty)) {
       AppAlert.show(
@@ -418,7 +402,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
     final received = double.tryParse(_cashReceivedController.text) ?? 0;
     SaleRecord sale;
-
     try {
       sale = context.read<SalesProvider>().createSale(
         cartQuantities: Map<String, int>.from(_cartQuantities),
@@ -548,10 +531,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onAddToCart: _addToCart,
               onRemoveFromCart: _removeFromCart,
               onElectronicBalanceTap: _openElectronicBalanceSelector,
+              onElectronicBalanceManage: _openElectronicBalanceManagement,
               electronicBalanceSelection: _electronicBalanceSelection,
-              onElectronicBalanceSelectionChanged: (selection) => setState(
-                () => _electronicBalanceSelection = selection,
-              ),
               onSearchChanged: (value) => setState(() => _searchQuery = value),
               searchQuery: _searchQuery,
             ),
