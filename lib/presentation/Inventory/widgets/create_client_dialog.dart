@@ -29,6 +29,7 @@ class CreateClientDialog extends StatefulWidget {
 class _CreateClientDialogState extends State<CreateClientDialog> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
   final Set<String> _invalidFields = <String>{};
 
   OverlayEntry? _validationOverlay;
@@ -47,39 +48,30 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
         ..addAll(invalidFields);
     });
 
-    if (invalidFields.isEmpty) {
-      return true;
-    }
+    if (invalidFields.isEmpty) return true;
 
     _showValidationAlert('El nombre del cliente es obligatorio.');
     return false;
   }
 
   void _clearError(String field) {
-    if (!_invalidFields.contains(field)) {
-      return;
-    }
-
+    if (!_invalidFields.contains(field)) return;
     setState(() => _invalidFields.remove(field));
   }
 
   void _createClient() {
-    if (!_validate()) {
-      return;
-    }
+    if (!_validate()) return;
 
     final client = Client(
       id: '',
       name: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
     );
 
     context.read<CatalogProvider>().addClient(client);
 
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 
@@ -88,7 +80,6 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
     _validationOverlay?.remove();
 
     final overlay = Overlay.of(context, rootOverlay: true);
-
     late OverlayEntry entry;
 
     entry = OverlayEntry(
@@ -111,13 +102,8 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
     overlay.insert(entry);
 
     _validationTimer = Timer(const Duration(seconds: 4), () {
-      if (entry.mounted) {
-        entry.remove();
-      }
-
-      if (identical(_validationOverlay, entry)) {
-        _validationOverlay = null;
-      }
+      if (entry.mounted) entry.remove();
+      if (identical(_validationOverlay, entry)) _validationOverlay = null;
     });
   }
 
@@ -127,6 +113,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
     _validationOverlay?.remove();
     _nameController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -142,11 +129,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
               borderRadius: BorderRadius.circular(AppDimensions.dialogRadius),
               border: Border.all(color: AppColors.border),
               boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadowColor,
-                  blurRadius: 18,
-                  offset: Offset(0, 8),
-                ),
+                BoxShadow(color: AppColors.shadowColor, blurRadius: 18, offset: Offset(0, 8)),
               ],
             ),
             child: Column(
@@ -159,11 +142,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                     children: [
                       const Text(
                         'Crear Cliente',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
                       ),
                       InkWell(
                         onTap: () => Navigator.of(context).pop(),
@@ -192,6 +171,13 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                         hint: 'Número de teléfono',
                         keyboardType: TextInputType.phone,
                       ),
+                      const SizedBox(height: 10),
+                      _buildTextField(
+                        controller: _addressController,
+                        hint: 'Dirección',
+                        keyboardType: TextInputType.streetAddress,
+                        maxLines: 2,
+                      ),
                     ],
                   ),
                 ),
@@ -206,9 +192,7 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.buttonRadius)),
                         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                       child: const Text('Crear Cliente'),
@@ -229,12 +213,14 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
     bool isInvalid = false,
     TextInputType? keyboardType,
     ValueChanged<String>? onChanged,
+    int maxLines = 1,
   }) {
     final borderColor = isInvalid ? AppColors.dangerRed : AppColors.border;
 
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      maxLines: maxLines,
       onChanged: onChanged,
       style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
       decoration: InputDecoration(
@@ -244,18 +230,9 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         filled: true,
         fillColor: isInvalid ? AppColors.dangerRed.withOpacity(0.06) : AppColors.inputBackground,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: borderColor, width: isInvalid ? 1.8 : 1),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: borderColor, width: isInvalid ? 1.8 : 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isInvalid ? AppColors.dangerRed : AppColors.primary, width: 1.8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor, width: isInvalid ? 1.8 : 1)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor, width: isInvalid ? 1.8 : 1)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: isInvalid ? AppColors.dangerRed : AppColors.primary, width: 1.8)),
       ),
     );
   }
@@ -263,7 +240,6 @@ class _CreateClientDialogState extends State<CreateClientDialog> {
 
 class _ValidationAlert extends StatelessWidget {
   final String message;
-
   const _ValidationAlert({required this.message});
 
   @override
@@ -276,9 +252,7 @@ class _ValidationAlert extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.warningOrange,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
-              BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 5)),
-            ],
+            boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 5))],
           ),
           child: Row(
             children: [
