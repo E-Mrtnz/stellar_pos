@@ -1,0 +1,54 @@
+name: Fix product dropdown overflow
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message != 'fix: product dropdown overflow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/presentation/Inventory/widgets/create_product_dialog.dart')
+          text = path.read_text()
+
+          old = """    return DropdownButtonFormField<String?>(\n      initialValue: selectedValue,\n      isDense: true,"""
+          new = """    return DropdownButtonFormField<String?>(\n      initialValue: selectedValue,\n      isExpanded: true,\n      isDense: true,"""
+          if old not in text:
+              raise SystemExit('DropdownButtonFormField anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = """              Text(\n                createLabel,\n                style: const TextStyle(\n                  fontSize: 12,\n                  color: AppColors.primary,\n                  fontWeight: FontWeight.w600,\n                ),\n              ),"""
+          new = """              Expanded(\n                child: Text(\n                  createLabel,\n                  maxLines: 1,\n                  overflow: TextOverflow.ellipsis,\n                  style: const TextStyle(\n                    fontSize: 12,\n                    color: AppColors.primary,\n                    fontWeight: FontWeight.w600,\n                  ),\n                ),\n              ),"""
+          if old not in text:
+              raise SystemExit('Create option anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = """          (item) => DropdownMenuItem<String?>(\n            value: item,\n            child: Text(item, style: const TextStyle(fontSize: 12)),\n          ),"""
+          new = """          (item) => DropdownMenuItem<String?>(\n            value: item,\n            child: Text(\n              item,\n              maxLines: 1,\n              overflow: TextOverflow.ellipsis,\n              style: const TextStyle(fontSize: 12),\n            ),\n          ),"""
+          if old not in text:
+              raise SystemExit('Regular item anchor not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit fix and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/presentation/Inventory/widgets/create_product_dialog.dart
+          git rm .github/workflows/fix-product-dropdown-overflow.yml
+          git commit -m "fix: product dropdown overflow"
+          git push
