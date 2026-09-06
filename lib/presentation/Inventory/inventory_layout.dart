@@ -55,7 +55,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   Future<void> _importInventory() async {
     if (_isImporting) return;
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['xlsx', 'xlsm', 'xls'],
       allowMultiple: false,
