@@ -157,7 +157,7 @@ class SidebarDrawer extends StatelessWidget {
   Widget _buildSidebarItem(int index, IconData icon, String label) {
     final isSelected = selectedIndex == index;
 
-    return InkWell(
+    final item = InkWell(
       onTap: () => onItemSelected(index),
       child: Container(
         height: 50,
@@ -206,5 +206,13 @@ class SidebarDrawer extends StatelessWidget {
         ),
       ),
     );
+
+    return isExpanded
+        ? item
+        : Tooltip(
+            message: label,
+            waitDuration: const Duration(milliseconds: 350),
+            child: item,
+          );
   }
 }
