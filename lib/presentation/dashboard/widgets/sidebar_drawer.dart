@@ -77,11 +77,6 @@ class SidebarDrawer extends StatelessWidget {
                       AppStrings.navHome,
                     ),
                     _buildSidebarItem(
-                      AppNavigation.electronicBalance,
-                      Icons.phone_android_outlined,
-                      AppStrings.navElectronicBalance,
-                    ),
-                    _buildSidebarItem(
                       AppNavigation.purchases,
                       Icons.shopping_bag_rounded,
                       AppStrings.navPurchases,
