@@ -48,6 +48,12 @@ class InventoryFileService {
     final workbook = Excel.createExcel();
     final sheet = workbook['Inventario'];
 
+    // Excel.createExcel() creates an empty Sheet1 by default. If it remains
+    // as the first sheet, Excel can open that blank sheet and make the export
+    // appear empty even though the Inventario sheet contains all the data.
+    workbook.delete('Sheet1');
+    workbook.setDefaultSheet('Inventario');
+
     for (var column = 0; column < headers.length; column++) {
       final cell = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
@@ -98,6 +104,16 @@ class InventoryFileService {
 
   static Future<void> savePdf(List<Product> products) async {
     final document = pw.Document();
+
+    final totalInvestment = products.fold<double>(
+      0,
+      (total, product) => total + (product.cost * product.stock),
+    );
+    final totalSales = products.fold<double>(
+      0,
+      (total, product) => total + (product.price * product.stock),
+    );
+
     final rows = products
         .map(
           (product) => <String>[
@@ -118,31 +134,141 @@ class InventoryFileService {
     document.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(24),
-        header: (_) => pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 12),
+        margin: const pw.EdgeInsets.fromLTRB(28, 26, 28, 24),
+        footer: (context) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 8),
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Inventario',
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
+                'STELLAR POS • Reporte de inventario',
+                style: const pw.TextStyle(
+                  fontSize: 7,
+                  color: PdfColors.grey600,
                 ),
               ),
-              pw.Text(_dateLabel(), style: const pw.TextStyle(fontSize: 8)),
+              pw.Text(
+                'Página ${context.pageNumber} de ${context.pagesCount}',
+                style: const pw.TextStyle(
+                  fontSize: 7,
+                  color: PdfColors.grey600,
+                ),
+              ),
             ],
           ),
         ),
-        footer: (context) => pw.Align(
-          alignment: pw.Alignment.centerRight,
-          child: pw.Text(
-            'Página ${context.pageNumber} de ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 8),
-          ),
-        ),
         build: (_) => [
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Reporte de inventario',
+                    style: pw.TextStyle(
+                      fontSize: 21,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey900,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    'Control y valoración del inventario actual',
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+              pw.Text(
+                _dateLabel(),
+                style: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.grey700,
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 14),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 9,
+            ),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.grey100,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+              border: pw.Border.all(
+                color: PdfColors.grey300,
+                width: 0.6,
+              ),
+            ),
+            child: pw.Row(
+              children: [
+                pw.Text(
+                  'Generación: ',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+                pw.Text(
+                  _dateLabel(),
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+                pw.SizedBox(width: 28),
+                pw.Text(
+                  'Número de productos: ',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+                pw.Text(
+                  '${products.length}',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: _summaryCard(
+                  title: 'Costo total del inventario',
+                  value: _money(totalInvestment),
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Expanded(
+                child: _summaryCard(
+                  title: 'Precio total del inventario',
+                  value: _money(totalSales),
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Resumen de inventario',
+            style: pw.TextStyle(
+              fontSize: 11,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey900,
+            ),
+          ),
+          pw.SizedBox(height: 7),
           pw.TableHelper.fromTextArray(
             headers: const [
               'Producto',
@@ -157,20 +283,43 @@ class InventoryFileService {
               'Código',
             ],
             data: rows,
+            headerHeight: 22,
+            cellHeight: 20,
             headerStyle: pw.TextStyle(
-              fontSize: 7,
+              fontSize: 7.2,
               fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey900,
             ),
-            cellStyle: const pw.TextStyle(fontSize: 6.5),
+            cellStyle: const pw.TextStyle(
+              fontSize: 6.8,
+              color: PdfColors.grey800,
+            ),
             cellPadding: const pw.EdgeInsets.symmetric(
-              horizontal: 4,
-              vertical: 4,
+              horizontal: 5,
+              vertical: 3,
             ),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+            headerDecoration: const pw.BoxDecoration(
+              color: PdfColors.grey300,
+            ),
+            oddRowDecoration: const pw.BoxDecoration(
+              color: PdfColors.grey100,
+            ),
             border: pw.TableBorder.all(
               color: PdfColors.grey400,
-              width: 0.5,
+              width: 0.45,
             ),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(2.2),
+              1: pw.FlexColumnWidth(1.05),
+              2: pw.FlexColumnWidth(1.45),
+              3: pw.FlexColumnWidth(1.65),
+              4: pw.FlexColumnWidth(0.9),
+              5: pw.FlexColumnWidth(0.9),
+              6: pw.FlexColumnWidth(0.72),
+              7: pw.FlexColumnWidth(0.62),
+              8: pw.FlexColumnWidth(0.62),
+              9: pw.FlexColumnWidth(1.35),
+            },
           ),
         ],
       ),
@@ -182,6 +331,45 @@ class InventoryFileService {
       bytes: Uint8List.fromList(bytes),
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
+    );
+  }
+
+  static pw.Widget _summaryCard({
+    required String title,
+    required String value,
+  }) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        border: pw.Border.all(
+          color: PdfColors.grey400,
+          width: 0.7,
+        ),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Text(
+            title,
+            textAlign: pw.TextAlign.center,
+            style: const pw.TextStyle(
+              fontSize: 8,
+              color: PdfColors.grey700,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 15,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
