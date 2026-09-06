@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
-import 'package:file_saver/file_saver.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -88,11 +88,13 @@ class InventoryFileService {
       throw StateError('No se pudo generar el archivo Excel.');
     }
 
-    await FileSaver.instance.saveFile(
-      name: 'inventario_${_dateStamp()}',
+    await FilePicker.saveFile(
+      fileName: 'inventario_${_dateStamp()}.xlsx',
       bytes: Uint8List.fromList(bytes),
-      fileExtension: 'xlsx',
-      mimeType: MimeType.microsoftExcel,
+      mimeType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx'],
     );
   }
 
@@ -177,11 +179,12 @@ class InventoryFileService {
     );
 
     final bytes = await document.save();
-    await FileSaver.instance.saveFile(
-      name: 'inventario_${_dateStamp()}',
+    await FilePicker.saveFile(
+      fileName: 'inventario_${_dateStamp()}.pdf',
       bytes: Uint8List.fromList(bytes),
-      fileExtension: 'pdf',
-      mimeType: MimeType.pdf,
+      mimeType: 'application/pdf',
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
     );
   }
 
