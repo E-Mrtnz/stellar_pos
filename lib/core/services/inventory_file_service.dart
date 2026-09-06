@@ -42,10 +42,7 @@ class InventoryFileService {
     'Código de barras',
   ];
 
-  static const Set<String> supportedExcelExtensions = {
-    'xlsx',
-    'xlsm',
-  };
+  static const Set<String> supportedExcelExtensions = {'xlsx', 'xlsm'};
 
   static Future<void> saveExcel(List<Product> products) async {
     final workbook = Excel.createExcel();
@@ -101,7 +98,6 @@ class InventoryFileService {
 
   static Future<void> savePdf(List<Product> products) async {
     final document = pw.Document();
-
     final rows = products
         .map(
           (product) => <String>[
@@ -135,10 +131,7 @@ class InventoryFileService {
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
-              pw.Text(
-                _dateLabel(),
-                style: const pw.TextStyle(fontSize: 8),
-              ),
+              pw.Text(_dateLabel(), style: const pw.TextStyle(fontSize: 8)),
             ],
           ),
         ),
@@ -173,9 +166,7 @@ class InventoryFileService {
               horizontal: 4,
               vertical: 4,
             ),
-            headerDecoration: const pw.BoxDecoration(
-              color: PdfColors.grey300,
-            ),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
             border: pw.TableBorder.all(
               color: PdfColors.grey400,
               width: 0.5,
@@ -308,8 +299,7 @@ class InventoryFileService {
   static Map<String, int> _buildHeaderMap(List<dynamic> row) {
     final map = <String, int>{};
     for (var index = 0; index < row.length; index++) {
-      final value = _cellText(row[index]);
-      final normalized = _normalizeHeader(value);
+      final normalized = _normalizeHeader(_cellText(row[index]));
       if (normalized.isNotEmpty) map[normalized] = index;
     }
     return map;
@@ -363,7 +353,7 @@ class InventoryFileService {
     if (value == null) return '';
 
     return switch (value) {
-      TextCellValue(:final value) => value,
+      TextCellValue(:final value) => value.toString(),
       IntCellValue(:final value) => value.toString(),
       DoubleCellValue(:final value) => value.toString(),
       BoolCellValue(:final value) => value.toString(),
@@ -374,8 +364,7 @@ class InventoryFileService {
         '$year-$month-$day $hour:$minute:$second.$millisecond',
       TimeCellValue(:final hour, :final minute, :final second, :final millisecond) =>
         '$hour:$minute:$second.$millisecond',
-      FormulaCellValue(:final formula) => formula,
-      _ => value.toString(),
+      FormulaCellValue(:final formula) => formula.toString(),
     };
   }
 
