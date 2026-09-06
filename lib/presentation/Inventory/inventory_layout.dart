@@ -57,7 +57,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['xlsx', 'xlsm', 'xls'],
+      allowedExtensions: const ['xlsx', 'xlsm'],
       allowMultiple: false,
       withData: true,
     );
@@ -96,20 +96,17 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       }
 
       final importResult = _applyImportedProducts(parsed.products);
-      final messages = <String>[];
-      messages.add(
-        '${importResult.added} producto(s) agregado(s) y '
-        '${importResult.updated} actualizado(s).',
-      );
-      if (parsed.errors.isNotEmpty) {
-        messages.add('\nFilas omitidas:\n${parsed.errors.join('\n')}');
-      }
+      final warningMessage = parsed.errors.isEmpty
+          ? 'Todos los registros válidos fueron procesados correctamente.'
+          : 'Filas omitidas:\n${parsed.errors.join('\n')}';
 
       _showFileMessage(
-        messages.join('\n'),
+        warningMessage,
         title: parsed.errors.isEmpty
             ? 'Inventario importado'
             : 'Importación completada con avisos',
+        added: importResult.added,
+        updated: importResult.updated,
       );
     } finally {
       if (mounted) setState(() => _isImporting = false);
@@ -228,16 +225,167 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     }
   }
 
-  void _showFileMessage(String message, {required String title}) {
+  void _showFileMessage(
+    String message, {
+    required String title,
+    int? added,
+    int? updated,
+  }) {
+    final isError = title.toLowerCase().contains('error') ||
+        title.toLowerCase().contains('no se importó');
+    final isImportResult = added != null && updated != null;
+    final icon = isError
+        ? Icons.error_outline_rounded
+        : isImportResult
+            ? Icons.inventory_2_outlined
+            : Icons.check_circle_outline_rounded;
+    final iconColor = isError ? AppColors.dangerRed : AppColors.successGreen;
+
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(child: Text(message)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Aceptar'),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 26, 28, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: iconColor, size: 26),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                if (isImportResult) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildImportStat(
+                          icon: Icons.add_circle_outline,
+                          label: 'Agregados',
+                          value: '$added',
+                          iconColor: AppColors.successGreen,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildImportStat(
+                          icon: Icons.sync_rounded,
+                          label: 'Actualizados',
+                          value: '$updated',
+                          iconColor: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.chipBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text('Aceptar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImportStat({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: AppColors.chipBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: iconColor, size: 21),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
