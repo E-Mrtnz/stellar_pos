@@ -33,7 +33,6 @@ class AppDimensions {
   static const double categorySpacing = 8.0;
   static const double searchFieldRadius = 10.0;
   static const double buttonRadius = 8.0;
-  static const double productGridAspectRatio = 0.82;
   static const double productCardAspectRatio = 0.82;
   static const double productImageSize = 36.0;
   static const double stockBadgeHeight = 26.0;
