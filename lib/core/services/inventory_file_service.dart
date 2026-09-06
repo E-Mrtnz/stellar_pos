@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:excel_community/excel_community.dart';
+import 'package:excel/excel.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -19,6 +19,14 @@ class InventoryImportResult {
   bool get hasErrors => errors.isNotEmpty;
 }
 
+/// Handles inventory files using the modern Office Open XML Excel format.
+///
+/// Supported input formats:
+/// - .xlsx: standard modern Excel workbook.
+/// - .xlsm: macro-enabled modern Excel workbook. STELLAR POS reads the
+///   workbook data; VBA/macros are not imported or preserved.
+///
+/// Legacy binary .xls files are intentionally not supported.
 class InventoryFileService {
   static const List<String> headers = [
     'ID',
@@ -34,16 +42,21 @@ class InventoryFileService {
     'Código de barras',
   ];
 
+  static const Set<String> supportedExcelExtensions = {
+    'xlsx',
+    'xlsm',
+  };
+
   static Future<void> saveExcel(List<Product> products) async {
     final workbook = Excel.createExcel();
     final sheet = workbook['Inventario'];
 
     for (var column = 0; column < headers.length; column++) {
-      sheet.updateCell(
+      final cell = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-        TextCellValue(headers[column]),
-        cellStyle: CellStyle(bold: true),
       );
+      cell.value = TextCellValue(headers[column]);
+      cell.cellStyle = CellStyle(bold: true);
     }
 
     for (var rowIndex = 0; rowIndex < products.length; rowIndex++) {
@@ -63,13 +76,13 @@ class InventoryFileService {
       ];
 
       for (var column = 0; column < values.length; column++) {
-        sheet.updateCell(
+        final cell = sheet.cell(
           CellIndex.indexByColumnRow(
             columnIndex: column,
             rowIndex: rowIndex + 1,
           ),
-          values[column],
         );
+        cell.value = values[column];
       }
     }
 
@@ -186,11 +199,21 @@ class InventoryFileService {
     String extension,
   ) async {
     final normalizedExtension = extension.toLowerCase().replaceFirst('.', '');
-    if (!{'xlsx', 'xlsm', 'xls'}.contains(normalizedExtension)) {
+
+    if (!supportedExcelExtensions.contains(normalizedExtension)) {
       return const InventoryImportResult(
         products: [],
         errors: [
-          'Formato no compatible. Solo se aceptan archivos .xlsx, .xlsm y .xls (Excel 97-2003).',
+          'Formato no compatible. STELLAR POS acepta únicamente archivos Excel modernos .xlsx y .xlsm.',
+        ],
+      );
+    }
+
+    if (bytes.length < 4 || bytes[0] != 0x50 || bytes[1] != 0x4B) {
+      return const InventoryImportResult(
+        products: [],
+        errors: [
+          'El archivo no parece ser un libro Excel moderno válido (.xlsx/.xlsm).',
         ],
       );
     }
@@ -244,7 +267,9 @@ class InventoryFileService {
         final maxStock = _readInt(row, headerMap, 'stock máximo', fallback: 40);
 
         if (cost < 0 || price < 0 || stock < 0 || minStock < 0 || maxStock < 0) {
-          errors.add('Fila $excelRow: los valores numéricos no pueden ser negativos.');
+          errors.add(
+            'Fila $excelRow: los valores numéricos no pueden ser negativos.',
+          );
           continue;
         }
 
@@ -270,11 +295,11 @@ class InventoryFileService {
       }
 
       return InventoryImportResult(products: products, errors: errors);
-    } catch (error) {
-      return InventoryImportResult(
-        products: const [],
+    } catch (_) {
+      return const InventoryImportResult(
+        products: [],
         errors: [
-          'No se pudo leer el archivo Excel. Verifica que sea un .xlsx, .xlsm o un .xls de Excel 97-2003 válido.',
+          'No se pudo leer el libro Excel. Verifica que sea un .xlsx o .xlsm válido y que contenga la estructura de inventario esperada.',
         ],
       );
     }
@@ -333,13 +358,25 @@ class InventoryFileService {
 
   static String _cellText(dynamic cell) {
     if (cell == null) return '';
+
     final value = cell.value;
     if (value == null) return '';
-    if (value is TextCellValue) return value.value;
-    if (value is IntCellValue) return value.value.toString();
-    if (value is DoubleCellValue) return value.value.toString();
-    if (value is BoolCellValue) return value.value.toString();
-    return value.toString();
+
+    return switch (value) {
+      TextCellValue(:final value) => value,
+      IntCellValue(:final value) => value.toString(),
+      DoubleCellValue(:final value) => value.toString(),
+      BoolCellValue(:final value) => value.toString(),
+      DateCellValue(:final year, :final month, :final day) =>
+        '$year-$month-$day',
+      DateTimeCellValue(:final year, :final month, :final day, :final hour,
+        :final minute, :final second, :final millisecond) =>
+        '$year-$month-$day $hour:$minute:$second.$millisecond',
+      TimeCellValue(:final hour, :final minute, :final second, :final millisecond) =>
+        '$hour:$minute:$second.$millisecond',
+      FormulaCellValue(:final formula) => formula,
+      _ => value.toString(),
+    };
   }
 
   static bool _rowIsEmpty(List<dynamic> row) {
