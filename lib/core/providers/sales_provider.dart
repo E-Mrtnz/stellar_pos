@@ -62,6 +62,7 @@ class SalesProvider extends ChangeNotifier {
           lineSubtotal: lineSubtotal,
           discount: lineDiscount,
           lineTotal: lineTotal,
+          imageData: product.imageData,
         ),
       );
     }
@@ -89,8 +90,6 @@ class SalesProvider extends ChangeNotifier {
     _sales.add(sale);
     _nextTicketNumber++;
 
-    // Las ventas no se bloquean por falta de inventario. El stock puede
-    // quedar negativo y posteriormente compensarse con compras.
     for (final item in items) {
       final product = productProvider.findById(item.productId);
       if (product == null) continue;
