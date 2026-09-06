@@ -365,6 +365,7 @@ class InventoryFileService {
       TimeCellValue(:final hour, :final minute, :final second, :final millisecond) =>
         '$hour:$minute:$second.$millisecond',
       FormulaCellValue(:final formula) => formula.toString(),
+      _ => value.toString(),
     };
   }
 
