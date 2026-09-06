@@ -11,6 +11,7 @@ class SaleItemRecord {
   final double lineSubtotal;
   final double discount;
   final double lineTotal;
+  final String imageData;
 
   const SaleItemRecord({
     required this.productId,
@@ -23,6 +24,7 @@ class SaleItemRecord {
     required this.lineSubtotal,
     required this.discount,
     required this.lineTotal,
+    this.imageData = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -37,6 +39,7 @@ class SaleItemRecord {
       'lineSubtotal': lineSubtotal,
       'discount': discount,
       'lineTotal': lineTotal,
+      'imageData': imageData,
     };
   }
 }
