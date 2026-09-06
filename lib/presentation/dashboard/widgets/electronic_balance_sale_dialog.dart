@@ -51,6 +51,7 @@ class ElectronicBalanceSaleDialog extends StatefulWidget {
 class _ElectronicBalanceSaleDialogState
     extends State<ElectronicBalanceSaleDialog> {
   final Map<String, ElectronicBalanceCartItem> _selected = {};
+  late final List<ElectronicBalanceCartItem> _initialSelection;
   String? _accountId;
   String _category = 'Saldo';
 
@@ -59,9 +60,20 @@ class _ElectronicBalanceSaleDialogState
   @override
   void initState() {
     super.initState();
-    for (final item in widget.initialSelection) {
+    _initialSelection = List<ElectronicBalanceCartItem>.from(
+      widget.initialSelection,
+    );
+    for (final item in _initialSelection) {
       _selected[item.key] = item;
     }
+  }
+
+  void _publishSelection() {
+    widget.onSelectionChanged(_selected.values.toList());
+  }
+
+  void _restoreInitialSelection() {
+    widget.onSelectionChanged(List<ElectronicBalanceCartItem>.from(_initialSelection));
   }
 
   @override
@@ -71,7 +83,8 @@ class _ElectronicBalanceSaleDialogState
     final selectedAccount = _accountId == null
         ? null
         : provider.findAccount(_accountId!);
-    final options = selectedAccount?.amountsForCategory(_category) ?? const <double>[];
+    final options = selectedAccount?.amountsForCategory(_category) ??
+        const <double>[];
     final selectedForCategory = _selected.values.where(
       (item) => item.accountId == _accountId && item.category == _category,
     );
@@ -106,7 +119,10 @@ class _ElectronicBalanceSaleDialogState
           ),
           IconButton(
             tooltip: 'Cerrar',
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              _restoreInitialSelection();
+              Navigator.pop(context);
+            },
             icon: const Icon(Icons.close),
           ),
         ],
@@ -214,7 +230,8 @@ class _ElectronicBalanceSaleDialogState
                           spacing: 10,
                           runSpacing: 10,
                           children: options.map((amount) {
-                            final key = '${selectedAccount.id}|$_category|${amount.toStringAsFixed(4)}';
+                            final key =
+                                '${selectedAccount.id}|$_category|${amount.toStringAsFixed(4)}';
                             final item = _selected[key];
                             return _AmountTile(
                               amount: amount,
@@ -289,18 +306,18 @@ class _ElectronicBalanceSaleDialogState
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            _restoreInitialSelection();
+            Navigator.pop(context);
+          },
           child: const Text('Cancelar'),
         ),
         FilledButton.icon(
           onPressed: _selected.isEmpty
               ? null
-              : () {
-                  widget.onSelectionChanged(_selected.values.toList());
-                  Navigator.pop(context);
-                },
-          icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
-          label: const Text('Agregar a la venta'),
+              : () => Navigator.pop(context),
+          icon: const Icon(Icons.check_rounded, size: 18),
+          label: const Text('Listo'),
         ),
       ],
     );
@@ -324,10 +341,12 @@ class _ElectronicBalanceSaleDialogState
             )
           : current.copyWith(quantity: current.quantity + 1);
     });
+    _publishSelection();
   }
 
   void _remove(String key) {
     setState(() => _selected.remove(key));
+    _publishSelection();
   }
 }
 
@@ -353,7 +372,9 @@ class _ChoiceChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground,
+          color: selected
+              ? AppColors.primary.withAlpha(15)
+              : AppColors.inputBackground,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected ? AppColors.primary : AppColors.border,
@@ -411,7 +432,9 @@ class _AmountTile extends StatelessWidget {
         height: 68,
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withAlpha(15) : AppColors.cardBackground,
+          color: selected
+              ? AppColors.primary.withAlpha(15)
+              : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? AppColors.primary : AppColors.border,
