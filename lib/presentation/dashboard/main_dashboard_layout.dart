@@ -18,6 +18,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/debts/debts_layout.dart';
 import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
+import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
@@ -265,12 +266,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final printerProvider = context.read<PrinterProvider>();
     final printed = await printerProvider.printSaleTicket(sale);
     if (!mounted) return printed;
-    AppAlert.show(
-      context,
-      printed ? 'El ticket fue enviado a la impresora.' : (printerProvider.errorMessage ?? 'No se pudo imprimir el ticket.'),
-      title: printed ? 'Impresión completada' : 'No se pudo imprimir',
-      type: printed ? AppAlertType.success : AppAlertType.warning,
-    );
+    AppAlert.show(context, printed ? 'El ticket fue enviado a la impresora.' : (printerProvider.errorMessage ?? 'No se pudo imprimir el ticket.'), title: printed ? 'Impresión completada' : 'No se pudo imprimir', type: printed ? AppAlertType.success : AppAlertType.warning);
     return printed;
   }
 
@@ -306,6 +302,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Widget _buildMainContent(List<Map<String, dynamic>> products) {
     if (_selectedNavIndex == AppNavigation.inventory) return const InventoryLayout();
     if (_selectedNavIndex == AppNavigation.electronicBalance) return const ElectronicBalanceLayout();
+    if (_selectedNavIndex == AppNavigation.purchases) return const PurchasesLayout();
     if (_selectedNavIndex == AppNavigation.providers) return const ProvidersLayout();
     if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
     if (_selectedNavIndex == AppNavigation.settings) return const PrinterSettingsLayout();
@@ -369,11 +366,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   height: 36,
                   child: Material(
                     color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _createSale,
-                      borderRadius: BorderRadius.circular(8),
-                      child: const SizedBox.expand(),
-                    ),
+                    child: InkWell(onTap: _createSale, borderRadius: BorderRadius.circular(8), child: const SizedBox.expand()),
                   ),
                 ),
               ],
@@ -397,25 +390,8 @@ class _ProductNotFoundAlert extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(
-        color: AppColors.warningOrange,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 5))],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), shape: BoxShape.circle),
-            child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 21),
-          ),
-          const SizedBox(width: 11),
-          const Expanded(
-            child: Text('Producto no encontrado', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: AppColors.warningOrange, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 5))]),
+      child: Row(children: [Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), shape: BoxShape.circle), child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20)), const SizedBox(width: 10), const Expanded(child: Text('Producto no encontrado.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)))]),
     );
   }
 }
