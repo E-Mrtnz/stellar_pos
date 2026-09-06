@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -33,7 +36,7 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
     final ordered = [...sales]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 650, maxHeight: 700),
+      constraints: const BoxConstraints(maxWidth: 700, maxHeight: 700),
       child: Material(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppDimensions.dialogRadius),
@@ -51,7 +54,7 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Historial de compras', style: AppTextStyles.sectionTitle),
+                        const Text('Historial de compras', style: AppTextStyles.sectionTitle),
                         const SizedBox(height: 2),
                         Text(clientName, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                       ],
@@ -119,9 +122,7 @@ class _SaleHistoryCard extends StatelessWidget {
                 child: const Text('FIADO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.dangerRed)),
               ),
               const SizedBox(width: 9),
-              Expanded(
-                child: Text('#${sale.ticketNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-              ),
+              Expanded(child: Text('#${sale.ticketNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
               Text('\$${sale.total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.dangerRed)),
             ],
           ),
@@ -130,18 +131,7 @@ class _SaleHistoryCard extends StatelessWidget {
           const SizedBox(height: 9),
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 7),
-          ...sale.items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  SizedBox(width: 34, child: Text('${item.quantity}x', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))),
-                  Expanded(child: Text(item.productName, style: const TextStyle(fontSize: 10, color: AppColors.textPrimary))),
-                  Text('\$${item.lineTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ),
+          ...sale.items.map((item) => _SaleItemRow(item: item)),
           const SizedBox(height: 5),
           Align(
             alignment: Alignment.centerRight,
@@ -150,5 +140,67 @@ class _SaleHistoryCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _SaleItemRow extends StatelessWidget {
+  final SaleItemRecord item;
+  const _SaleItemRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = _decodeImage(item.imageData);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          _ProductThumbnail(bytes: bytes),
+          const SizedBox(width: 8),
+          SizedBox(width: 34, child: Text('${item.quantity}x', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.productName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: AppColors.textPrimary)),
+                Text(item.unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          Text('\$${item.lineTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductThumbnail extends StatelessWidget {
+  final Uint8List? bytes;
+  const _ProductThumbnail({required this.bytes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: bytes == null
+          ? const Icon(Icons.image_outlined, size: 18, color: AppColors.textMuted)
+          : Image.memory(bytes!, fit: BoxFit.cover),
+    );
+  }
+}
+
+Uint8List? _decodeImage(String value) {
+  if (value.trim().isEmpty) return null;
+  try {
+    return base64Decode(value.contains(',') ? value.split(',').last : value);
+  } catch (_) {
+    return null;
   }
 }
