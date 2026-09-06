@@ -254,8 +254,8 @@ class InventoryFileService {
         final cost = _readDouble(row, headerMap, 'precio de compra');
         final price = _readDouble(row, headerMap, 'precio de venta');
         final stock = _readInt(row, headerMap, 'stock');
-        final minStock = _readInt(row, headerMap, 'stock mínimo', fallback: 5);
-        final maxStock = _readInt(row, headerMap, 'stock máximo', fallback: 40);
+        final minStock = _readInt(row, headerMap, 'stock mínimo');
+        final maxStock = _readInt(row, headerMap, 'stock máximo');
 
         if (cost < 0 || price < 0 || stock < 0 || minStock < 0 || maxStock < 0) {
           errors.add(
@@ -306,7 +306,7 @@ class InventoryFileService {
   }
 
   static String _normalizeHeader(String value) {
-    return value
+    final normalized = value
         .trim()
         .toLowerCase()
         .replaceAll('á', 'a')
@@ -315,6 +315,38 @@ class InventoryFileService {
         .replaceAll('ó', 'o')
         .replaceAll('ú', 'u')
         .replaceAll('ü', 'u');
+
+    const aliases = <String, String>{
+      'nombre': 'producto',
+      'producto': 'producto',
+      'cant': 'stock',
+      'cant.': 'stock',
+      'cantidad': 'stock',
+      'cant disponible': 'stock',
+      'cant. disponible': 'stock',
+      'stock': 'stock',
+      'costo unitario': 'precio de compra',
+      'costo': 'precio de compra',
+      'precio unitario': 'precio de venta',
+      'p. venta': 'precio de venta',
+      'precio venta': 'precio de venta',
+      'precio de venta': 'precio de venta',
+      'distribuidora': 'distribuidora',
+      'distribuidor': 'distribuidora',
+      'proveedor': 'distribuidora',
+      'codigo de barras': 'codigo de barras',
+      'codigo': 'codigo de barras',
+      'barcode': 'codigo de barras',
+      'id': 'id',
+      'unidad': 'unidad',
+      'categoria': 'categoria',
+      'stock minimo': 'stock minimo',
+      'stock maximo': 'stock maximo',
+      'minimo': 'stock minimo',
+      'maximo': 'stock maximo',
+    };
+
+    return aliases[normalized] ?? normalized;
   }
 
   static String _read(
