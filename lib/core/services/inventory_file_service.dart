@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:excel_plus/excel_plus.dart';
+import 'package:excel_community/excel_community.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -71,10 +71,6 @@ class InventoryFileService {
           values[column],
         );
       }
-    }
-
-    for (var column = 0; column < headers.length; column++) {
-      sheet.setColumnAutoFit(column);
     }
 
     final bytes = workbook.save();
@@ -200,7 +196,7 @@ class InventoryFileService {
     }
 
     try {
-      final workbook = await Excel.decodeBytesAsync(bytes);
+      final workbook = Excel.decodeBytes(bytes);
       if (workbook.tables.isEmpty) {
         return const InventoryImportResult(
           products: [],
@@ -284,7 +280,7 @@ class InventoryFileService {
     }
   }
 
-  static Map<String, int> _buildHeaderMap(List<CellValue?> row) {
+  static Map<String, int> _buildHeaderMap(List<dynamic> row) {
     final map = <String, int>{};
     for (var index = 0; index < row.length; index++) {
       final value = _cellText(row[index]);
@@ -307,7 +303,7 @@ class InventoryFileService {
   }
 
   static String _read(
-    List<CellValue?> row,
+    List<dynamic> row,
     Map<String, int> headers,
     String key,
   ) {
@@ -317,7 +313,7 @@ class InventoryFileService {
   }
 
   static double _readDouble(
-    List<CellValue?> row,
+    List<dynamic> row,
     Map<String, int> headers,
     String key,
   ) {
@@ -326,7 +322,7 @@ class InventoryFileService {
   }
 
   static int _readInt(
-    List<CellValue?> row,
+    List<dynamic> row,
     Map<String, int> headers,
     String key, {
     int fallback = 0,
@@ -335,16 +331,18 @@ class InventoryFileService {
     return int.tryParse(value) ?? double.tryParse(value)?.toInt() ?? fallback;
   }
 
-  static String _cellText(CellValue? cell) {
+  static String _cellText(dynamic cell) {
     if (cell == null) return '';
-    try {
-      return cell.displayText;
-    } catch (_) {
-      return cell.value?.toString() ?? '';
-    }
+    final value = cell.value;
+    if (value == null) return '';
+    if (value is TextCellValue) return value.value;
+    if (value is IntCellValue) return value.value.toString();
+    if (value is DoubleCellValue) return value.value.toString();
+    if (value is BoolCellValue) return value.value.toString();
+    return value.toString();
   }
 
-  static bool _rowIsEmpty(List<CellValue?> row) {
+  static bool _rowIsEmpty(List<dynamic> row) {
     return row.every((cell) => _cellText(cell).trim().isEmpty);
   }
 
