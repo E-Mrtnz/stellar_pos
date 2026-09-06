@@ -10,6 +10,7 @@ import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/debts/client_purchase_history_dialog.dart';
+import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
 class DebtsLayout extends StatefulWidget {
   const DebtsLayout({super.key});
@@ -229,28 +230,10 @@ class _DebtsLayoutState extends State<DebtsLayout> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: ProductSearchBar(
                   controller: _searchController,
+                  hintText: 'Buscar cliente...',
                   onChanged: (value) => setState(() => _searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: 'Buscar cliente...',
-                    prefixIcon: const Icon(Icons.search, size: 19),
-                    suffixIcon: _searchQuery.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Limpiar',
-                            icon: const Icon(Icons.close, size: 17),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          ),
-                    isDense: true,
-                    filled: true,
-                    fillColor: AppColors.inputBackground,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.border)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.border)),
-                  ),
                 ),
               ),
               const SizedBox(width: 10),
