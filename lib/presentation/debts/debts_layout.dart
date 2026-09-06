@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/client.dart';
 import 'package:stellar_pos/core/models/debt.dart';
+import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
+import 'package:stellar_pos/presentation/debts/client_purchase_history_dialog.dart';
 
 class DebtsLayout extends StatefulWidget {
   const DebtsLayout({super.key});
@@ -18,7 +21,7 @@ class DebtsLayout extends StatefulWidget {
 class _DebtsLayoutState extends State<DebtsLayout> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  _DebtFilter _filter = _DebtFilter.all;
+  _DebtFilter _filter = _DebtFilter.pending;
 
   @override
   void dispose() {
@@ -33,6 +36,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   Future<void> _editClient(Client client) async {
     final nameController = TextEditingController(text: client.name);
     final phoneController = TextEditingController(text: client.phone);
+    final addressController = TextEditingController(text: client.address);
 
     try {
       await showDialog<void>(
@@ -44,37 +48,27 @@ class _DebtsLayoutState extends State<DebtsLayout> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(labelText: 'Nombre'),
-                ),
+                TextField(controller: nameController, autofocus: true, decoration: const InputDecoration(labelText: 'Nombre')),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Teléfono'),
-                ),
+                TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Teléfono')),
+                const SizedBox(height: 12),
+                TextField(controller: addressController, keyboardType: TextInputType.streetAddress, maxLines: 2, decoration: const InputDecoration(labelText: 'Dirección')),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancelar'),
-            ),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancelar')),
             FilledButton(
               onPressed: () {
                 final updated = Client(
                   id: client.id,
                   name: nameController.text,
                   phone: phoneController.text,
+                  address: addressController.text,
                 );
                 final saved = context.read<CatalogProvider>().updateClient(updated);
                 if (!saved) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('No se pudo actualizar el cliente.')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo actualizar el cliente.')));
                   return;
                 }
                 context.read<DebtProvider>().renameClient(client.id, updated.name.trim());
@@ -88,6 +82,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
     } finally {
       nameController.dispose();
       phoneController.dispose();
+      addressController.dispose();
     }
   }
 
@@ -112,26 +107,18 @@ class _DebtsLayoutState extends State<DebtsLayout> {
                   controller: amountController,
                   autofocus: true,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Monto a abonar',
-                    prefixText: '\$ ',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Monto a abonar', prefixText: '\$ '),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancelar'),
-            ),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancelar')),
             FilledButton(
               onPressed: () {
                 final value = double.tryParse(amountController.text.replaceAll(',', '.'));
                 if (value == null || value <= 0 || value > account.remaining + 0.005) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('El abono debe ser mayor que cero y no superar la deuda pendiente.')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El abono debe ser mayor que cero y no superar la deuda pendiente.')));
                   return;
                 }
                 Navigator.of(dialogContext).pop(value);
@@ -149,19 +136,26 @@ class _DebtsLayoutState extends State<DebtsLayout> {
         amount: amount,
       );
       if (!saved) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo registrar el abono.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo registrar el abono.')));
       }
     } finally {
       amountController.dispose();
     }
   }
 
+  Future<void> _showPurchaseHistory(Client client, List<SaleRecord> sales) async {
+    await ClientPurchaseHistoryDialog.show(
+      context,
+      clientName: client.name,
+      sales: sales,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final catalog = context.watch<CatalogProvider>();
     final debtProvider = context.watch<DebtProvider>();
+    final salesProvider = context.watch<SalesProvider>();
     final clients = _filteredClients(catalog.clients, debtProvider);
 
     return Scaffold(
@@ -178,7 +172,10 @@ class _DebtsLayoutState extends State<DebtsLayout> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(flex: 3, child: _buildClientsPanel(clients, debtProvider)),
+                      Expanded(
+                        flex: 3,
+                        child: _buildClientsPanel(clients, debtProvider, salesProvider),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(flex: 1, child: _buildHistoryPanel(debtProvider)),
                     ],
@@ -195,6 +192,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
               tooltip: 'Crear cliente',
               onPressed: _createClient,
               backgroundColor: AppColors.primary,
+              shape: const CircleBorder(),
               child: const Icon(Icons.person_add_alt_1_outlined, color: Colors.white),
             ),
           ),
@@ -206,37 +204,16 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   Widget _buildSummary(DebtProvider provider) {
     return Row(
       children: [
-        Expanded(
-          child: _SummaryCard(
-            label: 'Deuda pendiente',
-            value: _money(provider.totalRemaining),
-            icon: Icons.account_balance_wallet_outlined,
-            color: AppColors.dangerRed,
-          ),
-        ),
+        Expanded(child: _SummaryCard(label: 'Deuda pendiente', value: _money(provider.totalRemaining), icon: Icons.account_balance_wallet_outlined, color: AppColors.dangerRed)),
         const SizedBox(width: 10),
-        Expanded(
-          child: _SummaryCard(
-            label: 'Total abonado',
-            value: _money(provider.totalPaid),
-            icon: Icons.payments_outlined,
-            color: AppColors.successGreen,
-          ),
-        ),
+        Expanded(child: _SummaryCard(label: 'Total abonado', value: _money(provider.totalPaid), icon: Icons.payments_outlined, color: AppColors.successGreen)),
         const SizedBox(width: 10),
-        Expanded(
-          child: _SummaryCard(
-            label: 'Clientes con deuda',
-            value: provider.clientsWithDebt.toString(),
-            icon: Icons.people_outline,
-            color: AppColors.primary,
-          ),
-        ),
+        Expanded(child: _SummaryCard(label: 'Clientes con deuda', value: provider.clientsWithDebt.toString(), icon: Icons.people_outline, color: AppColors.primary)),
       ],
     );
   }
 
-  Widget _buildClientsPanel(List<Client> clients, DebtProvider debtProvider) {
+  Widget _buildClientsPanel(List<Client> clients, DebtProvider debtProvider, SalesProvider salesProvider) {
     return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -271,14 +248,8 @@ class _DebtsLayoutState extends State<DebtsLayout> {
                     isDense: true,
                     filled: true,
                     fillColor: AppColors.inputBackground,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.border)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.border)),
                   ),
                 ),
               ),
@@ -302,30 +273,22 @@ class _DebtsLayoutState extends State<DebtsLayout> {
           const SizedBox(height: 10),
           Expanded(
             child: clients.isEmpty
-                ? const _EmptyState(
-                    icon: Icons.people_outline,
-                    message: 'No hay clientes que coincidan con el filtro.',
-                  )
+                ? const _EmptyState(icon: Icons.people_outline, message: 'No hay clientes que coincidan con el filtro.')
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 70),
                     itemCount: clients.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
+                    itemBuilder: (_, index) {
                       final client = clients[index];
-                      final account = debtProvider.accountFor(client.id) ??
-                          DebtAccount(
-                            clientId: client.id,
-                            clientName: client.name,
-                            totalDebt: 0,
-                            totalPaid: 0,
-                          );
+                      final account = debtProvider.accountFor(client.id) ?? DebtAccount(clientId: client.id, clientName: client.name, totalDebt: 0, totalPaid: 0);
+                      final clientSales = salesProvider.sales.where((sale) => sale.clientId == client.id && sale.paymentMethod.toLowerCase() == 'fiado').toList(growable: false);
                       return _ClientDebtCard(
                         client: client,
                         account: account,
+                        purchaseCount: clientSales.length,
                         onEdit: () => _editClient(client),
-                        onPayment: account.remaining > 0.005
-                            ? () => _addPayment(client, account)
-                            : null,
+                        onHistory: () => _showPurchaseHistory(client, clientSales),
+                        onPayment: account.remaining > 0.005 ? () => _addPayment(client, account) : null,
                       );
                     },
                   ),
@@ -352,14 +315,11 @@ class _DebtsLayoutState extends State<DebtsLayout> {
           const SizedBox(height: 10),
           Expanded(
             child: provider.movements.isEmpty
-                ? const _EmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    message: 'Todavía no hay movimientos.',
-                  )
+                ? const _EmptyState(icon: Icons.receipt_long_outlined, message: 'Todavía no hay movimientos.')
                 : ListView.separated(
                     itemCount: provider.movements.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 7),
-                    itemBuilder: (context, index) => _MovementTile(provider.movements[index]),
+                    itemBuilder: (_, index) => _MovementTile(provider.movements[index]),
                   ),
           ),
         ],
@@ -370,11 +330,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   List<Client> _filteredClients(List<Client> clients, DebtProvider provider) {
     final query = _searchQuery.trim().toLowerCase();
     final result = clients.where((client) {
-      if (query.isNotEmpty &&
-          !client.name.toLowerCase().contains(query) &&
-          !client.phone.toLowerCase().contains(query)) {
-        return false;
-      }
+      if (query.isNotEmpty && !client.name.toLowerCase().contains(query) && !client.phone.toLowerCase().contains(query)) return false;
       final account = provider.accountFor(client.id);
       final remaining = account?.remaining ?? 0;
       if (_filter == _DebtFilter.pending && remaining <= 0.005) return false;
@@ -402,9 +358,7 @@ class _Panel extends StatelessWidget {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4)),
-        ],
+        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))],
       ),
       padding: const EdgeInsets.all(14),
       child: child,
@@ -418,12 +372,7 @@ class _SummaryCard extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const _SummaryCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+  const _SummaryCard({required this.label, required this.value, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -434,21 +383,11 @@ class _SummaryCard extends StatelessWidget {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4)),
-        ],
+        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))],
       ),
       child: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color.withAlpha(18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 21),
-          ),
+          Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withAlpha(18), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 21)),
           const SizedBox(width: 11),
           Expanded(
             child: Column(
@@ -470,15 +409,12 @@ class _SummaryCard extends StatelessWidget {
 class _ClientDebtCard extends StatelessWidget {
   final Client client;
   final DebtAccount account;
+  final int purchaseCount;
   final VoidCallback onEdit;
+  final VoidCallback onHistory;
   final VoidCallback? onPayment;
 
-  const _ClientDebtCard({
-    required this.client,
-    required this.account,
-    required this.onEdit,
-    required this.onPayment,
-  });
+  const _ClientDebtCard({required this.client, required this.account, required this.purchaseCount, required this.onEdit, required this.onHistory, required this.onPayment});
 
   @override
   Widget build(BuildContext context) {
@@ -488,51 +424,30 @@ class _ClientDebtCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 11, 10, 10),
-      decoration: BoxDecoration(
-        color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.border)),
       child: Column(
         children: [
           Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(18),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.person_outline, size: 19, color: AppColors.primary),
-              ),
+              Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), shape: BoxShape.circle), child: const Icon(Icons.person_outline, size: 19, color: AppColors.primary)),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(client.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    if (client.phone.isNotEmpty)
-                      Text(client.phone, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    if (client.phone.isNotEmpty) Text(client.phone, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   ],
                 ),
               ),
-              if (remaining <= 0.005 && account.totalDebt > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.successGreen.withAlpha(18),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text('Pagado', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.successGreen)),
+              if (purchaseCount > 0)
+                TextButton.icon(
+                  onPressed: onHistory,
+                  icon: const Icon(Icons.receipt_long_outlined, size: 15),
+                  label: Text('$purchaseCount compras'),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 7), visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 10)),
                 ),
-              IconButton(
-                tooltip: 'Editar',
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, size: 17),
-                color: AppColors.textSecondary,
-                visualDensity: VisualDensity.compact,
-              ),
+              IconButton(tooltip: 'Editar', onPressed: onEdit, icon: const Icon(Icons.edit_outlined, size: 17), color: AppColors.textSecondary, visualDensity: VisualDensity.compact),
             ],
           ),
           const SizedBox(height: 9),
@@ -545,26 +460,14 @@ class _ClientDebtCard extends StatelessWidget {
               Expanded(child: _AmountBox(label: 'Restante', value: _money(remaining), color: remaining > 0.005 ? AppColors.warningOrange : AppColors.successGreen)),
             ],
           ),
-          if (account.totalDebt > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(5),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 6,
-                      backgroundColor: AppColors.border,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.successGreen),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(5), child: LinearProgressIndicator(value: progress, minHeight: 6, backgroundColor: AppColors.border, valueColor: const AlwaysStoppedAnimation<Color>(AppColors.successGreen)))),
+              const SizedBox(width: 8),
+              Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ],
+          ),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
@@ -572,11 +475,7 @@ class _ClientDebtCard extends StatelessWidget {
               onPressed: onPayment,
               icon: const Icon(Icons.payments_outlined, size: 16),
               label: const Text('Abonar'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              ),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -591,26 +490,14 @@ class _AmountBox extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-
   const _AmountBox({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
-          const SizedBox(height: 2),
-          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)), const SizedBox(height: 2), Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color))]),
     );
   }
 }
@@ -625,40 +512,21 @@ class _MovementTile extends StatelessWidget {
     final color = isPayment ? AppColors.successGreen : AppColors.dangerRed;
     final label = isPayment ? 'Abono' : 'Nueva deuda';
     final sign = isPayment ? '-' : '+';
-    final date = '${movement.createdAt.day.toString().padLeft(2, '0')}/'
-        '${movement.createdAt.month.toString().padLeft(2, '0')}/${movement.createdAt.year}';
+    final date = '${movement.createdAt.day.toString().padLeft(2, '0')}/${movement.createdAt.month.toString().padLeft(2, '0')}/${movement.createdAt.year}';
     final hour = movement.createdAt.hour % 12 == 0 ? 12 : movement.createdAt.hour % 12;
     final period = movement.createdAt.hour >= 12 ? 'PM' : 'AM';
     final time = '${hour.toString().padLeft(2, '0')}:${movement.createdAt.minute.toString().padLeft(2, '0')} $period';
 
     return Container(
       padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(
-        color: color.withAlpha(8),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: color.withAlpha(30)),
-      ),
+      decoration: BoxDecoration(color: color.withAlpha(8), borderRadius: BorderRadius.circular(9), border: Border.all(color: color.withAlpha(30))),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 27,
-            height: 27,
-            decoration: BoxDecoration(color: color.withAlpha(18), shape: BoxShape.circle),
-            child: Icon(isPayment ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 15, color: color),
-          ),
+          Container(width: 27, height: 27, decoration: BoxDecoration(color: color.withAlpha(18), shape: BoxShape.circle), child: Icon(isPayment ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 15, color: color)),
           const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(movement.clientName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text('$date · $time', style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(movement.clientName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary)), const SizedBox(height: 2), Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)), const SizedBox(height: 2), Text('$date · $time', style: const TextStyle(fontSize: 9, color: AppColors.textMuted)), if (movement.reference != null && movement.reference!.isNotEmpty) Text('Ticket #${movement.reference}', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary))]),
           ),
           Text('$sign\$${movement.amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         ],
@@ -674,13 +542,7 @@ class _DialogBalanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        const Spacer(),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.dangerRed)),
-      ],
-    );
+    return Row(children: [Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)), const Spacer(), Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.dangerRed))]);
   }
 }
 
@@ -691,15 +553,6 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 30, color: AppColors.textMuted),
-          const SizedBox(height: 8),
-          Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-        ],
-      ),
-    );
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 30, color: AppColors.textMuted), const SizedBox(height: 8), Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppColors.textMuted))]));
   }
 }
