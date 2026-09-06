@@ -13,6 +13,8 @@ import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/presentation/Inventory/widgets/create_catalog_dialog.dart';
+import 'package:stellar_pos/presentation/providers/widgets/manage_distributors_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
@@ -41,6 +43,9 @@ class CreateProductDialog extends StatefulWidget {
 }
 
 class _CreateProductDialogState extends State<CreateProductDialog> {
+  static const String _createCategoryOption = '__create_category__';
+  static const String _createDistributorOption = '__create_distributor__';
+
   int _stock = 0;
   int _minStock = 0;
   int _maxStock = 0;
@@ -128,6 +133,14 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         }
       });
     });
+  }
+
+  Future<void> _createCategory() async {
+    await CreateCatalogDialog.show(context);
+  }
+
+  Future<void> _createDistributor() async {
+    await ManageDistributorsDialog.show(context);
   }
 
   bool _validate() {
@@ -554,22 +567,33 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                             children: [
                               Expanded(
                                 child: _dropdown(
-                                  AppStrings.selectTagHint,
-                                  _selectedTag,
-                                  _tags,
-                                  (value) =>
-                                      setState(() => _selectedTag = value),
+                                  hint: AppStrings.selectTagHint,
+                                  value: _selectedTag,
+                                  items: _tags,
+                                  createLabel: 'Crear categoría',
+                                  createValue: _createCategoryOption,
+                                  onCreate: _createCategory,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedTag = value;
+                                    });
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: _dropdown(
-                                  AppStrings.selectDeptHint,
-                                  _selectedDistributor,
-                                  _distributors,
-                                  (value) => setState(
-                                    () => _selectedDistributor = value,
-                                  ),
+                                  hint: AppStrings.selectDeptHint,
+                                  value: _selectedDistributor,
+                                  items: _distributors,
+                                  createLabel: 'Crear distribuidora',
+                                  createValue: _createDistributorOption,
+                                  onCreate: _createDistributor,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedDistributor = value;
+                                    });
+                                  },
                                 ),
                               ),
                             ],
@@ -768,14 +792,19 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     );
   }
 
-  Widget _dropdown(
-    String hint,
-    String? value,
-    List<String> items,
-    ValueChanged<String?> onChanged,
-  ) {
+  Widget _dropdown({
+    required String hint,
+    required String? value,
+    required List<String> items,
+    required String createLabel,
+    required String createValue,
+    required VoidCallback onCreate,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final selectedValue = items.contains(value) ? value : null;
+
     return DropdownButtonFormField<String?>(
-      initialValue: items.contains(value) ? value : null,
+      initialValue: selectedValue,
       isDense: true,
       decoration: InputDecoration(
         isDense: true,
@@ -792,6 +821,27 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         ),
       ),
       items: [
+        DropdownMenuItem<String?>(
+          value: createValue,
+          child: Row(
+            children: [
+              const Icon(
+                Icons.add_circle_outline,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                createLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
         const DropdownMenuItem<String?>(
           value: null,
           child: Text(
@@ -809,7 +859,13 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           ),
         ),
       ],
-      onChanged: onChanged,
+      onChanged: (value) {
+        if (value == createValue) {
+          onCreate();
+          return;
+        }
+        onChanged(value);
+      },
     );
   }
 
