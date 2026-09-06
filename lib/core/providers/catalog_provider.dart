@@ -7,9 +7,17 @@ class CatalogProvider extends ChangeNotifier {
   final List<String> _distributors = [];
   final List<Client> _clients = [];
 
-  List<String> get tags => List.unmodifiable(_tags);
+  List<String> get tags {
+    final sorted = List<String>.from(_tags);
+    sorted.sort(_compareAlphabetically);
+    return List.unmodifiable(sorted);
+  }
 
-  List<String> get distributors => List.unmodifiable(_distributors);
+  List<String> get distributors {
+    final sorted = List<String>.from(_distributors);
+    sorted.sort(_compareAlphabetically);
+    return List.unmodifiable(sorted);
+  }
 
   /// Backward-compatible alias while product forms are migrated.
   List<String> get departments => distributors;
@@ -90,6 +98,10 @@ class CatalogProvider extends ChangeNotifier {
       if (client.id == id) return client;
     }
     return null;
+  }
+
+  int _compareAlphabetically(String a, String b) {
+    return a.toLowerCase().compareTo(b.toLowerCase());
   }
 
   bool _containsIgnoreCase(List<String> values, String value) {
