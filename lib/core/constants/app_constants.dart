@@ -33,6 +33,7 @@ class AppDimensions {
   static const double categorySpacing = 8.0;
   static const double searchFieldRadius = 10.0;
   static const double buttonRadius = 8.0;
+  static const double productGridAspectRatio = 0.82;
   static const double productCardAspectRatio = 0.82;
   static const double productImageSize = 36.0;
   static const double stockBadgeHeight = 26.0;
@@ -128,7 +129,7 @@ class AppStrings {
   static const String navStats = 'Estadísticas';
   static const String navPurchases = 'Compras';
   static const String navProviders = 'Proveedores';
-  static const String navDebts = 'Deudas';
+  static const String navDebts = 'Cuentas por cobrar';
   static const String navSettings = 'Ajustes';
   static const String searchPlaceholder = 'Buscar producto...';
   static const String salesSummaryTitle = 'Resumen Ventas';
