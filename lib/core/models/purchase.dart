@@ -35,8 +35,7 @@ class PurchaseRecord {
   final String id;
   final String invoiceNumber;
   final String distributorName;
-  final DateTime purchasedAt;
-  final DateTime? arrivalAt;
+  final DateTime arrivalAt;
   final String paymentMethod;
   final List<PurchaseItemRecord> items;
   final double subtotal;
@@ -46,7 +45,6 @@ class PurchaseRecord {
     required this.id,
     required this.invoiceNumber,
     required this.distributorName,
-    required this.purchasedAt,
     required this.arrivalAt,
     required this.paymentMethod,
     required this.items,
@@ -60,8 +58,7 @@ class PurchaseRecord {
         'id': id,
         'invoiceNumber': invoiceNumber,
         'distributorName': distributorName,
-        'purchasedAt': purchasedAt.toIso8601String(),
-        'arrivalAt': arrivalAt?.toIso8601String(),
+        'arrivalAt': arrivalAt.toIso8601String(),
         'paymentMethod': paymentMethod,
         'items': items.map((item) => item.toMap()).toList(),
         'subtotal': subtotal,
