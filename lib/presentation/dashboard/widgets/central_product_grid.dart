@@ -17,9 +17,9 @@ class CentralProductGrid extends StatelessWidget {
   final ValueChanged<String?> onFilterChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onRemoveFromCart;
-  final ValueChanged<List<ElectronicBalanceCartItem>>? onElectronicBalanceSelectionChanged;
   final List<ElectronicBalanceCartItem> electronicBalanceSelection;
   final VoidCallback? onElectronicBalanceTap;
+  final VoidCallback? onElectronicBalanceManage;
   final ValueChanged<String>? onSearchChanged;
   final String searchQuery;
 
@@ -34,9 +34,9 @@ class CentralProductGrid extends StatelessWidget {
     required this.onFilterChanged,
     required this.onAddToCart,
     required this.onRemoveFromCart,
-    this.onElectronicBalanceSelectionChanged,
     this.electronicBalanceSelection = const [],
     this.onElectronicBalanceTap,
+    this.onElectronicBalanceManage,
     this.onSearchChanged,
     this.searchQuery = '',
   });
@@ -61,9 +61,7 @@ class CentralProductGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProductSearchBar(
-            onChanged: onSearchChanged ?? (_) {},
-          ),
+          ProductSearchBar(onChanged: onSearchChanged ?? (_) {}),
           const SizedBox(height: 12),
           ProductFilterBar(
             tags: tags,
@@ -108,6 +106,7 @@ class CentralProductGrid extends StatelessWidget {
           return _ElectronicBalanceCard(
             selection: electronicBalanceSelection,
             onTap: onElectronicBalanceTap,
+            onManage: onElectronicBalanceManage,
           );
         }
 
@@ -128,10 +127,12 @@ class CentralProductGrid extends StatelessWidget {
 class _ElectronicBalanceCard extends StatelessWidget {
   final List<ElectronicBalanceCartItem> selection;
   final VoidCallback? onTap;
+  final VoidCallback? onManage;
 
   const _ElectronicBalanceCard({
     required this.selection,
     required this.onTap,
+    required this.onManage,
   });
 
   @override
@@ -164,18 +165,35 @@ class _ElectronicBalanceCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(22),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.phone_android_outlined,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(22),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.phone_android_outlined,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (onManage != null)
+                    IconButton(
+                      tooltip: 'Administrar compañías y recargas',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      onPressed: onManage,
+                      icon: const Icon(
+                        Icons.settings_outlined,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                ],
               ),
               const Spacer(),
               const Text(
@@ -205,7 +223,9 @@ class _ElectronicBalanceCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      selection.isEmpty ? 'Tocar para seleccionar' : 'Tocar para editar',
+                      selection.isEmpty
+                          ? 'Tocar para seleccionar'
+                          : 'Tocar para editar',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
