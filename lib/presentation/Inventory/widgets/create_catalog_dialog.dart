@@ -34,7 +34,7 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
     super.dispose();
   }
 
-  void _createTag() {
+  void _createCategory() {
     final name = _nameController.text.trim();
 
     if (name.isEmpty) {
@@ -76,7 +76,7 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Etiquetas',
+                        'Categorías',
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 17,
@@ -100,7 +100,7 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                     Expanded(
                       child: TextField(
                         controller: _nameController,
-                        onSubmitted: (_) => _createTag(),
+                        onSubmitted: (_) => _createCategory(),
                         onChanged: (_) {
                           if (_nameInvalid) {
                             setState(() => _nameInvalid = false);
@@ -108,7 +108,7 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                         },
                         decoration: InputDecoration(
                           isDense: true,
-                          hintText: 'Nombre de la etiqueta',
+                          hintText: 'Nombre de la categoría',
                           hintStyle: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textMuted,
@@ -138,8 +138,8 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      tooltip: 'Agregar etiqueta',
-                      onPressed: _createTag,
+                      tooltip: 'Agregar categoría',
+                      onPressed: _createCategory,
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -153,7 +153,7 @@ class _CreateCatalogDialogState extends State<CreateCatalogDialog> {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 18),
                     child: Text(
-                      'Todavía no hay etiquetas creadas.',
+                      'Todavía no hay categorías creadas.',
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
