@@ -163,10 +163,10 @@ class AppStrings {
   static const String purchasePriceHint = 'Precio de compra';
   static const String salePriceHint = 'Precio de venta';
   static const String barcodeHint = 'Código de barras';
-  static const String selectTagHint = 'Etiqueta';
+  static const String selectTagHint = 'Categoría';
   static const String selectDeptHint = 'Distribuidora';
   static const String saveButton = 'Guardar';
-  static const String createTagsTooltip = 'Crear etiquetas';
+  static const String createTagsTooltip = 'Crear categoría';
   static const String createClientsTooltip = 'Crear Clientes';
   static const String createProductsTooltip = 'Crear Productos';
 }
