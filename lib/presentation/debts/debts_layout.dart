@@ -712,11 +712,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onTap: _showKeypad,
               onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Efectivo recibido',
-                  prefixText: '\$ ',
-                  prefixIcon: Icon(Icons.payments_outlined, size: 19),
-                ),
+              decoration: const InputDecoration(
+                labelText: 'Efectivo recibido',
+                prefixText: '\$ ',
+                prefixIcon: Icon(Icons.payments_outlined, size: 19),
               ),
             ),
             const SizedBox(height: 10),
