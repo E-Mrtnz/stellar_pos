@@ -27,6 +27,7 @@ class SalesSummaryPanel extends StatelessWidget {
   final void Function(String productId, int quantity) onQuantityChanged;
   final ValueChanged<String> onRemoveFromCart;
   final VoidCallback onClearCart;
+  final VoidCallback onCreateSale;
   final String ticketNumber;
 
   const SalesSummaryPanel({
@@ -54,6 +55,7 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.onQuantityChanged,
     required this.onRemoveFromCart,
     required this.onClearCart,
+    required this.onCreateSale,
     required this.ticketNumber,
   });
 
@@ -150,6 +152,8 @@ class SalesSummaryPanel extends StatelessWidget {
   }
 
   Widget _buildPaymentSection(BuildContext context) {
+    final isCredit = selectedPaymentMethod == AppPaymentMethods.credit;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 12),
       decoration: const BoxDecoration(
@@ -192,9 +196,16 @@ class SalesSummaryPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 9),
-          if (selectedPaymentMethod == AppPaymentMethods.credit) ...[
-            _buildDebtorSelector(),
-            const SizedBox(height: 8),
+          if (isCredit) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: _buildDebtorSelector()),
+                const SizedBox(width: 7),
+                _buildCreditAmountInput(),
+              ],
+            ),
+            const SizedBox(height: 6),
           ],
           _buildSummaryLine('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 6),
@@ -221,6 +232,10 @@ class SalesSummaryPanel extends StatelessWidget {
               ),
             ],
           ),
+          if (isCredit) ...[
+            const SizedBox(height: 6),
+            _buildCreditInfoLine(),
+          ],
           if (selectedPaymentMethod == AppPaymentMethods.card) ...[
             const SizedBox(height: 6),
             _buildSummaryLine(
@@ -274,7 +289,7 @@ class SalesSummaryPanel extends StatelessWidget {
             width: double.infinity,
             height: 36,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: onCreateSale,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -290,6 +305,99 @@ class SalesSummaryPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCreditAmountInput() {
+    final received = double.tryParse(cashReceivedController.text.replaceAll(',', '.')) ?? 0;
+    final applied = received.clamp(0, total).toDouble();
+    final remaining = (total - applied).clamp(0, double.infinity).toDouble();
+    final creditChange = (received - total).clamp(0, double.infinity).toDouble();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        SizedBox(
+          width: 82,
+          height: 34,
+          child: TextField(
+            controller: cashReceivedController,
+            readOnly: true,
+            onTap: () => onPaymentInputFocused(cashReceivedController),
+            textAlign: TextAlign.right,
+            decoration: InputDecoration(
+              prefixText: '\$ ',
+              hintText: '0.00',
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+              filled: true,
+              fillColor: AppColors.inputBackground,
+              labelText: 'Abonado',
+              labelStyle: const TextStyle(fontSize: 9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(7),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(7),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+            ),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+          ),
+        ),
+        if (creditChange > 0.005)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              'Cambio: \$${creditChange.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: AppColors.warningOrange,
+              ),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              'Deuda: \$${remaining.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCreditInfoLine() {
+    final received = double.tryParse(cashReceivedController.text.replaceAll(',', '.')) ?? 0;
+    final applied = received.clamp(0, total).toDouble();
+    final remaining = (total - applied).clamp(0, double.infinity).toDouble();
+
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Abono aplicado a la deuda',
+            style: TextStyle(fontSize: 9, color: AppColors.textSecondary),
+          ),
+        ),
+        Text(
+          '\$${applied.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 10),
+        const Text(
+          'Deuda restante',
+          style: TextStyle(fontSize: 9, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '\$${remaining.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.dangerRed),
+        ),
+      ],
     );
   }
 
