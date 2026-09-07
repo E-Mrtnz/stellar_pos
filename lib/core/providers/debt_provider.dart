@@ -86,14 +86,40 @@ class DebtProvider extends ChangeNotifier {
     final appliedAmount = amount > limit ? limit : amount;
     if (appliedAmount <= 0) return false;
 
+    final now = DateTime.now();
+    String? reference;
+
+    // The first payment created immediately after a credit sale is the
+    // optional initial payment of that sale. Tag it so Sales can distinguish
+    // it from a later payment collected on another day.
+    final recentCreditSales = _creditSales
+        .where(
+          (sale) =>
+              sale.clientId == clientId &&
+              sale.received > 0.005 &&
+              sale.received < sale.total - 0.005 &&
+              now.difference(sale.createdAt).inMilliseconds.abs() <= 2000,
+        )
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    for (final sale in recentCreditSales) {
+      final alreadyTagged = _payments.any((payment) => payment.reference == sale.id);
+      if (!alreadyTagged) {
+        reference = sale.id;
+        break;
+      }
+    }
+
     _payments.add(
       DebtMovement(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: now.microsecondsSinceEpoch.toString(),
         clientId: clientId,
         clientName: clientName,
         type: DebtMovementType.payment,
         amount: appliedAmount,
-        createdAt: DateTime.now(),
+        createdAt: now,
+        reference: reference,
       ),
     );
     notifyListeners();
