@@ -20,7 +20,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.d
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/debts/debts_layout.dart';
-import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
+import 'package:stellar_pos/presentation/sales/sales_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
@@ -412,7 +412,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Widget _buildMainContent(List<Map<String, dynamic>> products) {
     if (_selectedNavIndex == AppNavigation.inventory) return const InventoryLayout();
-    if (_selectedNavIndex == AppNavigation.electronicBalance) return const ElectronicBalanceLayout();
+    if (_selectedNavIndex == AppNavigation.electronicBalance) return const SalesLayout();
     if (_selectedNavIndex == AppNavigation.purchases) return const PurchasesLayout();
     if (_selectedNavIndex == AppNavigation.providers) return const ProvidersLayout();
     if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
