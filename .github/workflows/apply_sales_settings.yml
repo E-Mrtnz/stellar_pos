@@ -1,0 +1,941 @@
+name: Apply sales and settings changes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply_sales_settings.yml'
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply changes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+
+          def read(path):
+              return (root / path).read_text()
+          def write(path, content):
+              p = root / path
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(content)
+
+          # New general settings provider.
+          write('lib/core/providers/general_settings_provider.dart', r'''import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class GeneralSettingsProvider extends ChangeNotifier {
+  static const _showImportKey = 'general.show_inventory_import';
+  static const _showExportKey = 'general.show_inventory_export';
+
+  final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
+
+  bool _showInventoryImport = true;
+  bool _showInventoryExport = true;
+
+  bool get showInventoryImport => _showInventoryImport;
+  bool get showInventoryExport => _showInventoryExport;
+
+  GeneralSettingsProvider() {
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final importValue = await _preferences.getBool(_showImportKey);
+      final exportValue = await _preferences.getBool(_showExportKey);
+      if (importValue != null) _showInventoryImport = importValue;
+      if (exportValue != null) _showInventoryExport = exportValue;
+      notifyListeners();
+    } catch (_) {
+      // Keep safe defaults when preferences cannot be read.
+    }
+  }
+
+  void setShowInventoryImport(bool value) {
+    _showInventoryImport = value;
+    notifyListeners();
+    unawaited(_preferences.setBool(_showImportKey, value));
+  }
+
+  void setShowInventoryExport(bool value) {
+    _showInventoryExport = value;
+    notifyListeners();
+    unawaited(_preferences.setBool(_showExportKey, value));
+  }
+}
+''')
+
+          # Update constants/navigation labels.
+          p = 'lib/core/constants/app_constants.dart'
+          s = read(p)
+          s = s.replace("static const String navHome = 'Ventas';", "static const String navHome = 'Punto de venta';\n  static const String navSales = 'Ventas';")
+          s = s.replace("static const int home = 0;\n  static const int electronicBalance = 1;\n  static const int purchases = 2;\n  static const int debts = 3;\n  static const int stats = 4;\n  static const int providers = 5;\n  static const int inventory = 6;\n  static const int settings = 7;", "static const int home = 0;\n  static const int sales = 1;\n  static const int electronicBalance = 2;\n  static const int purchases = 3;\n  static const int debts = 4;\n  static const int stats = 5;\n  static const int providers = 6;\n  static const int inventory = 7;\n  static const int settings = 8;")
+          write(p, s)
+
+          # Sidebar: add the sales-history entry immediately after Punto de venta.
+          p = 'lib/presentation/dashboard/widgets/sidebar_drawer.dart'
+          s = read(p)
+          needle = "                    _buildSidebarItem(\n                      AppNavigation.home,\n                      Icons.point_of_sale_rounded,\n                      AppStrings.navHome,\n                    ),"
+          replacement = needle + "\n                    _buildSidebarItem(\n                      AppNavigation.sales,\n                      Icons.receipt_long_rounded,\n                      AppStrings.navSales,\n                    ),"
+          if needle not in s:
+              raise SystemExit('Sidebar insertion point not found')
+          s = s.replace(needle, replacement, 1)
+          write(p, s)
+
+          # Register the settings provider in main.dart.
+          p = 'lib/main.dart'
+          s = read(p)
+          s = s.replace("import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';", "import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';\nimport 'package:stellar_pos/core/providers/general_settings_provider.dart';")
+          s = s.replace("        ChangeNotifierProvider(create: (_) => PrinterProvider()),", "        ChangeNotifierProvider(create: (_) => PrinterProvider()),\n        ChangeNotifierProvider(create: (_) => GeneralSettingsProvider()),")
+          write(p, s)
+
+          # Main dashboard: route the new history screen and keep Punto de venta as the selling screen.
+          p = 'lib/presentation/dashboard/main_dashboard_layout.dart'
+          s = read(p)
+          s = s.replace("import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';", "import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';")
+          s = s.replace("import 'package:stellar_pos/presentation/providers/providers_layout.dart';", "import 'package:stellar_pos/presentation/providers/providers_layout.dart';\nimport 'package:stellar_pos/presentation/sales/sales_layout.dart';")
+          needle = "    if (_selectedNavIndex == AppNavigation.inventory) return const InventoryLayout();"
+          replacement = "    if (_selectedNavIndex == AppNavigation.sales) return const SalesLayout();\n" + needle
+          if needle not in s:
+              raise SystemExit('Main dashboard route point not found')
+          s = s.replace(needle, replacement, 1)
+          write(p, s)
+
+          # DebtProvider: allow the initial payment of a credit sale to carry a sale reference.
+          p = 'lib/core/providers/debt_provider.dart'
+          s = read(p)
+          s = s.replace("    double? maxAmount,\n  })", "    double? maxAmount,\n    String? reference,\n  })")
+          s = s.replace("        createdAt: DateTime.now(),\n      ),", "        createdAt: DateTime.now(),\n        reference: reference,\n      ),", 1)
+          write(p, s)
+
+          # Sales creation: tag the initial credit payment with the sale id.
+          p = 'lib/presentation/dashboard/main_dashboard_layout.dart'
+          s = read(p)
+          old = "          amount: initialCreditPayment,\n        );"
+          new = "          amount: initialCreditPayment,\n          reference: sale.id,\n        );"
+          if old not in s:
+              raise SystemExit('Initial credit payment call not found')
+          s = s.replace(old, new, 1)
+          write(p, s)
+
+          # Inventory file actions become optional and persistent through General settings.
+          p = 'lib/presentation/Inventory/inventory_layout.dart'
+          s = read(p)
+          s = s.replace("import 'package:stellar_pos/core/providers/catalog_provider.dart';", "import 'package:stellar_pos/core/providers/catalog_provider.dart';\nimport 'package:stellar_pos/core/providers/general_settings_provider.dart';")
+          s = s.replace("                _buildFileActions(),", "                _buildFileActions(),")
+          start = s.index('  Widget _buildFileActions() {')
+          end = s.index('  Widget _buildInventoryTable', start)
+          new_method = r'''  Widget _buildFileActions() {
+    final settings = context.watch<GeneralSettingsProvider>();
+    if (!settings.showInventoryImport && !settings.showInventoryExport) {
+      return const SizedBox.shrink();
+    }
+
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: AppColors.textPrimary,
+      side: const BorderSide(color: AppColors.border),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (settings.showInventoryImport)
+          OutlinedButton.icon(
+            onPressed: _isImporting || _isExporting ? null : _importInventory,
+            style: buttonStyle,
+            icon: _isImporting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload_file_outlined, size: 18),
+            label: const Text('Subir inventario'),
+          ),
+        if (settings.showInventoryImport && settings.showInventoryExport)
+          const SizedBox(width: 8),
+        if (settings.showInventoryExport)
+          PopupMenuButton<String>(
+            enabled: !_isImporting && !_isExporting,
+            onSelected: (value) {
+              if (value == 'excel') {
+                _exportExcel();
+              } else {
+                _exportPdf();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'excel',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.table_chart_outlined),
+                  title: Text('Descargar Excel'),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'pdf',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.picture_as_pdf_outlined),
+                  title: Text('Descargar PDF'),
+                ),
+              ),
+            ],
+            child: OutlinedButton.icon(
+              onPressed: null,
+              style: buttonStyle,
+              icon: _isExporting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_outlined, size: 18),
+              label: const Text('Descargar inventario'),
+            ),
+          ),
+      ],
+    );
+  }
+
+'''
+          s = s[:start] + new_method + s[end:]
+          write(p, s)
+
+          # Extend printer settings into a general/settings split.
+          p = 'lib/presentation/settings/printer_settings_layout.dart'
+          s = read(p)
+          s = s.replace("import 'package:stellar_pos/core/providers/printer_provider.dart';", "import 'package:stellar_pos/core/providers/printer_provider.dart';\nimport 'package:stellar_pos/core/providers/general_settings_provider.dart';")
+          needle = "  late final List<_SettingsSection> _sections = [\n    _SettingsSection(\n      title: 'Impresoras',"
+          replacement = "  late final List<_SettingsSection> _sections = [\n    _SettingsSection(\n      title: 'General',\n      icon: Icons.tune_outlined,\n      builder: (_) => const _GeneralSettingsContent(),\n    ),\n    _SettingsSection(\n      title: 'Impresoras',"
+          if needle not in s:
+              raise SystemExit('Settings section list not found')
+          s = s.replace(needle, replacement, 1)
+          marker = 'class _PrinterSettingsContent extends StatefulWidget {'
+          general = r'''class _GeneralSettingsContent extends StatelessWidget {
+  const _GeneralSettingsContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<GeneralSettingsProvider>(
+      builder: (context, settings, _) {
+        return Padding(
+          padding: const EdgeInsets.all(AppDimensions.pagePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Ajustes generales', style: AppTextStyles.brandTitle),
+              const SizedBox(height: 4),
+              const Text(
+                'Preferencias básicas de funcionamiento de Stellar POS.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildGroup(
+                        title: 'Inventario',
+                        icon: Icons.inventory_2_outlined,
+                        children: [
+                          _buildSwitchTile(
+                            title: 'Mostrar "Subir inventario"',
+                            subtitle: 'Muestra la herramienta de importación en Inventario.',
+                            value: settings.showInventoryImport,
+                            onChanged: settings.setShowInventoryImport,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSwitchTile(
+                            title: 'Mostrar "Descargar inventario"',
+                            subtitle: 'Muestra las opciones para exportar el inventario.',
+                            value: settings.showInventoryExport,
+                            onChanged: settings.setShowInventoryExport,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGroup({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadowColor,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: AppTextStyles.sectionTitle),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.settings_suggest_outlined, size: 19, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged, activeColor: AppColors.primary),
+        ],
+      ),
+    );
+  }
+}
+
+'''
+          if marker not in s:
+              raise SystemExit('Printer settings content marker not found')
+          s = s.replace(marker, general + marker, 1)
+          write(p, s)
+
+          # New sales history screen.
+          write('lib/presentation/sales/sales_layout.dart', r'''import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/models/debt.dart';
+import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/providers/debt_provider.dart';
+import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/providers/printer_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+
+class SalesLayout extends StatefulWidget {
+  const SalesLayout({super.key});
+
+  @override
+  State<SalesLayout> createState() => _SalesLayoutState();
+}
+
+enum _SalesPeriod { daily, weekly, monthly, yearly, custom }
+
+enum _SalesPaymentFilter { all, cash, card, transfer, credit }
+
+class _SalesLayoutState extends State<SalesLayout> {
+  final TextEditingController _searchController = TextEditingController();
+  _SalesPeriod _period = _SalesPeriod.daily;
+  _SalesPaymentFilter _paymentFilter = _SalesPaymentFilter.all;
+  DateTime? _customStart;
+  DateTime? _customEnd;
+  DateTime _anchorDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_refresh);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _refresh() => setState(() {});
+
+  String _money(double value) => '\$${value.toStringAsFixed(2)}';
+
+  String _periodLabel() {
+    switch (_period) {
+      case _SalesPeriod.daily: return 'Diario';
+      case _SalesPeriod.weekly: return 'Semanal';
+      case _SalesPeriod.monthly: return 'Mensual';
+      case _SalesPeriod.yearly: return 'Anual';
+      case _SalesPeriod.custom: return 'Rango personalizado';
+    }
+  }
+
+  DateTimeRange _range() {
+    final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+    switch (_period) {
+      case _SalesPeriod.daily:
+        return DateTimeRange(start: day, end: day.add(const Duration(days: 1)));
+      case _SalesPeriod.weekly:
+        final monday = day.subtract(Duration(days: day.weekday - 1));
+        return DateTimeRange(start: monday, end: monday.add(const Duration(days: 7)));
+      case _SalesPeriod.monthly:
+        final start = DateTime(day.year, day.month);
+        return DateTimeRange(start: start, end: DateTime(day.year, day.month + 1));
+      case _SalesPeriod.yearly:
+        return DateTimeRange(start: DateTime(day.year), end: DateTime(day.year + 1));
+      case _SalesPeriod.custom:
+        final start = _customStart ?? day;
+        final endDay = _customEnd ?? start;
+        return DateTimeRange(
+          start: DateTime(start.year, start.month, start.day),
+          end: DateTime(endDay.year, endDay.month, endDay.day).add(const Duration(days: 1)),
+        );
+    }
+  }
+
+  List<SaleRecord> _filteredSales(List<SaleRecord> sales) {
+    final range = _range();
+    final query = _searchController.text.trim().toLowerCase();
+    final result = sales.where((sale) {
+      if (sale.createdAt.isBefore(range.start) || !sale.createdAt.isBefore(range.end)) return false;
+      if (!_matchesPayment(sale)) return false;
+      if (query.isEmpty) return true;
+      return sale.ticketNumber.toLowerCase().contains(query) ||
+          sale.clientName.toLowerCase().contains(query) ||
+          sale.items.any((item) => item.productName.toLowerCase().contains(query) || item.barcode.toLowerCase().contains(query));
+    }).toList();
+    result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return result;
+  }
+
+  bool _matchesPayment(SaleRecord sale) {
+    switch (_paymentFilter) {
+      case _SalesPaymentFilter.all: return true;
+      case _SalesPaymentFilter.cash: return sale.paymentMethod == AppStrings.cashPayment;
+      case _SalesPaymentFilter.card: return sale.paymentMethod == AppStrings.cardPayment;
+      case _SalesPaymentFilter.transfer: return sale.paymentMethod == AppStrings.transferPayment;
+      case _SalesPaymentFilter.credit: return sale.paymentMethod == AppStrings.creditPayment;
+    }
+  }
+
+  Future<void> _selectCustomRange() async {
+    final initialStart = _customStart ?? _anchorDate;
+    final initialEnd = _customEnd ?? initialStart;
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      initialDateRange: DateTimeRange(
+        start: initialStart,
+        end: initialEnd.isBefore(initialStart) ? initialStart : initialEnd,
+      ),
+    );
+    if (picked == null) return;
+    setState(() {
+      _period = _SalesPeriod.custom;
+      _customStart = picked.start;
+      _customEnd = picked.end;
+      _anchorDate = picked.start;
+    });
+  }
+
+  Future<void> _selectAnchorDate() async {
+    if (_period == _SalesPeriod.custom) return _selectCustomRange();
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      initialDate: _anchorDate,
+    );
+    if (picked != null) setState(() => _anchorDate = picked);
+  }
+
+  Map<String, double> _paidBySale(List<SaleRecord> allSales, List<DebtMovement> movements) {
+    final creditSales = allSales.where((sale) => sale.paymentMethod == AppStrings.creditPayment && sale.clientId != null).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final paid = <String, double>{};
+    for (final sale in creditSales) paid[sale.id] = 0;
+
+    final payments = movements.where((m) => m.type == DebtMovementType.payment).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    for (final payment in payments) {
+      var remaining = payment.amount;
+      for (final sale in creditSales.where((s) => s.clientId == payment.clientId)) {
+        final available = sale.total - (paid[sale.id] ?? 0);
+        if (available <= 0.005) continue;
+        final applied = remaining > available ? available : remaining;
+        paid[sale.id] = (paid[sale.id] ?? 0) + applied;
+        remaining -= applied;
+        if (remaining <= 0.005) break;
+      }
+    }
+    return paid;
+  }
+
+  double _cashFromSale(SaleRecord sale) {
+    if (sale.paymentMethod == AppStrings.creditPayment) return sale.received.clamp(0, sale.total).toDouble();
+    return sale.total;
+  }
+
+  double _laterPaymentsInRange(List<DebtMovement> movements, DateTimeRange range) {
+    return movements.where((m) =>
+      m.type == DebtMovementType.payment &&
+      m.reference == null &&
+      !m.createdAt.isBefore(range.start) &&
+      m.createdAt.isBefore(range.end),
+    ).fold(0, (sum, movement) => sum + movement.amount);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<SalesProvider, DebtProvider>(
+      builder: (context, salesProvider, debtProvider, _) {
+        final allSales = salesProvider.sales;
+        final sales = _filteredSales(allSales);
+        final movements = debtProvider.movements;
+        final range = _range();
+        final paidBySale = _paidBySale(allSales, movements);
+        final totalSold = sales.fold(0.0, (sum, sale) => sum + sale.total);
+        final collectedFromSales = sales.fold(0.0, (sum, sale) => sum + _cashFromSale(sale));
+        final creditGenerated = sales.where((s) => s.paymentMethod == AppStrings.creditPayment).fold(0.0, (sum, sale) => sum + sale.total - sale.received.clamp(0, sale.total));
+        final laterPayments = _laterPaymentsInRange(movements, range);
+        final profit = sales.fold(0.0, (sum, sale) => sum + sale.items.fold(0.0, (lineSum, item) => lineSum + (item.unitPrice - item.cost) * item.quantity - item.discount));
+
+        return Padding(
+          padding: const EdgeInsets.all(AppDimensions.pagePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 10),
+              _buildMetrics(totalSold, collectedFromSales, creditGenerated, laterPayments),
+              const SizedBox(height: 12),
+              _buildFilters(),
+              const SizedBox(height: 12),
+              Expanded(child: _buildSalesList(sales, paidBySale)),
+              const SizedBox(height: 8),
+              _buildPeriodProfit(profit, sales.length),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Ventas', style: AppTextStyles.brandTitle),
+              SizedBox(height: 3),
+              Text('Historial y registro de las ventas realizadas.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: _selectAnchorDate,
+          icon: const Icon(Icons.calendar_today_outlined, size: 16),
+          label: Text(_period == _SalesPeriod.custom ? 'Elegir rango' : _anchorDateLabel()),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<_SalesPeriod>(
+          onSelected: (value) {
+            if (value == _SalesPeriod.custom) {
+              _selectCustomRange();
+            } else {
+              setState(() => _period = value);
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: _SalesPeriod.daily, child: Text('Diario')),
+            PopupMenuItem(value: _SalesPeriod.weekly, child: Text('Semanal')),
+            PopupMenuItem(value: _SalesPeriod.monthly, child: Text('Mensual')),
+            PopupMenuItem(value: _SalesPeriod.yearly, child: Text('Anual')),
+            PopupMenuItem(value: _SalesPeriod.custom, child: Text('Rango personalizado')),
+          ],
+          child: OutlinedButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.tune_outlined, size: 17),
+            label: Text(_periodLabel()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _anchorDateLabel() {
+    if (_period == _SalesPeriod.monthly) return '${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}';
+    return '${_anchorDate.day.toString().padLeft(2, '0')}/${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}';
+  }
+
+  Widget _buildMetrics(double totalSold, double collected, double credit, double laterPayments) {
+    return Row(
+      children: [
+        Expanded(child: _metric('Total vendido', totalSold, Icons.receipt_long_outlined, AppColors.primary)),
+        const SizedBox(width: 8),
+        Expanded(child: _metric('Cobrado por ventas', collected, Icons.payments_outlined, AppColors.successGreen)),
+        const SizedBox(width: 8),
+        Expanded(child: _metric('Fiado generado', credit, Icons.account_balance_wallet_outlined, AppColors.dangerRed)),
+        const SizedBox(width: 8),
+        Expanded(child: _metric('Abonos cobrados', laterPayments, Icons.savings_outlined, AppColors.warningOrange)),
+      ],
+    );
+  }
+
+  Widget _metric(String label, double amount, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 8, offset: Offset(0, 3))],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+              const SizedBox(height: 2),
+              Text(_money(amount), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Buscar venta, cliente, producto o código...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              isDense: true,
+              filled: true,
+              fillColor: AppColors.cardBackground,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<_SalesPaymentFilter>(
+          onSelected: (value) => setState(() => _paymentFilter = value),
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: _SalesPaymentFilter.all, child: Text('Todos')),
+            PopupMenuItem(value: _SalesPaymentFilter.cash, child: Text('Efectivo')),
+            PopupMenuItem(value: _SalesPaymentFilter.card, child: Text('Tarjeta')),
+            PopupMenuItem(value: _SalesPaymentFilter.transfer, child: Text('Transferencia')),
+            PopupMenuItem(value: _SalesPaymentFilter.credit, child: Text('Fiado')),
+          ],
+          child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.filter_alt_outlined, size: 17), label: Text(_paymentFilterLabel())),
+        ),
+      ],
+    );
+  }
+
+  String _paymentFilterLabel() {
+    switch (_paymentFilter) {
+      case _SalesPaymentFilter.all: return 'Todos';
+      case _SalesPaymentFilter.cash: return 'Efectivo';
+      case _SalesPaymentFilter.card: return 'Tarjeta';
+      case _SalesPaymentFilter.transfer: return 'Transferencia';
+      case _SalesPaymentFilter.credit: return 'Fiado';
+    }
+  }
+
+  Widget _buildSalesList(List<SaleRecord> sales, Map<String, double> paidBySale) {
+    if (sales.isEmpty) {
+      return Container(
+        width: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.cardRadius), border: Border.all(color: AppColors.border)),
+        child: const Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.textMuted),
+          SizedBox(height: 10),
+          Text('No hay ventas en este período.', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        ]),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.cardRadius), border: Border.all(color: AppColors.border)),
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: sales.length,
+        separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+        itemBuilder: (context, index) => _saleTile(context, sales[index], paidBySale[sales[index].id] ?? 0),
+      ),
+    );
+  }
+
+  Widget _saleTile(BuildContext context, SaleRecord sale, double paid) {
+    final isCredit = sale.paymentMethod == AppStrings.creditPayment;
+    final pending = isCredit ? (sale.total - paid).clamp(0, double.infinity).toDouble() : 0.0;
+    final laterPaid = isCredit ? (paid - sale.received.clamp(0, sale.total)).clamp(0, double.infinity).toDouble() : 0.0;
+    final date = '${sale.createdAt.day.toString().padLeft(2, '0')}/${sale.createdAt.month.toString().padLeft(2, '0')}/${sale.createdAt.year}';
+    final time = '${sale.createdAt.hour.toString().padLeft(2, '0')}:${sale.createdAt.minute.toString().padLeft(2, '0')}';
+    final itemCount = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
+
+    return InkWell(
+      onTap: () => _showSaleDetails(sale, paid),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(width: 78, child: Text('#${sale.ticketNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary))),
+            SizedBox(width: 105, child: Text('$date\n$time', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))),
+            Expanded(flex: 2, child: Text(sale.clientName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+            Expanded(child: Text('$itemCount artículo${itemCount == 1 ? '' : 's'}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))),
+            SizedBox(width: 100, child: _paymentBadge(sale.paymentMethod)),
+            SizedBox(width: 92, child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(_money(sale.total), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)), if (isCredit) Text(pending <= .005 ? 'Pagada' : 'Pendiente ${_money(pending)}', style: TextStyle(fontSize: 9, color: pending <= .005 ? AppColors.successGreen : AppColors.dangerRed, fontWeight: FontWeight.w600))])),
+            const SizedBox(width: 10),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentBadge(String method) {
+    return Align(alignment: Alignment.centerLeft, child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)),
+      child: Text(method, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textDarkSecondary)),
+    ));
+  }
+
+  Widget _buildPeriodProfit(double profit, int count) {
+    return Row(
+      children: [
+        Text('$count venta${count == 1 ? '' : 's'} en $_periodLabel()', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+        const Spacer(),
+        Text('Ganancia estimada: ${_money(profit)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.successGreen)),
+      ],
+    );
+  }
+
+  Future<void> _showSaleDetails(SaleRecord sale, double paid) async {
+    final isCredit = sale.paymentMethod == AppStrings.creditPayment;
+    final initialPaid = isCredit ? sale.received.clamp(0, sale.total).toDouble() : 0.0;
+    final laterPaid = isCredit ? (paid - initialPaid).clamp(0, double.infinity).toDouble() : 0.0;
+    final pending = isCredit ? (sale.total - paid).clamp(0, double.infinity).toDouble() : 0.0;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.dialogRadius)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 680),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Venta #${sale.ticketNumber}', style: AppTextStyles.brandTitle),
+                    const SizedBox(height: 3),
+                    Text('${_formatDateTime(sale.createdAt)} · ${sale.clientName}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  ])),
+                  IconButton(onPressed: () => Navigator.pop(dialogContext), icon: const Icon(Icons.close)),
+                ]),
+                const Divider(height: 18),
+                Expanded(child: ListView.separated(
+                  itemCount: sale.items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, index) => _detailItem(sale.items[index]),
+                )),
+                const SizedBox(height: 10),
+                _summaryLine('Subtotal', sale.subtotal),
+                if (sale.discountAmount > 0) _summaryLine('Descuento', -sale.discountAmount),
+                if (sale.cardFeeAmount > 0) _summaryLine('Cargo tarjeta', sale.cardFeeAmount),
+                const Divider(height: 18),
+                _summaryLine('Total de venta', sale.total, bold: true),
+                if (isCredit) ...[
+                  const SizedBox(height: 4),
+                  _summaryLine('Pago inicial', initialPaid),
+                  _summaryLine('Abonado posteriormente', laterPaid),
+                  _summaryLine('Saldo pendiente', pending, valueColor: pending > .005 ? AppColors.dangerRed : AppColors.successGreen),
+                ] else ...[
+                  _summaryLine('Cobrado', sale.total),
+                  if (sale.received > sale.total && sale.paymentMethod == AppStrings.cashPayment) _summaryLine('Cambio', sale.change),
+                ],
+                const SizedBox(height: 14),
+                Row(children: [
+                  OutlinedButton.icon(onPressed: () => _printSale(sale), icon: const Icon(Icons.print_outlined, size: 17), label: const Text('Imprimir ticket')),
+                  const Spacer(),
+                  IconButton(onPressed: () => _confirmDeleteSale(sale, dialogContext), icon: const Icon(Icons.delete_outline, color: AppColors.dangerRed)),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailItem(SaleItemRecord item) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+      child: Row(children: [
+        Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8)), child: item.imageData.isEmpty ? const Icon(Icons.inventory_2_outlined, color: AppColors.textMuted) : Image.memory(Uri.parse(item.imageData).data?.contentAsBytes() ?? Uint8List(0))),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.productName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)), const SizedBox(height: 2), Text('${item.quantity} × ${_money(item.unitPrice)} · ${item.unit}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))])),
+        Text(_money(item.lineTotal), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+
+  Widget _summaryLine(String label, double value, {bool bold = false, Color? valueColor}) {
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [Text(label, style: TextStyle(fontSize: 11, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: AppColors.textSecondary)), const Spacer(), Text(_money(value.abs()), style: TextStyle(fontSize: 12, fontWeight: bold ? FontWeight.w700 : FontWeight.w600, color: valueColor ?? AppColors.textPrimary))]));
+  }
+
+  String _formatDateTime(DateTime value) => '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year} · ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _printSale(SaleRecord sale) async {
+    final printed = await context.read<PrinterProvider>().printSaleTicket(sale);
+    if (!mounted) return;
+    AppAlert.show(context, printed ? 'El ticket fue enviado a la impresora.' : (context.read<PrinterProvider>().errorMessage ?? 'No se pudo imprimir el ticket.'), title: printed ? 'Impresión completada' : 'No se pudo imprimir', type: printed ? AppAlertType.success : AppAlertType.warning);
+  }
+
+  Future<void> _confirmDeleteSale(SaleRecord sale, BuildContext dialogContext) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (confirmContext) => AlertDialog(
+        title: Text('Eliminar venta #${sale.ticketNumber}?'),
+        content: const Text('La venta se eliminará y se revertirán sus efectos en inventario y saldo electrónico. Los pagos de cuentas por cobrar no se borran automáticamente.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(confirmContext, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(confirmContext, true), style: FilledButton.styleFrom(backgroundColor: AppColors.dangerRed), child: const Text('Eliminar')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final deleted = context.read<SalesProvider>().deleteSale(
+      saleId: sale.id,
+      productProvider: context.read<ProductProvider>(),
+      electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
+    );
+    if (!mounted) return;
+    if (deleted) {
+      Navigator.of(dialogContext).pop();
+      AppAlert.show(context, 'La venta fue eliminada.', title: 'Venta eliminada', type: AppAlertType.success);
+    } else {
+      AppAlert.show(context, 'No se pudo eliminar la venta.', title: 'Error', type: AppAlertType.error);
+    }
+  }
+}
+''')
+
+          # Fix the sales layout image helper by using the same data URI parser already used elsewhere only when present.
+          p = 'lib/presentation/sales/sales_layout.dart'
+          s = read(p)
+          s = s.replace("import 'package:flutter/material.dart';", "import 'dart:typed_data';\n\nimport 'package:flutter/material.dart';")
+          s = s.replace("Image.memory(Uri.parse(item.imageData).data?.contentAsBytes() ?? Uint8List(0))", "_imageWidget(item.imageData)")
+          insert = r'''
+  Widget _imageWidget(String imageData) {
+    if (imageData.isEmpty) return const Icon(Icons.inventory_2_outlined, color: AppColors.textMuted);
+    try {
+      final comma = imageData.indexOf(',');
+      final encoded = comma >= 0 ? imageData.substring(comma + 1) : imageData;
+      return Image.memory(base64Decode(encoded), fit: BoxFit.cover);
+    } catch (_) {
+      return const Icon(Icons.inventory_2_outlined, color: AppColors.textMuted);
+    }
+  }
+
+'''
+          s = s.replace("  Widget _summaryLine(", insert + "  Widget _summaryLine(", 1)
+          s = s.replace("import 'dart:typed_data';", "import 'dart:convert';\nimport 'dart:typed_data';")
+          write(p, s)
+
+          # Remove this temporary workflow before committing the actual changes.
+          workflow = root / '.github/workflows/apply_sales_settings.yml'
+          workflow.unlink()
+          
+          # Format touched Dart files if Flutter is available; don't fail the commit on formatting issues.
+          import subprocess
+          subprocess.run(['dart', 'format',
+                          'lib/core/providers/general_settings_provider.dart',
+                          'lib/core/providers/debt_provider.dart',
+                          'lib/core/constants/app_constants.dart',
+                          'lib/main.dart',
+                          'lib/presentation/dashboard/main_dashboard_layout.dart',
+                          'lib/presentation/dashboard/widgets/sidebar_drawer.dart',
+                          'lib/presentation/Inventory/inventory_layout.dart',
+                          'lib/presentation/settings/printer_settings_layout.dart',
+                          'lib/presentation/sales/sales_layout.dart'], check=False)
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib .github/workflows/apply_sales_settings.yml
+          git commit -m "feat: add sales history and general settings"
+          git push origin main
