@@ -5,8 +5,6 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/debt.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
-import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
-import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
@@ -339,18 +337,5 @@ class _SalesLayoutState extends State<SalesLayout> {
     final printed = await printer.printSaleTicket(sale);
     if (!mounted) return;
     AppAlert.show(context, printed ? 'El ticket fue enviado a la impresora.' : (printer.errorMessage ?? 'No se pudo imprimir el ticket.'), title: printed ? 'Impresión completada' : 'No se pudo imprimir', type: printed ? AppAlertType.success : AppAlertType.warning);
-  }
-
-  Future<void> _deleteSale(SaleRecord sale, BuildContext dialogContext) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (confirmContext) => AlertDialog(title: Text('Eliminar venta #${sale.ticketNumber}?'), content: const Text('La venta se eliminará y se revertirán sus efectos en inventario y saldo electrónico. Los pagos de cuentas por cobrar no se borran automáticamente.'), actions: [TextButton(onPressed: () => Navigator.pop(confirmContext, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(confirmContext, true), style: FilledButton.styleFrom(backgroundColor: AppColors.dangerRed), child: const Text('Eliminar'))]));
-    if (confirmed != true || !mounted) return;
-    final deleted = context.read<SalesProvider>().deleteSale(saleId: sale.id, productProvider: context.read<ProductProvider>(), electronicBalanceProvider: context.read<ElectronicBalanceProvider>());
-    if (!mounted) return;
-    if (deleted) {
-      Navigator.of(dialogContext).pop();
-      AppAlert.show(context, 'La venta fue eliminada.', title: 'Venta eliminada', type: AppAlertType.success);
-    } else {
-      AppAlert.show(context, 'No se pudo eliminar la venta.', title: 'Error', type: AppAlertType.error);
-    }
   }
 }
