@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
@@ -322,7 +323,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       quantity: item.quantity,
     )).toList();
 
-    final received = double.tryParse(_cashReceivedController.text) ?? 0;
+    final received = double.tryParse(_cashReceivedController.text.replaceAll(',', '.')) ?? 0;
+    final initialCreditPayment = _selectedPaymentMethod == AppPaymentMethods.credit
+        ? received.clamp(0, _total).toDouble()
+        : 0.0;
+
     SaleRecord sale;
     try {
       sale = context.read<SalesProvider>().createSale(
@@ -336,11 +341,27 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         discountAmount: _discountAmount,
         cardFeeAmount: _cardFeeAmount,
         total: _total,
-        received: _selectedPaymentMethod == AppPaymentMethods.cash ? received : 0,
+        received: _selectedPaymentMethod == AppPaymentMethods.cash ? received : initialCreditPayment,
         change: _selectedPaymentMethod == AppPaymentMethods.cash ? _change : 0,
         electronicSales: electronicSales,
         electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
+
+      if (_selectedPaymentMethod == AppPaymentMethods.credit && initialCreditPayment > 0) {
+        final saved = context.read<DebtProvider>().recordPayment(
+          clientId: clientId!,
+          clientName: _selectedDebtor!,
+          amount: initialCreditPayment,
+        );
+        if (!saved) {
+          context.read<SalesProvider>().deleteSale(
+            saleId: sale.id,
+            productProvider: context.read<ProductProvider>(),
+            electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
+          );
+          throw StateError('No se pudo registrar el abono inicial de la venta.');
+        }
+      }
     } catch (error) {
       AppAlert.show(context, error is StateError ? error.message : 'No se pudo registrar la venta.', title: 'Error al crear la venta', type: AppAlertType.error);
       return;
@@ -452,6 +473,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   onQuantityChanged: _setCartQuantity,
                   onRemoveFromCart: _removeFromCart,
                   onClearCart: _clearCart,
+                  onCreateSale: _createSale,
                   ticketNumber: context.watch<SalesProvider>().nextTicketNumberPreview,
                 ),
                 Positioned(
