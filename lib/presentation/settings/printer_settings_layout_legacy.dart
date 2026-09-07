@@ -30,7 +30,7 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
     _SettingsSection(
       title: 'Impresoras',
       icon: Icons.print_outlined,
-      builder: (_) => const _PrinterSettingsContent(),
+      builder: (_) => const PrinterSettingsContent(),
     ),
   ];
 
