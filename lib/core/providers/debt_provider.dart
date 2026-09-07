@@ -79,10 +79,12 @@ class DebtProvider extends ChangeNotifier {
     final account = accountFor(clientId);
     final remaining = account?.remaining ?? 0;
     final limit = maxAmount ?? remaining;
-
-    if (clientId.trim().isEmpty || amount <= 0 || amount > limit + 0.005) {
+    if (clientId.trim().isEmpty || amount <= 0 || remaining <= 0.005 || limit <= 0) {
       return false;
     }
+
+    final appliedAmount = amount > limit ? limit : amount;
+    if (appliedAmount <= 0) return false;
 
     _payments.add(
       DebtMovement(
@@ -90,7 +92,7 @@ class DebtProvider extends ChangeNotifier {
         clientId: clientId,
         clientName: clientName,
         type: DebtMovementType.payment,
-        amount: amount,
+        amount: appliedAmount,
         createdAt: DateTime.now(),
       ),
     );
