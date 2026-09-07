@@ -1,0 +1,42 @@
+name: Fix sales route separation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Separate sales route from electronic balance management
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/presentation/dashboard/main_dashboard_layout.dart')
+          text = path.read_text()
+          old_import = "import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';\n"
+          new_import = "import 'package:stellar_pos/presentation/sales/sales_layout.dart';\n"
+          if old_import not in text:
+              raise SystemExit('Expected electronic balance layout import was not found')
+          text = text.replace(old_import, new_import, 1)
+          old_route = "if (_selectedNavIndex == AppNavigation.electronicBalance) return const ElectronicBalanceLayout();"
+          new_route = "if (_selectedNavIndex == AppNavigation.electronicBalance) return const SalesLayout();"
+          if old_route not in text:
+              raise SystemExit('Expected sales route was not found')
+          text = text.replace(old_route, new_route, 1)
+          path.write_text(text)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/presentation/dashboard/main_dashboard_layout.dart
+          git commit -m 'fix: separate sales screen from electronic balance management' || exit 0
+          git push
+          git rm .github/workflows/fix_sales_route.yml
+          git commit -m 'chore: remove temporary sales route workflow'
+          git push
