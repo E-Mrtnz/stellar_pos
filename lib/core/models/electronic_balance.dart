@@ -27,12 +27,10 @@ class ElectronicBalanceAccount {
 
   double get commissionMultiplier => commissionRate / 100;
 
-  List<double> amountsForCategory(String category) {
-    return saleOptions
-        .where((option) => option.category == category)
-        .map((option) => option.amount)
-        .toList();
-  }
+  List<double> amountsForCategory(String category) => saleOptions
+      .where((option) => option.category == category)
+      .map((option) => option.amount)
+      .toList();
 
   ElectronicBalanceAccount copyWith({
     String? id,
@@ -40,15 +38,13 @@ class ElectronicBalanceAccount {
     double? commissionRate,
     double? balance,
     List<ElectronicBalanceSaleOption>? saleOptions,
-  }) {
-    return ElectronicBalanceAccount(
-      id: id ?? this.id,
-      companyName: companyName ?? this.companyName,
-      commissionRate: commissionRate ?? this.commissionRate,
-      balance: balance ?? this.balance,
-      saleOptions: saleOptions ?? this.saleOptions,
-    );
-  }
+  }) => ElectronicBalanceAccount(
+        id: id ?? this.id,
+        companyName: companyName ?? this.companyName,
+        commissionRate: commissionRate ?? this.commissionRate,
+        balance: balance ?? this.balance,
+        saleOptions: saleOptions ?? this.saleOptions,
+      );
 }
 
 class ElectronicBalanceTransaction {
@@ -61,6 +57,7 @@ class ElectronicBalanceTransaction {
   final String category;
   final String description;
   final DateTime createdAt;
+  final String? saleId;
 
   const ElectronicBalanceTransaction({
     required this.id,
@@ -72,5 +69,6 @@ class ElectronicBalanceTransaction {
     required this.category,
     required this.description,
     required this.createdAt,
+    this.saleId,
   });
 }
