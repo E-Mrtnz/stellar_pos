@@ -120,14 +120,14 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
   }
 }
 
-class _PrinterSettingsContent extends StatefulWidget {
-  const _PrinterSettingsContent();
+class PrinterSettingsContent extends StatefulWidget {
+  const PrinterSettingsContent({super.key});
 
   @override
-  State<_PrinterSettingsContent> createState() => _PrinterSettingsContentState();
+  State<PrinterSettingsContent> createState() => _PrinterSettingsContentState();
 }
 
-class _PrinterSettingsContentState extends State<_PrinterSettingsContent> {
+class _PrinterSettingsContentState extends State<PrinterSettingsContent> {
   @override
   void initState() {
     super.initState();

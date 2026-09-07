@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
-import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
 
 class PrinterSettingsLayout extends StatefulWidget {
@@ -137,21 +136,6 @@ class _PrinterContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => ClipRect(
-        child: SizedBox(
-          width: constraints.maxWidth,
-          height: constraints.maxHeight,
-          child: Transform.translate(
-            offset: const Offset(-202, 0),
-            child: SizedBox(
-              width: constraints.maxWidth + 202,
-              height: constraints.maxHeight,
-              child: const legacy.PrinterSettingsLayout(),
-            ),
-          ),
-        ),
-      ),
-    );
+    return const legacy.PrinterSettingsContent();
   }
 }

@@ -426,7 +426,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             ],
           ),
           const SizedBox(height: 10),
-          if (purchases.isNotEmpty) ...[
+          ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: const BoxDecoration(

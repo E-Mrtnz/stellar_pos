@@ -517,13 +517,12 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (settings.showInventoryImport)
-          OutlinedButton.icon(
-            onPressed: _isImporting || _isExporting ? null : _importInventory,
-            style: buttonStyle,
-            icon: _isImporting
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.upload_file_outlined, size: 18),
-            label: const Text('Subir inventario'),
+          _InventoryActionButton(
+            label: 'Subir inventario',
+            icon: Icons.upload_file_outlined,
+            loading: _isImporting,
+            enabled: !_isImporting && !_isExporting,
+            onPressed: _importInventory,
           ),
         if (settings.showInventoryImport && settings.showInventoryExport)
           const SizedBox(width: 8),
@@ -561,6 +560,54 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       ],
     );
   }
+
+class _InventoryActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool loading;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _InventoryActionButton({
+    required this.label,
+    required this.icon,
+    required this.loading,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(color: AppColors.shadowColor, blurRadius: 6, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              loading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(icon, size: 18, color: AppColors.textPrimary),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
   Widget _buildInventoryTable(List<Map<String, dynamic>> products) {
     return Container(
