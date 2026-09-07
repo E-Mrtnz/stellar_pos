@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
+import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
 
 class PrinterSettingsLayout extends StatefulWidget {
