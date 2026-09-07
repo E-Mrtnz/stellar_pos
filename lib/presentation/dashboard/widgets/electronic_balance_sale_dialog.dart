@@ -22,15 +22,13 @@ class ElectronicBalanceCartItem {
 
   String get key => '$accountId|$category|${amount.toStringAsFixed(4)}';
 
-  ElectronicBalanceCartItem copyWith({int? quantity}) {
-    return ElectronicBalanceCartItem(
-      accountId: accountId,
-      companyName: companyName,
-      category: category,
-      amount: amount,
-      quantity: quantity ?? this.quantity,
-    );
-  }
+  ElectronicBalanceCartItem copyWith({int? quantity}) => ElectronicBalanceCartItem(
+        accountId: accountId,
+        companyName: companyName,
+        category: category,
+        amount: amount,
+        quantity: quantity ?? this.quantity,
+      );
 }
 
 class ElectronicBalanceSaleDialog extends StatefulWidget {
@@ -44,12 +42,10 @@ class ElectronicBalanceSaleDialog extends StatefulWidget {
   });
 
   @override
-  State<ElectronicBalanceSaleDialog> createState() =>
-      _ElectronicBalanceSaleDialogState();
+  State<ElectronicBalanceSaleDialog> createState() => _ElectronicBalanceSaleDialogState();
 }
 
-class _ElectronicBalanceSaleDialogState
-    extends State<ElectronicBalanceSaleDialog> {
+class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialog> {
   final Map<String, ElectronicBalanceCartItem> _selected = {};
   late final List<ElectronicBalanceCartItem> _initialSelection;
   String? _accountId;
@@ -60,285 +56,169 @@ class _ElectronicBalanceSaleDialogState
   @override
   void initState() {
     super.initState();
-    _initialSelection = List<ElectronicBalanceCartItem>.from(
-      widget.initialSelection,
-    );
-    for (final item in _initialSelection) {
-      _selected[item.key] = item;
+    _initialSelection = List<ElectronicBalanceCartItem>.from(widget.initialSelection);
+    for (final item in _initialSelection) _selected[item.key] = item;
+    if (_initialSelection.isNotEmpty) {
+      _accountId = _initialSelection.first.accountId;
+      _category = _initialSelection.first.category;
     }
   }
 
-  void _publishSelection() {
-    widget.onSelectionChanged(_selected.values.toList());
-  }
+  void _publishSelection() => widget.onSelectionChanged(List.unmodifiable(_selected.values));
 
-  void _restoreInitialSelection() {
-    widget.onSelectionChanged(List<ElectronicBalanceCartItem>.from(_initialSelection));
-  }
+  void _restoreInitialSelection() => widget.onSelectionChanged(List<ElectronicBalanceCartItem>.from(_initialSelection));
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ElectronicBalanceProvider>();
     final accounts = provider.accounts;
-    final selectedAccount = _accountId == null
-        ? null
-        : provider.findAccount(_accountId!);
-    final options = selectedAccount?.amountsForCategory(_category) ??
-        const <double>[];
-    final selectedForCategory = _selected.values.where(
-      (item) => item.accountId == _accountId && item.category == _category,
-    );
-    final selectedTotal = _selected.values.fold<double>(
-      0,
-      (sum, item) => sum + item.amount * item.quantity,
-    );
+    final selectedAccount = _accountId == null ? null : provider.findAccount(_accountId!);
+    final options = selectedAccount?.amountsForCategory(_category) ?? const <double>[];
 
-    return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(22, 18, 14, 0),
-      contentPadding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
-      title: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.phone_android_outlined,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Venta de saldo',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Cerrar',
-            onPressed: () {
-              _restoreInitialSelection();
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.close),
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: 650,
-        child: accounts.isEmpty
-            ? const _EmptyBalanceCompanies()
-            : SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Compañía',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: accounts.map((account) {
-                        final selected = account.id == _accountId;
-                        return _ChoiceChip(
-                          label: account.companyName,
-                          icon: Icons.sim_card_outlined,
-                          selected: selected,
-                          onTap: () => setState(() => _accountId = account.id),
-                        );
-                      }).toList(),
-                    ),
-                    if (selectedAccount != null) ...[
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.inputBackground,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                selectedAccount.companyName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'Disponible: \$${selectedAccount.balance.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Tipo de recarga',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: _categories.map((category) {
-                          return _ChoiceChip(
-                            label: category,
-                            selected: _category == category,
-                            onTap: () => setState(() => _category = category),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Denominaciones',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (options.isEmpty)
-                        const Text(
-                          'No hay montos configurados para esta categoría.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        )
-                      else
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: options.map((amount) {
-                            final key =
-                                '${selectedAccount.id}|$_category|${amount.toStringAsFixed(4)}';
-                            final item = _selected[key];
-                            return _AmountTile(
-                              amount: amount,
-                              quantity: item?.quantity ?? 0,
-                              onTap: () => _increment(
-                                selectedAccount,
-                                _category,
-                                amount,
-                              ),
-                              onLongPress: item == null
-                                  ? null
-                                  : () => _remove(key),
-                            );
-                          }).toList(),
-                        ),
-                      if (selectedForCategory.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Seleccionado en esta categoría',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ...selectedForCategory.map(
-                          (item) => _SelectedLine(item: item),
-                        ),
+    return Dialog(
+      backgroundColor: AppColors.cardBackground,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 690),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 18, 16, 15),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), borderRadius: BorderRadius.circular(11)),
+                    child: const Icon(Icons.phone_android_rounded, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 11),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Venta de saldo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        SizedBox(height: 2),
+                        Text('Selecciona la compañía, tipo y denominación', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                       ],
-                    ],
-                    if (_selected.isNotEmpty) ...[
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.primary.withAlpha(50),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Total de recargas seleccionadas',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '\$${selectedTotal.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                    ),
+                  ),
+                  IconButton(tooltip: 'Cerrar', onPressed: () { _restoreInitialSelection(); Navigator.pop(context); }, icon: const Icon(Icons.close)),
+                ],
               ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            Expanded(
+              child: accounts.isEmpty
+                  ? const _EmptyBalanceCompanies()
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const _SectionLabel(icon: Icons.business_outlined, label: 'Compañía'),
+                          const SizedBox(height: 9),
+                          Wrap(
+                            spacing: 9,
+                            runSpacing: 9,
+                            children: accounts.map((account) => _ChoiceChip(
+                              label: account.companyName,
+                              icon: Icons.sim_card_outlined,
+                              selected: account.id == _accountId,
+                              onTap: () => setState(() => _accountId = account.id),
+                            )).toList(),
+                          ),
+                          if (selectedAccount != null) ...[
+                            const SizedBox(height: 18),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                              decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Text(selectedAccount.companyName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
+                                  Text('Disponible: \$${selectedAccount.balance.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            const _SectionLabel(icon: Icons.tune_rounded, label: 'Tipo de recarga'),
+                            const SizedBox(height: 9),
+                            Wrap(
+                              spacing: 9,
+                              runSpacing: 9,
+                              children: _categories.map((category) => _ChoiceChip(
+                                label: category,
+                                selected: _category == category,
+                                onTap: () => setState(() => _category = category),
+                              )).toList(),
+                            ),
+                            const SizedBox(height: 20),
+                            const _SectionLabel(icon: Icons.payments_outlined, label: 'Denominación'),
+                            const SizedBox(height: 9),
+                            if (options.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+                                child: const Text('No hay montos configurados para esta categoría.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              )
+                            else
+                              LayoutBuilder(
+                                builder: (_, constraints) {
+                                  final columns = constraints.maxWidth >= 620 ? 5 : constraints.maxWidth >= 430 ? 4 : 3;
+                                  final width = (constraints.maxWidth - ((columns - 1) * 10)) / columns;
+                                  return Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: options.map((amount) {
+                                      final key = '${selectedAccount.id}|$_category|${amount.toStringAsFixed(4)}';
+                                      final item = _selected[key];
+                                      return _AmountTile(
+                                        width: width,
+                                        amount: amount,
+                                        quantity: item?.quantity ?? 0,
+                                        onTap: () => _increment(selectedAccount, _category, amount),
+                                        onLongPress: item == null ? null : () => _remove(key),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 14),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+              child: Row(
+                children: [
+                  if (_selected.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(color: AppColors.primary.withAlpha(12), borderRadius: BorderRadius.circular(9)),
+                      child: Text('${_selected.values.fold<int>(0, (sum, item) => sum + item.quantity)} recarga(s) seleccionada(s)', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    ),
+                  const Spacer(),
+                  TextButton(onPressed: () { _restoreInitialSelection(); Navigator.pop(context); }, child: const Text('Cancelar')),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(onPressed: _selected.isEmpty ? null : () => Navigator.pop(context), icon: const Icon(Icons.check_rounded, size: 18), label: const Text('Listo')),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            _restoreInitialSelection();
-            Navigator.pop(context);
-          },
-          child: const Text('Cancelar'),
-        ),
-        FilledButton.icon(
-          onPressed: _selected.isEmpty
-              ? null
-              : () => Navigator.pop(context),
-          icon: const Icon(Icons.check_rounded, size: 18),
-          label: const Text('Listo'),
-        ),
-      ],
     );
   }
 
-  void _increment(
-    ElectronicBalanceAccount account,
-    String category,
-    double amount,
-  ) {
+  void _increment(ElectronicBalanceAccount account, String category, double amount) {
     final key = '${account.id}|$category|${amount.toStringAsFixed(4)}';
     final current = _selected[key];
     setState(() {
       _selected[key] = current == null
-          ? ElectronicBalanceCartItem(
-              accountId: account.id,
-              companyName: account.companyName,
-              category: category,
-              amount: amount,
-              quantity: 1,
-            )
+          ? ElectronicBalanceCartItem(accountId: account.id, companyName: account.companyName, category: category, amount: amount, quantity: 1)
           : current.copyWith(quantity: current.quantity + 1);
     });
     _publishSelection();
@@ -350,75 +230,58 @@ class _ElectronicBalanceSaleDialogState
   }
 }
 
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SectionLabel({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 17, color: AppColors.textSecondary),
+          const SizedBox(width: 7),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+        ],
+      );
+}
+
 class _ChoiceChip extends StatelessWidget {
   final String label;
   final IconData? icon;
   final bool selected;
   final VoidCallback onTap;
-
-  const _ChoiceChip({
-    required this.label,
-    this.icon,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ChoiceChip({required this.label, this.icon, required this.selected, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withAlpha(15)
-              : AppColors.inputBackground,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
-            width: selected ? 1.4 : 1,
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(11),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.4 : 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[Icon(icon, size: 17, color: selected ? AppColors.primary : AppColors.textSecondary), const SizedBox(width: 7)],
+              Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: selected ? AppColors.primary : AppColors.textPrimary)),
+            ],
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 17,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
-              ),
-              const SizedBox(width: 7),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? AppColors.primary : AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+      );
 }
 
 class _AmountTile extends StatelessWidget {
+  final double width;
   final double amount;
   final int quantity;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
-
-  const _AmountTile({
-    required this.amount,
-    required this.quantity,
-    required this.onTap,
-    required this.onLongPress,
-  });
+  const _AmountTile({required this.width, required this.amount, required this.quantity, required this.onTap, required this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -428,67 +291,22 @@ class _AmountTile extends StatelessWidget {
       onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        width: 92,
-        height: 68,
-        padding: const EdgeInsets.all(9),
+        width: width,
+        height: 78,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withAlpha(15)
-              : AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
-            width: selected ? 1.5 : 1,
-          ),
+          color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.6 : 1),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              '\$${amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2)}',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: selected ? AppColors.primary : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              selected ? '×$quantity' : 'Tocar para agregar',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? AppColors.primary : AppColors.textMuted,
-              ),
-            ),
+            Text('\$${amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: selected ? AppColors.primary : AppColors.textPrimary)),
+            const SizedBox(height: 5),
+            Text(selected ? '×$quantity' : 'Tocar para agregar', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, fontWeight: selected ? FontWeight.w800 : FontWeight.w500, color: selected ? AppColors.primary : AppColors.textMuted)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SelectedLine extends StatelessWidget {
-  final ElectronicBalanceCartItem item;
-  const _SelectedLine({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '${item.companyName} · ${item.category} · \$${item.amount.toStringAsFixed(item.amount == item.amount.roundToDouble() ? 0 : 2)}',
-              style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
-            ),
-          ),
-          Text(
-            '×${item.quantity}',
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
@@ -496,29 +314,20 @@ class _SelectedLine extends StatelessWidget {
 
 class _EmptyBalanceCompanies extends StatelessWidget {
   const _EmptyBalanceCompanies();
-
   @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 180,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sim_card_outlined, size: 42, color: AppColors.textMuted),
-            SizedBox(height: 10),
-            Text(
-              'No hay compañías de saldo configuradas.',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Créala desde la administración de saldo electrónico.',
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-            ),
-          ],
+  Widget build(BuildContext context) => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(45),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sim_card_outlined, size: 44, color: AppColors.textMuted),
+              SizedBox(height: 10),
+              Text('No hay compañías de saldo configuradas.', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              SizedBox(height: 4),
+              Text('Créala desde la administración de saldo electrónico.', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
