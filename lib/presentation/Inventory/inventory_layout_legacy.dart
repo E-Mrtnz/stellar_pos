@@ -509,6 +509,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       side: const BorderSide(color: AppColors.border),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      elevation: 1,
+      shadowColor: AppColors.shadowColor,
     );
 
     return Row(
@@ -539,13 +541,21 @@ class _InventoryLayoutState extends State<InventoryLayout> {
                 child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.picture_as_pdf_outlined), title: Text('Descargar PDF')),
               ),
             ],
-            child: OutlinedButton.icon(
-              onPressed: null,
-              style: buttonStyle,
-              icon: _isExporting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.download_outlined, size: 18),
-              label: const Text('Descargar inventario'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 6, offset: Offset(0, 2))],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                _isExporting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.download_outlined, size: 18, color: AppColors.textPrimary),
+                const SizedBox(width: 8),
+                const Text('Descargar inventario', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              ]),
             ),
           ),
       ],

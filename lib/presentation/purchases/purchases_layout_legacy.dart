@@ -426,6 +426,26 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             ],
           ),
           const SizedBox(height: 10),
+          if (purchases.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: const BoxDecoration(
+                color: AppColors.inputBackground,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(9)),
+              ),
+              child: const Row(children: [
+                SizedBox(width: 42),
+                SizedBox(width: 10),
+                Expanded(child: Text('Proveedor / factura', style: AppTextStyles.ticketLabel)),
+                SizedBox(width: 100, child: Text('Total', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                SizedBox(width: 76, child: Text('Pago', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                SizedBox(width: 86, child: Text('Artículos', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                SizedBox(width: 18),
+              ]),
+            ),
+            const SizedBox(height: 4),
+          ],
           Expanded(
             child: purchases.isEmpty
                 ? const _EmptyState()
@@ -611,6 +631,7 @@ class _FilterSurface extends StatelessWidget {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppDimensions.searchFieldRadius),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 7, offset: Offset(0, 2))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

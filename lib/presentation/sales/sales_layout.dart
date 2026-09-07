@@ -20,11 +20,13 @@ class SalesLayout extends StatefulWidget {
 
 enum _SalesPeriod { daily, weekly, monthly, yearly, custom }
 enum _SalesPaymentFilter { all, cash, card, transfer, credit }
+enum _SalesTypeFilter { all, products, electronic }
 
 class _SalesLayoutState extends State<SalesLayout> {
   final TextEditingController _searchController = TextEditingController();
   _SalesPeriod _period = _SalesPeriod.daily;
   _SalesPaymentFilter _paymentFilter = _SalesPaymentFilter.all;
+  _SalesTypeFilter _typeFilter = _SalesTypeFilter.all;
   DateTime _anchorDate = DateTime.now();
   DateTime? _customStart;
   DateTime? _customEnd;
@@ -89,6 +91,7 @@ class _SalesLayoutState extends State<SalesLayout> {
     final result = sales.where((sale) {
       if (sale.createdAt.isBefore(range.start) || !sale.createdAt.isBefore(range.end)) return false;
       if (!_paymentMatches(sale)) return false;
+      if (!_typeMatches(sale)) return false;
       if (query.isEmpty) return true;
       return sale.ticketNumber.toLowerCase().contains(query) ||
           sale.clientName.toLowerCase().contains(query) ||
@@ -105,6 +108,16 @@ class _SalesLayoutState extends State<SalesLayout> {
       case _SalesPaymentFilter.card: return sale.paymentMethod == AppStrings.cardPayment;
       case _SalesPaymentFilter.transfer: return sale.paymentMethod == AppStrings.transferPayment;
       case _SalesPaymentFilter.credit: return sale.paymentMethod == AppStrings.creditPayment;
+    }
+  }
+
+  bool _typeMatches(SaleRecord sale) {
+    final hasElectronic = sale.items.any((item) => item.isElectronicBalance);
+    final hasProducts = sale.items.any((item) => !item.isElectronicBalance);
+    switch (_typeFilter) {
+      case _SalesTypeFilter.all: return true;
+      case _SalesTypeFilter.products: return hasProducts;
+      case _SalesTypeFilter.electronic: return hasElectronic;
     }
   }
 
@@ -207,7 +220,7 @@ class _SalesLayoutState extends State<SalesLayout> {
           PopupMenuItem(value: _SalesPeriod.yearly, child: Text('Anual')),
           PopupMenuItem(value: _SalesPeriod.custom, child: Text('Rango personalizado')),
         ],
-        child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.tune_outlined, size: 17), label: Text(_periodLabel())),
+        child: _menuSurface(Icons.tune_outlined, _periodLabel()),
       ),
     ]);
   }
@@ -263,6 +276,15 @@ class _SalesLayoutState extends State<SalesLayout> {
     return Row(children: [
       Expanded(child: ProductSearchBar(controller: _searchController, hintText: 'Buscar venta, cliente, producto o código...', onChanged: (_) {})),
       const SizedBox(width: 8),
+      PopupMenuButton<_SalesTypeFilter>(
+        onSelected: (value) => setState(() => _typeFilter = value),
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: _SalesTypeFilter.all, child: Text('Todas')),
+          PopupMenuItem(value: _SalesTypeFilter.products, child: Text('Productos')),
+          PopupMenuItem(value: _SalesTypeFilter.electronic, child: Text('Saldo electrónico')),
+        ],
+        child: _menuSurface(Icons.category_outlined, _typeLabel()),
+      ),
       PopupMenuButton<_SalesPaymentFilter>(
         onSelected: (value) => setState(() => _paymentFilter = value),
         itemBuilder: (_) => const [
@@ -272,9 +294,35 @@ class _SalesLayoutState extends State<SalesLayout> {
           PopupMenuItem(value: _SalesPaymentFilter.transfer, child: Text('Transferencia')),
           PopupMenuItem(value: _SalesPaymentFilter.credit, child: Text('Fiado')),
         ],
-        child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.filter_alt_outlined, size: 17), label: Text(_paymentLabel())),
+        child: _menuSurface(Icons.filter_alt_outlined, _paymentLabel()),
       ),
     ]);
+  }
+
+  String _typeLabel() {
+    switch (_typeFilter) {
+      case _SalesTypeFilter.all: return 'Todas';
+      case _SalesTypeFilter.products: return 'Productos';
+      case _SalesTypeFilter.electronic: return 'Saldo';
+    }
+  }
+
+  Widget _menuSurface(IconData icon, String label) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 42),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 7, offset: Offset(0, 2))],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 17, color: AppColors.textSecondary),
+        const SizedBox(width: 7),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+      ]),
+    );
   }
 
   String _paymentLabel() {
@@ -311,10 +359,11 @@ class _SalesLayoutState extends State<SalesLayout> {
 
   Widget _buildListHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 10),
       decoration: const BoxDecoration(
         color: AppColors.inputBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.cardRadius)),
+        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 4, offset: Offset(0, 1))],
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
