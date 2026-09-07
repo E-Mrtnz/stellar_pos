@@ -11,6 +11,7 @@ class SalesSummaryPanel extends StatelessWidget {
   final String? selectedDebtor;
   final List<String> debtorsList;
   final ValueChanged<String?> onDebtorChanged;
+  final VoidCallback onCreateClient;
   final TextEditingController discountAmountController;
   final TextEditingController discountPercentController;
   final TextEditingController cashReceivedController;
@@ -39,6 +40,7 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.selectedDebtor,
     required this.debtorsList,
     required this.onDebtorChanged,
+    required this.onCreateClient,
     required this.discountAmountController,
     required this.discountPercentController,
     required this.cashReceivedController,
@@ -370,23 +372,7 @@ class SalesSummaryPanel extends StatelessWidget {
   }
 
   Widget _buildDebtorSelector() {
-    if (debtorsList.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: 34,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        decoration: BoxDecoration(
-          color: AppColors.inputBackground,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: const Text(
-          'No hay clientes registrados',
-          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-      );
-    }
+    const createClientValue = '__create_client__';
 
     return DropdownButtonFormField<String?>(
       initialValue: debtorsList.contains(selectedDebtor) ? selectedDebtor : null,
@@ -412,6 +398,13 @@ class SalesSummaryPanel extends StatelessWidget {
             style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ),
+        const DropdownMenuItem<String?>(
+          value: createClientValue,
+          child: Text(
+            '+ Crear cliente',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+          ),
+        ),
         ...debtorsList.map(
           (value) => DropdownMenuItem<String?>(
             value: value,
@@ -419,7 +412,13 @@ class SalesSummaryPanel extends StatelessWidget {
           ),
         ),
       ],
-      onChanged: onDebtorChanged,
+      onChanged: (value) {
+        if (value == createClientValue) {
+          onCreateClient();
+          return;
+        }
+        onDebtorChanged(value);
+      },
     );
   }
 
