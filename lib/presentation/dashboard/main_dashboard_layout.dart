@@ -476,16 +476,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   onCreateSale: _createSale,
                   ticketNumber: context.watch<SalesProvider>().nextTicketNumberPreview,
                 ),
-                Positioned(
-                  left: 22,
-                  right: 22,
-                  bottom: 12,
-                  height: 36,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(onTap: _createSale, borderRadius: BorderRadius.circular(8), child: const SizedBox.expand()),
-                  ),
-                ),
               ],
             ),
           ),

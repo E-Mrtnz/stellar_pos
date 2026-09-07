@@ -547,8 +547,12 @@ class _PaymentDialog extends StatefulWidget {
       barrierColor: AppColors.overlayBackground,
       builder: (_) => Dialog(
         backgroundColor: AppColors.cardBackground,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: _PaymentDialog(clientName: clientName, debt: debt),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: _PaymentDialog(clientName: clientName, debt: debt),
+        ),
       ),
     );
   }
@@ -559,7 +563,7 @@ class _PaymentDialog extends StatefulWidget {
 
 class _PaymentDialogState extends State<_PaymentDialog> {
   final TextEditingController _controller = TextEditingController();
-  final GlobalKey _fieldKey = GlobalKey();
+  final GlobalKey _dialogKey = GlobalKey();
   final Object _keypadGroup = Object();
   OverlayEntry? _keypadEntry;
   Offset _keypadPosition = Offset.zero;
@@ -576,7 +580,6 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   }
 
   void _showKeypad() {
-    SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _updateKeypadPosition();
@@ -611,18 +614,29 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   }
 
   void _updateKeypadPosition() {
-    final renderObject = _fieldKey.currentContext?.findRenderObject();
+    final renderObject = _dialogKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return;
     final topLeft = renderObject.localToGlobal(Offset.zero);
     final size = renderObject.size;
     final screen = MediaQuery.sizeOf(context);
-    final desiredLeft = topLeft.dx;
-    final desiredTop = topLeft.dy + size.height + 8;
+    final rightLeft = topLeft.dx + size.width + 8;
+    final leftLeft = topLeft.dx - NumericKeypad.width - 8;
+    final centeredTop = topLeft.dy + (size.height - NumericKeypad.height) / 2;
     final maxLeft = screen.width - NumericKeypad.width - 8;
     final maxTop = screen.height - NumericKeypad.height - 8;
+    double left;
+    double top = centeredTop;
+    if (rightLeft + NumericKeypad.width <= screen.width - 8) {
+      left = rightLeft;
+    } else if (leftLeft >= 8) {
+      left = leftLeft;
+    } else {
+      left = rightLeft.clamp(8, maxLeft < 8 ? 8 : maxLeft);
+      top = topLeft.dy + size.height + 8;
+    }
     _keypadPosition = Offset(
-      desiredLeft.clamp(8, maxLeft < 8 ? 8 : maxLeft),
-      desiredTop.clamp(8, maxTop < 8 ? 8 : maxTop),
+      left.clamp(8, maxLeft < 8 ? 8 : maxLeft),
+      top.clamp(8, maxTop < 8 ? 8 : maxTop),
     );
   }
 
@@ -659,6 +673,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       groupId: _keypadGroup,
       onTapOutside: (_) => _closeKeypad(),
       child: Padding(
+        key: _dialogKey,
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -692,17 +707,15 @@ class _PaymentDialogState extends State<_PaymentDialog> {
             const SizedBox(height: 14),
             _DialogBalanceRow(label: 'Deuda pendiente', value: '\$${widget.debt.toStringAsFixed(2)}'),
             const SizedBox(height: 14),
-            Container(
-              key: _fieldKey,
-              child: TextField(
-                controller: _controller,
-                readOnly: true,
-                onTap: _showKeypad,
-                decoration: const InputDecoration(
-                  labelText: 'Efectivo recibido',
-                  prefixText: '\$ ',
-                  prefixIcon: Icon(Icons.payments_outlined, size: 19),
-                ),
+            TextField(
+              controller: _controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onTap: _showKeypad,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Efectivo recibido',
+                prefixText: '\$ ',
+                prefixIcon: Icon(Icons.payments_outlined, size: 19),
               ),
             ),
             const SizedBox(height: 10),
