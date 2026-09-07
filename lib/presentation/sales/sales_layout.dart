@@ -293,11 +293,40 @@ class _SalesLayoutState extends State<SalesLayout> {
     }
     return Container(
       decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.cardRadius), border: Border.all(color: AppColors.border)),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        itemCount: sales.length,
-        separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
-        itemBuilder: (_, index) => _saleRow(sales[index], paidBySale[sales[index].id] ?? 0),
+      child: Column(
+        children: [
+          _buildListHeader(),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              itemCount: sales.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+              itemBuilder: (_, index) => _saleRow(sales[index], paidBySale[sales[index].id] ?? 0),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
+      decoration: const BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.cardRadius)),
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: const [
+          SizedBox(width: 78, child: Text('Ticket', style: AppTextStyles.ticketLabel)),
+          SizedBox(width: 105, child: Text('Fecha / hora', style: AppTextStyles.ticketLabel)),
+          Expanded(flex: 2, child: Text('Cliente', style: AppTextStyles.ticketLabel)),
+          Expanded(child: Text('Artículos', style: AppTextStyles.ticketLabel)),
+          SizedBox(width: 100, child: Text('Pago', style: AppTextStyles.ticketLabel)),
+          SizedBox(width: 100, child: Text('Total', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+          SizedBox(width: 26),
+        ],
       ),
     );
   }
