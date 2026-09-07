@@ -195,7 +195,7 @@ class SalesProvider extends ChangeNotifier {
     final cardFeeRate = cardBase <= 0 ? 0 : oldSale.cardFeeAmount / cardBase;
     final cardFeeAmount = cardBase * cardFeeRate;
     final total = subtotal - discountAmount + cardFeeAmount;
-    final discountPercent = oldSale.subtotal <= 0 ? oldSale.discountPercent : oldDiscountRate * 100;
+    final discountPercent = (oldSale.subtotal <= 0 ? oldSale.discountPercent : oldDiscountRate * 100).toDouble();
 
     final finalItems = <SaleItemRecord>[];
     for (final item in updatedItems) {

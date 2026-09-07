@@ -14,7 +14,7 @@ import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/debts/edit_credit_sale_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
-class ClientPurchaseHistoryDialog extends StatefulWidget {
+class ClientPurchaseHistoryDialog extends StatelessWidget {
   final String clientName;
   final List<SaleRecord> sales;
 
