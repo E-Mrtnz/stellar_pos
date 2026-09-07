@@ -550,7 +550,7 @@ class _PaymentDialog extends StatefulWidget {
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
+          constraints: const BoxConstraints(maxWidth: 440),
           child: _PaymentDialog(clientName: clientName, debt: debt),
         ),
       ),
