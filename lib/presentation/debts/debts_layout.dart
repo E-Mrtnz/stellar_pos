@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -9,7 +10,9 @@ import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/numeric_keypad.dart';
 import 'package:stellar_pos/presentation/debts/client_purchase_history_dialog.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
 class DebtsLayout extends StatefulWidget {
@@ -69,7 +72,12 @@ class _DebtsLayoutState extends State<DebtsLayout> {
                 );
                 final saved = context.read<CatalogProvider>().updateClient(updated);
                 if (!saved) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo actualizar el cliente.')));
+                  AppAlert.show(
+                    context,
+                    'No se pudo actualizar el cliente.',
+                    title: 'Error al actualizar',
+                    type: AppAlertType.error,
+                  );
                   return;
                 }
                 context.read<DebtProvider>().renameClient(client.id, updated.name.trim());
@@ -90,58 +98,41 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   Future<void> _addPayment(Client client, DebtAccount account) async {
     if (account.remaining <= 0.005) return;
 
-    final amountController = TextEditingController();
-    try {
-      final amount = await showDialog<double>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text('Abonar a ${client.name}'),
-          content: SizedBox(
-            width: 360,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _DialogBalanceRow(label: 'Deuda pendiente', value: _money(account.remaining)),
-                const SizedBox(height: 18),
-                TextField(
-                  controller: amountController,
-                  autofocus: true,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Monto a abonar', prefixText: '\$ '),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancelar')),
-            FilledButton(
-              onPressed: () {
-                final value = double.tryParse(amountController.text.replaceAll(',', '.'));
-                if (value == null || value <= 0 || value > account.remaining + 0.005) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El abono debe ser mayor que cero y no superar la deuda pendiente.')));
-                  return;
-                }
-                Navigator.of(dialogContext).pop(value);
-              },
-              child: const Text('Abonar'),
-            ),
-          ],
-        ),
-      );
+    final received = await _PaymentDialog.show(
+      context,
+      clientName: client.name,
+      debt: account.remaining,
+    );
+    if (received == null || !mounted) return;
 
-      if (amount == null || !mounted) return;
-      final saved = context.read<DebtProvider>().recordPayment(
-        clientId: client.id,
-        clientName: client.name,
-        amount: amount,
+    final saved = context.read<DebtProvider>().recordPayment(
+          clientId: client.id,
+          clientName: client.name,
+          amount: received,
+        );
+
+    if (!saved) {
+      AppAlert.show(
+        context,
+        'No se pudo registrar el abono.',
+        title: 'Error al registrar',
+        type: AppAlertType.error,
       );
-      if (!saved) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo registrar el abono.')));
-      }
-    } finally {
-      amountController.dispose();
+      return;
     }
+
+    final applied = received > account.remaining ? account.remaining : received;
+    final change = received > account.remaining ? received - account.remaining : 0.0;
+    final message = change > 0.005
+        ? 'Se registró un abono de ${_money(applied)}. Cambio: ${_money(change)}.'
+        : 'Se registró un abono de ${_money(applied)}.';
+
+    AppAlert.show(
+      context,
+      message,
+      title: 'Abono registrado',
+      type: AppAlertType.success,
+    );
   }
 
   Future<void> _showPurchaseHistory(Client client, List<SaleRecord> sales) async {
@@ -537,5 +528,225 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 30, color: AppColors.textMuted), const SizedBox(height: 8), Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppColors.textMuted))]));
+  }
+}
+
+class _PaymentDialog extends StatefulWidget {
+  final String clientName;
+  final double debt;
+
+  const _PaymentDialog({required this.clientName, required this.debt});
+
+  static Future<double?> show(
+    BuildContext context, {
+    required String clientName,
+    required double debt,
+  }) {
+    return showDialog<double>(
+      context: context,
+      barrierColor: AppColors.overlayBackground,
+      builder: (_) => Dialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: _PaymentDialog(clientName: clientName, debt: debt),
+      ),
+    );
+  }
+
+  @override
+  State<_PaymentDialog> createState() => _PaymentDialogState();
+}
+
+class _PaymentDialogState extends State<_PaymentDialog> {
+  final TextEditingController _controller = TextEditingController();
+  final GlobalKey _fieldKey = GlobalKey();
+  final Object _keypadGroup = Object();
+  OverlayEntry? _keypadEntry;
+  Offset _keypadPosition = Offset.zero;
+
+  double get _received => double.tryParse(_controller.text.replaceAll(',', '.')) ?? 0;
+  double get _change => (_received - widget.debt).clamp(0, double.infinity).toDouble();
+
+  @override
+  void dispose() {
+    _keypadEntry?.remove();
+    _keypadEntry = null;
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _showKeypad() {
+    SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _updateKeypadPosition();
+      if (_keypadEntry == null) {
+        final overlay = Overlay.of(context, rootOverlay: true);
+        _keypadEntry = OverlayEntry(
+          builder: (_) => Positioned(
+            left: _keypadPosition.dx,
+            top: _keypadPosition.dy,
+            width: NumericKeypad.width,
+            height: NumericKeypad.height,
+            child: TapRegion(
+              groupId: _keypadGroup,
+              child: Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                child: NumericKeypad(
+                  onInput: _input,
+                  onBackspace: _backspace,
+                  onClear: _clear,
+                  onDecimal: _decimal,
+                ),
+              ),
+            ),
+          ),
+        );
+        overlay.insert(_keypadEntry!);
+      } else {
+        _keypadEntry!.markNeedsBuild();
+      }
+    });
+  }
+
+  void _updateKeypadPosition() {
+    final renderObject = _fieldKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final size = renderObject.size;
+    final screen = MediaQuery.sizeOf(context);
+    final desiredLeft = topLeft.dx;
+    final desiredTop = topLeft.dy + size.height + 8;
+    final maxLeft = screen.width - NumericKeypad.width - 8;
+    final maxTop = screen.height - NumericKeypad.height - 8;
+    _keypadPosition = Offset(
+      desiredLeft.clamp(8, maxLeft < 8 ? 8 : maxLeft),
+      desiredTop.clamp(8, maxTop < 8 ? 8 : maxTop),
+    );
+  }
+
+  void _closeKeypad() {
+    _keypadEntry?.remove();
+    _keypadEntry = null;
+  }
+
+  void _setText(String value) {
+    _controller.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+    setState(() {});
+  }
+
+  void _input(String digit) => _setText('${_controller.text}$digit');
+
+  void _decimal() {
+    if (_controller.text.contains('.')) return;
+    _setText(_controller.text.isEmpty ? '0.' : '${_controller.text}.');
+  }
+
+  void _backspace() {
+    if (_controller.text.isEmpty) return;
+    _setText(_controller.text.substring(0, _controller.text.length - 1));
+  }
+
+  void _clear() => _setText('');
+
+  @override
+  Widget build(BuildContext context) {
+    return TapRegion(
+      groupId: _keypadGroup,
+      onTapOutside: (_) => _closeKeypad(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.successGreen.withAlpha(16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.payments_outlined, color: AppColors.successGreen, size: 21),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Abonar a ${widget.clientName}', style: AppTextStyles.sectionTitle),
+                      const SizedBox(height: 2),
+                      const Text('Registra el efectivo recibido y calcula el cambio.', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close, size: 19)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _DialogBalanceRow(label: 'Deuda pendiente', value: '\$${widget.debt.toStringAsFixed(2)}'),
+            const SizedBox(height: 14),
+            Container(
+              key: _fieldKey,
+              child: TextField(
+                controller: _controller,
+                readOnly: true,
+                onTap: _showKeypad,
+                decoration: const InputDecoration(
+                  labelText: 'Efectivo recibido',
+                  prefixText: '\$ ',
+                  prefixIcon: Icon(Icons.payments_outlined, size: 19),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 140),
+              child: _change > 0.005
+                  ? Container(
+                      key: const ValueKey('change'),
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: AppColors.warningOrange.withAlpha(12),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: AppColors.warningOrange.withAlpha(35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.currency_exchange, size: 17, color: AppColors.warningOrange),
+                          const SizedBox(width: 8),
+                          const Expanded(child: Text('Cambio a entregar', style: TextStyle(fontSize: 11, color: AppColors.textSecondary))),
+                          Text(
+                            '\$${_change.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.warningOrange),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(key: ValueKey('no-change'), height: 39),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _received > 0 ? () => Navigator.of(context).pop(_received) : null,
+                  icon: const Icon(Icons.check_rounded, size: 17),
+                  label: const Text('Registrar abono'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
