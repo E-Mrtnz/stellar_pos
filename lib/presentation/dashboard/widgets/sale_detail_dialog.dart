@@ -68,10 +68,7 @@ class SaleDetailDialog extends StatelessWidget {
                   const Expanded(
                     child: Text('Detalle de venta', style: AppTextStyles.sectionTitle),
                   ),
-                  Text(
-                    '#${sale.ticketNumber}',
-                    style: AppTextStyles.ticketValue,
-                  ),
+                  Text('#${sale.ticketNumber}', style: AppTextStyles.ticketValue),
                   const SizedBox(width: 8),
                   IconButton(
                     tooltip: 'Cerrar',
@@ -100,15 +97,9 @@ class SaleDetailDialog extends StatelessWidget {
                     Center(
                       child: Column(
                         children: [
-                          const Text(
-                            'Gracias por su compra',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
+                          const Text('Gracias por su compra', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 5),
-                          Text(
-                            'Código de ticket: ${sale.ticketNumber}',
-                            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                          ),
+                          Text('Código de ticket: ${sale.ticketNumber}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -118,9 +109,7 @@ class SaleDetailDialog extends StatelessWidget {
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.border)),
-              ),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
               child: Row(
                 children: [
                   Expanded(
@@ -136,9 +125,7 @@ class SaleDetailDialog extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        await onPrint();
-                      },
+                      onPressed: () async => onPrint(),
                       icon: const Icon(Icons.print_outlined, size: 17),
                       label: const Text('Imprimir ticket'),
                       style: ElevatedButton.styleFrom(
@@ -191,9 +178,9 @@ class SaleDetailDialog extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                SizedBox(width: 35, child: Text('Cant.', style: AppTextStyles.ticketLabel)),
                 SizedBox(width: 42, child: Text('Img.', style: AppTextStyles.ticketLabel)),
                 Expanded(child: Text('Descripción', style: AppTextStyles.ticketLabel)),
+                SizedBox(width: 40, child: Text('Cant.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
                 SizedBox(width: 70, child: Text('P. Unit.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
                 SizedBox(width: 70, child: Text('Dcto.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
                 SizedBox(width: 75, child: Text('Total', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
@@ -205,7 +192,6 @@ class SaleDetailDialog extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Row(
                 children: [
-                  SizedBox(width: 35, child: Text('${item.quantity}', style: AppTextStyles.ticketValue)),
                   _thumbnail(item.imageData),
                   const SizedBox(width: 10),
                   Expanded(
@@ -216,6 +202,7 @@ class SaleDetailDialog extends StatelessWidget {
                       style: const TextStyle(fontSize: 11),
                     ),
                   ),
+                  SizedBox(width: 40, child: Text('${item.quantity}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue)),
                   SizedBox(width: 70, child: Text('\$${item.unitPrice.toStringAsFixed(2)}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue)),
                   SizedBox(width: 70, child: Text('\$${item.discount.toStringAsFixed(2)}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue)),
                   SizedBox(width: 75, child: Text('\$${item.lineTotal.toStringAsFixed(2)}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue)),
