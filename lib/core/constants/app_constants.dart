@@ -55,74 +55,26 @@ class AppSizes {
 }
 
 class AppTextStyles {
-  static const TextStyle brandTitle = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
-  );
-  static const TextStyle sectionTitle = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
-  );
-  static const TextStyle searchHint = TextStyle(
-    color: AppColors.textMuted,
-    fontSize: 13,
-  );
-  static const TextStyle sidebarItem = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-  );
+  static const TextStyle brandTitle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
+  static const TextStyle sectionTitle = TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
+  static const TextStyle searchHint = TextStyle(color: AppColors.textMuted, fontSize: 13);
+  static const TextStyle sidebarItem = TextStyle(fontSize: 14, fontWeight: FontWeight.w500);
   static const TextStyle chipText = TextStyle(fontSize: 13);
-  static const TextStyle ticketLabel = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textSecondary,
-  );
-  static const TextStyle ticketValue = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
-  );
-  static const TextStyle totalLabel = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
-  );
-  static const TextStyle totalValue = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.bold,
-    color: AppColors.successGreen,
-  );
-  static const TextStyle changeValue = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    color: AppColors.dangerRed,
-  );
-  static const TextStyle productName = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
-  );
-  static const TextStyle productMetadata = TextStyle(
-    fontSize: 11,
-    color: AppColors.textSecondary,
-  );
-  static const TextStyle productPrice = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: AppColors.primary,
-  );
-  static const TextStyle inventoryHeader = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textSecondary,
-  );
+  static const TextStyle ticketLabel = TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary);
+  static const TextStyle ticketValue = TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
+  static const TextStyle totalLabel = TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
+  static const TextStyle totalValue = TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.successGreen);
+  static const TextStyle changeValue = TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dangerRed);
+  static const TextStyle productName = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary);
+  static const TextStyle productMetadata = TextStyle(fontSize: 11, color: AppColors.textSecondary);
+  static const TextStyle productPrice = TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary);
+  static const TextStyle inventoryHeader = TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary);
 }
 
 class AppStrings {
   static const String appName = 'Stellar POS';
-  static const String navHome = 'Ventas';
+  static const String navHome = 'Punto de venta';
+  static const String navSales = 'Ventas';
   static const String navInventory = 'Inventario';
   static const String navElectronicBalance = 'Venta de saldo';
   static const String navStats = 'Estadísticas';
@@ -172,15 +124,7 @@ class AppStrings {
 }
 
 class AppCategories {
-  static const List<String> all = [
-    'Todos',
-    'Bebidas',
-    'Snacks',
-    'Abarrotes',
-    'Lácteos',
-    'Limpieza',
-    'Cuidado Personal',
-  ];
+  static const List<String> all = ['Todos', 'Bebidas', 'Snacks', 'Abarrotes', 'Lácteos', 'Limpieza', 'Cuidado Personal'];
 }
 
 class AppNavigation {
