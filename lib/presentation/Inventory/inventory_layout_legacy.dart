@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/general_settings_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/services/inventory_file_service.dart';
@@ -502,6 +503,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Widget _buildFileActions() {
+    final settings = context.watch<GeneralSettingsProvider>();
     final buttonStyle = OutlinedButton.styleFrom(
       foregroundColor: AppColors.textPrimary,
       side: const BorderSide(color: AppColors.border),
@@ -512,61 +514,40 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        OutlinedButton.icon(
-          onPressed: _isImporting || _isExporting ? null : _importInventory,
-          style: buttonStyle,
-          icon: _isImporting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.upload_file_outlined, size: 18),
-          label: const Text('Subir inventario'),
-        ),
-        const SizedBox(width: 8),
-        PopupMenuButton<String>(
-          enabled: !_isImporting && !_isExporting,
-          onSelected: (value) {
-            if (value == 'excel') {
-              _exportExcel();
-            } else {
-              _exportPdf();
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem<String>(
-              value: 'excel',
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.table_chart_outlined),
-                title: Text('Descargar Excel'),
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'pdf',
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.picture_as_pdf_outlined),
-                title: Text('Descargar PDF'),
-              ),
-            ),
-          ],
-          child: OutlinedButton.icon(
-            onPressed: null,
+        if (settings.showInventoryImport)
+          OutlinedButton.icon(
+            onPressed: _isImporting || _isExporting ? null : _importInventory,
             style: buttonStyle,
-            icon: _isExporting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download_outlined, size: 18),
-            label: const Text('Descargar inventario'),
+            icon: _isImporting
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.upload_file_outlined, size: 18),
+            label: const Text('Subir inventario'),
           ),
-        ),
+        if (settings.showInventoryImport && settings.showInventoryExport)
+          const SizedBox(width: 8),
+        if (settings.showInventoryExport)
+          PopupMenuButton<String>(
+            enabled: !_isImporting && !_isExporting,
+            onSelected: (value) => value == 'excel' ? _exportExcel() : _exportPdf(),
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'excel',
+                child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.table_chart_outlined), title: Text('Descargar Excel')),
+              ),
+              PopupMenuItem<String>(
+                value: 'pdf',
+                child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.picture_as_pdf_outlined), title: Text('Descargar PDF')),
+              ),
+            ],
+            child: OutlinedButton.icon(
+              onPressed: null,
+              style: buttonStyle,
+              icon: _isExporting
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.download_outlined, size: 18),
+              label: const Text('Descargar inventario'),
+            ),
+          ),
       ],
     );
   }

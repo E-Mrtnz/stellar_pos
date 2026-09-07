@@ -6,6 +6,7 @@ import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 
 class PrinterSettingsLayout extends StatefulWidget {
   const PrinterSettingsLayout({super.key});
@@ -295,56 +296,12 @@ class _PrinterSettingsContentState extends State<_PrinterSettingsContent> {
             ),
             const SizedBox(height: 12),
           ],
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.inputBackground,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.print_rounded,
-                  size: 19,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Imprimir al crear una venta',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Imprime automáticamente el ticket al completar la venta.',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Checkbox(
-                  value: printer.printAutomaticallyOnSale,
-                  onChanged: (value) {
-                    if (value != null) {
-                      printer.setPrintAutomaticallyOnSale(value);
-                    }
-                  },
-                  activeColor: AppColors.primary,
-                ),
-              ],
-            ),
+          SettingsToggleTile(
+            title: 'Imprimir al crear una venta',
+            subtitle: 'Imprime automáticamente el ticket al completar la venta.',
+            value: printer.printAutomaticallyOnSale,
+            onChanged: printer.setPrintAutomaticallyOnSale,
+            icon: Icons.print_rounded,
           ),
           const SizedBox(height: 12),
           Row(

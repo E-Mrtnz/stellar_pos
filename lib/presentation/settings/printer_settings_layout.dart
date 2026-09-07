@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
+import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
 
 class PrinterSettingsLayout extends StatefulWidget {
@@ -127,20 +128,7 @@ class _GeneralSettingsContent extends StatelessWidget {
   }
 
   Widget _switchTile(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
-      child: Row(children: [
-        const Icon(Icons.settings_suggest_outlined, size: 19, color: AppColors.primary),
-        const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-        ])),
-        Switch(value: value, onChanged: onChanged, activeColor: AppColors.primary),
-      ]),
-    );
+    return SettingsToggleTile(title: title, subtitle: subtitle, value: value, onChanged: onChanged, icon: Icons.inventory_2_outlined);
   }
 }
 

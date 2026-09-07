@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +10,8 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/sale_detail_dialog.dart';
+import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
 class SalesLayout extends StatefulWidget {
   const SalesLayout({super.key});
@@ -263,7 +263,7 @@ class _SalesLayoutState extends State<SalesLayout> {
 
   Widget _buildFilters() {
     return Row(children: [
-      Expanded(child: TextField(controller: _searchController, decoration: InputDecoration(hintText: 'Buscar venta, cliente, producto o código...', prefixIcon: const Icon(Icons.search, size: 20), isDense: true, filled: true, fillColor: AppColors.cardBackground, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border))))),
+      Expanded(child: ProductSearchBar(controller: _searchController, hintText: 'Buscar venta, cliente, producto o código...', onChanged: (_) {})),
       const SizedBox(width: 8),
       PopupMenuButton<_SalesPaymentFilter>(
         onSelected: (value) => setState(() => _paymentFilter = value),
@@ -331,61 +331,8 @@ class _SalesLayoutState extends State<SalesLayout> {
   Widget _paymentBadge(String method) => Align(alignment: Alignment.centerLeft, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)), child: Text(method, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textDarkSecondary))));
 
   Future<void> _showDetails(SaleRecord sale, double paid) async {
-    final credit = sale.paymentMethod == AppStrings.creditPayment;
-    final initial = credit ? sale.received.clamp(0, sale.total).toDouble() : 0.0;
-    final later = credit ? (paid - initial).clamp(0, double.infinity).toDouble() : 0.0;
-    final pending = credit ? (sale.total - paid).clamp(0, double.infinity).toDouble() : 0.0;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.dialogRadius)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 680),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Venta #${sale.ticketNumber}', style: AppTextStyles.brandTitle), const SizedBox(height: 3), Text('${_formatDate(sale.createdAt)} · ${sale.clientName}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))])), IconButton(onPressed: () => Navigator.pop(dialogContext), icon: const Icon(Icons.close))]),
-              const Divider(height: 18),
-              Expanded(child: ListView.separated(itemCount: sale.items.length, separatorBuilder: (_, __) => const SizedBox(height: 8), itemBuilder: (_, index) => _detailItem(sale.items[index]))),
-              const SizedBox(height: 8),
-              _summary('Subtotal', sale.subtotal),
-              if (sale.discountAmount > 0) _summary('Descuento', -sale.discountAmount),
-              if (sale.cardFeeAmount > 0) _summary('Cargo tarjeta', sale.cardFeeAmount),
-              const Divider(height: 16),
-              _summary('Total de venta', sale.total, bold: true),
-              if (credit) ...[
-                _summary('Pago inicial', initial),
-                _summary('Abonado posteriormente', later),
-                _summary('Saldo pendiente', pending, color: pending > .005 ? AppColors.dangerRed : AppColors.successGreen),
-              ] else ...[
-                _summary('Cobrado', sale.total),
-                if (sale.paymentMethod == AppStrings.cashPayment && sale.change > 0) _summary('Cambio', sale.change),
-              ],
-              const SizedBox(height: 12),
-              Row(children: [OutlinedButton.icon(onPressed: () => _printSale(sale), icon: const Icon(Icons.print_outlined, size: 17), label: const Text('Imprimir ticket')), const Spacer(), IconButton(onPressed: () => _deleteSale(sale, dialogContext), icon: const Icon(Icons.delete_outline, color: AppColors.dangerRed))]),
-            ]),
-          ),
-        ),
-      ),
-    );
+    await SaleDetailDialog.show(context, sale: sale, paidAmount: paid, onPrint: () => _printSale(sale));
   }
-
-  Widget _detailItem(SaleItemRecord item) {
-    Widget image = const Icon(Icons.inventory_2_outlined, color: AppColors.textMuted);
-    if (item.imageData.isNotEmpty) {
-      try {
-        final comma = item.imageData.indexOf(',');
-        final encoded = comma >= 0 ? item.imageData.substring(comma + 1) : item.imageData;
-        image = Image.memory(base64Decode(encoded), fit: BoxFit.cover);
-      } catch (_) {}
-    }
-    return Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)), child: Row(children: [Container(width: 42, height: 42, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8)), child: image), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.productName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)), const SizedBox(height: 2), Text('${item.quantity} × ${_money(item.unitPrice)} · ${item.unit}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))])), Text(_money(item.lineTotal), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))]));
-  }
-
-  Widget _summary(String label, double value, {bool bold = false, Color? color}) => Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: bold ? FontWeight.w700 : FontWeight.w500)), const Spacer(), Text(_money(value.abs()), style: TextStyle(fontSize: 12, color: color ?? AppColors.textPrimary, fontWeight: bold ? FontWeight.w700 : FontWeight.w600))]));
-
-  String _formatDate(DateTime value) => '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year} · ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 
   Future<void> _printSale(SaleRecord sale) async {
     final printer = context.read<PrinterProvider>();

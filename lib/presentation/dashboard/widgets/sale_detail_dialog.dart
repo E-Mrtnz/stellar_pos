@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -6,17 +8,20 @@ import 'package:stellar_pos/core/models/sale.dart';
 class SaleDetailDialog extends StatelessWidget {
   final SaleRecord sale;
   final Future<bool> Function() onPrint;
+  final double? paidAmount;
 
   const SaleDetailDialog({
     super.key,
     required this.sale,
     required this.onPrint,
+    this.paidAmount,
   });
 
   static Future<void> show(
     BuildContext context, {
     required SaleRecord sale,
     required Future<bool> Function() onPrint,
+    double? paidAmount,
   }) {
     return showDialog(
       context: context,
@@ -24,7 +29,7 @@ class SaleDetailDialog extends StatelessWidget {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: SaleDetailDialog(sale: sale, onPrint: onPrint),
+        child: SaleDetailDialog(sale: sale, onPrint: onPrint, paidAmount: paidAmount),
       ),
     );
   }
@@ -33,6 +38,11 @@ class SaleDetailDialog extends StatelessWidget {
     return '${value.day.toString().padLeft(2, '0')}/'
         '${value.month.toString().padLeft(2, '0')}/${value.year}';
   }
+
+  double get _paid => (paidAmount ?? sale.received).clamp(0, sale.total).toDouble();
+  double get _initialPayment => sale.received.clamp(0, sale.total).toDouble();
+  double get _laterPayment => (_paid - _initialPayment).clamp(0, double.infinity).toDouble();
+  double get _pending => (sale.total - _paid).clamp(0, double.infinity).toDouble();
 
   String _formatTime(DateTime value) {
     final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
@@ -182,6 +192,7 @@ class SaleDetailDialog extends StatelessWidget {
             child: const Row(
               children: [
                 SizedBox(width: 35, child: Text('Cant.', style: AppTextStyles.ticketLabel)),
+                SizedBox(width: 42, child: Text('Img.', style: AppTextStyles.ticketLabel)),
                 Expanded(child: Text('Descripción', style: AppTextStyles.ticketLabel)),
                 SizedBox(width: 70, child: Text('P. Unit.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
                 SizedBox(width: 70, child: Text('Dcto.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
@@ -195,6 +206,8 @@ class SaleDetailDialog extends StatelessWidget {
               child: Row(
                 children: [
                   SizedBox(width: 35, child: Text('${item.quantity}', style: AppTextStyles.ticketValue)),
+                  _thumbnail(item.imageData),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       item.productName,
@@ -212,6 +225,28 @@ class SaleDetailDialog extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _thumbnail(String value) {
+    if (value.trim().isNotEmpty) {
+      try {
+        final raw = value.contains(',') ? value.substring(value.indexOf(',') + 1) : value;
+        final bytes = base64Decode(raw);
+        return Container(
+          width: 42,
+          height: 42,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.border)),
+          child: Image.memory(bytes, fit: BoxFit.cover),
+        );
+      } catch (_) {}
+    }
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.border)),
+      child: const Icon(Icons.image_outlined, size: 19, color: AppColors.textMuted),
     );
   }
 
@@ -243,7 +278,12 @@ class SaleDetailDialog extends StatelessWidget {
       child: Column(
         children: [
           _infoRow('Forma de pago', sale.paymentMethod),
-          if (sale.paymentMethod.toUpperCase() == 'EFECTIVO') ...[
+          if (sale.paymentMethod == AppStrings.creditPayment) ...[
+            _summaryRow('Pago inicial', _initialPayment),
+            _summaryRow('Abonos posteriores', _laterPayment),
+            _summaryRow('Total cobrado', _paid),
+            _summaryRow('Saldo pendiente', _pending),
+          ] else if (sale.paymentMethod == AppStrings.cashPayment) ...[
             _summaryRow('Recibido', sale.received),
             _summaryRow('Cambio', sale.change),
           ],
