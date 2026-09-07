@@ -73,7 +73,7 @@ class SaleSuccessDialog extends StatelessWidget {
                 width: double.infinity,
                 height: 40,
                 child: ElevatedButton.icon(
-                  onPressed: onPrint,
+                  onPressed: () async { await onPrint(); },
                   icon: const Icon(Icons.print_outlined, size: 18),
                   label: const Text('Imprimir ticket'),
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
