@@ -99,7 +99,7 @@ class _GeneralSettingsContent extends StatelessWidget {
       builder: (context, settings, _) => Padding(
         padding: const EdgeInsets.all(AppDimensions.pagePadding),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Ajustes generales', style: AppTextStyles.brandTitle),
+          const Text('General', style: AppTextStyles.brandTitle),
           const SizedBox(height: 4),
           const Text('Preferencias básicas de funcionamiento de Stellar POS.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 16),
