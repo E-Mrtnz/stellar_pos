@@ -7,7 +7,7 @@ import 'package:stellar_pos/core/models/sale.dart';
 
 class SaleDetailDialog extends StatelessWidget {
   final SaleRecord sale;
-  final Future<bool> Function() onPrint;
+  final Future<void> Function() onPrint;
   final double? paidAmount;
 
   const SaleDetailDialog({
@@ -20,7 +20,7 @@ class SaleDetailDialog extends StatelessWidget {
   static Future<void> show(
     BuildContext context, {
     required SaleRecord sale,
-    required Future<bool> Function() onPrint,
+    required Future<void> Function() onPrint,
     double? paidAmount,
   }) {
     return showDialog(
