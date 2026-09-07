@@ -13,6 +13,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_management_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
@@ -26,7 +27,6 @@ import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
-
   @override
   State<MainDashboardLayout> createState() => _MainDashboardLayoutState();
 }
@@ -37,15 +37,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   String? _selectedFilter;
   String _searchQuery = '';
   bool _isSidebarExpanded = true;
-
   final Map<String, int> _cartQuantities = {};
   List<ElectronicBalanceCartItem> _electronicBalanceSelection = [];
-
   String _barcodeBuffer = '';
   DateTime? _lastBarcodeInputAt;
   OverlayEntry? _productNotFoundOverlay;
   Timer? _productNotFoundTimer;
-
   int _selectedPaymentMethod = AppPaymentMethods.cash;
   String? _selectedDebtor;
   final TextEditingController _discountAmountController = TextEditingController();
@@ -53,12 +50,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   final TextEditingController _cashReceivedController = TextEditingController();
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
-
-  List<String> get _debtors => context
-      .watch<CatalogProvider>()
-      .clients
-      .map((client) => client.name)
-      .toList();
+  List<String> get _debtors => context.watch<CatalogProvider>().clients.map((client) => client.name).toList();
 
   @override
   void dispose() {
@@ -71,11 +63,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   KeyEventResult _handleBarcodeKey(FocusNode node, KeyEvent event) {
-    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent) {
-      return KeyEventResult.ignored;
-    }
-    final isEnter = event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent) return KeyEventResult.ignored;
+    final isEnter = event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter;
     if (isEnter) {
       final barcode = _barcodeBuffer.trim();
       _barcodeBuffer = '';
@@ -87,13 +76,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return KeyEventResult.ignored;
     }
     final character = event.character;
-    if (character == null || character.isEmpty || character.trim().isEmpty) {
-      return KeyEventResult.ignored;
-    }
+    if (character == null || character.isEmpty || character.trim().isEmpty) return KeyEventResult.ignored;
     final now = DateTime.now();
-    final elapsed = _lastBarcodeInputAt == null
-        ? null
-        : now.difference(_lastBarcodeInputAt!).inMilliseconds;
+    final elapsed = _lastBarcodeInputAt == null ? null : now.difference(_lastBarcodeInputAt!).inMilliseconds;
     if (elapsed != null && elapsed > 200) _barcodeBuffer = '';
     _barcodeBuffer += character;
     _lastBarcodeInputAt = now;
@@ -137,18 +122,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     overlay.insert(entry);
     _productNotFoundTimer = Timer(const Duration(seconds: 4), () {
       if (entry.mounted) entry.remove();
-      if (identical(_productNotFoundOverlay, entry)) {
-        _productNotFoundOverlay = null;
-      }
+      if (identical(_productNotFoundOverlay, entry)) _productNotFoundOverlay = null;
     });
   }
 
   void _addToCart(String productId) {
     final product = context.read<ProductProvider>().findById(productId);
     if (product == null) return;
-    setState(() {
-      _cartQuantities[productId] = (_cartQuantities[productId] ?? 0) + 1;
-    });
+    setState(() => _cartQuantities[productId] = (_cartQuantities[productId] ?? 0) + 1);
   }
 
   void _setCartQuantity(String productId, int quantity) {
@@ -162,9 +143,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   void _decrementQuantity(String productId) {
     if (_isElectronicBalanceKey(productId)) {
-      final index = _electronicBalanceSelection.indexWhere(
-        (item) => item.key == productId,
-      );
+      final index = _electronicBalanceSelection.indexWhere((item) => item.key == productId);
       if (index < 0) return;
       final item = _electronicBalanceSelection[index];
       if (item.quantity <= 1) {
@@ -204,53 +183,32 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     });
   }
 
-  bool _isElectronicBalanceKey(String id) =>
-      id.startsWith('electronic:') ||
-      _electronicBalanceSelection.any((item) => item.key == id);
+  bool _isElectronicBalanceKey(String id) => id.startsWith('electronic:') || _electronicBalanceSelection.any((item) => item.key == id);
 
   void _setElectronicQuantity(String key, int quantity) {
-    final index = _electronicBalanceSelection.indexWhere(
-      (item) => item.key == key,
-    );
+    final index = _electronicBalanceSelection.indexWhere((item) => item.key == key);
     if (index < 0) return;
     if (quantity <= 0) {
       _removeElectronicItem(key);
       return;
     }
-    setState(() {
-      _electronicBalanceSelection[index] =
-          _electronicBalanceSelection[index].copyWith(quantity: quantity);
-    });
+    setState(() => _electronicBalanceSelection[index] = _electronicBalanceSelection[index].copyWith(quantity: quantity));
   }
 
   void _removeElectronicItem(String key) {
-    setState(() {
-      _electronicBalanceSelection = _electronicBalanceSelection
-          .where((item) => item.key != key)
-          .toList();
-    });
+    setState(() => _electronicBalanceSelection = _electronicBalanceSelection.where((item) => item.key != key).toList());
   }
 
   Map<String, int> get _combinedCartQuantities {
     final result = Map<String, int>.from(_cartQuantities);
-    for (final item in _electronicBalanceSelection) {
-      result[item.key] = item.quantity;
-    }
+    for (final item in _electronicBalanceSelection) result[item.key] = item.quantity;
     return result;
   }
 
   List<Map<String, dynamic>> get _salesCatalog {
-    final products = List<Map<String, dynamic>>.from(
-      context.read<ProductProvider>().productMaps,
-    );
+    final products = List<Map<String, dynamic>>.from(context.read<ProductProvider>().productMaps);
     for (final item in _electronicBalanceSelection) {
-      products.add({
-        'id': item.key,
-        'name': '${item.companyName} · ${item.category}',
-        'unit': 'Recarga',
-        'price': item.amount,
-        'imageData': '',
-      });
+      products.add({'id': item.key, 'name': '${item.companyName} · ${item.category}', 'unit': 'Recarga', 'price': item.amount, 'imageData': ''});
     }
     return products;
   }
@@ -262,16 +220,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       final product = provider.findById(entry.key);
       if (product != null) total += product.price * entry.value;
     }
-    for (final item in _electronicBalanceSelection) {
-      total += item.amount * item.quantity;
-    }
+    for (final item in _electronicBalanceSelection) total += item.amount * item.quantity;
     return total;
   }
 
-  double get _discountAmount =>
-      double.tryParse(_discountAmountController.text) ?? 0;
-  double get _discountPercent =>
-      double.tryParse(_discountPercentController.text) ?? 0;
+  double get _discountAmount => double.tryParse(_discountAmountController.text) ?? 0;
+  double get _discountPercent => double.tryParse(_discountPercentController.text) ?? 0;
 
   double get _cardFeeAmount {
     if (_selectedPaymentMethod != AppPaymentMethods.card) return 0;
@@ -294,29 +248,23 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _onDiscountPercentChanged(String value) {
     final percent = double.tryParse(value) ?? 0;
     final amount = _subtotal * percent / 100;
-    _discountAmountController.text =
-        amount > 0 ? amount.toStringAsFixed(2) : '';
+    _discountAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
     setState(() {});
   }
 
   void _onDiscountAmountChanged(String value) {
     final amount = double.tryParse(value) ?? 0;
     final percent = _subtotal <= 0 ? 0 : amount / _subtotal * 100;
-    _discountPercentController.text =
-        percent > 0 ? percent.toStringAsFixed(2) : '';
+    _discountPercentController.text = percent > 0 ? percent.toStringAsFixed(2) : '';
     setState(() {});
   }
 
   String _paymentMethodLabel(int method) {
     switch (method) {
-      case AppPaymentMethods.card:
-        return AppStrings.cardPayment;
-      case AppPaymentMethods.transfer:
-        return AppStrings.transferPayment;
-      case AppPaymentMethods.credit:
-        return AppStrings.creditPayment;
-      default:
-        return AppStrings.cashPayment;
+      case AppPaymentMethods.card: return AppStrings.cardPayment;
+      case AppPaymentMethods.transfer: return AppStrings.transferPayment;
+      case AppPaymentMethods.credit: return AppStrings.creditPayment;
+      default: return AppStrings.cashPayment;
     }
   }
 
@@ -336,44 +284,22 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Future<void> _openElectronicBalanceManagement() async {
     await showDialog<void>(
       context: context,
-      builder: (_) => Dialog(
-        insetPadding: const EdgeInsets.all(24),
-        child: SizedBox(
-          width: 900,
-          height: 680,
-          child: const ElectronicBalanceLayout(),
-        ),
-      ),
+      barrierColor: AppColors.overlayBackground,
+      builder: (_) => const ElectronicBalanceManagementDialog(),
     );
   }
 
   Future<void> _createSale() async {
     if (_cartQuantities.isEmpty && _electronicBalanceSelection.isEmpty) {
-      AppAlert.show(
-        context,
-        'Agrega al menos un producto o una recarga antes de crear la venta.',
-        title: 'No se puede crear la venta',
-        type: AppAlertType.warning,
-      );
+      AppAlert.show(context, 'Agrega al menos un producto o una recarga antes de crear la venta.', title: 'No se puede crear la venta', type: AppAlertType.warning);
       return;
     }
     if (_discountAmount < 0 || _discountAmount > _subtotal) {
-      AppAlert.show(
-        context,
-        'El descuento no puede ser negativo ni superar el subtotal.',
-        title: 'Descuento inválido',
-        type: AppAlertType.warning,
-      );
+      AppAlert.show(context, 'El descuento no puede ser negativo ni superar el subtotal.', title: 'Descuento inválido', type: AppAlertType.warning);
       return;
     }
-    if (_selectedPaymentMethod == AppPaymentMethods.credit &&
-        (_selectedDebtor == null || _selectedDebtor!.trim().isEmpty)) {
-      AppAlert.show(
-        context,
-        'Selecciona un cliente para registrar una venta a crédito.',
-        title: 'Cliente requerido',
-        type: AppAlertType.warning,
-      );
+    if (_selectedPaymentMethod == AppPaymentMethods.credit && (_selectedDebtor == null || _selectedDebtor!.trim().isEmpty)) {
+      AppAlert.show(context, 'Selecciona un cliente para registrar una venta a crédito.', title: 'Cliente requerido', type: AppAlertType.warning);
       return;
     }
 
@@ -388,17 +314,13 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       }
     }
 
-    final electronicSales = _electronicBalanceSelection
-        .map(
-          (item) => ElectronicBalanceCartSale(
-            accountId: item.accountId,
-            companyName: item.companyName,
-            category: item.category,
-            amount: item.amount,
-            quantity: item.quantity,
-          ),
-        )
-        .toList();
+    final electronicSales = _electronicBalanceSelection.map((item) => ElectronicBalanceCartSale(
+      accountId: item.accountId,
+      companyName: item.companyName,
+      category: item.category,
+      amount: item.amount,
+      quantity: item.quantity,
+    )).toList();
 
     final received = double.tryParse(_cashReceivedController.text) ?? 0;
     SaleRecord sale;
@@ -414,46 +336,27 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         discountAmount: _discountAmount,
         cardFeeAmount: _cardFeeAmount,
         total: _total,
-        received: _selectedPaymentMethod == AppPaymentMethods.cash
-            ? received
-            : 0,
+        received: _selectedPaymentMethod == AppPaymentMethods.cash ? received : 0,
         change: _selectedPaymentMethod == AppPaymentMethods.cash ? _change : 0,
         electronicSales: electronicSales,
-        electronicBalanceProvider:
-            context.read<ElectronicBalanceProvider>(),
+        electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
     } catch (error) {
-      AppAlert.show(
-        context,
-        error is StateError ? error.message : 'No se pudo registrar la venta.',
-        title: 'Error al crear la venta',
-        type: AppAlertType.error,
-      );
+      AppAlert.show(context, error is StateError ? error.message : 'No se pudo registrar la venta.', title: 'Error al crear la venta', type: AppAlertType.error);
       return;
     }
 
     _clearCart();
     setState(() => _selectedPaymentMethod = AppPaymentMethods.cash);
     if (!mounted) return;
-    await SaleSuccessDialog.show(
-      context,
-      sale: sale,
-      onPrint: () => _printSale(sale),
-    );
+    await SaleSuccessDialog.show(context, sale: sale, onPrint: () => _printSale(sale));
   }
 
   Future<bool> _printSale(SaleRecord sale) async {
     final printerProvider = context.read<PrinterProvider>();
     final printed = await printerProvider.printSaleTicket(sale);
     if (!mounted) return printed;
-    AppAlert.show(
-      context,
-      printed
-          ? 'El ticket fue enviado a la impresora.'
-          : (printerProvider.errorMessage ?? 'No se pudo imprimir el ticket.'),
-      title: printed ? 'Impresión completada' : 'No se pudo imprimir',
-      type: printed ? AppAlertType.success : AppAlertType.warning,
-    );
+    AppAlert.show(context, printed ? 'El ticket fue enviado a la impresora.' : (printerProvider.errorMessage ?? 'No se pudo imprimir el ticket.'), title: printed ? 'Impresión completada' : 'No se pudo imprimir', type: printed ? AppAlertType.success : AppAlertType.warning);
     return printed;
   }
 
@@ -475,9 +378,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               SidebarDrawer(
                 isExpanded: _isSidebarExpanded,
                 selectedIndex: _selectedNavIndex,
-                onToggleExpand: () => setState(
-                  () => _isSidebarExpanded = !_isSidebarExpanded,
-                ),
+                onToggleExpand: () => setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                 onItemSelected: _onNavigationChanged,
               ),
               Expanded(child: _buildMainContent(products)),
@@ -489,31 +390,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   Widget _buildMainContent(List<Map<String, dynamic>> products) {
-    if (_selectedNavIndex == AppNavigation.inventory) {
-      return const InventoryLayout();
-    }
-    if (_selectedNavIndex == AppNavigation.electronicBalance) {
-      return const ElectronicBalanceLayout();
-    }
-    if (_selectedNavIndex == AppNavigation.purchases) {
-      return const PurchasesLayout();
-    }
-    if (_selectedNavIndex == AppNavigation.providers) {
-      return const ProvidersLayout();
-    }
-    if (_selectedNavIndex == AppNavigation.debts) {
-      return const DebtsLayout();
-    }
-    if (_selectedNavIndex == AppNavigation.settings) {
-      return const PrinterSettingsLayout();
-    }
-    if (_selectedNavIndex != AppNavigation.home) {
-      return const _EmptySectionPanel();
-    }
+    if (_selectedNavIndex == AppNavigation.inventory) return const InventoryLayout();
+    if (_selectedNavIndex == AppNavigation.electronicBalance) return const ElectronicBalanceLayout();
+    if (_selectedNavIndex == AppNavigation.purchases) return const PurchasesLayout();
+    if (_selectedNavIndex == AppNavigation.providers) return const ProvidersLayout();
+    if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
+    if (_selectedNavIndex == AppNavigation.settings) return const PrinterSettingsLayout();
+    if (_selectedNavIndex != AppNavigation.home) return const _EmptySectionPanel();
 
     final salesCatalog = _salesCatalog;
     final combinedCart = _combinedCartQuantities;
-
     return Padding(
       padding: const EdgeInsets.all(AppDimensions.pagePadding),
       child: Row(
@@ -547,14 +433,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   cartQuantities: combinedCart,
                   products: salesCatalog,
                   selectedPaymentMethod: _selectedPaymentMethod,
-                  onPaymentMethodChanged: (method) => setState(
-                    () => _selectedPaymentMethod = method,
-                  ),
+                  onPaymentMethodChanged: (method) => setState(() => _selectedPaymentMethod = method),
                   selectedDebtor: _selectedDebtor,
                   debtorsList: _debtors,
-                  onDebtorChanged: (debtor) => setState(
-                    () => _selectedDebtor = debtor,
-                  ),
+                  onDebtorChanged: (debtor) => setState(() => _selectedDebtor = debtor),
                   discountAmountController: _discountAmountController,
                   discountPercentController: _discountPercentController,
                   cashReceivedController: _cashReceivedController,
@@ -570,8 +452,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   onQuantityChanged: _setCartQuantity,
                   onRemoveFromCart: _removeFromCart,
                   onClearCart: _clearCart,
-                  ticketNumber:
-                      context.watch<SalesProvider>().nextTicketNumberPreview,
+                  ticketNumber: context.watch<SalesProvider>().nextTicketNumberPreview,
                 ),
                 Positioned(
                   left: 22,
@@ -580,11 +461,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   height: 36,
                   child: Material(
                     color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _createSale,
-                      borderRadius: BorderRadius.circular(8),
-                      child: const SizedBox.expand(),
-                    ),
+                    child: InkWell(onTap: _createSale, borderRadius: BorderRadius.circular(8), child: const SizedBox.expand()),
                   ),
                 ),
               ],
@@ -598,44 +475,22 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
 class _EmptySectionPanel extends StatelessWidget {
   const _EmptySectionPanel();
-
   @override
   Widget build(BuildContext context) => const SizedBox.expand();
 }
 
 class _ProductNotFoundAlert extends StatelessWidget {
   const _ProductNotFoundAlert();
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(
-        color: AppColors.warningOrange,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 12,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Producto no encontrado',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(color: AppColors.warningOrange, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 5))]),
+        child: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
+            SizedBox(width: 10),
+            Expanded(child: Text('Producto no encontrado', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+          ],
+        ),
+      );
 }
