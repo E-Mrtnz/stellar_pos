@@ -33,3 +33,5 @@ jobs:
           git add lib .github tools
           git commit -m "feat: add sales history and general settings"
           git push origin "HEAD:${{ github.head_ref }}"
+
+# trigger integration
