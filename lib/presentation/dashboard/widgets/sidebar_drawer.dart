@@ -7,13 +7,7 @@ class SidebarDrawer extends StatelessWidget {
   final VoidCallback onToggleExpand;
   final ValueChanged<int> onItemSelected;
 
-  const SidebarDrawer({
-    super.key,
-    required this.isExpanded,
-    required this.selectedIndex,
-    required this.onToggleExpand,
-    required this.onItemSelected,
-  });
+  const SidebarDrawer({super.key, required this.isExpanded, required this.selectedIndex, required this.onToggleExpand, required this.onItemSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -21,17 +15,7 @@ class SidebarDrawer extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       width: isExpanded ? 220 : 72,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))]),
       child: Stack(
         children: [
           Column(
@@ -40,29 +24,10 @@ class SidebarDrawer extends StatelessWidget {
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha(25),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.storefront_rounded,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                    ),
-                    if (isExpanded) ...[
-                      const SizedBox(width: 12),
-                      const Text(
-                        AppStrings.appName,
-                        style: AppTextStyles.brandTitle,
-                      ),
-                    ],
-                  ],
-                ),
+                child: Row(children: [
+                  Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withAlpha(25), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24)),
+                  if (isExpanded) ...[const SizedBox(width: 12), const Text(AppStrings.appName, style: AppTextStyles.brandTitle)],
+                ]),
               ),
               const SizedBox(height: 30),
               Expanded(
@@ -71,50 +36,18 @@ class SidebarDrawer extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSidebarItem(
-                      AppNavigation.home,
-                      Icons.point_of_sale_rounded,
-                      AppStrings.navHome,
-                    ),
-                    _buildSidebarItem(
-                      AppNavigation.purchases,
-                      Icons.shopping_bag_rounded,
-                      AppStrings.navPurchases,
-                    ),
-                    _buildSidebarItem(
-                      AppNavigation.debts,
-                      Icons.receipt_long_outlined,
-                      AppStrings.navDebts,
-                    ),
-                    _buildSidebarItem(
-                      AppNavigation.stats,
-                      Icons.bar_chart_rounded,
-                      AppStrings.navStats,
-                    ),
-                    _buildSidebarItem(
-                      AppNavigation.providers,
-                      Icons.local_shipping_outlined,
-                      AppStrings.navProviders,
-                    ),
-                    _buildSidebarItem(
-                      AppNavigation.inventory,
-                      Icons.inventory_2_rounded,
-                      AppStrings.navInventory,
-                    ),
+                    _buildSidebarItem(AppNavigation.home, Icons.point_of_sale_rounded, AppStrings.navHome),
+                    _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
+                    _buildSidebarItem(AppNavigation.purchases, Icons.shopping_bag_rounded, AppStrings.navPurchases),
+                    _buildSidebarItem(AppNavigation.debts, Icons.receipt_long_outlined, AppStrings.navDebts),
+                    _buildSidebarItem(AppNavigation.stats, Icons.bar_chart_rounded, AppStrings.navStats),
+                    _buildSidebarItem(AppNavigation.providers, Icons.local_shipping_outlined, AppStrings.navProviders),
+                    _buildSidebarItem(AppNavigation.inventory, Icons.inventory_2_rounded, AppStrings.navInventory),
                   ],
                 ),
               ),
-              const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: AppColors.border,
-              ),
-              _buildSidebarItem(
-                AppNavigation.settings,
-                Icons.settings_outlined,
-                AppStrings.navSettings,
-              ),
+              const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+              _buildSidebarItem(AppNavigation.settings, Icons.settings_outlined, AppStrings.navSettings),
               const SizedBox(height: 16),
             ],
           ),
@@ -126,21 +59,8 @@ class SidebarDrawer extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.inputBackground,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.border,
-                    width: 0.5,
-                  ),
-                ),
-                child: Icon(
-                  isExpanded
-                      ? Icons.chevron_left_rounded
-                      : Icons.chevron_right_rounded,
-                  size: 18,
-                  color: AppColors.textSecondary,
-                ),
+                decoration: BoxDecoration(color: AppColors.inputBackground, shape: BoxShape.circle, border: Border.all(color: AppColors.border, width: 0.5)),
+                child: Icon(isExpanded ? Icons.chevron_left_rounded : Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
               ),
             ),
           ),
@@ -151,63 +71,24 @@ class SidebarDrawer extends StatelessWidget {
 
   Widget _buildSidebarItem(int index, IconData icon, String label) {
     final isSelected = selectedIndex == index;
-
     final item = InkWell(
       onTap: () => onItemSelected(index),
       child: Container(
         height: 50,
         margin: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            const SizedBox(width: 20),
-            Icon(
-              icon,
-              color: isSelected
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
-              size: 22,
-            ),
-            if (isExpanded) ...[
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTextStyles.sidebarItem.copyWith(
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ] else
-              const Spacer(),
-            if (isSelected)
-              Container(
-                width: 4,
-                height: 28,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(4),
-                    bottomLeft: Radius.circular(4),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        child: Row(children: [
+          const SizedBox(width: 20),
+          Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 22),
+          if (isExpanded) ...[
+            const SizedBox(width: 14),
+            Expanded(child: Text(label, style: AppTextStyles.sidebarItem.copyWith(fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: isSelected ? AppColors.primary : AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
+          ] else
+            const Spacer(),
+          if (isSelected)
+            Container(width: 4, height: 28, decoration: const BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.only(topLeft: Radius.circular(4), bottomLeft: Radius.circular(4)))),
+        ]),
       ),
     );
-
-    return isExpanded
-        ? item
-        : Tooltip(
-            message: label,
-            waitDuration: const Duration(milliseconds: 350),
-            child: item,
-          );
+    return isExpanded ? item : Tooltip(message: label, waitDuration: const Duration(milliseconds: 350), child: item);
   }
 }
