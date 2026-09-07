@@ -231,6 +231,7 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           selectedDebtor: widget.selectedDebtor,
           debtorsList: widget.debtorsList,
           onDebtorChanged: widget.onDebtorChanged,
+          onCreateClient: _createClientAndSelect,
           discountAmountController: widget.discountAmountController,
           discountPercentController: widget.discountPercentController,
           cashReceivedController: widget.cashReceivedController,
