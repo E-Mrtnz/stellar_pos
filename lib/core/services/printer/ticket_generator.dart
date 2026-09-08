@@ -19,10 +19,10 @@ class TicketGenerator {
     bytes.addAll(generator.text('Hora: ${ticket.time}', styles: const PosStyles(codeTable: 'CP1252')));
     bytes.addAll(generator.text('Cliente: ${ticket.client}', styles: const PosStyles(codeTable: 'CP1252')));
     bytes.addAll(generator.feed(1));
-    bytes.addAll(generator.row([_left('DESCRIPCION', 5, bold: true), _center('CANT', 1, bold: true), _right('P.UNIT', 2, bold: true), _right('DCTO.', 2, bold: true), _right('TOTAL', 2, bold: true)]));
+    bytes.addAll(generator.row([_left('DESCRIPCION', 4, bold: true), _center('CANT', 2, bold: true), _right('P.UNIT', 2, bold: true), _right('DCTO.', 2, bold: true), _right('TOTAL', 2, bold: true)]));
     bytes.addAll(generator.hr(ch: '-'));
     for (final item in ticket.items) {
-      bytes.addAll(generator.row([_left(item.description, 5), _center('${item.quantity}', 1), _right(_money(item.unitPrice), 2), _right(_money(item.discount), 2), _right(_money(item.total), 2)]));
+      bytes.addAll(generator.row([_left(item.description, 4), _center('${item.quantity}', 2), _right(_money(item.unitPrice), 2), _right(_money(item.discount), 2), _right(_money(item.total), 2)]));
       if (item.brand.trim().isNotEmpty) bytes.addAll(generator.text(item.brand.trim(), styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252')));
     }
     bytes.addAll(generator.hr(ch: '-'));
@@ -45,5 +45,5 @@ class TicketGenerator {
   PosColumn _left(String text, int width, {bool bold = false}) => PosColumn(text: text, width: width, styles: PosStyles(align: PosAlign.left, bold: bold, codeTable: 'CP1252'));
   PosColumn _center(String text, int width, {bool bold = false}) => PosColumn(text: text, width: width, styles: PosStyles(align: PosAlign.center, bold: bold, codeTable: 'CP1252'));
   PosColumn _right(String text, int width, {bool bold = false}) => PosColumn(text: text, width: width, styles: PosStyles(align: PosAlign.right, bold: bold, codeTable: 'CP1252'));
-  String _money(double value) => value.toStringAsFixed(2);
+  String _money(double value) => '\$${value.toStringAsFixed(2)}';
 }
