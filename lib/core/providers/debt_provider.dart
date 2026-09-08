@@ -89,9 +89,6 @@ class DebtProvider extends ChangeNotifier {
     final now = DateTime.now();
     String? reference;
 
-    // The first payment created immediately after a credit sale is the
-    // optional initial payment of that sale. Tag it so Sales can distinguish
-    // it from a later payment collected on another day.
     final recentCreditSales = _creditSales
         .where(
           (sale) =>
@@ -124,6 +121,32 @@ class DebtProvider extends ChangeNotifier {
     );
     notifyListeners();
     return true;
+  }
+
+  /// Keeps the payment entered when a credit sale was created synchronized
+  /// with the edited sale. Later client payments remain untouched.
+  void syncInitialPayment({
+    required String saleId,
+    required String clientId,
+    required String clientName,
+    required double amount,
+  }) {
+    _payments.removeWhere((payment) => payment.reference == saleId);
+    final appliedAmount = amount.clamp(0, double.infinity).toDouble();
+    if (appliedAmount > 0.005) {
+      _payments.add(
+        DebtMovement(
+          id: '${DateTime.now().microsecondsSinceEpoch}-$saleId',
+          clientId: clientId,
+          clientName: clientName,
+          type: DebtMovementType.payment,
+          amount: appliedAmount,
+          createdAt: DateTime.now(),
+          reference: saleId,
+        ),
+      );
+    }
+    notifyListeners();
   }
 
   void renameClient(String clientId, String clientName) {
