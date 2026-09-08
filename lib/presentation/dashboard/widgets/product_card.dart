@@ -31,10 +31,33 @@ class ProductCard extends StatelessWidget {
   Widget _buildProductInfo({required int stock, required Color stockColor}) {
     final name = ProductUtils.cleanName(product); final unit = ProductUtils.unit(product); final brand = ProductUtils.brand(product); final price = ProductUtils.price(product);
     final metadata = brand.isEmpty ? unit : '$unit | $brand';
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.productName), const SizedBox(height: 2), Text(metadata, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.productMetadata), const SizedBox(height: 7), _buildStockBadge(stock: stock, color: stockColor), const SizedBox(height: 7), Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(ProductUtils.money(price), style: AppTextStyles.productPrice), _buildCartCounter()])]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.productName),
+      const SizedBox(height: 2),
+      Text(metadata, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.productMetadata),
+      const SizedBox(height: 7),
+      _buildStockBadge(stock: stock, color: stockColor),
+      const SizedBox(height: 7),
+      _buildPriceRow(price),
+    ]);
   }
 
   Widget _buildStockBadge({required int stock, required Color color}) => Container(height: AppDimensions.stockBadgeHeight, padding: const EdgeInsets.symmetric(horizontal: 8), decoration: BoxDecoration(color: color.withAlpha(22), borderRadius: BorderRadius.circular(7), border: Border.all(color: color.withAlpha(100))), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.inventory_2_outlined, color: color, size: AppSizes.iconSmall), const SizedBox(width: 5), Text('$stock', style: TextStyle(color: color, fontSize: AppSizes.textMedium, fontWeight: FontWeight.bold))]));
+
+  Widget _buildPriceRow(double price) {
+    final hasGroupPricing = ProductUtils.asBool(product['hasGroupPricing']) && ProductUtils.asInt(product['groupQuantity']) > 0;
+    final groupQuantity = ProductUtils.asInt(product['groupQuantity']);
+    final groupPrice = ProductUtils.asDouble(product['groupPrice']);
+    return Row(children: [
+      Expanded(child: Text('C/U ${ProductUtils.money(price)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.productPrice)),
+      if (hasGroupPricing) ...[
+        const SizedBox(width: 5),
+        Flexible(child: Text('$groupQuantity X ${ProductUtils.money(groupPrice)}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppTextStyles.productPrice.copyWith(fontSize: AppSizes.textSmall))),
+      ],
+      const SizedBox(width: 6),
+      _buildCartCounter(),
+    ]);
+  }
 
   Widget _buildCartCounter() { final hasItemsInCart = quantityInCart > 0; return Container(width: 24, height: 24, decoration: BoxDecoration(color: hasItemsInCart ? AppColors.primary : AppColors.border.withAlpha(120), shape: BoxShape.circle), child: Center(child: hasItemsInCart ? Text('$quantityInCart', style: const TextStyle(color: Colors.white, fontSize: AppSizes.textMedium, fontWeight: FontWeight.bold)) : const Icon(Icons.add, color: AppColors.textSecondary, size: AppSizes.iconSmall)));
   }
