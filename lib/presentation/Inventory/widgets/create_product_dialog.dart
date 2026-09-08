@@ -75,7 +75,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     _nameController.text = p?['name']?.toString() ?? ''; _unitController.text = p?['unit']?.toString() ?? ''; _buyPriceController.text = p?['cost']?.toString() ?? ''; _sellPriceController.text = p?['price']?.toString() ?? ''; _barcodeController.text = p?['barcode']?.toString() ?? '';
     _selectedTag = _nullable(p?['category']); _selectedBrand = _nullable(p?['brand']); _selectedDistributor = _nullable(p?['department']); _imageData = _nullable(p?['imageData']);
     _hasGroupPricing = p?['hasGroupPricing'] == true || p?['hasGroupPricing']?.toString().toLowerCase() == 'true';
-    _groupExpanded = _hasGroupPricing; _groupQuantityController.text = _readInt(p?['groupQuantity']).toString(); _groupPriceController.text = _readDouble(p?['groupPrice']).toString();
+    _groupExpanded = _hasGroupPricing;
+    _groupQuantityController.text = _hasGroupPricing ? _readInt(p?['groupQuantity']).toString() : '';
+    _groupPriceController.text = _hasGroupPricing ? _readDouble(p?['groupPrice']).toString() : '';
     _setupFocus(_stockFocusNode, _stockController); _setupFocus(_minStockFocusNode, _minStockController); _setupFocus(_maxStockFocusNode, _maxStockController);
   }
 
@@ -188,29 +190,40 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   }
 
   Widget _groupPricingSection() {
-    return Container(
-      decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(10), color: AppColors.inputBackground),
-      child: Column(children: [
-        InkWell(
-          onTap: () => setState(() => _groupExpanded = !_groupExpanded),
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), child: Row(children: [
-            const Expanded(child: Text('Vender este producto por grupos', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-            Switch.adaptive(value: _hasGroupPricing, onChanged: (value) => setState(() { _hasGroupPricing = value; _groupExpanded = value; })),
-            Icon(_groupExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 20),
-          ])),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      InkWell(
+        onTap: () => setState(() => _groupExpanded = !_groupExpanded),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Vender este producto por grupos', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary, decoration: TextDecoration.underline, decorationColor: AppColors.textPrimary)),
+            const SizedBox(width: 3),
+            Icon(_groupExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 19),
+          ]),
         ),
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 180), crossFadeState: _groupExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          firstChild: const SizedBox(width: double.infinity, height: 0),
-          secondChild: Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Row(children: [
-            Expanded(child: _field(_groupQuantityController, 'Unidades por grupo', invalid: _invalid('groupQuantity'), changed: (_) => _clearError('groupQuantity'), type: TextInputType.number, formatter: FilteringTextInputFormatter.digitsOnly)),
-            const SizedBox(width: 10),
-            Expanded(child: _field(_groupPriceController, 'Precio por grupo', prefix: '\$ ', invalid: _invalid('groupPrice'), changed: (_) => _clearError('groupPrice'), type: const TextInputType.numberWithOptions(decimal: true), formatter: const DecimalInputFormatter(decimalDigits: 2))),
-          ])),
+      ),
+      AnimatedCrossFade(
+        duration: const Duration(milliseconds: 180), crossFadeState: _groupExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+        firstChild: const SizedBox(width: double.infinity, height: 0),
+        secondChild: Container(
+          margin: const EdgeInsets.only(top: 5),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          decoration: BoxDecoration(color: AppColors.inputBackground, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(9)),
+          child: Column(children: [
+            Row(children: [
+              const Expanded(child: Text('Activar venta por grupos', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
+              Switch.adaptive(value: _hasGroupPricing, onChanged: (value) => setState(() => _hasGroupPricing = value)),
+            ]),
+            const SizedBox(height: 7),
+            Row(children: [
+              Expanded(child: _field(_groupQuantityController, 'Unidades por grupo', invalid: _invalid('groupQuantity'), changed: (_) => _clearError('groupQuantity'), type: TextInputType.number, formatter: FilteringTextInputFormatter.digitsOnly)),
+              const SizedBox(width: 10),
+              Expanded(child: _field(_groupPriceController, 'Precio por grupo', prefix: '\$ ', invalid: _invalid('groupPrice'), changed: (_) => _clearError('groupPrice'), type: const TextInputType.numberWithOptions(decimal: true), formatter: const DecimalInputFormatter(decimalDigits: 2))),
+            ]),
+          ]),
         ),
-      ]),
-    );
+      ),
+    ]);
   }
 
   Widget _counter(String label, TextEditingController controller, FocusNode node, VoidCallback inc, VoidCallback dec, ValueChanged<String> changed, bool invalid) => Container(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: invalid ? Colors.red.shade400 : Colors.white.withOpacity(0.5), width: invalid ? 1.8 : 1.2)), child: Column(mainAxisSize: MainAxisSize.min, children: [InkWell(onTap: inc, child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white70)), child: const Icon(Icons.add, color: Colors.white, size: 14))), const SizedBox(height: 2), SizedBox(width: 55, child: Column(children: [TextField(controller: controller, focusNode: node, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'))], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16), cursorColor: Colors.white, decoration: const InputDecoration(hintText: '0', hintStyle: TextStyle(color: Colors.white60), isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 1), border: InputBorder.none), onChanged: changed), Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10))])), const SizedBox(height: 2), InkWell(onTap: dec, child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white70)), child: const Icon(Icons.remove, color: Colors.white, size: 14)))]));
