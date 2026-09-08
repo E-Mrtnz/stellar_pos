@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class SalesSummaryPanel extends StatelessWidget {
   final Map<String, int> cartQuantities;
@@ -104,7 +105,7 @@ class SalesSummaryPanel extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         children: cartQuantities.entries.map((entry) {
                           final product = products.firstWhere((p) => p['id'] == entry.key);
-                          return _buildCartItemTile(productId: product['id'] as String, name: product['name'] as String, unit: product['unit'] as String, unitPrice: product['price'] as double, imageData: product['imageData']?.toString() ?? '', quantity: entry.value);
+                          return _buildCartItemTile(productId: product['id'] as String, name: product['name'] as String, unit: product['unit'] as String, unitPrice: product['price'] as double, imageData: product['imageData']?.toString() ?? '', quantity: entry.value, product: product);
                         }).toList(),
                       ),
               ),
@@ -227,15 +228,22 @@ class SalesSummaryPanel extends StatelessWidget {
     )),
   );
 
-  Widget _buildCartItemTile({required String productId, required String name, required String unit, required double unitPrice, required String imageData, required int quantity}) {
-    final double subtotalItem = unitPrice * quantity;
+  Widget _buildCartItemTile({required String productId, required String name, required String unit, required double unitPrice, required String imageData, required int quantity, required Map<String, dynamic> product}) {
+    final subtotalItem = ProductUtils.priceForQuantity(product, quantity);
+    final hasGroupPricing = ProductUtils.asBool(product['hasGroupPricing']) && ProductUtils.asInt(product['groupQuantity']) > 0;
+    final groupQuantity = ProductUtils.asInt(product['groupQuantity']);
+    final groupPrice = ProductUtils.asDouble(product['groupPrice']);
     return Container(
       height: 76,
       margin: const EdgeInsets.only(bottom: 8.0),
       decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border), boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 8, offset: Offset(0, 3))]),
       child: Stack(children: [
         Positioned(left: 8, top: 8, bottom: 8, child: _buildCartItemImage(imageData)),
-        Positioned(left: 72, top: 8, right: 48, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis), const SizedBox(height: 2), Text('$unit | \$${unitPrice.toStringAsFixed(2)} c/u', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+        Positioned(left: 72, top: 8, right: 48, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(hasGroupPricing ? '$unit | C/U \$${unitPrice.toStringAsFixed(2)} · $groupQuantity X \$${groupPrice.toStringAsFixed(2)}' : '$unit | C/U \$${unitPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ])),
         Positioned(left: 72, bottom: 8, child: Container(height: 24, padding: const EdgeInsets.symmetric(horizontal: 2.0), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.border)), child: Row(mainAxisSize: MainAxisSize.min, children: [_buildQtyBtn(Icons.remove, () => onDecrementQuantity(productId)), _QuantityInput(quantity: quantity, onChanged: (value) => onQuantityChanged(productId, value)), _buildQtyBtn(Icons.add, () => onAddToCart(productId))]))),
         Positioned(right: 12, bottom: 12, child: Text('\$${subtotalItem.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary))),
         Positioned(top: 0, right: 0, child: InkWell(onTap: () => onRemoveFromCart(productId), borderRadius: const BorderRadius.only(topRight: Radius.circular(12), bottomLeft: Radius.circular(10)), child: Container(width: 36, height: 32, decoration: BoxDecoration(color: AppColors.dangerRed.withAlpha(20), borderRadius: const BorderRadius.only(topRight: Radius.circular(12), bottomLeft: Radius.circular(10)), border: Border.all(color: AppColors.dangerRed.withAlpha(50)),), child: const Icon(Icons.delete_outline, color: AppColors.dangerRed, size: 16)))),
