@@ -3,6 +3,7 @@ class Product {
   final String name;
   final String unit;
   final String department;
+  final String brand;
   final double cost;
   final double price;
   final int stock;
@@ -11,12 +12,16 @@ class Product {
   final String category;
   final String barcode;
   final String imageData;
+  final bool hasGroupPricing;
+  final int groupQuantity;
+  final double groupPrice;
 
   const Product({
     required this.id,
     required this.name,
     required this.unit,
     required this.department,
+    this.brand = '',
     required this.cost,
     required this.price,
     required this.stock,
@@ -25,13 +30,27 @@ class Product {
     required this.category,
     required this.barcode,
     this.imageData = '',
+    this.hasGroupPricing = false,
+    this.groupQuantity = 0,
+    this.groupPrice = 0,
   });
+
+  double priceForQuantity(int quantity) {
+    if (quantity <= 0) return 0;
+    if (!hasGroupPricing || groupQuantity <= 0 || groupPrice < 0) {
+      return price * quantity;
+    }
+    final groups = quantity ~/ groupQuantity;
+    final remaining = quantity % groupQuantity;
+    return groups * groupPrice + remaining * price;
+  }
 
   Product copyWith({
     String? id,
     String? name,
     String? unit,
     String? department,
+    String? brand,
     double? cost,
     double? price,
     int? stock,
@@ -40,12 +59,16 @@ class Product {
     String? category,
     String? barcode,
     String? imageData,
+    bool? hasGroupPricing,
+    int? groupQuantity,
+    double? groupPrice,
   }) {
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
       unit: unit ?? this.unit,
       department: department ?? this.department,
+      brand: brand ?? this.brand,
       cost: cost ?? this.cost,
       price: price ?? this.price,
       stock: stock ?? this.stock,
@@ -54,6 +77,9 @@ class Product {
       category: category ?? this.category,
       barcode: barcode ?? this.barcode,
       imageData: imageData ?? this.imageData,
+      hasGroupPricing: hasGroupPricing ?? this.hasGroupPricing,
+      groupQuantity: groupQuantity ?? this.groupQuantity,
+      groupPrice: groupPrice ?? this.groupPrice,
     );
   }
 
@@ -63,6 +89,7 @@ class Product {
       'name': name,
       'unit': unit,
       'department': department,
+      'brand': brand,
       'cost': cost,
       'price': price,
       'stock': stock,
@@ -71,6 +98,9 @@ class Product {
       'category': category,
       'barcode': barcode,
       'imageData': imageData,
+      'hasGroupPricing': hasGroupPricing,
+      'groupQuantity': groupQuantity,
+      'groupPrice': groupPrice,
     };
   }
 
@@ -80,6 +110,7 @@ class Product {
       name: map['name']?.toString() ?? '',
       unit: map['unit']?.toString() ?? '',
       department: map['department']?.toString() ?? '',
+      brand: map['brand']?.toString() ?? '',
       cost: _toDouble(map['cost']),
       price: _toDouble(map['price']),
       stock: _toInt(map['stock']),
@@ -88,22 +119,25 @@ class Product {
       category: map['category']?.toString() ?? '',
       barcode: map['barcode']?.toString() ?? '',
       imageData: map['imageData']?.toString() ?? '',
+      hasGroupPricing: _toBool(map['hasGroupPricing']),
+      groupQuantity: _toInt(map['groupQuantity']),
+      groupPrice: _toDouble(map['groupPrice']),
     );
   }
 
   static double _toDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-
+    if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0.0;
   }
 
   static int _toInt(dynamic value, {int fallback = 0}) {
-    if (value is num) {
-      return value.toInt();
-    }
-
+    if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static bool _toBool(dynamic value) {
+    if (value is bool) return value;
+    final text = value?.toString().trim().toLowerCase();
+    return text == 'true' || text == '1' || text == 'si' || text == 'sí';
   }
 }
