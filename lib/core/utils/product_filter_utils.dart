@@ -30,6 +30,10 @@ class ProductFilterUtils {
       final brand = selectedFilter.substring(6).toLowerCase();
       return products.where((product) => ProductUtils.asString(product['brand']).toLowerCase() == brand).toList();
     }
+    if (selectedFilter.startsWith('distributor:')) {
+      final distributor = selectedFilter.substring(11).toLowerCase();
+      return products.where((product) => ProductUtils.asString(product['department']).toLowerCase() == distributor).toList();
+    }
     switch (selectedFilter) {
       case 'missing_cost': return products.where(_hasMissingCost).toList();
       case 'missing_barcode': return products.where(_hasMissingBarcode).toList();
