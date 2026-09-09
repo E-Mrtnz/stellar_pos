@@ -1,13 +1,20 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
+/// Presentation state coordinator for distributors and delivery routes.
+/// Catalog normalization rules are centralized in [CatalogValueService].
 class ProvidersProvider extends ChangeNotifier {
+  final CatalogValueService _service;
   final List<String> _distributors = [];
   final List<ProviderRoute> _routes = [];
 
-  List<String> get distributors => List.unmodifiable(_distributors);
+  ProvidersProvider({CatalogValueService? service})
+      : _service = service ?? const CatalogValueService();
+
+  List<String> get distributors => _service.uniqueSorted(_distributors);
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
 
   List<ProviderRoute> byType(String type) {
@@ -15,33 +22,37 @@ class ProvidersProvider extends ChangeNotifier {
   }
 
   bool addDistributor(String name) {
-    final value = name.trim();
-    if (value.isEmpty || _containsIgnoreCase(_distributors, value)) return false;
+    final value = _service.normalizeName(name);
+    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) {
+      return false;
+    }
     _distributors.add(value);
     notifyListeners();
     return true;
   }
 
   bool updateDistributor(String oldName, String newName) {
-    final value = newName.trim();
+    final value = _service.normalizeName(newName);
     if (value.isEmpty) return false;
 
+    final normalizedOld = _service.normalizeName(oldName).toLowerCase();
     final index = _distributors.indexWhere(
-      (item) => item.toLowerCase() == oldName.toLowerCase(),
+      (item) => _service.normalizeName(item).toLowerCase() == normalizedOld,
     );
     if (index < 0) return false;
 
     final duplicate = _distributors.asMap().entries.any(
       (entry) =>
           entry.key != index &&
-          entry.value.toLowerCase() == value.toLowerCase(),
+          _service.normalizeName(entry.value).toLowerCase() == value.toLowerCase(),
     );
     if (duplicate) return false;
 
     _distributors[index] = value;
     for (var i = 0; i < _routes.length; i++) {
       final route = _routes[i];
-      if (route.distributorName.toLowerCase() == oldName.toLowerCase()) {
+      if (_service.normalizeName(route.distributorName).toLowerCase() ==
+          normalizedOld) {
         _routes[i] = route.copyWith(distributorName: value);
       }
     }
@@ -51,14 +62,17 @@ class ProvidersProvider extends ChangeNotifier {
   }
 
   bool removeDistributor(String name) {
+    final normalized = _service.normalizeName(name).toLowerCase();
     final inUse = _routes.any(
-      (route) => route.distributorName.toLowerCase() == name.toLowerCase(),
+      (route) =>
+          _service.normalizeName(route.distributorName).toLowerCase() ==
+          normalized,
     );
     if (inUse) return false;
 
     final before = _distributors.length;
     _distributors.removeWhere(
-      (item) => item.toLowerCase() == name.toLowerCase(),
+      (item) => _service.normalizeName(item).toLowerCase() == normalized,
     );
     if (_distributors.length == before) return false;
 
@@ -74,19 +88,20 @@ class ProvidersProvider extends ChangeNotifier {
     required List<int> weekdays,
     required int colorValue,
   }) {
-    final normalizedName = distributorName.trim();
-    final normalizedDays = _normalizeWeekdays(weekdays);
+    final normalizedName = _service.normalizeName(distributorName);
+    final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (normalizedName.isEmpty || normalizedDays.isEmpty) return false;
 
     final existingIndex = _routes.indexWhere(
       (route) =>
           route.type == type &&
-          route.distributorName.toLowerCase() == normalizedName.toLowerCase(),
+          _service.normalizeName(route.distributorName).toLowerCase() ==
+              normalizedName.toLowerCase(),
     );
 
     if (existingIndex >= 0) {
       final existing = _routes[existingIndex];
-      final mergedDays = _normalizeWeekdays([
+      final mergedDays = _service.normalizeWeekdays([
         ...existing.weekdays,
         ...normalizedDays,
       ]);
@@ -119,8 +134,8 @@ class ProvidersProvider extends ChangeNotifier {
     required int colorValue,
   }) {
     final index = _routes.indexWhere((route) => route.id == id);
-    final normalizedName = distributorName.trim();
-    final normalizedDays = _normalizeWeekdays(weekdays);
+    final normalizedName = _service.normalizeName(distributorName);
+    final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) {
       return false;
     }
@@ -129,7 +144,7 @@ class ProvidersProvider extends ChangeNotifier {
       (entry) =>
           entry.key != index &&
           entry.value.type == type &&
-          entry.value.distributorName.toLowerCase() ==
+          _service.normalizeName(entry.value.distributorName).toLowerCase() ==
               normalizedName.toLowerCase(),
     );
     if (duplicate) return false;
@@ -148,15 +163,5 @@ class ProvidersProvider extends ChangeNotifier {
   void removeRoute(String id) {
     _routes.removeWhere((route) => route.id == id);
     notifyListeners();
-  }
-
-  List<int> _normalizeWeekdays(List<int> weekdays) {
-    return weekdays.where((day) => day >= 0 && day <= 6).toSet().toList()
-      ..sort();
-  }
-
-  bool _containsIgnoreCase(List<String> values, String value) {
-    final normalized = value.toLowerCase();
-    return values.any((item) => item.toLowerCase() == normalized);
   }
 }
