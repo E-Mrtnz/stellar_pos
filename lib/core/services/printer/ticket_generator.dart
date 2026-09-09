@@ -23,7 +23,7 @@ class TicketGenerator {
     bytes.addAll(generator.hr(ch: '-'));
     for (final item in ticket.items) {
       bytes.addAll(generator.row([_left(item.description, 4), _center('${item.quantity}', 2), _right(_money(item.unitPrice), 2), _right(_money(item.discount), 2), _right(_money(item.total), 2)]));
-      if (item.brand.trim().isNotEmpty) bytes.addAll(generator.text(item.brand.trim(), styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252')));
+      if (item.unit.trim().isNotEmpty) bytes.addAll(generator.text(item.unit.trim(), styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252')));
     }
     bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(_summary(generator, 'Subtotal', ticket.subtotal));
