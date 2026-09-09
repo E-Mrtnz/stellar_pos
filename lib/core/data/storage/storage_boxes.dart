@@ -15,4 +15,5 @@ class StorageBoxes {
   static const debtMovements = 'debt_movements';
   static const electronicBalanceAccounts = 'electronic_balance_accounts';
   static const electronicBalanceTransactions = 'electronic_balance_transactions';
+  static const storageMetadata = '__storage_metadata';
 }
