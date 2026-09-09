@@ -7,7 +7,6 @@ import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/debt_service.dart';
 import 'package:stellar_pos/core/models/debt.dart';
-import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
@@ -183,6 +182,10 @@ class DebtProvider extends ChangeNotifier {
   void _onSalesChanged() => notifyListeners();
 
   Future<void> _loadFromRepository() async {
+    // Sales are the source of debt entries. Restore them first so that the
+    // initial debt snapshot cannot race against sales restoration.
+    await _salesProvider.load();
+
     final repository = _movementRepository;
     if (repository != null) {
       final stored = await repository.getAll();
