@@ -2,11 +2,12 @@ class SaleTicketItem {
   final int quantity;
   final String description;
   final String brand;
+  final String unit;
   final double unitPrice;
   final double discount;
   final double total;
 
-  const SaleTicketItem({required this.quantity, required this.description, this.brand = '', required this.unitPrice, required this.discount, required this.total});
+  const SaleTicketItem({required this.quantity, required this.description, this.brand = '', this.unit = '', required this.unitPrice, required this.discount, required this.total});
 }
 
 class SaleTicketData {
