@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:stellar_pos/core/domain/services/electronic_balance_sale.dart';
+import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
 import 'package:stellar_pos/core/models/electronic_balance.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
@@ -8,7 +8,7 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 /// Presentation state coordinator for electronic balance.
 /// Business calculations and validation live in [ElectronicBalanceService].
 class ElectronicBalanceProvider extends ChangeNotifier {
-  static const validCategories = ['Saldo', 'Internet', 'Llamada'];
+  static const validCategories = ElectronicBalanceService.validCategoryOrder;
 
   final ElectronicBalanceService _service;
   final List<ElectronicBalanceAccount> _accounts = [];
