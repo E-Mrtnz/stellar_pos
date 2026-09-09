@@ -17,6 +17,7 @@ class ProductProvider extends ChangeNotifier {
   final CatalogRegistrar? _catalogRegistrar;
   final Repository<Product>? _repository;
   Future<void>? _loadFuture;
+  bool _loaded = false;
 
   ProductProvider({
     CatalogRegistrar? catalogRegistrar,
@@ -41,6 +42,7 @@ class ProductProvider extends ChangeNotifier {
   /// Loads persisted products once. A provider without a repository remains
   /// purely in-memory, preserving compatibility with isolated UI tests.
   Future<void> load() {
+    if (_loaded) return Future.value();
     final existing = _loadFuture;
     if (existing != null) return existing;
 
@@ -97,18 +99,27 @@ class ProductProvider extends ChangeNotifier {
 
   Future<void> _loadFromRepository() async {
     final repository = _repository;
-    if (repository == null) return;
+    if (repository == null) {
+      _loaded = true;
+      return;
+    }
 
     final stored = await repository.getAll();
-    if (stored.isEmpty) return;
+    final byId = <String, Product>{
+      for (final product in _products) product.id: product,
+    };
+    for (final product in stored) {
+      byId.putIfAbsent(product.id, () => product);
+    }
 
     _products
       ..clear()
-      ..addAll(stored);
+      ..addAll(byId.values);
     for (final product in stored) {
       _catalogRegistrar?.registerBrandValue(product.brand);
     }
-    notifyListeners();
+    _loaded = true;
+    if (stored.isNotEmpty) notifyListeners();
   }
 
   Product? _firstOrNull(bool Function(Product) test) {
