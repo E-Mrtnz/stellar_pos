@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/models/provider_person.dart';
+import 'package:stellar_pos/core/utils/id_generator.dart';
 
 class ProvidersProvider extends ChangeNotifier {
   final List<String> _distributors = [];
   final List<ProviderRoute> _routes = [];
 
   List<String> get distributors => List.unmodifiable(_distributors);
-
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
 
   List<ProviderRoute> byType(String type) {
@@ -33,12 +33,12 @@ class ProvidersProvider extends ChangeNotifier {
 
     final duplicate = _distributors.asMap().entries.any(
       (entry) =>
-          entry.key != index && entry.value.toLowerCase() == value.toLowerCase(),
+          entry.key != index &&
+          entry.value.toLowerCase() == value.toLowerCase(),
     );
     if (duplicate) return false;
 
     _distributors[index] = value;
-
     for (var i = 0; i < _routes.length; i++) {
       final route = _routes[i];
       if (route.distributorName.toLowerCase() == oldName.toLowerCase()) {
@@ -52,8 +52,7 @@ class ProvidersProvider extends ChangeNotifier {
 
   bool removeDistributor(String name) {
     final inUse = _routes.any(
-      (route) =>
-          route.distributorName.toLowerCase() == name.toLowerCase(),
+      (route) => route.distributorName.toLowerCase() == name.toLowerCase(),
     );
     if (inUse) return false;
 
@@ -61,7 +60,6 @@ class ProvidersProvider extends ChangeNotifier {
     _distributors.removeWhere(
       (item) => item.toLowerCase() == name.toLowerCase(),
     );
-
     if (_distributors.length == before) return false;
 
     notifyListeners();
@@ -99,10 +97,10 @@ class ProvidersProvider extends ChangeNotifier {
     } else {
       _routes.add(
         ProviderRoute(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          id: IdGenerator.newId(),
           type: type,
           distributorName: normalizedName,
-          weekdays: List.unmodifiable(normalizedDays),
+          weekdays: normalizedDays,
           colorValue: colorValue,
         ),
       );
@@ -136,11 +134,10 @@ class ProvidersProvider extends ChangeNotifier {
     );
     if (duplicate) return false;
 
-    _routes[index] = ProviderRoute(
-      id: id,
+    _routes[index] = _routes[index].copyWith(
       type: type,
       distributorName: normalizedName,
-      weekdays: List.unmodifiable(normalizedDays),
+      weekdays: normalizedDays,
       colorValue: colorValue,
     );
 
@@ -154,10 +151,7 @@ class ProvidersProvider extends ChangeNotifier {
   }
 
   List<int> _normalizeWeekdays(List<int> weekdays) {
-    return weekdays
-        .where((day) => day >= 0 && day <= 6)
-        .toSet()
-        .toList()
+    return weekdays.where((day) => day >= 0 && day <= 6).toSet().toList()
       ..sort();
   }
 
