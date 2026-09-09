@@ -52,7 +52,7 @@ void main() {
     expect(restored.metadata.version, sale.metadata.version);
   });
 
-  test('SaleRecord ticket data keeps grouped line total as displayed price', () {
+  test('SaleRecord ticket data uses product unit and keeps grouped line total as displayed price', () {
     final sale = SaleRecord(
       id: 'sale-2',
       ticketNumber: '#0002',
@@ -64,8 +64,8 @@ void main() {
         SaleItemRecord(
           id: 'line-2',
           productId: 'p2',
-          productName: 'Bubbaloo',
-          unit: 'unidad',
+          productName: 'Coca-Cola',
+          unit: '354 ml',
           barcode: '456',
           cost: 0.05,
           unitPrice: 0.10,
@@ -87,6 +87,8 @@ void main() {
 
     final ticket = sale.toTicketData();
 
+    expect(ticket.items.single.unit, '354 ml');
+    expect(ticket.items.single.brand, isEmpty);
     expect(ticket.items.single.unitPrice, 0.45);
     expect(ticket.items.single.total, 0.45);
   });
