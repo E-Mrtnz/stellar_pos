@@ -1,13 +1,2 @@
-class ElectronicBalanceSale {
-  final double amount;
-  final int quantity;
-  final String category;
-  final String description;
-
-  const ElectronicBalanceSale({
-    required this.amount,
-    required this.quantity,
-    required this.category,
-    this.description = '',
-  });
-}
+// Compatibility export kept while callers migrate to the model layer.
+export 'package:stellar_pos/core/models/electronic_balance_sale.dart';
