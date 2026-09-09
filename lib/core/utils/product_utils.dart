@@ -1,3 +1,6 @@
+import 'package:stellar_pos/core/models/product.dart';
+import 'package:stellar_pos/core/services/domain/product_pricing_service.dart';
+
 class ProductUtils {
   const ProductUtils._();
 
@@ -51,17 +54,36 @@ class ProductUtils {
   static double cost(Map<String, dynamic> product) => asDouble(product['cost']);
   static double price(Map<String, dynamic> product) => asDouble(product['price']);
 
+  /// Compatibility adapter for legacy map-based callers.
+  /// The actual group-pricing rule lives in [ProductPricingService].
   static double priceForQuantity(Map<String, dynamic> product, int quantity) {
-    if (quantity <= 0) return 0;
-    final base = price(product);
-    if (!asBool(product['hasGroupPricing'])) return base * quantity;
-    final groupQuantity = asInt(product['groupQuantity']);
-    final groupPrice = asDouble(product['groupPrice']);
-    if (groupQuantity <= 0 || groupPrice < 0) return base * quantity;
-    return (quantity ~/ groupQuantity) * groupPrice + (quantity % groupQuantity) * base;
+    final model = Product(
+      id: asString(product['id']),
+      name: name(product),
+      unit: unit(product),
+      category: asString(product['category']),
+      brand: brand(product),
+      department: department(product),
+      cost: cost(product),
+      price: price(product),
+      stock: stock(product),
+      minStock: minStock(product),
+      maxStock: maxStock(product),
+      barcode: asString(product['barcode']),
+      hasGroupPricing: asBool(product['hasGroupPricing']),
+      groupQuantity: asInt(product['groupQuantity']),
+      groupPrice: asDouble(product['groupPrice']),
+    );
+    return const ProductPricingService().lineSubtotal(model, quantity);
   }
 
   static double profit(Map<String, dynamic> product) => price(product) - cost(product);
-  static double profitPercentage(Map<String, dynamic> product) { final productCost = cost(product); if (productCost <= 0) return 0; return (profit(product) / productCost) * 100; }
+
+  static double profitPercentage(Map<String, dynamic> product) {
+    final productCost = cost(product);
+    if (productCost <= 0) return 0;
+    return (profit(product) / productCost) * 100;
+  }
+
   static String money(double value) => '\$${value.toStringAsFixed(2)}';
 }
