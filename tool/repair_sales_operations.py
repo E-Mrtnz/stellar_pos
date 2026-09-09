@@ -26,7 +26,7 @@ if "String _money(double value) =>" not in dialog_text and marker in dialog_text
     )
 
 change_state = 'class _ChangeDialogState extends State<_ChangeDialogState> {'
-if change_state in dialog_text and "class _ChangeDialogState extends State<_ChangeDialogState> {\n  String _money(double value) =>" not in dialog_text:
+if change_state in dialog_text:
     dialog_text = dialog_text.replace(
         change_state,
         change_state + "\n  String _money(double value) => '\\$${value.toStringAsFixed(2)}';",
