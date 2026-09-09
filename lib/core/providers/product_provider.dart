@@ -1,19 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
+import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
 /// Presentation state coordinator for inventory products.
 ///
-/// Persistence concerns stay outside the provider. The provider only owns
-/// in-memory state, lookup operations, and coordination with the catalog.
+/// The provider owns UI state and coordinates persistence through the domain
+/// repository contract. It does not know that the current implementation is
+/// backed by Hive.
 class ProductProvider extends ChangeNotifier {
   final List<Product> _products = [];
   final CatalogRegistrar? _catalogRegistrar;
+  final Repository<Product>? _repository;
+  Future<void>? _loadFuture;
 
-  ProductProvider({CatalogRegistrar? catalogRegistrar})
-      : _catalogRegistrar = catalogRegistrar;
+  ProductProvider({
+    CatalogRegistrar? catalogRegistrar,
+    Repository<Product>? repository,
+  })  : _catalogRegistrar = catalogRegistrar,
+        _repository = repository;
 
   List<Product> get products => List.unmodifiable(_products);
 
@@ -29,6 +38,17 @@ class ProductProvider extends ChangeNotifier {
     return _firstOrNull((product) => product.barcode.trim() == normalized);
   }
 
+  /// Loads persisted products once. A provider without a repository remains
+  /// purely in-memory, preserving compatibility with isolated UI tests.
+  Future<void> load() {
+    final existing = _loadFuture;
+    if (existing != null) return existing;
+
+    final future = _loadFromRepository();
+    _loadFuture = future;
+    return future;
+  }
+
   void addProduct(Product product) {
     final id = product.id.isEmpty ? IdGenerator.newId() : product.id;
     final normalized = product.copyWith(id: id, touchMetadata: false);
@@ -36,6 +56,7 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerBrandValue(normalized.brand);
     _products.add(normalized);
     notifyListeners();
+    unawaited(_repository?.save(normalized));
   }
 
   bool updateProduct(Product product) {
@@ -51,6 +72,7 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerBrandValue(updated.brand);
     _products[index] = updated;
     notifyListeners();
+    unawaited(_repository?.save(updated));
     return true;
   }
 
@@ -59,12 +81,33 @@ class ProductProvider extends ChangeNotifier {
     _products.removeWhere((product) => product.id == id);
     if (before == _products.length) return false;
     notifyListeners();
+    unawaited(_repository?.delete(id));
     return true;
   }
 
   void clearProducts() {
     if (_products.isEmpty) return;
+    final ids = _products.map((product) => product.id).toList(growable: false);
     _products.clear();
+    notifyListeners();
+    for (final id in ids) {
+      unawaited(_repository?.delete(id));
+    }
+  }
+
+  Future<void> _loadFromRepository() async {
+    final repository = _repository;
+    if (repository == null) return;
+
+    final stored = await repository.getAll();
+    if (stored.isEmpty) return;
+
+    _products
+      ..clear()
+      ..addAll(stored);
+    for (final product in stored) {
+      _catalogRegistrar?.registerBrandValue(product.brand);
+    }
     notifyListeners();
   }
 
