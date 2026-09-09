@@ -17,6 +17,7 @@ void main() {
         maxStock: 40,
         cost: 0.5,
         price: 1,
+        category: 'Abarrotes',
         barcode: '123',
       );
 
