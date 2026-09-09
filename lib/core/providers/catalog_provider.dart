@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/models/client.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
 /// Presentation state coordinator for catalog values and clients.
 /// Pure normalization/comparison rules live in [CatalogValueService].
-class CatalogProvider extends ChangeNotifier {
+class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   static final Set<String> _externalBrands = <String>{};
 
   final CatalogValueService _service;
@@ -24,7 +25,16 @@ class CatalogProvider extends ChangeNotifier {
   List<String> get departments => distributors;
   List<Client> get clients => List.unmodifiable(_clients);
 
-  static void registerBrand(String brand) {
+  @override
+  void registerBrand(String brand) {
+    final value = brand.trim();
+    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
+    if (_service.containsIgnoreCase(_externalBrands, value)) return;
+    _externalBrands.add(value);
+    notifyListeners();
+  }
+
+  static void registerBrandLegacy(String brand) {
     final value = brand.trim();
     if (value.isNotEmpty) _externalBrands.add(value);
   }
@@ -37,31 +47,22 @@ class CatalogProvider extends ChangeNotifier {
   }
 
   void removeTag(String tag) {
-    _tags.removeWhere(
-      (item) => _service.normalizeName(item).toLowerCase() ==
-          _service.normalizeName(tag).toLowerCase(),
-    );
+    _tags.removeWhere((item) => _service.normalizeName(item).toLowerCase() == _service.normalizeName(tag).toLowerCase());
     notifyListeners();
   }
 
   void addBrand(String brand) {
     final value = _service.normalizeName(brand);
     if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
-    _externalBrands.removeWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == value.toLowerCase(),
-    );
+    _externalBrands.removeWhere((item) => _service.normalizeName(item).toLowerCase() == value.toLowerCase());
     _brands.add(value);
     notifyListeners();
   }
 
   void removeBrand(String brand) {
     final normalized = _service.normalizeName(brand).toLowerCase();
-    _brands.removeWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == normalized,
-    );
-    _externalBrands.removeWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == normalized,
-    );
+    _brands.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
+    _externalBrands.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
     notifyListeners();
   }
 
@@ -74,9 +75,7 @@ class CatalogProvider extends ChangeNotifier {
 
   void removeDistributor(String distributor) {
     final normalized = _service.normalizeName(distributor).toLowerCase();
-    _distributors.removeWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == normalized,
-    );
+    _distributors.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
     notifyListeners();
   }
 
@@ -87,36 +86,19 @@ class CatalogProvider extends ChangeNotifier {
     final name = _service.normalizeName(client.name);
     final phone = client.phone.trim();
     if (name.isEmpty || _containsClientName(name)) return;
-
     final id = client.id.isEmpty ? IdGenerator.newId() : client.id;
-    _clients.add(
-      client.copyWith(
-        id: id,
-        name: name,
-        phone: phone,
-        touchMetadata: false,
-      ),
-    );
+    _clients.add(client.copyWith(id: id, name: name, phone: phone, touchMetadata: false));
     notifyListeners();
   }
 
   bool updateClient(Client client) {
     final index = _clients.indexWhere((item) => item.id == client.id);
     if (index < 0) return false;
-
     final name = _service.normalizeName(client.name);
     if (name.isEmpty) return false;
-    final duplicate = _clients.any(
-      (item) =>
-          item.id != client.id &&
-          item.name.toLowerCase() == name.toLowerCase(),
-    );
+    final duplicate = _clients.any((item) => item.id != client.id && item.name.toLowerCase() == name.toLowerCase());
     if (duplicate) return false;
-
-    _clients[index] = client.copyWith(
-      name: name,
-      phone: client.phone.trim(),
-    );
+    _clients[index] = client.copyWith(name: name, phone: client.phone.trim());
     notifyListeners();
     return true;
   }
@@ -133,6 +115,5 @@ class CatalogProvider extends ChangeNotifier {
     return null;
   }
 
-  bool _containsClientName(String name) =>
-      _clients.any((client) => client.name.toLowerCase() == name.toLowerCase());
+  bool _containsClientName(String name) => _clients.any((client) => client.name.toLowerCase() == name.toLowerCase());
 }
