@@ -9,7 +9,8 @@ class StorageBoxes {
   static const clients = 'clients';
   static const sales = 'sales';
   static const purchases = 'purchases';
-  static const debts = 'debts';
+  static const debtAccounts = 'debt_accounts';
+  static const debtMovements = 'debt_movements';
   static const electronicBalanceAccounts = 'electronic_balance_accounts';
   static const electronicBalanceTransactions = 'electronic_balance_transactions';
 }
