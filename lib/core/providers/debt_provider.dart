@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/app/app_dependencies.dart';
 import 'package:stellar_pos/core/domain/services/debt_service.dart';
 import 'package:stellar_pos/core/models/debt.dart';
 import 'package:stellar_pos/core/models/sale.dart';
@@ -12,7 +13,7 @@ class DebtProvider extends ChangeNotifier {
   final List<DebtMovement> _payments = [];
 
   DebtProvider(this._salesProvider, {DebtService? service})
-      : _service = service ?? const DebtService() {
+      : _service = service ?? AppDependencies.debt {
     _salesProvider.addListener(_onSalesChanged);
   }
 
