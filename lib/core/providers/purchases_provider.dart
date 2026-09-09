@@ -1,14 +1,18 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/domain/services/purchase_totals_service.dart';
 import 'package:stellar_pos/core/models/purchase.dart';
 
 class PurchasesProvider extends ChangeNotifier {
+  PurchasesProvider({PurchaseTotalsService? service})
+      : _service = service ?? const PurchaseTotalsService();
+
+  final PurchaseTotalsService _service;
   final List<PurchaseRecord> _purchases = [];
 
   List<PurchaseRecord> get purchases => List.unmodifiable(_purchases);
 
-  double totalFor(Iterable<PurchaseRecord> records) =>
-      records.fold(0.0, (sum, purchase) => sum + purchase.total);
+  double totalFor(Iterable<PurchaseRecord> records) => _service.total(records.expand((purchase) => purchase.items));
 
   void addPurchase(PurchaseRecord purchase) {
     _purchases.add(purchase);
