@@ -74,8 +74,9 @@ class ProvidersProvider extends ChangeNotifier {
   bool addDistributor(String name) {
     final catalog = _catalogProvider;
     if (catalog == null) {
+      final before = _fallbackDistributors.length;
       registerDistributorValue(name);
-      return _fallbackDistributors.isNotEmpty;
+      return _fallbackDistributors.length > before;
     }
     final added = catalog.addDistributor(name);
     if (added) notifyListeners();
