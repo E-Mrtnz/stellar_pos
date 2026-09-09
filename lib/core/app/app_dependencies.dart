@@ -2,6 +2,7 @@ import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/domain/services/debt_service.dart';
 import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
 import 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';
+import 'package:stellar_pos/core/domain/services/purchase_report_service.dart';
 import 'package:stellar_pos/core/domain/services/purchase_totals_service.dart';
 import 'package:stellar_pos/core/domain/services/sale_lines_service.dart';
 import 'package:stellar_pos/core/domain/services/sale_lifecycle_service.dart';
@@ -20,6 +21,7 @@ class AppDependencies {
   static const debt = DebtService();
   static const electronicBalance = ElectronicBalanceService();
   static const inventoryStock = InventoryStockService();
+  static const purchaseReport = PurchaseReportService();
   static const purchaseTotals = PurchaseTotalsService();
   static const saleLines = SaleLinesService();
   static const saleLifecycle = SaleLifecycleService();
