@@ -39,6 +39,36 @@ class DebtMovement implements SyncableEntity {
         'reference': reference,
         'metadata': metadata.toMap(),
       };
+
+  factory DebtMovement.fromMap(Map<String, dynamic> map) => DebtMovement(
+        id: map['id']?.toString() ?? '',
+        clientId: map['clientId']?.toString() ?? '',
+        clientName: map['clientName']?.toString() ?? '',
+        type: _type(map['type']),
+        amount: _double(map['amount']),
+        createdAt: _date(map['createdAt']),
+        reference: map['reference']?.toString(),
+        metadata: _metadata(map['metadata']),
+      );
+
+  static DebtMovementType _type(dynamic value) =>
+      DebtMovementType.values.firstWhere(
+        (item) => item.name == value?.toString(),
+        orElse: () => DebtMovementType.payment,
+      );
+
+  static DateTime _date(dynamic value) => value is DateTime
+      ? value.toUtc()
+      : DateTime.tryParse(value?.toString() ?? '')?.toUtc() ??
+          DateTime.now().toUtc();
+
+  static double _double(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0;
+
+  static SyncMetadata _metadata(dynamic value) => value is Map
+      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
+      : SyncMetadata.initial();
 }
 
 class DebtAccount implements SyncableEntity {
@@ -90,4 +120,20 @@ class DebtAccount implements SyncableEntity {
         'totalPaid': totalPaid,
         'metadata': metadata.toMap(),
       };
+
+  factory DebtAccount.fromMap(Map<String, dynamic> map) => DebtAccount(
+        clientId: map['clientId']?.toString() ?? map['id']?.toString() ?? '',
+        clientName: map['clientName']?.toString() ?? '',
+        totalDebt: _double(map['totalDebt']),
+        totalPaid: _double(map['totalPaid']),
+        metadata: _metadata(map['metadata']),
+      );
+
+  static double _double(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0;
+
+  static SyncMetadata _metadata(dynamic value) => value is Map
+      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
+      : SyncMetadata.initial();
 }
