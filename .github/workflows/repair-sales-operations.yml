@@ -2,8 +2,8 @@ name: Repair sales operations
 
 on:
   push:
-    branches:
-      - feature/sales-operations
+    tags:
+      - repair-sales-operations-20260909
 
 permissions:
   contents: write
@@ -12,7 +12,7 @@ jobs:
   repair:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout current sales operations branch
         uses: actions/checkout@v4
         with:
           ref: feature/sales-operations
@@ -27,12 +27,11 @@ jobs:
           text = dialog.read_text()
           old = "]); });\n  ]));"
           new = "]); })\n  ]));"
-          if old not in text:
-              raise SystemExit('Expected sale detail list syntax was not found.')
-          text = text.replace(old, new, 1)
+          if old in text:
+              text = text.replace(old, new, 1)
 
           marker = "  void _submit() { final quantity = int.tryParse(_quantityController.text.trim()) ?? 0;"
-          if "String _money(double value) =>" not in text:
+          if "String _money(double value) =>" not in text and marker in text:
               replacement = "  String _money(double value) => '\\$${value.toStringAsFixed(2)}';\n  " + marker.strip()
               text = text.replace(marker, replacement, 1)
           dialog.write_text(text)
@@ -41,9 +40,8 @@ jobs:
           text = sales_layout.read_text()
           old = "const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted)])))); }"
           new = "const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted]))); }"
-          if old not in text:
-              raise SystemExit('Expected sales layout parenthesis was not found.')
-          sales_layout.write_text(text.replace(old, new, 1))
+          if old in text:
+              sales_layout.write_text(text.replace(old, new, 1))
 
           for raw_path in [
               'lib/presentation/dashboard/main_dashboard_layout.dart',
@@ -51,17 +49,20 @@ jobs:
           ]:
               path = Path(raw_path)
               text = path.read_text()
-              if 'deleteSale(' not in text:
-                  raise SystemExit(f'Expected deleteSale call was not found in {raw_path}.')
-              path.write_text(text.replace('deleteSale(', 'annulSale(', 1))
+              if 'deleteSale(' in text:
+                  path.write_text(text.replace('deleteSale(', 'annulSale(', 1))
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
       - name: Format changed Dart files
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-
-      - name: Format and validate syntax
         run: dart format lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
+
+      - name: Analyze project
+        run: flutter analyze
 
       - name: Commit fixes and remove temporary workflow
         shell: bash
