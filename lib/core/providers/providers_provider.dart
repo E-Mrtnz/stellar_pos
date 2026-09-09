@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
 /// Presentation state coordinator for distributors and delivery routes.
 /// Catalog normalization rules are centralized in [CatalogValueService].
-class ProvidersProvider extends ChangeNotifier {
+class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
   final CatalogValueService _service;
   final List<String> _distributors = [];
   final List<ProviderRoute> _routes = [];
@@ -19,6 +20,11 @@ class ProvidersProvider extends ChangeNotifier {
 
   List<ProviderRoute> byType(String type) {
     return _routes.where((route) => route.type == type).toList();
+  }
+
+  @override
+  void registerDistributorValue(String distributor) {
+    addDistributor(distributor);
   }
 
   bool addDistributor(String name) {
