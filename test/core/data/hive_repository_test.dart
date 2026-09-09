@@ -12,10 +12,17 @@ class _TestEntity implements SyncableEntity {
   final String value;
 
   @override
-  final metadata = const SyncMetadata(
+  final metadata = SyncMetadata(
     createdAt: DateTime.utc(2026, 1, 1),
     updatedAt: DateTime.utc(2026, 1, 1),
   );
+
+  @override
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'value': value,
+        'metadata': metadata.toMap(),
+      };
 }
 
 class _FakeLocalDataSource implements LocalDataSource<_TestEntity> {
