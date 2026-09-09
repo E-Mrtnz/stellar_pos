@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/app/app_dependencies.dart';
 import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
 import 'package:stellar_pos/core/models/electronic_balance.dart';
@@ -15,7 +16,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   final List<ElectronicBalanceTransaction> _transactions = [];
 
   ElectronicBalanceProvider({ElectronicBalanceService? service})
-      : _service = service ?? const ElectronicBalanceService();
+      : _service = service ?? AppDependencies.electronicBalance;
 
   List<ElectronicBalanceAccount> get accounts {
     final result = List<ElectronicBalanceAccount>.from(_accounts)
