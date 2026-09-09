@@ -1,6 +1,8 @@
 import 'package:stellar_pos/core/models/sync_metadata.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
+export 'package:stellar_pos/core/models/electronic_balance_sale.dart';
+
 enum ElectronicBalanceTransactionType { purchase, sale }
 
 class ElectronicBalanceSaleOption implements SyncableEntity {
