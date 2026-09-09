@@ -13,4 +13,7 @@ class PurchaseTotalsService {
       items.fold(0.0, (sum, item) => sum + item.total);
 
   double total(Iterable<PurchaseItemRecord> items) => subtotal(items);
+
+  double totalForPurchases(Iterable<PurchaseRecord> purchases) =>
+      purchases.fold(0.0, (sum, purchase) => sum + purchase.total);
 }
