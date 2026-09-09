@@ -34,7 +34,6 @@ class ProvidersProvider extends ChangeNotifier {
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
 
   void attachCatalog(CatalogProvider catalogProvider) {
-    if (identical(_catalogProvider, catalogProvider)) return;
     _catalogProvider = catalogProvider;
     notifyListeners();
   }
