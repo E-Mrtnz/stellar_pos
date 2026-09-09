@@ -47,6 +47,13 @@ class SaleDetailDialog extends StatelessWidget {
 
   String _formatDate(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+
+  String _formatTime(DateTime value) {
+    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    final period = value.hour >= 12 ? 'PM' : 'AM';
+    return '${hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} $period';
+  }
+
   double get _paid =>
       (paidAmount ?? sale.received).clamp(0, sale.total).toDouble();
   double get _initialPayment =>
@@ -55,11 +62,6 @@ class SaleDetailDialog extends StatelessWidget {
       (_paid - _initialPayment).clamp(0, double.infinity).toDouble();
   double get _pending =>
       (sale.total - _paid).clamp(0, double.infinity).toDouble();
-  String _formatTime(DateTime value) {
-    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
-    final period = value.hour >= 12 ? 'PM' : 'AM';
-    return '${hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} $period';
-  }
 
   void _modify(BuildContext context) {
     Navigator.of(context).pop();
@@ -87,14 +89,16 @@ class SaleDetailDialog extends StatelessWidget {
         ],
       ),
     );
+
     if (confirmed != true || !context.mounted) return;
+
     final deleted = context.read<SalesProvider>().deleteSale(
       saleId: sale.id,
       productProvider: context.read<ProductProvider>(),
-      electronicBalanceProvider: context
-          .read<ElectronicBalanceProvider>(),
+      electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
     );
     if (!context.mounted) return;
+
     if (deleted) {
       context.read<DebtProvider>().syncInitialPayment(
         saleId: sale.id,
@@ -140,10 +144,7 @@ class SaleDetailDialog extends StatelessWidget {
                       style: AppTextStyles.sectionTitle,
                     ),
                   ),
-                  Text(
-                    '#${sale.ticketNumber}',
-                    style: AppTextStyles.ticketValue,
-                  ),
+                  Text('#${sale.ticketNumber}', style: AppTextStyles.ticketValue),
                   const SizedBox(width: 8),
                   IconButton(
                     tooltip: 'Cerrar',
@@ -174,18 +175,12 @@ class SaleDetailDialog extends StatelessWidget {
                         children: [
                           const Text(
                             'Gracias por su compra',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 5),
                           Text(
                             'Código de ticket: ${sale.ticketNumber}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textSecondary,
-                            ),
+                            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -197,9 +192,7 @@ class SaleDetailDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AppColors.border),
-                ),
+                border: Border(top: BorderSide(color: AppColors.border)),
               ),
               child: Column(
                 children: [
@@ -208,16 +201,11 @@ class SaleDetailDialog extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _modify(context),
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            size: 17,
-                          ),
+                          icon: const Icon(Icons.edit_outlined, size: 17),
                           label: const Text('Modificar venta'),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(38),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ),
@@ -225,17 +213,12 @@ class SaleDetailDialog extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _delete(context),
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            size: 17,
-                          ),
+                          icon: const Icon(Icons.delete_outline, size: 17),
                           label: const Text('Eliminar'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.dangerRed,
                             minimumSize: const Size.fromHeight(38),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ),
@@ -249,9 +232,7 @@ class SaleDetailDialog extends StatelessWidget {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(38),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           child: const Text('Cerrar'),
                         ),
@@ -260,19 +241,14 @@ class SaleDetailDialog extends StatelessWidget {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () async => onPrint(),
-                          icon: const Icon(
-                            Icons.print_outlined,
-                            size: 17,
-                          ),
+                          icon: const Icon(Icons.print_outlined, size: 17),
                           label: const Text('Imprimir ticket'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(38),
                             elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ),
@@ -288,150 +264,88 @@ class SaleDetailDialog extends StatelessWidget {
   }
 
   Widget _buildHeader() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'STELLAR POS',
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-      ),
-      const SizedBox(height: 2),
-      const Text(
-        'MI TIENDA',
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-      ),
-      const SizedBox(height: 9),
-      _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
-      _infoRow('Fecha', _formatDate(sale.createdAt)),
-      _infoRow('Hora', _formatTime(sale.createdAt)),
-      _infoRow('Cliente', sale.clientName),
-    ],
-  );
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('STELLAR POS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          const Text('MI TIENDA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 9),
+          _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
+          _infoRow('Fecha', _formatDate(sale.createdAt)),
+          _infoRow('Hora', _formatTime(sale.createdAt)),
+          _infoRow('Cliente', sale.clientName),
+        ],
+      );
 
   Widget _buildItemsTable() => Container(
-    decoration: BoxDecoration(
-      border: Border.all(color: AppColors.border),
-      borderRadius: BorderRadius.circular(9),
-    ),
-    child: Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 8,
-          ),
-          decoration: const BoxDecoration(
-            color: AppColors.inputBackground,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(8),
-            ),
-          ),
-          child: const Row(
-            children: [
-              SizedBox(
-                width: 42,
-                child: Text('Img.', style: AppTextStyles.ticketLabel),
-              ),
-              Expanded(
-                child: Text(
-                  'Descripción',
-                  style: AppTextStyles.ticketLabel,
-                ),
-              ),
-              SizedBox(
-                width: 40,
-                child: Text(
-                  'Cant.',
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.ticketLabel,
-                ),
-              ),
-              SizedBox(
-                width: 70,
-                child: Text(
-                  'P. Unit.',
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.ticketLabel,
-                ),
-              ),
-              SizedBox(
-                width: 70,
-                child: Text(
-                  'Dcto.',
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.ticketLabel,
-                ),
-              ),
-              SizedBox(
-                width: 75,
-                child: Text(
-                  'Total',
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.ticketLabel,
-                ),
-              ),
-            ],
-          ),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(9),
         ),
-        ...sale.items.map((item) {
-          final effectiveUnitPrice = item.quantity <= 0
-              ? item.unitPrice
-              : item.lineSubtotal / item.quantity;
-          return Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: const BoxDecoration(
+                color: AppColors.inputBackground,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              ),
+              child: const Row(
+                children: [
+                  SizedBox(width: 42, child: Text('Img.', style: AppTextStyles.ticketLabel)),
+                  Expanded(child: Text('Descripción', style: AppTextStyles.ticketLabel)),
+                  SizedBox(width: 40, child: Text('Cant.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                  SizedBox(width: 70, child: Text('P. Unit.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                  SizedBox(width: 70, child: Text('Dcto.', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                  SizedBox(width: 75, child: Text('Total', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                _thumbnail(item.imageData),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    item.productName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11),
-                  ),
+            ...sale.items.map((item) {
+              // Group-priced lines keep the real unit price internally. For
+              // display only, P. Unit. mirrors the line total so the ticket
+              // does not expose the fractional average unit price.
+              final displayUnitPrice = item.hasGroupPricing
+                  ? item.lineTotal
+                  : item.unitPrice;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
+                  children: [
+                    _thumbnail(item.imageData),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item.productName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text('${item.quantity}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue),
+                    ),
+                    SizedBox(
+                      width: 70,
+                      child: Text('\$${displayUnitPrice.toStringAsFixed(2)}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue),
+                    ),
+                    SizedBox(
+                      width: 70,
+                      child: Text('\$${item.discount.toStringAsFixed(2)}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue),
+                    ),
+                    SizedBox(
+                      width: 75,
+                      child: Text('\$${item.lineTotal.toStringAsFixed(2)}', textAlign: TextAlign.right, style: AppTextStyles.ticketValue),
+                    ),
+                  ],
                 ),
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    '${item.quantity}',
-                    textAlign: TextAlign.right,
-                    style: AppTextStyles.ticketValue,
-                  ),
-                ),
-                SizedBox(
-                  width: 70,
-                  child: Text(
-                    '\$${effectiveUnitPrice.toStringAsFixed(2)}',
-                    textAlign: TextAlign.right,
-                    style: AppTextStyles.ticketValue,
-                  ),
-                ),
-                SizedBox(
-                  width: 70,
-                  child: Text(
-                    '\$${item.discount.toStringAsFixed(2)}',
-                    textAlign: TextAlign.right,
-                    style: AppTextStyles.ticketValue,
-                  ),
-                ),
-                SizedBox(
-                  width: 75,
-                  child: Text(
-                    '\$${item.lineTotal.toStringAsFixed(2)}',
-                    textAlign: TextAlign.right,
-                    style: AppTextStyles.ticketValue,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    ),
-  );
+              );
+            }),
+          ],
+        ),
+      );
 
   Widget _thumbnail(String value) {
     if (value.trim().isNotEmpty) {
@@ -461,77 +375,66 @@ class SaleDetailDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Icon(
-        Icons.image_outlined,
-        size: 19,
-        color: AppColors.textMuted,
-      ),
+      child: const Icon(Icons.image_outlined, size: 19, color: AppColors.textMuted),
     );
   }
 
   Widget _buildTotals() => Column(
-    children: [
-      _summaryRow('Subtotal', sale.subtotal),
-      _summaryRow('Descuento', sale.discountAmount),
-      if (sale.cardFeeAmount > 0)
-        _summaryRow('Cargo tarjeta', sale.cardFeeAmount),
-      const Divider(height: 16, color: AppColors.border),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Total', style: AppTextStyles.totalLabel),
-          Text(
-            '\$${sale.total.toStringAsFixed(2)}',
-            style: AppTextStyles.totalValue,
+          _summaryRow('Subtotal', sale.subtotal),
+          _summaryRow('Descuento', sale.discountAmount),
+          if (sale.cardFeeAmount > 0) _summaryRow('Cargo tarjeta', sale.cardFeeAmount),
+          const Divider(height: 16, color: AppColors.border),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Total', style: AppTextStyles.totalLabel),
+              Text('\$${sale.total.toStringAsFixed(2)}', style: AppTextStyles.totalValue),
+            ],
           ),
         ],
-      ),
-    ],
-  );
+      );
+
   Widget _buildPaymentInfo() => Container(
-    padding: const EdgeInsets.all(11),
-    decoration: BoxDecoration(
-      color: AppColors.inputBackground,
-      borderRadius: BorderRadius.circular(9),
-    ),
-    child: Column(
-      children: [
-        _infoRow('Forma de pago', sale.paymentMethod),
-        if (sale.paymentMethod == AppStrings.creditPayment) ...[
-          _summaryRow('Pago inicial', _initialPayment),
-          _summaryRow('Abonos posteriores', _laterPayment),
-          _summaryRow('Total cobrado', _paid),
-          _summaryRow('Saldo pendiente', _pending),
-        ] else if (sale.paymentMethod == AppStrings.cashPayment) ...[
-          _summaryRow('Recibido', sale.received),
-          _summaryRow('Cambio', sale.change),
-        ],
-      ],
-    ),
-  );
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: AppColors.inputBackground,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Column(
+          children: [
+            _infoRow('Forma de pago', sale.paymentMethod),
+            if (sale.paymentMethod == AppStrings.creditPayment) ...[
+              _summaryRow('Pago inicial', _initialPayment),
+              _summaryRow('Abonos posteriores', _laterPayment),
+              _summaryRow('Total cobrado', _paid),
+              _summaryRow('Saldo pendiente', _pending),
+            ] else if (sale.paymentMethod == AppStrings.cashPayment) ...[
+              _summaryRow('Recibido', sale.received),
+              _summaryRow('Cambio', sale.change),
+            ],
+          ],
+        ),
+      );
+
   Widget _summaryRow(String label, double value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: AppTextStyles.ticketLabel),
-        Text(
-          '\$${value.toStringAsFixed(2)}',
-          style: AppTextStyles.ticketValue,
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: AppTextStyles.ticketLabel),
+            Text('\$${value.toStringAsFixed(2)}', style: AppTextStyles.ticketValue),
+          ],
         ),
-      ],
-    ),
-  );
+      );
+
   Widget _infoRow(String label, String value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Row(
-      children: [
-        SizedBox(
-          width: 105,
-          child: Text(label, style: AppTextStyles.ticketLabel),
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            SizedBox(width: 105, child: Text(label, style: AppTextStyles.ticketLabel)),
+            Expanded(child: Text(value, style: AppTextStyles.ticketValue)),
+          ],
         ),
-        Expanded(child: Text(value, style: AppTextStyles.ticketValue)),
-      ],
-    ),
-  );
+      );
 }
