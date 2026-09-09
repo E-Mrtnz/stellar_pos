@@ -55,9 +55,7 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
 
   bool addDistributor(String name) {
     final value = _service.normalizeName(name);
-    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) {
-      return false;
-    }
+    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) return false;
     _distributors.add(value);
     notifyListeners();
     _persistCatalog();
@@ -67,63 +65,39 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
   bool updateDistributor(String oldName, String newName) {
     final value = _service.normalizeName(newName);
     if (value.isEmpty) return false;
-
     final normalizedOld = _service.normalizeName(oldName).toLowerCase();
-    final index = _distributors.indexWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == normalizedOld,
-    );
+    final index = _distributors.indexWhere((item) => _service.normalizeName(item).toLowerCase() == normalizedOld);
     if (index < 0) return false;
-
-    final duplicate = _distributors.asMap().entries.any(
-      (entry) =>
-          entry.key != index &&
-          _service.normalizeName(entry.value).toLowerCase() ==
-              value.toLowerCase(),
-    );
+    final duplicate = _distributors.asMap().entries.any((entry) => entry.key != index && _service.normalizeName(entry.value).toLowerCase() == value.toLowerCase());
     if (duplicate) return false;
-
     _distributors[index] = value;
     final changedRoutes = <ProviderRoute>[];
     for (var i = 0; i < _routes.length; i++) {
       final route = _routes[i];
-      if (_service.normalizeName(route.distributorName).toLowerCase() ==
-          normalizedOld) {
+      if (_service.normalizeName(route.distributorName).toLowerCase() == normalizedOld) {
         final updated = route.copyWith(distributorName: value);
         _routes[i] = updated;
         changedRoutes.add(updated);
       }
     }
-
     notifyListeners();
     _persistCatalog();
-    for (final route in changedRoutes) {
-      _persistRoute(route);
-    }
+    for (final route in changedRoutes) _persistRoute(route);
     return true;
   }
 
   bool removeDistributor(String name) {
     final normalized = _service.normalizeName(name).toLowerCase();
-    final inUse = _routes.any(
-      (route) =>
-          _service.normalizeName(route.distributorName).toLowerCase() ==
-          normalized,
-    );
+    final inUse = _routes.any((route) => _service.normalizeName(route.distributorName).toLowerCase() == normalized);
     if (inUse) return false;
-
     final before = _distributors.length;
-    _distributors.removeWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == normalized,
-    );
+    _distributors.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
     if (_distributors.length == before) return false;
-
     notifyListeners();
     _persistCatalog();
     return true;
   }
 
-  /// Creates a route only when that distributor/type combination does not
-  /// already exist. A route owns all of its assigned weekdays.
   bool addRoute({
     required String type,
     required String distributorName,
@@ -133,23 +107,12 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (normalizedName.isEmpty || normalizedDays.isEmpty) return false;
-
-    final existingIndex = _routes.indexWhere(
-      (route) =>
-          route.type == type &&
-          _service.normalizeName(route.distributorName).toLowerCase() ==
-              normalizedName.toLowerCase(),
-    );
-
+    final existingIndex = _routes.indexWhere((route) => route.type == type && _service.normalizeName(route.distributorName).toLowerCase() == normalizedName.toLowerCase());
     late final ProviderRoute route;
     if (existingIndex >= 0) {
       final existing = _routes[existingIndex];
-      final mergedDays = _service.normalizeWeekdays([
-        ...existing.weekdays,
-        ...normalizedDays,
-      ]);
       route = existing.copyWith(
-        weekdays: mergedDays,
+        weekdays: _service.normalizeWeekdays([...existing.weekdays, ...normalizedDays]),
         colorValue: colorValue,
       );
       _routes[existingIndex] = route;
@@ -163,13 +126,11 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
       );
       _routes.add(route);
     }
-
     notifyListeners();
     _persistRoute(route);
     return true;
   }
 
-  /// Replaces the complete weekday assignment of an existing route.
   bool updateRoute({
     required String id,
     required String type,
@@ -180,19 +141,9 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     final index = _routes.indexWhere((route) => route.id == id);
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
-    if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) {
-      return false;
-    }
-
-    final duplicate = _routes.asMap().entries.any(
-      (entry) =>
-          entry.key != index &&
-          entry.value.type == type &&
-          _service.normalizeName(entry.value.distributorName).toLowerCase() ==
-              normalizedName.toLowerCase(),
-    );
+    if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) return false;
+    final duplicate = _routes.asMap().entries.any((entry) => entry.key != index && entry.value.type == type && _service.normalizeName(entry.value.distributorName).toLowerCase() == normalizedName.toLowerCase());
     if (duplicate) return false;
-
     final updated = _routes[index].copyWith(
       type: type,
       distributorName: normalizedName,
@@ -200,7 +151,6 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
       colorValue: colorValue,
     );
     _routes[index] = updated;
-
     notifyListeners();
     _persistRoute(updated);
     return true;
@@ -221,12 +171,10 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
         ..clear()
         ..addAll(catalog.distributors);
     }
-
     final storedRoutes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
     _routes
       ..clear()
       ..addAll(storedRoutes);
-
     _loaded = true;
     if (catalog != null || storedRoutes.isNotEmpty) notifyListeners();
   }
@@ -234,10 +182,7 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
   void _persistCatalog() {
     final repository = _catalogRepository;
     if (repository == null) return;
-    final state = ProviderCatalogState(
-      id: _catalogStateId,
-      distributors: _distributors,
-    );
+    final state = ProviderCatalogState(id: _catalogStateId, distributors: _distributors);
     unawaited(repository.save(state).catchError((_) {}));
   }
 
