@@ -26,7 +26,7 @@ jobs:
           dialog = Path('lib/presentation/dashboard/widgets/sale_detail_dialog.dart')
           text = dialog.read_text()
           old = "]); });\n  ]));"
-          new = "]); })\n  ]));"
+          new = "])); })\n  ]));"
           if old in text:
               text = text.replace(old, new, 1)
 
@@ -35,13 +35,6 @@ jobs:
               replacement = "  String _money(double value) => '\\$${value.toStringAsFixed(2)}';\n  " + marker.strip()
               text = text.replace(marker, replacement, 1)
           dialog.write_text(text)
-
-          sales_layout = Path('lib/presentation/sales/sales_layout.dart')
-          text = sales_layout.read_text()
-          old = "const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted)])))); }"
-          new = "const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted]))); }"
-          if old in text:
-              sales_layout.write_text(text.replace(old, new, 1))
 
           for raw_path in [
               'lib/presentation/dashboard/main_dashboard_layout.dart',
@@ -60,6 +53,9 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Format changed Dart files
         run: dart format lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart lib/presentation/widgets/app_alert.dart
