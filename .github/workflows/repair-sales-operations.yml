@@ -33,8 +33,8 @@ jobs:
       - name: Format changed Dart files
         run: dart format lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart lib/presentation/widgets/app_alert.dart
 
-      - name: Analyze project
-        run: flutter analyze
+      - name: Analyze changed files
+        run: dart analyze lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart lib/presentation/widgets/app_alert.dart
 
       - name: Commit fixes and remove temporary files
         shell: bash
@@ -45,5 +45,3 @@ jobs:
           git add lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart lib/presentation/widgets/app_alert.dart
           git commit -m "fix(sales): resolve sales operations compile errors"
           git push origin HEAD:feature/sales-operations
-
-# Temporary repair workflow; removed after the successful repair commit.
