@@ -28,7 +28,12 @@ class AppProviders extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => CatalogProvider(clientRepository: ClientRepository())..loadClients(),
+          create: (_) => CatalogProvider(
+            clientRepository: ClientRepository(),
+            catalogRepository: ProviderCatalogRepository(),
+          )
+            ..load()
+            ..loadClients(),
         ),
         ChangeNotifierProxyProvider<CatalogProvider, ProductProvider>(
           create: (context) => ProductProvider(
