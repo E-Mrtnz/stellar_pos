@@ -6,13 +6,13 @@ Keep presentation, business rules, and persistence independent so local storage 
 
 ## Dependency direction
 
-`presentation -> domain -> data -> infrastructure`
+`presentation -> application/state -> domain -> data -> infrastructure`
 
-UI widgets should not know about Hive, SQLite, Firebase, Supabase, HTTP clients, or SharedPreferences. Providers coordinate presentation state and invoke domain operations. Repositories are contracts; data sources implement persistence.
+UI widgets must not know about Hive, SQLite, Firebase, Supabase, HTTP clients, or storage SDKs. Providers coordinate UI/application state and delegate business operations to domain services/use cases. Repositories are contracts; data sources implement persistence.
 
 ## Feature boundaries
 
-The application is being migrated toward:
+The application is organized around these capabilities:
 
 - `features/products`
 - `features/inventory`
@@ -24,29 +24,51 @@ The application is being migrated toward:
 - `features/catalog`
 - `features/settings`
 
-Each feature may grow into `data/`, `domain/`, and `presentation/` when its complexity justifies it. Small compatibility entry points are intentionally kept during migration to avoid a risky all-at-once import rewrite.
+Small compatibility entry points may remain during migration. A feature can grow into `data/`, `domain/`, and `presentation/` once it has enough complexity to justify the additional boundaries.
 
 ## Core rules
 
 1. Business rules belong in pure domain services/use cases.
-2. Providers own UI/application state, not database code.
-3. Repositories hide persistence technology.
+2. Providers own application/UI state, not persistence implementation.
+3. Repositories hide the persistence technology.
 4. Data sources perform serialization and storage operations.
-5. Persisted entities have stable IDs and sync metadata where applicable.
+5. Persisted entities use stable IDs and sync metadata where applicable.
 6. Deletion must be representable as a syncable state when cloud synchronization is required.
-7. Monetary calculations use `double` consistently for the current application; a decimal/money value object can replace this later without changing presentation code.
-8. Product group pricing is a line-pricing rule. The product's real unit price remains unchanged.
-9. Import/export formats are adapters, not business logic.
-10. New code should use package imports and the feature entry point where available.
+7. Product group pricing is a line-pricing rule. The product's real unit price remains unchanged.
+8. Inventory stock changes are domain operations; UI code must not calculate stock mutations itself.
+9. Import/export formats are adapters, not business rules.
+10. Monetary/date/string formatting belongs outside domain entities.
+11. Electronic-balance validation and commission calculations belong to domain services.
+12. Public ticket numbers and internal entity IDs are different concepts.
+
+## Current domain services
+
+- `ProductPricingService`: group pricing and product profitability rules.
+- `SaleTotalsService`: line subtotal, proportional discount, and sale total calculations.
+- `InventoryStockService`: stock increase/decrease, sellability, low-stock, and maximum-stock rules.
+- `ElectronicBalanceService`: valid categories, provider cost/profit calculations, and configured amount validation.
+- `SaleIdentityService`: generates stable internal sale IDs independently from ticket numbers.
+
+## Catalog modeling decision
+
+Products currently expose catalog values through the existing UI-compatible fields. The persistence model should eventually represent **category, brand, and distributor as entities with stable IDs**, while retaining display names as denormalized snapshots where useful for historical records.
+
+This migration should happen before cloud synchronization, but not by silently changing existing UI contracts. The intended relationships are:
+
+`Product -> CategoryId / BrandId / DistributorId`
+
+and historical sale/purchase lines keep the descriptive snapshot required to display past transactions even if the catalog entry is renamed later.
 
 ## Persistence boundary
 
 The intended runtime flow is:
 
-`Widget -> Provider -> Use Case -> Repository -> DataSource -> Local/Remote storage`
+`Widget -> Provider -> Domain operation -> Repository -> DataSource -> Local/Remote storage`
 
-The current repository/data-source abstractions are deliberately database-agnostic. Do not add a database SDK to a Provider.
+The repository/data-source abstractions are database-agnostic. A database SDK must never be added directly to a Provider.
 
 ## Migration policy
 
-Do not move every file merely to make the tree look clean. Migrate by responsibility, keep compatibility exports when useful, and remove them only after all callers use the new boundary.
+Do not move every file merely to make the tree look clean. Migrate by responsibility, preserve behavior, and remove compatibility layers only after all callers use the new boundary.
+
+Before introducing the database, the remaining high-risk application logic should be extracted from the large Providers, especially sales lifecycle, stock mutations, and electronic-balance coordination. The database should then implement the repository contracts rather than forcing another architecture rewrite.
