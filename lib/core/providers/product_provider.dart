@@ -39,8 +39,6 @@ class ProductProvider extends ChangeNotifier {
     return _firstOrNull((product) => product.barcode.trim() == normalized);
   }
 
-  /// Loads persisted products once. A provider without a repository remains
-  /// purely in-memory, preserving compatibility with isolated UI tests.
   Future<void> load() {
     if (_loaded) return Future.value();
     final existing = _loadFuture;
@@ -56,6 +54,7 @@ class ProductProvider extends ChangeNotifier {
     final normalized = product.copyWith(id: id, touchMetadata: false);
 
     _catalogRegistrar?.registerBrandValue(normalized.brand);
+    _catalogRegistrar?.registerCategoryValue(normalized.category);
     _products.add(normalized);
     notifyListeners();
     _persist(() => _repository?.save(normalized));
@@ -72,6 +71,7 @@ class ProductProvider extends ChangeNotifier {
     );
 
     _catalogRegistrar?.registerBrandValue(updated.brand);
+    _catalogRegistrar?.registerCategoryValue(updated.category);
     _products[index] = updated;
     notifyListeners();
     _persist(() => _repository?.save(updated));
@@ -117,6 +117,7 @@ class ProductProvider extends ChangeNotifier {
       ..addAll(byId.values);
     for (final product in stored) {
       _catalogRegistrar?.registerBrandValue(product.brand);
+      _catalogRegistrar?.registerCategoryValue(product.category);
     }
     _loaded = true;
     if (stored.isNotEmpty) notifyListeners();
