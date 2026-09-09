@@ -1,11 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:stellar_pos/core/data/import_export/inventory_import_mapper.dart';
 import 'package:stellar_pos/core/models/product.dart';
+import 'package:stellar_pos/core/services/inventory_excel_service.dart';
 
 /// Result exposed by the legacy file-service API.
 ///
@@ -22,84 +21,17 @@ class InventoryImportResult {
 
 /// Coordinates inventory file input/output.
 ///
-/// Excel row-to-product mapping belongs to [InventoryImportMapper]; this class
-/// only handles workbook decoding and file persistence/report generation.
+/// Excel-specific work is delegated to [InventoryExcelService]. PDF report
+/// generation remains here for backwards compatibility with the presentation
+/// layer while that UI is migrated incrementally.
 class InventoryFileService {
-  static const List<String> headers = [
-    'ID',
-    'Producto',
-    'Cant.',
-    'Categoría',
-    'Marca',
-    'Distribuidora',
-    'Precio de compra',
-    'Precio de venta',
-    'Stock',
-    'Stock mínimo',
-    'Stock máximo',
-    'Código de barras',
-    'Venta por grupos',
-    'Unidades por grupo',
-    'Precio por grupo',
-  ];
+  static const List<String> headers = InventoryExcelService.headers;
 
   static const Set<String> supportedExcelExtensions =
-      InventoryImportMapper.supportedExtensions;
+      InventoryExcelService.supportedExtensions;
 
-  static Future<void> saveExcel(List<Product> products) async {
-    final workbook = Excel.createExcel();
-    final sheet = workbook['Inventario'];
-    workbook.delete('Sheet1');
-    workbook.setDefaultSheet('Inventario');
-
-    for (var column = 0; column < headers.length; column++) {
-      final cell = sheet.cell(
-        CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.value = TextCellValue(headers[column]);
-      cell.cellStyle = CellStyle(bold: true);
-    }
-
-    for (var rowIndex = 0; rowIndex < products.length; rowIndex++) {
-      final p = products[rowIndex];
-      final values = <CellValue>[
-        TextCellValue(p.id),
-        TextCellValue(p.name),
-        TextCellValue(p.unit),
-        TextCellValue(p.category),
-        TextCellValue(p.brand),
-        TextCellValue(p.department),
-        DoubleCellValue(p.cost),
-        DoubleCellValue(p.price),
-        IntCellValue(p.stock),
-        IntCellValue(p.minStock),
-        IntCellValue(p.maxStock),
-        TextCellValue(p.barcode),
-        TextCellValue(p.hasGroupPricing ? 'Sí' : 'No'),
-        IntCellValue(p.groupQuantity),
-        DoubleCellValue(p.groupPrice),
-      ];
-      for (var column = 0; column < values.length; column++) {
-        sheet.cell(
-          CellIndex.indexByColumnRow(
-            columnIndex: column,
-            rowIndex: rowIndex + 1,
-          ),
-        ).value = values[column];
-      }
-    }
-
-    final bytes = workbook.save();
-    if (bytes == null || bytes.isEmpty) {
-      throw StateError('No se pudo generar el archivo Excel.');
-    }
-    await FilePicker.saveFile(
-      fileName: 'inventario_${_dateStamp()}.xlsx',
-      bytes: Uint8List.fromList(bytes),
-      type: FileType.custom,
-      allowedExtensions: const ['xlsx'],
-    );
-  }
+  static Future<void> saveExcel(List<Product> products) =>
+      InventoryExcelService.save(products);
 
   static Future<void> savePdf(List<Product> products) async {
     final document = pw.Document();
@@ -140,17 +72,11 @@ class InventoryFileService {
             children: [
               pw.Text(
                 'STELLAR POS • Reporte de inventario',
-                style: const pw.TextStyle(
-                  fontSize: 7,
-                  color: PdfColors.grey600,
-                ),
+                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
               ),
               pw.Text(
                 'Página ${context.pageNumber} de ${context.pagesCount}',
-                style: const pw.TextStyle(
-                  fontSize: 7,
-                  color: PdfColors.grey600,
-                ),
+                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
               ),
             ],
           ),
@@ -174,10 +100,7 @@ class InventoryFileService {
                   pw.SizedBox(height: 4),
                   pw.Text(
                     'Control y valoración del inventario actual',
-                    style: const pw.TextStyle(
-                      fontSize: 8.5,
-                      color: PdfColors.grey600,
-                    ),
+                    style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey600),
                   ),
                 ],
               ),
@@ -194,10 +117,7 @@ class InventoryFileService {
           pw.SizedBox(height: 14),
           pw.Container(
             width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 9,
-            ),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: pw.BoxDecoration(
               color: PdfColors.grey100,
               borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
@@ -207,29 +127,15 @@ class InventoryFileService {
               children: [
                 pw.Text(
                   'Generación: ',
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.grey700,
-                  ),
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
                 ),
                 pw.Text(_dateLabel(), style: const pw.TextStyle(fontSize: 8)),
                 pw.SizedBox(width: 28),
                 pw.Text(
                   'Número de productos: ',
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.grey700,
-                  ),
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
                 ),
-                pw.Text(
-                  '${products.length}',
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
+                pw.Text('${products.length}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
               ],
             ),
           ),
@@ -237,70 +143,34 @@ class InventoryFileService {
           pw.Row(
             children: [
               pw.Expanded(
-                child: _summaryCard(
-                  title: 'Costo total del inventario',
-                  value: _money(totalInvestment),
-                ),
+                child: _summaryCard(title: 'Costo total del inventario', value: _money(totalInvestment)),
               ),
               pw.SizedBox(width: 12),
               pw.Expanded(
-                child: _summaryCard(
-                  title: 'Precio total del inventario',
-                  value: _money(totalSales),
-                ),
+                child: _summaryCard(title: 'Precio total del inventario', value: _money(totalSales)),
               ),
             ],
           ),
           pw.SizedBox(height: 16),
           pw.Text(
             'Resumen de inventario',
-            style: pw.TextStyle(
-              fontSize: 11,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.grey900,
-            ),
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900),
           ),
           pw.SizedBox(height: 7),
           pw.TableHelper.fromTextArray(
             headers: const [
-              'Producto',
-              'Cant.',
-              'Categoría',
-              'Marca',
-              'Distribuidora',
-              'Compra',
-              'Venta',
-              'Stock',
-              'Mín.',
-              'Máx.',
-              'Código',
+              'Producto', 'Cant.', 'Categoría', 'Marca', 'Distribuidora',
+              'Compra', 'Venta', 'Stock', 'Mín.', 'Máx.', 'Código',
             ],
             data: rows,
             headerHeight: 22,
             cellHeight: 20,
-            headerStyle: pw.TextStyle(
-              fontSize: 7,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.grey900,
-            ),
-            cellStyle: const pw.TextStyle(
-              fontSize: 6.5,
-              color: PdfColors.grey800,
-            ),
-            cellPadding: const pw.EdgeInsets.symmetric(
-              horizontal: 4,
-              vertical: 3,
-            ),
-            headerDecoration: const pw.BoxDecoration(
-              color: PdfColors.grey300,
-            ),
-            oddRowDecoration: const pw.BoxDecoration(
-              color: PdfColors.grey100,
-            ),
-            border: pw.TableBorder.all(
-              color: PdfColors.grey400,
-              width: .45,
-            ),
+            headerStyle: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900),
+            cellStyle: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey800),
+            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+            oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: .45),
             columnWidths: const {
               0: pw.FlexColumnWidth(2.0),
               1: pw.FlexColumnWidth(.9),
@@ -328,10 +198,15 @@ class InventoryFileService {
     );
   }
 
-  static pw.Widget _summaryCard({
-    required String title,
-    required String value,
-  }) {
+  static Future<InventoryImportResult> parseExcel(
+    Uint8List bytes,
+    String extension,
+  ) async {
+    final result = await InventoryExcelService.parse(bytes, extension);
+    return InventoryImportResult(products: result.products, errors: result.errors);
+  }
+
+  static pw.Widget _summaryCard({required String title, required String value}) {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: pw.BoxDecoration(
@@ -342,73 +217,12 @@ class InventoryFileService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
-          pw.Text(
-            title,
-            textAlign: pw.TextAlign.center,
-            style: const pw.TextStyle(
-              fontSize: 8,
-              color: PdfColors.grey700,
-            ),
-          ),
+          pw.Text(title, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
           pw.SizedBox(height: 4),
-          pw.Text(
-            value,
-            style: pw.TextStyle(
-              fontSize: 15,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.grey900,
-            ),
-          ),
+          pw.Text(value, style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900)),
         ],
       ),
     );
-  }
-
-  static Future<InventoryImportResult> parseExcel(
-    Uint8List bytes,
-    String extension,
-  ) async {
-    final normalizedExtension = extension.toLowerCase().replaceFirst('.', '');
-    if (!supportedExcelExtensions.contains(normalizedExtension)) {
-      return const InventoryImportResult(
-        products: [],
-        errors: [
-          'Formato no compatible. STELLAR POS acepta únicamente archivos Excel modernos .xlsx y .xlsm.',
-        ],
-      );
-    }
-    if (bytes.length < 4 || bytes[0] != 0x50 || bytes[1] != 0x4B) {
-      return const InventoryImportResult(
-        products: [],
-        errors: [
-          'El archivo no parece ser un libro Excel moderno válido (.xlsx/.xlsm).',
-        ],
-      );
-    }
-
-    try {
-      final workbook = Excel.decodeBytes(bytes);
-      if (workbook.tables.isEmpty) {
-        return const InventoryImportResult(
-          products: [],
-          errors: ['El archivo Excel no contiene ninguna hoja.'],
-        );
-      }
-
-      final rows = workbook[workbook.tables.keys.first].rows;
-      final result = InventoryImportMapper.mapRows(rows);
-      return InventoryImportResult(
-        products: result.products,
-        errors: result.errors,
-      );
-    } catch (_) {
-      return const InventoryImportResult(
-        products: [],
-        errors: [
-          'No se pudo leer el libro Excel. Verifica que sea un .xlsx o .xlsm válido y que contenga la estructura de inventario esperada.',
-        ],
-      );
-    }
   }
 
   static String _money(double value) => '\$${value.toStringAsFixed(2)}';
