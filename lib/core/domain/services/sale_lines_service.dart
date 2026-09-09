@@ -2,7 +2,7 @@ import 'package:stellar_pos/core/models/electronic_balance.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
-import 'package:stellar_pos/core/domain/services/product_pricing_service.dart';
+import 'package:stellar_pos/core/services/domain/product_pricing_service.dart';
 
 class SaleLinesService {
   const SaleLinesService({
@@ -14,7 +14,7 @@ class SaleLinesService {
   final ElectronicBalanceService balance;
 
   SaleItemRecord physicalItem(Product product, int quantity) {
-    if (!pricing.canPrice(product, quantity)) {
+    if (quantity <= 0) {
       throw ArgumentError('La cantidad del producto debe ser mayor que cero.');
     }
     final lineSubtotal = pricing.lineSubtotal(product, quantity);
