@@ -240,16 +240,14 @@ class SalesProvider extends ChangeNotifier {
     final newPhysical = <String, int>{};
     for (final item in updatedItems) {
       if (item.isElectronicBalance) continue;
-      if (!_pricing.canPrice(
-        productProvider.findById(item.productId) ?? itemToProductFallback(item),
-        item.quantity,
-      )) {
+      final product = productProvider.findById(item.productId);
+      if (product == null) {
+        throw StateError('Uno de los productos seleccionados ya no existe.');
+      }
+      if (!_pricing.canPrice(product, item.quantity)) {
         throw StateError(
           'La cantidad de un producto debe ser mayor que cero.',
         );
-      }
-      if (productProvider.findById(item.productId) == null) {
-        throw StateError('Uno de los productos seleccionados ya no existe.');
       }
       newPhysical[item.productId] =
           (newPhysical[item.productId] ?? 0) + item.quantity;
@@ -296,15 +294,16 @@ class SalesProvider extends ChangeNotifier {
       }
     }
 
-    final subtotal = _totals.subtotal(updatedItems.map((item) {
-      if (item.isElectronicBalance) return item.copyWith(lineSubtotal: item.unitPrice * item.quantity);
+    final subtotal = updatedItems.fold<double>(0, (sum, item) {
+      if (item.isElectronicBalance) {
+        return sum + item.unitPrice * item.quantity;
+      }
       final product = productProvider.findById(item.productId);
-      return item.copyWith(
-        lineSubtotal: product == null
-            ? item.unitPrice * item.quantity
-            : _pricing.lineSubtotal(product, item.quantity),
-      );
-    }));
+      return sum +
+          (product == null
+              ? item.unitPrice * item.quantity
+              : _pricing.lineSubtotal(product, item.quantity));
+    });
 
     final oldDiscountRate = oldSale.subtotal <= 0
         ? 0.0
@@ -501,9 +500,3 @@ class ElectronicBalanceCartSale {
     required this.quantity,
   });
 }
-
-// Used only to reuse the pricing service's quantity validation without
-// introducing a second validation rule for edited lines.
-// ignore: unused_element
-Never itemToProductFallback(SaleItemRecord item) =>
-    StateError('Producto no disponible.');
