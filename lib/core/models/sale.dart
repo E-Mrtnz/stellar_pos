@@ -98,10 +98,11 @@ class SaleRecord implements SyncableEntity {
   SaleRecord({
     required this.id, required this.ticketNumber, required this.createdAt,
     required this.clientId, required this.clientName, required this.paymentMethod,
-    required this.items, required this.subtotal, required this.discountPercent,
+    required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent,
     required this.discountAmount, required this.cardFeeAmount, required this.total,
     required this.received, required this.change, SyncMetadata? metadata,
-  }) : metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
+  }) : items = List.unmodifiable(items),
+       metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
 
   SaleRecord copyWith({
     String? id, String? ticketNumber, DateTime? createdAt, String? clientId,
