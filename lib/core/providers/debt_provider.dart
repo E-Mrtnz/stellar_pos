@@ -28,15 +28,7 @@ class DebtProvider extends ChangeNotifier {
 
   List<DebtMovement> get movements {
     final result = <DebtMovement>[
-      ..._service.creditSales(_salesProvider.sales).map((sale) => DebtMovement(
-            id: sale.id,
-            clientId: sale.clientId ?? '',
-            clientName: sale.clientName,
-            type: DebtMovementType.debt,
-            amount: sale.effectiveTotal,
-            createdAt: sale.createdAt,
-            reference: sale.ticketNumber,
-          )),
+      ..._service.creditSales(_salesProvider.sales).map((sale) => DebtMovement(id: sale.id, clientId: sale.clientId ?? '', clientName: sale.clientName, type: DebtMovementType.debt, amount: sale.effectiveTotal, createdAt: sale.createdAt, reference: sale.ticketNumber)),
       ..._payments,
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return List.unmodifiable(result);
@@ -63,14 +55,12 @@ class DebtProvider extends ChangeNotifier {
     final account = accountFor(clientId);
     final appliedAmount = _service.appliedPayment(amount: amount, remaining: account?.remaining ?? 0, maxAmount: maxAmount);
     if (clientId.trim().isEmpty || appliedAmount <= 0) return false;
-
     final now = DateTime.now();
     String? reference;
     final recentSales = _service.creditSales(_salesProvider.sales).where((sale) => sale.clientId == clientId && sale.received > 0.005 && sale.received < sale.effectiveTotal - 0.005 && now.difference(sale.createdAt).inMilliseconds.abs() <= 2000).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     for (final sale in recentSales) {
       if (!_payments.any((payment) => payment.reference == sale.id)) { reference = sale.id; break; }
     }
-
     final payment = DebtMovement(id: IdGenerator.newId(), clientId: clientId, clientName: clientName, type: DebtMovementType.payment, amount: appliedAmount, createdAt: now, reference: reference);
     _payments.add(payment);
     notifyListeners();
@@ -79,6 +69,11 @@ class DebtProvider extends ChangeNotifier {
   }
 
   void syncInitialPayment({required String saleId, required String clientId, required String clientName, required double amount}) {
+    SaleRecord? sale;
+    for (final candidate in _salesProvider.sales) {
+      if (candidate.id == saleId) { sale = candidate; break; }
+    }
+    if (sale == null || sale.paymentMethod != 'Fiado') return;
     final existing = _payments.where((payment) => payment.reference == saleId).toList();
     final originalCreatedAt = existing.isEmpty ? null : existing.first.createdAt;
     _payments.removeWhere((payment) => payment.reference == saleId);
