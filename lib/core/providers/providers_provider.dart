@@ -1,22 +1,48 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/data/repositories/provider_catalog_repository.dart';
+import 'package:stellar_pos/core/data/repositories/provider_route_repository.dart';
 import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
+import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
+import 'package:stellar_pos/core/models/provider_catalog_state.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
 /// Presentation state coordinator for distributors and delivery routes.
 /// Catalog normalization rules are centralized in [CatalogValueService].
 class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
+  static const _catalogStateId = 'provider_catalog';
+
   final CatalogValueService _service;
   final List<String> _distributors = [];
   final List<ProviderRoute> _routes = [];
+  final Repository<ProviderCatalogState>? _catalogRepository;
+  final Repository<ProviderRoute>? _routeRepository;
+  bool _loaded = false;
+  Future<void>? _loadFuture;
 
-  ProvidersProvider({CatalogValueService? service})
-      : _service = service ?? const CatalogValueService();
+  ProvidersProvider({
+    CatalogValueService? service,
+    Repository<ProviderCatalogState>? catalogRepository,
+    Repository<ProviderRoute>? routeRepository,
+  })  : _service = service ?? const CatalogValueService(),
+        _catalogRepository = catalogRepository ?? ProviderCatalogRepository(),
+        _routeRepository = routeRepository ?? ProviderRouteRepository();
 
   List<String> get distributors => _service.uniqueSorted(_distributors);
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
+
+  Future<void> load() {
+    if (_loaded) return Future.value();
+    final existing = _loadFuture;
+    if (existing != null) return existing;
+    final future = _loadFromRepositories();
+    _loadFuture = future;
+    return future;
+  }
 
   List<ProviderRoute> byType(String type) {
     return _routes.where((route) => route.type == type).toList();
@@ -34,6 +60,7 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     }
     _distributors.add(value);
     notifyListeners();
+    _persistCatalog();
     return true;
   }
 
@@ -50,20 +77,28 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     final duplicate = _distributors.asMap().entries.any(
       (entry) =>
           entry.key != index &&
-          _service.normalizeName(entry.value).toLowerCase() == value.toLowerCase(),
+          _service.normalizeName(entry.value).toLowerCase() ==
+              value.toLowerCase(),
     );
     if (duplicate) return false;
 
     _distributors[index] = value;
+    final changedRoutes = <ProviderRoute>[];
     for (var i = 0; i < _routes.length; i++) {
       final route = _routes[i];
       if (_service.normalizeName(route.distributorName).toLowerCase() ==
           normalizedOld) {
-        _routes[i] = route.copyWith(distributorName: value);
+        final updated = route.copyWith(distributorName: value);
+        _routes[i] = updated;
+        changedRoutes.add(updated);
       }
     }
 
     notifyListeners();
+    _persistCatalog();
+    for (final route in changedRoutes) {
+      _persistRoute(route);
+    }
     return true;
   }
 
@@ -83,6 +118,7 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     if (_distributors.length == before) return false;
 
     notifyListeners();
+    _persistCatalog();
     return true;
   }
 
@@ -105,29 +141,31 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
               normalizedName.toLowerCase(),
     );
 
+    late final ProviderRoute route;
     if (existingIndex >= 0) {
       final existing = _routes[existingIndex];
       final mergedDays = _service.normalizeWeekdays([
         ...existing.weekdays,
         ...normalizedDays,
       ]);
-      _routes[existingIndex] = existing.copyWith(
+      route = existing.copyWith(
         weekdays: mergedDays,
         colorValue: colorValue,
       );
+      _routes[existingIndex] = route;
     } else {
-      _routes.add(
-        ProviderRoute(
-          id: IdGenerator.newId(),
-          type: type,
-          distributorName: normalizedName,
-          weekdays: normalizedDays,
-          colorValue: colorValue,
-        ),
+      route = ProviderRoute(
+        id: IdGenerator.newId(),
+        type: type,
+        distributorName: normalizedName,
+        weekdays: normalizedDays,
+        colorValue: colorValue,
       );
+      _routes.add(route);
     }
 
     notifyListeners();
+    _persistRoute(route);
     return true;
   }
 
@@ -155,19 +193,55 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     );
     if (duplicate) return false;
 
-    _routes[index] = _routes[index].copyWith(
+    final updated = _routes[index].copyWith(
       type: type,
       distributorName: normalizedName,
       weekdays: normalizedDays,
       colorValue: colorValue,
     );
+    _routes[index] = updated;
 
     notifyListeners();
+    _persistRoute(updated);
     return true;
   }
 
   void removeRoute(String id) {
-    _routes.removeWhere((route) => route.id == id);
+    final index = _routes.indexWhere((route) => route.id == id);
+    if (index < 0) return;
+    _routes.removeAt(index);
     notifyListeners();
+    unawaited(_routeRepository?.delete(id).catchError((_) {}));
+  }
+
+  Future<void> _loadFromRepositories() async {
+    final catalog = await _catalogRepository?.getById(_catalogStateId);
+    if (catalog != null) {
+      _distributors
+        ..clear()
+        ..addAll(catalog.distributors);
+    }
+
+    final storedRoutes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
+    _routes
+      ..clear()
+      ..addAll(storedRoutes);
+
+    _loaded = true;
+    if (catalog != null || storedRoutes.isNotEmpty) notifyListeners();
+  }
+
+  void _persistCatalog() {
+    final repository = _catalogRepository;
+    if (repository == null) return;
+    final state = ProviderCatalogState(
+      id: _catalogStateId,
+      distributors: _distributors,
+    );
+    unawaited(repository.save(state).catchError((_) {}));
+  }
+
+  void _persistRoute(ProviderRoute route) {
+    unawaited(_routeRepository?.save(route).catchError((_) {}));
   }
 }
