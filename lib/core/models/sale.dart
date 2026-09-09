@@ -1,24 +1,31 @@
 import 'package:stellar_pos/core/models/sale_ticket.dart';
+import 'package:stellar_pos/core/models/sync_metadata.dart';
+import 'package:stellar_pos/core/utils/id_generator.dart';
 
-class SaleItemRecord {
-  String productId;
-  String productName;
-  String unit;
-  String brand;
-  String barcode;
-  double cost;
-  double unitPrice;
-  int quantity;
-  double lineSubtotal;
-  double discount;
-  double lineTotal;
-  String imageData;
-  bool isElectronicBalance;
-  bool hasGroupPricing;
-  String? electronicBalanceAccountId;
-  String? electronicBalanceCategory;
+class SaleItemRecord implements SyncableEntity {
+  @override
+  final String id;
+  final String productId;
+  final String productName;
+  final String unit;
+  final String brand;
+  final String barcode;
+  final double cost;
+  final double unitPrice;
+  final int quantity;
+  final double lineSubtotal;
+  final double discount;
+  final double lineTotal;
+  final String imageData;
+  final bool isElectronicBalance;
+  final bool hasGroupPricing;
+  final String? electronicBalanceAccountId;
+  final String? electronicBalanceCategory;
+  @override
+  final SyncMetadata metadata;
 
   SaleItemRecord({
+    String? id,
     required this.productId,
     required this.productName,
     required this.unit,
@@ -35,9 +42,12 @@ class SaleItemRecord {
     this.hasGroupPricing = false,
     this.electronicBalanceAccountId,
     this.electronicBalanceCategory,
-  });
+    SyncMetadata? metadata,
+  })  : id = id ?? IdGenerator.newId(),
+        metadata = metadata ?? SyncMetadata.initial();
 
   Map<String, dynamic> toMap() => {
+        'id': id,
         'productId': productId,
         'productName': productName,
         'unit': unit,
@@ -54,10 +64,50 @@ class SaleItemRecord {
         'hasGroupPricing': hasGroupPricing,
         'electronicBalanceAccountId': electronicBalanceAccountId,
         'electronicBalanceCategory': electronicBalanceCategory,
+        'metadata': metadata.toMap(),
       };
+
+  factory SaleItemRecord.fromMap(Map<String, dynamic> map) => SaleItemRecord(
+        id: map['id']?.toString(),
+        productId: map['productId']?.toString() ?? '',
+        productName: map['productName']?.toString() ?? '',
+        unit: map['unit']?.toString() ?? '',
+        brand: map['brand']?.toString() ?? '',
+        barcode: map['barcode']?.toString() ?? '',
+        cost: _double(map['cost']),
+        unitPrice: _double(map['unitPrice']),
+        quantity: _int(map['quantity']),
+        lineSubtotal: _double(map['lineSubtotal']),
+        discount: _double(map['discount']),
+        lineTotal: _double(map['lineTotal']),
+        imageData: map['imageData']?.toString() ?? '',
+        isElectronicBalance: _bool(map['isElectronicBalance']),
+        hasGroupPricing: _bool(map['hasGroupPricing']),
+        electronicBalanceAccountId:
+            map['electronicBalanceAccountId']?.toString(),
+        electronicBalanceCategory: map['electronicBalanceCategory']?.toString(),
+        metadata: _metadata(map['metadata']),
+      );
+
+  static double _double(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0;
+
+  static int _int(dynamic value) => value is num
+      ? value.toInt()
+      : int.tryParse(value?.toString() ?? '') ?? 0;
+
+  static bool _bool(dynamic value) => value is bool
+      ? value
+      : ['true', '1', 'si', 'sí'].contains(value?.toString().toLowerCase());
+
+  static SyncMetadata _metadata(dynamic value) => value is Map
+      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
+      : SyncMetadata.initial();
 }
 
-class SaleRecord {
+class SaleRecord implements SyncableEntity {
+  @override
   String id;
   String ticketNumber;
   DateTime createdAt;
@@ -72,6 +122,8 @@ class SaleRecord {
   double total;
   double received;
   double change;
+  @override
+  SyncMetadata metadata;
 
   SaleRecord({
     required this.id,
@@ -88,7 +140,12 @@ class SaleRecord {
     required this.total,
     required this.received,
     required this.change,
-  });
+    SyncMetadata? metadata,
+  }) : metadata = metadata ??
+            SyncMetadata(
+              createdAt: createdAt.toUtc(),
+              updatedAt: createdAt.toUtc(),
+            );
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -105,7 +162,26 @@ class SaleRecord {
         'total': total,
         'received': received,
         'change': change,
+        'metadata': metadata.toMap(),
       };
+
+  factory SaleRecord.fromMap(Map<String, dynamic> map) => SaleRecord(
+        id: map['id']?.toString() ?? IdGenerator.newId(),
+        ticketNumber: map['ticketNumber']?.toString() ?? '',
+        createdAt: _date(map['createdAt']),
+        clientId: map['clientId']?.toString(),
+        clientName: map['clientName']?.toString() ?? '',
+        paymentMethod: map['paymentMethod']?.toString() ?? '',
+        items: _items(map['items']),
+        subtotal: _double(map['subtotal']),
+        discountPercent: _double(map['discountPercent']),
+        discountAmount: _double(map['discountAmount']),
+        cardFeeAmount: _double(map['cardFeeAmount']),
+        total: _double(map['total']),
+        received: _double(map['received']),
+        change: _double(map['change']),
+        metadata: _metadata(map['metadata']),
+      );
 
   SaleTicketData toTicketData() {
     final date =
@@ -126,9 +202,7 @@ class SaleRecord {
               quantity: item.quantity,
               description: item.productName,
               brand: item.brand,
-              unitPrice: item.hasGroupPricing
-                  ? item.lineTotal
-                  : item.unitPrice,
+              unitPrice: item.hasGroupPricing ? item.lineTotal : item.unitPrice,
               discount: item.discount,
               total: item.lineTotal,
             ),
@@ -143,4 +217,23 @@ class SaleRecord {
       change: change,
     );
   }
+
+  static List<SaleItemRecord> _items(dynamic value) => value is Iterable
+      ? value
+          .whereType<Map>()
+          .map((item) => SaleItemRecord.fromMap(Map<String, dynamic>.from(item)))
+          .toList()
+      : const [];
+
+  static DateTime _date(dynamic value) => value is DateTime
+      ? value
+      : DateTime.tryParse(value?.toString() ?? '') ?? DateTime.now();
+
+  static double _double(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0;
+
+  static SyncMetadata _metadata(dynamic value) => value is Map
+      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
+      : SyncMetadata.initial();
 }
