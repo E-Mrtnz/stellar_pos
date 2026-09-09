@@ -45,11 +45,12 @@ class AppProviders extends StatelessWidget {
             repository: ProductRepository(),
           )..load(),
         ),
-        ChangeNotifierProvider(
-          create: (_) => ProvidersProvider(
-            catalogRepository: ProviderCatalogRepository(),
+        ChangeNotifierProxyProvider<CatalogProvider, ProvidersProvider>(
+          create: (context) => ProvidersProvider(
+            catalogProvider: context.read<CatalogProvider>(),
             routeRepository: ProviderRouteRepository(),
           )..load(),
+          update: (_, catalog, providers) => providers?..attachCatalog(catalog),
         ),
         ChangeNotifierProvider(
           create: (_) => PurchasesProvider(repository: PurchaseRepository())..load(),
