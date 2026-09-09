@@ -31,8 +31,9 @@ class ElectronicBalanceAccount implements SyncableEntity {
   final List<ElectronicBalanceSaleOption> saleOptions;
   @override final SyncMetadata metadata;
 
-  ElectronicBalanceAccount({required this.id, required this.companyName, required this.commissionRate, required this.balance, this.saleOptions = const [], SyncMetadata? metadata})
-      : metadata = metadata ?? SyncMetadata.initial();
+  ElectronicBalanceAccount({required this.id, required this.companyName, required this.commissionRate, required this.balance, List<ElectronicBalanceSaleOption> saleOptions = const [], SyncMetadata? metadata})
+      : saleOptions = List.unmodifiable(saleOptions),
+        metadata = metadata ?? SyncMetadata.initial();
 
   double get commissionMultiplier => commissionRate / 100;
   List<double> amountsForCategory(String category) => saleOptions.where((option) => option.category == category).map((option) => option.amount).toList();
