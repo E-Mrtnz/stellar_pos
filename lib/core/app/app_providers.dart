@@ -31,6 +31,7 @@ class AppProviders extends StatelessWidget {
           create: (_) => CatalogProvider(
             clientRepository: ClientRepository(),
             productRepository: ProductRepository(),
+            routeRepository: ProviderRouteRepository(),
             catalogRepository: ProviderCatalogRepository(),
           )
             ..load()
