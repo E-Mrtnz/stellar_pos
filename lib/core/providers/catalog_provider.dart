@@ -9,6 +9,7 @@ import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/models/client.dart';
+import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/models/provider_catalog_state.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
@@ -24,6 +25,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
 
   final CatalogValueService _service;
   final Repository<Client>? _clientRepository;
+  final Repository<Product>? _productRepository;
   final Repository<ProviderCatalogState>? _catalogRepository;
   final List<String> _tags = [];
   final List<String> _brands = [];
@@ -37,9 +39,11 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   CatalogProvider({
     CatalogValueService? service,
     Repository<Client>? clientRepository,
+    Repository<Product>? productRepository,
     Repository<ProviderCatalogState>? catalogRepository,
   })  : _service = service ?? AppDependencies.catalogValue,
         _clientRepository = clientRepository,
+        _productRepository = productRepository,
         _catalogRepository = catalogRepository ?? ProviderCatalogRepository();
 
   List<String> get tags => _service.uniqueSorted(_tags);
@@ -242,6 +246,14 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     merge(current);
     merge(legacy);
 
+    final products = await _productRepository?.getAll() ?? const <Product>[];
+    for (final product in products) {
+      final value = _service.normalizeName(product.department);
+      if (value.isNotEmpty && !_service.containsIgnoreCase(mergedDistributors, value)) {
+        mergedDistributors.add(value);
+      }
+    }
+
     _tags
       ..clear()
       ..addAll(mergedTags);
@@ -251,12 +263,14 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
 
     _catalogLoaded = true;
 
-    // Migrate the legacy provider catalog into the canonical catalog record.
-    if (legacy != null && (current == null || legacy.distributors.any((value) => !_service.containsIgnoreCase(current.distributors, value)))) {
+    // Migrate any legacy/product-derived distributor into the canonical record.
+    if (legacy != null || products.isNotEmpty) {
       _persistCatalog();
     }
 
-    if (current != null || legacy != null) notifyListeners();
+    if (current != null || legacy != null || products.isNotEmpty) {
+      notifyListeners();
+    }
   }
 
   void _persistCatalog() {
