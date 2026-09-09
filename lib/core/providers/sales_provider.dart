@@ -459,6 +459,7 @@ class SalesProvider extends ChangeNotifier {
 
 class ElectronicBalanceCartSale {
   final String accountId;
+  final String companyName;
   final String category;
   final double amount;
   final int quantity;
@@ -466,9 +467,10 @@ class ElectronicBalanceCartSale {
 
   const ElectronicBalanceCartSale({
     required this.accountId,
+    this.companyName = '',
     required this.category,
     required this.amount,
     required this.quantity,
-    required this.description,
-  });
+    String? description,
+  }) : description = description ?? companyName;
 }
