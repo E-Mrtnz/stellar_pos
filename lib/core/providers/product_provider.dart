@@ -58,7 +58,7 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerBrandValue(normalized.brand);
     _products.add(normalized);
     notifyListeners();
-    unawaited(_repository?.save(normalized));
+    _persist(() => _repository?.save(normalized));
   }
 
   bool updateProduct(Product product) {
@@ -74,7 +74,7 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerBrandValue(updated.brand);
     _products[index] = updated;
     notifyListeners();
-    unawaited(_repository?.save(updated));
+    _persist(() => _repository?.save(updated));
     return true;
   }
 
@@ -83,7 +83,7 @@ class ProductProvider extends ChangeNotifier {
     _products.removeWhere((product) => product.id == id);
     if (before == _products.length) return false;
     notifyListeners();
-    unawaited(_repository?.delete(id));
+    _persist(() => _repository?.delete(id));
     return true;
   }
 
@@ -93,7 +93,7 @@ class ProductProvider extends ChangeNotifier {
     _products.clear();
     notifyListeners();
     for (final id in ids) {
-      unawaited(_repository?.delete(id));
+      _persist(() => _repository?.delete(id));
     }
   }
 
@@ -120,6 +120,13 @@ class ProductProvider extends ChangeNotifier {
     }
     _loaded = true;
     if (stored.isNotEmpty) notifyListeners();
+  }
+
+  void _persist(Future<void>? Function()? operation) {
+    final future = operation?.call();
+    if (future != null) {
+      unawaited(future.catchError((_) {}));
+    }
   }
 
   Product? _firstOrNull(bool Function(Product) test) {
