@@ -15,6 +15,7 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 class ProvidersProvider extends ChangeNotifier {
   final CatalogValueService _service;
   final List<ProviderRoute> _routes = [];
+  final List<String> _fallbackDistributors = [];
   final Repository<ProviderRoute>? _routeRepository;
   CatalogProvider? _catalogProvider;
   bool _loaded = false;
@@ -28,8 +29,11 @@ class ProvidersProvider extends ChangeNotifier {
         _catalogProvider = catalogProvider,
         _routeRepository = routeRepository;
 
-  List<String> get distributors =>
-      _catalogProvider?.distributors ?? const <String>[];
+  List<String> get distributors {
+    final catalog = _catalogProvider;
+    if (catalog != null) return catalog.distributors;
+    return _service.uniqueSorted(_fallbackDistributors);
+  }
 
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
 
@@ -51,9 +55,28 @@ class ProvidersProvider extends ChangeNotifier {
     return _routes.where((route) => route.type == type).toList();
   }
 
+  void registerDistributorValue(String name) {
+    final normalized = _service.normalizeName(name);
+    if (normalized.isEmpty) return;
+
+    final catalog = _catalogProvider;
+    if (catalog != null) {
+      catalog.registerDistributorValue(normalized);
+      notifyListeners();
+      return;
+    }
+
+    if (_service.containsIgnoreCase(_fallbackDistributors, normalized)) return;
+    _fallbackDistributors.add(normalized);
+    notifyListeners();
+  }
+
   bool addDistributor(String name) {
     final catalog = _catalogProvider;
-    if (catalog == null) return false;
+    if (catalog == null) {
+      registerDistributorValue(name);
+      return _fallbackDistributors.isNotEmpty;
+    }
     final added = catalog.addDistributor(name);
     if (added) notifyListeners();
     return added;
@@ -70,7 +93,8 @@ class ProvidersProvider extends ChangeNotifier {
     final changedRoutes = <ProviderRoute>[];
     for (var i = 0; i < _routes.length; i++) {
       final route = _routes[i];
-      if (_service.normalizeName(route.distributorName).toLowerCase() == normalizedOld) {
+      if (_service.normalizeName(route.distributorName).toLowerCase() ==
+          normalizedOld) {
         final updatedRoute = route.copyWith(distributorName: normalizedNew);
         _routes[i] = updatedRoute;
         changedRoutes.add(updatedRoute);
@@ -87,7 +111,8 @@ class ProvidersProvider extends ChangeNotifier {
     final normalized = _service.normalizeName(name).toLowerCase();
     final inUse = _routes.any(
       (route) =>
-          _service.normalizeName(route.distributorName).toLowerCase() == normalized,
+          _service.normalizeName(route.distributorName).toLowerCase() ==
+          normalized,
     );
     if (inUse) return false;
     final removed = catalog.removeDistributor(name);
@@ -104,6 +129,10 @@ class ProvidersProvider extends ChangeNotifier {
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (normalizedName.isEmpty || normalizedDays.isEmpty) return false;
+
+    // A route can introduce a distributor, so register it in the canonical
+    // catalog at the same moment the route is created.
+    registerDistributorValue(normalizedName);
 
     final existingIndex = _routes.indexWhere(
       (route) =>
@@ -151,6 +180,8 @@ class ProvidersProvider extends ChangeNotifier {
     final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) return false;
 
+    registerDistributorValue(normalizedName);
+
     final duplicate = _routes.asMap().entries.any(
       (entry) =>
           entry.key != index &&
@@ -181,7 +212,8 @@ class ProvidersProvider extends ChangeNotifier {
   }
 
   Future<void> _loadRoutes() async {
-    final storedRoutes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
+    final storedRoutes =
+        await _routeRepository?.getAll() ?? const <ProviderRoute>[];
     _routes
       ..clear()
       ..addAll(storedRoutes);
