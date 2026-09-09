@@ -41,16 +41,6 @@ class Product implements SyncableEntity {
     SyncMetadata? metadata,
   }) : metadata = metadata ?? SyncMetadata.initial();
 
-  double priceForQuantity(int quantity) {
-    if (quantity <= 0) return 0;
-    if (!hasGroupPricing || groupQuantity <= 0 || groupPrice < 0) {
-      return price * quantity;
-    }
-    final groups = quantity ~/ groupQuantity;
-    final remaining = quantity % groupQuantity;
-    return groups * groupPrice + remaining * price;
-  }
-
   Product copyWith({
     String? id,
     String? name,
@@ -118,33 +108,29 @@ class Product implements SyncableEntity {
         unit: map['unit']?.toString() ?? '',
         department: map['department']?.toString() ?? '',
         brand: map['brand']?.toString() ?? '',
-        cost: _toDouble(map['cost']),
-        price: _toDouble(map['price']),
-        stock: _toInt(map['stock']),
-        minStock: _toInt(map['minStock'], fallback: 5),
-        maxStock: _toInt(map['maxStock'], fallback: 40),
+        cost: _double(map['cost']),
+        price: _double(map['price']),
+        stock: _int(map['stock']),
+        minStock: _int(map['minStock'], fallback: 5),
+        maxStock: _int(map['maxStock'], fallback: 40),
         category: map['category']?.toString() ?? '',
         barcode: map['barcode']?.toString() ?? '',
         imageData: map['imageData']?.toString() ?? '',
-        hasGroupPricing: _toBool(map['hasGroupPricing']),
-        groupQuantity: _toInt(map['groupQuantity']),
-        groupPrice: _toDouble(map['groupPrice']),
-        metadata: _metadata(map['metadata']),
+        hasGroupPricing: _bool(map['hasGroupPricing']),
+        groupQuantity: _int(map['groupQuantity']),
+        groupPrice: _double(map['groupPrice']),
+        metadata: map['metadata'] is Map
+            ? SyncMetadata.fromMap(Map<String, dynamic>.from(map['metadata']))
+            : SyncMetadata.initial(),
       );
 
-  static SyncMetadata _metadata(dynamic value) => value is Map
-      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
-      : SyncMetadata.initial();
+  static double _double(dynamic value) =>
+      value is num ? value.toDouble() : double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ?? 0;
 
-  static double _toDouble(dynamic value) => value is num
-      ? value.toDouble()
-      : double.tryParse(value?.toString() ?? '') ?? 0.0;
+  static int _int(dynamic value, {int fallback = 0}) =>
+      value is num ? value.toInt() : int.tryParse(value?.toString() ?? '') ?? fallback;
 
-  static int _toInt(dynamic value, {int fallback = 0}) => value is num
-      ? value.toInt()
-      : int.tryParse(value?.toString() ?? '') ?? fallback;
-
-  static bool _toBool(dynamic value) {
+  static bool _bool(dynamic value) {
     if (value is bool) return value;
     final text = value?.toString().trim().toLowerCase();
     return text == 'true' || text == '1' || text == 'si' || text == 'sí';
