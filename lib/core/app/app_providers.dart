@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:stellar_pos/core/data/storage/storage_box_names.dart';
-import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
-import 'package:stellar_pos/core/data/repositories/hive_repository.dart';
-import 'package:stellar_pos/core/domain/repositories/repository.dart';
-import 'package:stellar_pos/core/models/product.dart';
+import 'package:stellar_pos/core/data/repositories/product_repository.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
@@ -21,13 +17,6 @@ class AppProviders extends StatelessWidget {
 
   const AppProviders({required this.child, super.key});
 
-  Repository<Product> _productRepository() => HiveRepository<Product>(
-        HiveDataSource<Product>(
-          boxName: StorageBoxNames.products,
-          fromMap: Product.fromMap,
-        ),
-      );
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -36,13 +25,13 @@ class AppProviders extends StatelessWidget {
         ChangeNotifierProxyProvider<CatalogProvider, ProductProvider>(
           create: (context) => ProductProvider(
             catalogRegistrar: context.read<CatalogProvider>(),
-            repository: _productRepository(),
+            repository: ProductRepository(),
           )..load(),
           update: (_, catalog, products) =>
               products ??
               ProductProvider(
                 catalogRegistrar: catalog,
-                repository: _productRepository(),
+                repository: ProductRepository(),
               )..load(),
         ),
         ChangeNotifierProvider(create: (_) => ProvidersProvider()),
