@@ -4,4 +4,5 @@
 /// calling another provider statically.
 abstract interface class CatalogRegistrar {
   void registerBrandValue(String brand);
+  void registerCategoryValue(String category);
 }
