@@ -28,8 +28,7 @@ import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
   @override
-  State<MainDashboardLayout> createState() =>
-      _MainDashboardLayoutState();
+  State<MainDashboardLayout> createState() => _MainDashboardLayoutState();
 }
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
@@ -51,8 +50,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       TextEditingController();
   final TextEditingController _discountPercentController =
       TextEditingController();
-  final TextEditingController _cashReceivedController =
-      TextEditingController();
+  final TextEditingController _cashReceivedController = TextEditingController();
   List<String> get _tags => context.watch<CatalogProvider>().tags;
   List<String> get _debtors => context
       .watch<CatalogProvider>()
@@ -77,8 +75,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   KeyEventResult _handleBarcodeKey(FocusNode node, KeyEvent event) {
-    if (_selectedNavIndex != AppNavigation.home ||
-        event is! KeyDownEvent)
+    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent)
       return KeyEventResult.ignored;
     final isEnter =
         event.logicalKey == LogicalKeyboardKey.enter ||
@@ -94,9 +91,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return KeyEventResult.ignored;
     }
     final character = event.character;
-    if (character == null ||
-        character.isEmpty ||
-        character.trim().isEmpty)
+    if (character == null || character.isEmpty || character.trim().isEmpty)
       return KeyEventResult.ignored;
     final now = DateTime.now();
     final elapsed = _lastBarcodeInputAt == null
@@ -109,9 +104,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   void _handleScannedBarcode(String barcode) {
-    final product = context.read<ProductProvider>().findByBarcode(
-      barcode,
-    );
+    final product = context.read<ProductProvider>().findByBarcode(barcode);
     if (product != null) {
       _addToCart(product.id);
       return;
@@ -156,8 +149,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final product = context.read<ProductProvider>().findById(productId);
     if (product == null) return;
     setState(
-      () => _cartQuantities[productId] =
-          (_cartQuantities[productId] ?? 0) + 1,
+      () => _cartQuantities[productId] = (_cartQuantities[productId] ?? 0) + 1,
     );
   }
 
@@ -226,9 +218,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     setState(
       () => _electronicBalanceSelection[index] =
-          _electronicBalanceSelection[index].copyWith(
-            quantity: quantity,
-          ),
+          _electronicBalanceSelection[index].copyWith(quantity: quantity),
     );
   }
 
@@ -267,8 +257,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     double total = 0;
     for (final entry in _cartQuantities.entries) {
       final product = provider.findById(entry.key);
-      if (product != null)
-        total += product.priceForQuantity(entry.value);
+      if (product != null) total += product.priceForQuantity(entry.value);
     }
     for (final item in _electronicBalanceSelection)
       total += item.amount * item.quantity;
@@ -276,14 +265,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   double get _discountAmount =>
-      double.tryParse(
-        _discountAmountController.text.replaceAll(',', '.'),
-      ) ??
-      0;
+      double.tryParse(_discountAmountController.text.replaceAll(',', '.')) ?? 0;
   double get _discountPercent =>
-      double.tryParse(
-        _discountPercentController.text.replaceAll(',', '.'),
-      ) ??
+      double.tryParse(_discountPercentController.text.replaceAll(',', '.')) ??
       0;
   double get _cardFeeAmount {
     if (_selectedPaymentMethod != AppPaymentMethods.card) return 0;
@@ -299,10 +283,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   double get _change {
     final cash =
-        double.tryParse(
-          _cashReceivedController.text.replaceAll(',', '.'),
-        ) ??
-        0;
+        double.tryParse(_cashReceivedController.text.replaceAll(',', '.')) ?? 0;
     final change = cash - _total;
     return change > 0 ? change : 0;
   }
@@ -340,10 +321,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   int _paymentMethodIndex(String method) {
     if (method == AppStrings.cardPayment) return AppPaymentMethods.card;
-    if (method == AppStrings.transferPayment)
-      return AppPaymentMethods.transfer;
-    if (method == AppStrings.creditPayment)
-      return AppPaymentMethods.credit;
+    if (method == AppStrings.transferPayment) return AppPaymentMethods.transfer;
+    if (method == AppStrings.creditPayment) return AppPaymentMethods.credit;
     return AppPaymentMethods.cash;
   }
 
@@ -355,9 +334,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       if (item.isElectronicBalance) {
         final accountId = item.electronicBalanceAccountId;
         if (accountId == null) continue;
-        final account = context
-            .read<ElectronicBalanceProvider>()
-            .findAccount(accountId);
+        final account = context.read<ElectronicBalanceProvider>().findAccount(
+          accountId,
+        );
         if (account == null) continue;
         electronic.add(
           ElectronicBalanceCartItem(
@@ -405,8 +384,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Future<void> _updateSale() async {
     final editing = _editingSale;
     if (editing == null) return;
-    if (_cartQuantities.isEmpty &&
-        _electronicBalanceSelection.isEmpty) {
+    if (_cartQuantities.isEmpty && _electronicBalanceSelection.isEmpty) {
       AppAlert.show(
         context,
         'Agrega al menos un producto o una recarga antes de actualizar la venta.',
@@ -444,16 +422,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         }
       }
     final received =
-        double.tryParse(
-          _cashReceivedController.text.replaceAll(',', '.'),
-        ) ??
-        0;
-    final effectiveReceived =
-        _selectedPaymentMethod == AppPaymentMethods.credit
+        double.tryParse(_cashReceivedController.text.replaceAll(',', '.')) ?? 0;
+    final effectiveReceived = _selectedPaymentMethod == AppPaymentMethods.credit
         ? received.clamp(0, _total).toDouble()
-        : (_selectedPaymentMethod == AppPaymentMethods.cash
-              ? received
-              : 0.0);
+        : (_selectedPaymentMethod == AppPaymentMethods.cash ? received : 0.0);
     try {
       final updated = context.read<SalesProvider>().updateSale(
         saleId: editing.id,
@@ -497,12 +469,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           ),
         ],
         productProvider: context.read<ProductProvider>(),
-        electronicBalanceProvider: context
-            .read<ElectronicBalanceProvider>(),
+        electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
-      final discountAmount = _discountAmount
-          .clamp(0, _subtotal)
-          .toDouble();
+      final discountAmount = _discountAmount.clamp(0, _subtotal).toDouble();
       final cardFeeAmount = _cardFeeAmount;
       final total = _total;
       final finalItems = updated.items
@@ -525,17 +494,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               lineTotal: lineSubtotal - lineDiscount,
               imageData: item.imageData,
               isElectronicBalance: item.isElectronicBalance,
-              electronicBalanceAccountId:
-                  item.electronicBalanceAccountId,
+              electronicBalanceAccountId: item.electronicBalanceAccountId,
               electronicBalanceCategory: item.electronicBalanceCategory,
             );
           })
           .toList(growable: false);
       updated.clientId = clientId;
       updated.clientName = _selectedDebtor ?? 'Consumidor final';
-      updated.paymentMethod = _paymentMethodLabel(
-        _selectedPaymentMethod,
-      );
+      updated.paymentMethod = _paymentMethodLabel(_selectedPaymentMethod);
       updated.items = finalItems;
       updated.subtotal = _subtotal;
       updated.discountAmount = discountAmount;
@@ -570,9 +536,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     } catch (error) {
       AppAlert.show(
         context,
-        error is StateError
-            ? error.message
-            : 'No se pudo actualizar la venta.',
+        error is StateError ? error.message : 'No se pudo actualizar la venta.',
         title: 'Error al actualizar',
         type: AppAlertType.error,
       );
@@ -601,8 +565,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   Future<void> _createSale() async {
-    if (_cartQuantities.isEmpty &&
-        _electronicBalanceSelection.isEmpty) {
+    if (_cartQuantities.isEmpty && _electronicBalanceSelection.isEmpty) {
       AppAlert.show(
         context,
         'Agrega al menos un producto o una recarga antes de crear la venta.',
@@ -651,10 +614,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         )
         .toList();
     final received =
-        double.tryParse(
-          _cashReceivedController.text.replaceAll(',', '.'),
-        ) ??
-        0;
+        double.tryParse(_cashReceivedController.text.replaceAll(',', '.')) ?? 0;
     final initialCreditPayment =
         _selectedPaymentMethod == AppPaymentMethods.credit
         ? received.clamp(0, _total).toDouble()
@@ -675,12 +635,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         received: _selectedPaymentMethod == AppPaymentMethods.cash
             ? received
             : initialCreditPayment,
-        change: _selectedPaymentMethod == AppPaymentMethods.cash
-            ? _change
-            : 0,
+        change: _selectedPaymentMethod == AppPaymentMethods.cash ? _change : 0,
         electronicSales: electronicSales,
-        electronicBalanceProvider: context
-            .read<ElectronicBalanceProvider>(),
+        electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
       if (_selectedPaymentMethod == AppPaymentMethods.credit &&
           initialCreditPayment > 0) {
@@ -690,7 +647,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           amount: initialCreditPayment,
         );
         if (!saved) {
-          context.read<SalesProvider>().deleteSale(
+          context.read<SalesProvider>().annulSale(
             saleId: sale.id,
             productProvider: context.read<ProductProvider>(),
             electronicBalanceProvider: context
@@ -704,9 +661,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     } catch (error) {
       AppAlert.show(
         context,
-        error is StateError
-            ? error.message
-            : 'No se pudo registrar la venta.',
+        error is StateError ? error.message : 'No se pudo registrar la venta.',
         title: 'Error al crear la venta',
         type: AppAlertType.error,
       );
@@ -730,8 +685,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       context,
       printed
           ? 'El ticket fue enviado a la impresora.'
-          : (printerProvider.errorMessage ??
-                'No se pudo imprimir el ticket.'),
+          : (printerProvider.errorMessage ?? 'No se pudo imprimir el ticket.'),
       title: printed ? 'Impresión completada' : 'No se pudo imprimir',
       type: printed ? AppAlertType.success : AppAlertType.warning,
     );
@@ -740,8 +694,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   void _onNavigationChanged(int index) =>
       setState(() => _selectedNavIndex = index);
-  void _onTagChanged(int index) =>
-      setState(() => _selectedTagIndex = index);
+  void _onTagChanged(int index) => setState(() => _selectedTagIndex = index);
   void _onFilterChanged(String? filter) =>
       setState(() => _selectedFilter = filter);
   @override
@@ -758,9 +711,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               SidebarDrawer(
                 isExpanded: _isSidebarExpanded,
                 selectedIndex: _selectedNavIndex,
-                onToggleExpand: () => setState(
-                  () => _isSidebarExpanded = !_isSidebarExpanded,
-                ),
+                onToggleExpand: () =>
+                    setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                 onItemSelected: _onNavigationChanged,
               ),
               Expanded(child: _buildMainContent(products)),
@@ -780,8 +732,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return const PurchasesLayout();
     if (_selectedNavIndex == AppNavigation.providers)
       return const ProvidersLayout();
-    if (_selectedNavIndex == AppNavigation.debts)
-      return const DebtsLayout();
+    if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
     if (_selectedNavIndex == AppNavigation.settings)
       return const PrinterSettingsLayout();
     if (_selectedNavIndex != AppNavigation.home)
@@ -805,11 +756,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onAddToCart: _addToCart,
               onRemoveFromCart: _removeFromCart,
               onElectronicBalanceTap: _openElectronicBalanceSelector,
-              onElectronicBalanceManage:
-                  _openElectronicBalanceManagement,
+              onElectronicBalanceManage: _openElectronicBalanceManagement,
               electronicBalanceSelection: _electronicBalanceSelection,
-              onSearchChanged: (value) =>
-                  setState(() => _searchQuery = value),
+              onSearchChanged: (value) => setState(() => _searchQuery = value),
               searchQuery: _searchQuery,
             ),
           ),
@@ -850,9 +799,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   isEditing: _editingSale != null,
                   ticketNumber:
                       _editingSale?.ticketNumber ??
-                      context
-                          .watch<SalesProvider>()
-                          .nextTicketNumberPreview,
+                      context.watch<SalesProvider>().nextTicketNumberPreview,
                 ),
               ],
             ),
@@ -887,19 +834,12 @@ class _ProductNotFoundAlert extends StatelessWidget {
     ),
     child: const Row(
       children: [
-        Icon(
-          Icons.warning_amber_rounded,
-          color: Colors.white,
-          size: 22,
-        ),
+        Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
         SizedBox(width: 10),
         Expanded(
           child: Text(
             'Producto no encontrado',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
           ),
         ),
       ],

@@ -32,11 +32,7 @@ class AppAlert {
           child: IgnorePointer(
             child: Material(
               color: Colors.transparent,
-              child: _AppAlertCard(
-                message: message,
-                title: title,
-                type: type,
-              ),
+              child: _AppAlertCard(message: message, title: title, type: type),
             ),
           ),
         );
@@ -152,5 +148,3 @@ class _AppAlertCard extends StatelessWidget {
     );
   }
 }
-
-// TEMP_SALES_REPAIR_TRIGGER

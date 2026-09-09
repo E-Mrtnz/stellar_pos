@@ -31,10 +31,7 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
     barrierColor: AppColors.overlayBackground,
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
-      child: ClientPurchaseHistoryDialog(
-        clientName: clientName,
-        sales: sales,
-      ),
+      child: ClientPurchaseHistoryDialog(clientName: clientName, sales: sales),
     ),
   );
 
@@ -48,9 +45,7 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
     for (final sale in oldestFirst) {
       final paid = paymentPool.clamp(0, sale.total).toDouble();
       result[sale.id] = paid;
-      paymentPool = (paymentPool - paid)
-          .clamp(0, double.infinity)
-          .toDouble();
+      paymentPool = (paymentPool - paid).clamp(0, double.infinity).toDouble();
     }
     return result;
   }
@@ -117,8 +112,7 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: ordered.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 8),
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, index) => _SaleHistoryCard(
                         sale: ordered[index],
                         paidAmount: paidBySale[ordered[index].id] ?? 0,
@@ -135,10 +129,7 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
 class _SaleHistoryCard extends StatefulWidget {
   final SaleRecord sale;
   final double paidAmount;
-  const _SaleHistoryCard({
-    required this.sale,
-    required this.paidAmount,
-  });
+  const _SaleHistoryCard({required this.sale, required this.paidAmount});
   @override
   State<_SaleHistoryCard> createState() => _SaleHistoryCardState();
 }
@@ -157,8 +148,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
         saleId: widget.sale.id,
         updatedItems: updatedItems,
         productProvider: context.read<ProductProvider>(),
-        electronicBalanceProvider: context
-            .read<ElectronicBalanceProvider>(),
+        electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
       AppAlert.show(
         context,
@@ -169,9 +159,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
     } catch (error) {
       AppAlert.show(
         context,
-        error is StateError
-            ? error.message
-            : 'No se pudo actualizar la venta.',
+        error is StateError ? error.message : 'No se pudo actualizar la venta.',
         title: 'Error al actualizar',
         type: AppAlertType.error,
       );
@@ -198,11 +186,10 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final deleted = context.read<SalesProvider>().deleteSale(
+    final deleted = context.read<SalesProvider>().annulSale(
       saleId: widget.sale.id,
       productProvider: context.read<ProductProvider>(),
-      electronicBalanceProvider: context
-          .read<ElectronicBalanceProvider>(),
+      electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
     );
     if (!mounted) return;
     AppAlert.show(
@@ -235,9 +222,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
         : 'PENDIENTE';
     final date =
         '${sale.createdAt.day.toString().padLeft(2, '0')}/${sale.createdAt.month.toString().padLeft(2, '0')}/${sale.createdAt.year}';
-    final hour = sale.createdAt.hour % 12 == 0
-        ? 12
-        : sale.createdAt.hour % 12;
+    final hour = sale.createdAt.hour % 12 == 0 ? 12 : sale.createdAt.hour % 12;
     final period = sale.createdAt.hour >= 12 ? 'PM' : 'AM';
     final time =
         '${hour.toString().padLeft(2, '0')}:${sale.createdAt.minute.toString().padLeft(2, '0')} $period';
@@ -249,9 +234,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
         color: AppColors.inputBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: _expanded
-              ? statusColor.withAlpha(85)
-              : AppColors.border,
+          color: _expanded ? statusColor.withAlpha(85) : AppColors.border,
         ),
       ),
       child: Column(
@@ -370,10 +353,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
             crossFadeState: _expanded
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
-            firstChild: const SizedBox(
-              width: double.infinity,
-              height: 2,
-            ),
+            firstChild: const SizedBox(width: double.infinity, height: 2),
             secondChild: Padding(
               padding: const EdgeInsets.only(top: 7),
               child: Column(
@@ -440,10 +420,7 @@ class _SaleItemRow extends StatelessWidget {
           ),
           Text(
             '\$${item.lineTotal.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -465,11 +442,7 @@ class _ProductThumbnail extends StatelessWidget {
       border: Border.all(color: AppColors.border),
     ),
     child: bytes == null
-        ? const Icon(
-            Icons.image_outlined,
-            size: 17,
-            color: AppColors.textMuted,
-          )
+        ? const Icon(Icons.image_outlined, size: 17, color: AppColors.textMuted)
         : Image.memory(bytes!, fit: BoxFit.cover),
   );
 }
@@ -497,9 +470,7 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Dialog(
     backgroundColor: AppColors.cardBackground,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(18),
-    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 480),
       child: Padding(
@@ -514,25 +485,18 @@ class _ConfirmDialog extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color:
-                        (danger
-                                ? AppColors.dangerRed
-                                : AppColors.primary)
-                            .withAlpha(16),
+                    color: (danger ? AppColors.dangerRed : AppColors.primary)
+                        .withAlpha(16),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     icon,
-                    color: danger
-                        ? AppColors.dangerRed
-                        : AppColors.primary,
+                    color: danger ? AppColors.dangerRed : AppColors.primary,
                     size: 21,
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Text(title, style: AppTextStyles.sectionTitle),
-                ),
+                Expanded(child: Text(title, style: AppTextStyles.sectionTitle)),
                 IconButton(
                   onPressed: onCancel,
                   icon: const Icon(Icons.close, size: 19),
@@ -565,10 +529,7 @@ class _ConfirmDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: onCancel,
-                  child: const Text('Cancelar'),
-                ),
+                TextButton(onPressed: onCancel, child: const Text('Cancelar')),
                 const SizedBox(width: 7),
                 FilledButton(
                   onPressed: onConfirm,
@@ -591,9 +552,7 @@ class _ConfirmDialog extends StatelessWidget {
 Uint8List? _decodeImage(String value) {
   if (value.trim().isEmpty) return null;
   try {
-    return base64Decode(
-      value.contains(',') ? value.split(',').last : value,
-    );
+    return base64Decode(value.contains(',') ? value.split(',').last : value);
   } catch (_) {
     return null;
   }
