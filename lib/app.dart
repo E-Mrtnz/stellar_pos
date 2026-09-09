@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/core/providers/catalog_provider.dart';
-import 'package:stellar_pos/core/providers/debt_provider.dart';
-import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
-import 'package:stellar_pos/core/providers/product_provider.dart';
-import 'package:stellar_pos/core/providers/providers_provider.dart';
-import 'package:stellar_pos/core/providers/purchases_provider.dart';
-import 'package:stellar_pos/core/providers/sales_provider.dart';
+import 'package:stellar_pos/features/catalog/catalog.dart';
+import 'package:stellar_pos/features/clients/clients.dart';
+import 'package:stellar_pos/features/debts/debts.dart';
+import 'package:stellar_pos/features/electronic_balance/electronic_balance.dart';
+import 'package:stellar_pos/features/products/products.dart';
+import 'package:stellar_pos/features/purchases/purchases.dart';
+import 'package:stellar_pos/features/sales/sales.dart';
 import 'package:stellar_pos/presentation/dashboard/main_dashboard_layout.dart';
 
 class StellarPosApp extends StatelessWidget {
