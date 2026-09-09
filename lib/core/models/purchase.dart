@@ -88,11 +88,12 @@ class PurchaseRecord implements SyncableEntity {
     required this.distributorName,
     required this.arrivalAt,
     required this.paymentMethod,
-    required this.items,
+    required List<PurchaseItemRecord> items,
     required this.subtotal,
     required this.total,
     SyncMetadata? metadata,
-  }) : metadata = metadata ??
+  }) : items = List.unmodifiable(items),
+       metadata = metadata ??
             SyncMetadata(
               createdAt: arrivalAt.toUtc(),
               updatedAt: arrivalAt.toUtc(),
