@@ -55,6 +55,7 @@ class ProductProvider extends ChangeNotifier {
 
     _catalogRegistrar?.registerBrandValue(normalized.brand);
     _catalogRegistrar?.registerCategoryValue(normalized.category);
+    _catalogRegistrar?.registerDistributorValue(normalized.department);
     _products.add(normalized);
     notifyListeners();
     _persist(() => _repository?.save(normalized));
@@ -72,6 +73,7 @@ class ProductProvider extends ChangeNotifier {
 
     _catalogRegistrar?.registerBrandValue(updated.brand);
     _catalogRegistrar?.registerCategoryValue(updated.category);
+    _catalogRegistrar?.registerDistributorValue(updated.department);
     _products[index] = updated;
     notifyListeners();
     _persist(() => _repository?.save(updated));
@@ -118,6 +120,7 @@ class ProductProvider extends ChangeNotifier {
     for (final product in stored) {
       _catalogRegistrar?.registerBrandValue(product.brand);
       _catalogRegistrar?.registerCategoryValue(product.category);
+      _catalogRegistrar?.registerDistributorValue(product.department);
     }
     _loaded = true;
     if (stored.isNotEmpty) notifyListeners();
