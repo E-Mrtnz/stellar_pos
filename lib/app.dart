@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/features/catalog/catalog.dart';
-import 'package:stellar_pos/features/clients/clients.dart';
 import 'package:stellar_pos/features/debts/debts.dart';
 import 'package:stellar_pos/features/electronic_balance/electronic_balance.dart';
 import 'package:stellar_pos/features/products/products.dart';
@@ -45,8 +46,14 @@ class AppProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
+        ChangeNotifierProxyProvider<CatalogProvider, ProductProvider>(
+          create: (context) => ProductProvider(
+            catalogRegistrar: context.read<CatalogProvider>(),
+          ),
+          update: (_, catalog, products) =>
+              products ?? ProductProvider(catalogRegistrar: catalog),
+        ),
         ChangeNotifierProvider(create: (_) => ProvidersProvider()),
         ChangeNotifierProvider(create: (_) => PurchasesProvider()),
         ChangeNotifierProvider(create: (_) => ElectronicBalanceProvider()),
