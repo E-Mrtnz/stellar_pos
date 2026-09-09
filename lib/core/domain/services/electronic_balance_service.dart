@@ -8,16 +8,12 @@ class ElectronicBalanceService {
   bool isValidCategory(String category) => validCategories.contains(category.trim());
 
   double providerCost({required double amount, required double commissionRate}) {
-    if (amount < 0 || commissionRate < 0 || commissionRate > 100) {
-      throw ArgumentError('Monto o comisión inválidos.');
-    }
+    _validate(amount, commissionRate);
     return amount * (1 - commissionRate / 100);
   }
 
   double profit({required double amount, required double commissionRate}) {
-    if (amount < 0 || commissionRate < 0 || commissionRate > 100) {
-      throw ArgumentError('Monto o comisión inválidos.');
-    }
+    _validate(amount, commissionRate);
     return amount * commissionRate / 100;
   }
 
@@ -27,5 +23,11 @@ class ElectronicBalanceService {
         account.amountsForCategory(category).any(
           (configured) => (configured - amount).abs() <= 0.000001,
         );
+  }
+
+  void _validate(double amount, double commissionRate) {
+    if (amount < 0 || commissionRate < 0 || commissionRate > 100) {
+      throw ArgumentError('Monto o comisión inválidos.');
+    }
   }
 }
