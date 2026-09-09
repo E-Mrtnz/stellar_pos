@@ -104,12 +104,12 @@ class _SalesLayoutState extends State<SalesLayout> {
 
   Map<String, double> _paidBySale(List<SaleRecord> allSales, List<DebtMovement> movements) {
     final credits = allSales.where((sale) => sale.paymentMethod == AppStrings.creditPayment && sale.clientId != null).toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    final paid = <String, double>{for (final sale in credits) sale.id: 0};
+    final paid = <String, double>{for (final sale in credits) sale.id: sale.effectiveCollected};
     final payments = movements.where((movement) => movement.type == DebtMovementType.payment).toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     for (final payment in payments) {
       var remaining = payment.amount;
       for (final sale in credits.where((sale) => sale.clientId == payment.clientId)) {
-        final outstanding = sale.total - (paid[sale.id] ?? 0);
+        final outstanding = sale.effectiveTotal - (paid[sale.id] ?? 0);
         if (outstanding <= 0.005) continue;
         final applied = remaining > outstanding ? outstanding : remaining;
         paid[sale.id] = (paid[sale.id] ?? 0) + applied;
@@ -120,9 +120,18 @@ class _SalesLayoutState extends State<SalesLayout> {
     return paid;
   }
 
-  double _collectedFromSale(SaleRecord sale) => sale.paymentMethod == AppStrings.creditPayment ? sale.received.clamp(0, sale.total).toDouble() : sale.total;
-
+  double _collectedFromSale(SaleRecord sale) => sale.effectiveCollected;
   double _laterPayments(List<DebtMovement> movements, DateTimeRange range) => movements.where((movement) => movement.type == DebtMovementType.payment && movement.reference == null && !movement.createdAt.isBefore(range.start) && movement.createdAt.isBefore(range.end)).fold(0, (sum, movement) => sum + movement.amount);
+
+  int _effectiveItemCount(SaleRecord sale) {
+    if (sale.isAnnulled) return 0;
+    var count = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    for (final operation in sale.operations) {
+      count -= operation.itemsOut.fold<int>(0, (sum, item) => sum + item.quantity);
+      count += operation.itemsIn.fold<int>(0, (sum, item) => sum + item.quantity);
+    }
+    return count.clamp(0, 1 << 30);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,12 +139,12 @@ class _SalesLayoutState extends State<SalesLayout> {
       final sales = _filterSales(salesProvider.sales);
       final paidBySale = _paidBySale(salesProvider.sales, debtProvider.movements);
       final range = _range();
-      final totalSold = sales.fold(0.0, (sum, sale) => sum + sale.total);
+      final totalSold = sales.fold(0.0, (sum, sale) => sum + sale.effectiveTotal);
       final collected = sales.fold(0.0, (sum, sale) => sum + _collectedFromSale(sale));
-      final credit = sales.where((sale) => sale.paymentMethod == AppStrings.creditPayment).fold(0.0, (sum, sale) => sum + sale.total - sale.received.clamp(0, sale.total));
+      final credit = sales.where((sale) => sale.paymentMethod == AppStrings.creditPayment).fold(0.0, (sum, sale) => sum + (sale.effectiveTotal - sale.effectiveCollected));
       final laterPayments = _laterPayments(debtProvider.movements, range);
-      final profit = sales.fold(0.0, (sum, sale) => sum + sale.items.fold(0.0, (line, item) => line + (item.unitPrice - item.cost) * item.quantity - item.discount));
-      final itemCount = sales.fold<int>(0, (sum, sale) => sum + sale.items.fold<int>(0, (line, item) => line + item.quantity));
+      final profit = sales.fold(0.0, (sum, sale) => sum + sale.effectiveProfit);
+      final itemCount = sales.fold<int>(0, (sum, sale) => sum + _effectiveItemCount(sale));
       final clientCount = sales.map((sale) => sale.clientId ?? sale.clientName.toLowerCase()).toSet().length;
       final summaryMetrics = <PeriodSummaryMetric>[
         PeriodSummaryMetric('Total vendido', _money(totalSold)),
@@ -220,18 +229,18 @@ class _SalesLayoutState extends State<SalesLayout> {
   Widget _buildList(List<SaleRecord> sales, Map<String, double> paidBySale) => HistoryTablePanel(
     title: 'Historial de ventas', icon: Icons.receipt_long_outlined, itemCount: sales.length, header: _buildListHeader(),
     emptyState: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.textMuted), SizedBox(height: 10), Text('No hay ventas en este período.', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))])),
-    itemBuilder: (_, index) => _saleRow(sales[index], paidBySale[sales[index].id] ?? 0),
+    itemBuilder: (_, index) => _saleRow(sales[index], paidBySale[sales[index].id] ?? sales[index].effectiveCollected),
   );
 
   Widget _buildListHeader() => Container(
     padding: const EdgeInsets.fromLTRB(14, 10, 14, 9), decoration: const BoxDecoration(color: AppColors.inputBackground, border: Border(bottom: BorderSide(color: AppColors.border))),
-    child: const Row(children: [SizedBox(width: 78, child: Text('Ticket', style: AppTextStyles.ticketLabel)), SizedBox(width: 105, child: Text('Fecha / hora', style: AppTextStyles.ticketLabel)), Expanded(flex: 2, child: Text('Cliente', style: AppTextStyles.ticketLabel)), Expanded(child: Text('Artículos', style: AppTextStyles.ticketLabel)), SizedBox(width: 100, child: Text('Pago', style: AppTextStyles.ticketLabel)), SizedBox(width: 100, child: Text('Total', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)), SizedBox(width: 26)]),
+    child: const Row(children: [SizedBox(width: 78, child: Text('Ticket', style: AppTextStyles.ticketLabel)), SizedBox(width: 105, child: Text('Fecha / hora', style: AppTextStyles.ticketLabel)), Expanded(flex: 2, child: Text('Cliente', style: AppTextStyles.ticketLabel)), Expanded(child: Text('Artículos', style: AppTextStyles.ticketLabel)), SizedBox(width: 100, child: Text('Pago', style: AppTextStyles.ticketLabel)), SizedBox(width: 185, child: Text('Estado / operación', style: AppTextStyles.ticketLabel)), SizedBox(width: 100, child: Text('Total', textAlign: TextAlign.right, style: AppTextStyles.ticketLabel)), SizedBox(width: 26)]),
   );
 
   Widget _saleRow(SaleRecord sale, double paid) {
     final credit = sale.paymentMethod == AppStrings.creditPayment;
-    final pending = credit ? (sale.total - paid).clamp(0, double.infinity).toDouble() : 0.0;
-    final items = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    final pending = credit ? (sale.effectiveTotal - paid).clamp(0, double.infinity).toDouble() : 0.0;
+    final items = _effectiveItemCount(sale);
     final time = '${sale.createdAt.hour.toString().padLeft(2, '0')}:${sale.createdAt.minute.toString().padLeft(2, '0')}';
     return InkWell(onTap: () => _showDetails(sale, paid), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), child: Row(children: [
       SizedBox(width: 78, child: Text('#${sale.ticketNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary))),
@@ -239,11 +248,25 @@ class _SalesLayoutState extends State<SalesLayout> {
       Expanded(flex: 2, child: Text(sale.clientName, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
       Expanded(child: Text('$items artículo${items == 1 ? '' : 's'}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))),
       SizedBox(width: 100, child: _paymentBadge(sale.paymentMethod)),
-      SizedBox(width: 100, child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(_money(sale.total), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)), if (credit) Text(pending <= .005 ? 'Pagada' : 'Pendiente ${_money(pending)}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: pending <= .005 ? AppColors.successGreen : AppColors.dangerRed))])),
+      SizedBox(width: 185, child: _statusOperationBadges(sale)),
+      SizedBox(width: 100, child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(_money(sale.effectiveTotal), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)), if (credit) Text(pending <= .005 ? 'Pagada' : 'Pendiente ${_money(pending)}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: pending <= .005 ? AppColors.successGreen : AppColors.dangerRed))])),
       const SizedBox(width: 8), const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
     ])));
   }
 
+  Widget _statusOperationBadges(SaleRecord sale) {
+    final children = <Widget>[_saleBadge(sale.isAnnulled ? 'ANULADA' : 'COMPLETADA', sale.isAnnulled ? AppColors.dangerRed : AppColors.successGreen)];
+    final seen = <SaleOperationType>{};
+    for (final operation in sale.operations) {
+      if (seen.add(operation.type)) {
+        children.add(const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('—', style: TextStyle(fontSize: 10, color: AppColors.textMuted))));
+        children.add(_saleBadge(operation.label, operation.type == SaleOperationType.change ? AppColors.primary : AppColors.warningOrange));
+      }
+    }
+    return SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisSize: MainAxisSize.min, children: children));
+  }
+
+  Widget _saleBadge(String label, Color color) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: color.withOpacity(.10), border: Border.all(color: color.withOpacity(.35)), borderRadius: BorderRadius.circular(8)), child: Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)));
   Widget _paymentBadge(String method) => Align(alignment: Alignment.centerLeft, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)), child: Text(method, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textDarkSecondary))));
 
   Future<void> _showDetails(SaleRecord sale, double paid) async => SaleDetailDialog.show(context, sale: sale, paidAmount: paid, onPrint: () => _printSale(sale));
