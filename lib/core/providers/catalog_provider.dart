@@ -6,6 +6,7 @@ import 'package:stellar_pos/core/app/app_dependencies.dart';
 import 'package:stellar_pos/core/data/repositories/client_repository.dart';
 import 'package:stellar_pos/core/data/repositories/provider_catalog_repository.dart';
 import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
+import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/models/client.dart';
@@ -19,7 +20,8 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 /// Categories, brands and distributors have one source of truth here. The
 /// catalog is persisted as a single state record so every UI that needs a
 /// distributor reads the same collection.
-class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
+class CatalogProvider extends ChangeNotifier
+    implements CatalogRegistrar, DistributorCatalog {
   static final Set<String> _externalBrands = <String>{};
   static const _catalogStateId = 'catalog';
   static const _legacyCatalogStateId = 'provider_catalog';
@@ -51,7 +53,8 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
         _catalogRepository = catalogRepository ?? ProviderCatalogRepository();
 
   List<String> get tags => _service.uniqueSorted(_tags);
-  List<String> get brands => _service.uniqueSorted({..._brands, ..._externalBrands});
+  List<String> get brands =>
+      _service.uniqueSorted({..._brands, ..._externalBrands});
   List<String> get distributors => _service.uniqueSorted(_distributors);
   List<String> get departments => distributors;
   List<Client> get clients => List.unmodifiable(_clients);
@@ -92,6 +95,17 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     notifyListeners();
   }
 
+  @override
+  void registerDistributorValue(String distributor) {
+    final value = _service.normalizeName(distributor);
+    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) {
+      return;
+    }
+    _distributors.add(value);
+    _persistCatalog();
+    notifyListeners();
+  }
+
   static void registerBrand(String brand) {
     final value = brand.trim();
     if (value.isNotEmpty) _externalBrands.add(value);
@@ -106,7 +120,9 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   }
 
   void removeTag(String tag) {
-    _tags.removeWhere((item) => _service.normalizeName(item).toLowerCase() == _service.normalizeName(tag).toLowerCase());
+    _tags.removeWhere((item) =>
+        _service.normalizeName(item).toLowerCase() ==
+        _service.normalizeName(tag).toLowerCase());
     _persistCatalog();
     notifyListeners();
   }
@@ -114,21 +130,26 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   void addBrand(String brand) {
     final value = _service.normalizeName(brand);
     if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
-    _externalBrands.removeWhere((item) => _service.normalizeName(item).toLowerCase() == value.toLowerCase());
+    _externalBrands.removeWhere((item) =>
+        _service.normalizeName(item).toLowerCase() == value.toLowerCase());
     _brands.add(value);
     notifyListeners();
   }
 
   void removeBrand(String brand) {
     final normalized = _service.normalizeName(brand).toLowerCase();
-    _brands.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
-    _externalBrands.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
+    _brands.removeWhere((item) =>
+        _service.normalizeName(item).toLowerCase() == normalized);
+    _externalBrands.removeWhere((item) =>
+        _service.normalizeName(item).toLowerCase() == normalized);
     notifyListeners();
   }
 
   bool addDistributor(String distributor) {
     final value = _service.normalizeName(distributor);
-    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) return false;
+    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) {
+      return false;
+    }
     _distributors.add(value);
     _persistCatalog();
     notifyListeners();
@@ -141,14 +162,16 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     if (oldValue.isEmpty || newValue.isEmpty) return false;
 
     final index = _distributors.indexWhere(
-      (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
+      (item) =>
+          _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
     );
     if (index < 0) return false;
 
     final duplicate = _distributors.asMap().entries.any(
       (entry) =>
           entry.key != index &&
-          _service.normalizeName(entry.value).toLowerCase() == newValue.toLowerCase(),
+          _service.normalizeName(entry.value).toLowerCase() ==
+              newValue.toLowerCase(),
     );
     if (duplicate) return false;
 
@@ -183,7 +206,12 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     final phone = client.phone.trim();
     if (name.isEmpty || _containsClientName(name)) return;
     final id = client.id.isEmpty ? IdGenerator.newId() : client.id;
-    final normalized = client.copyWith(id: id, name: name, phone: phone, touchMetadata: false);
+    final normalized = client.copyWith(
+      id: id,
+      name: name,
+      phone: phone,
+      touchMetadata: false,
+    );
     _clients.add(normalized);
     notifyListeners();
     _persist(() => _clientRepository?.save(normalized));
@@ -194,7 +222,8 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     if (index < 0) return false;
     final name = _service.normalizeName(client.name);
     if (name.isEmpty) return false;
-    final duplicate = _clients.any((item) => item.id != client.id && item.name.toLowerCase() == name.toLowerCase());
+    final duplicate = _clients.any((item) =>
+        item.id != client.id && item.name.toLowerCase() == name.toLowerCase());
     if (duplicate) return false;
     final updated = client.copyWith(name: name, phone: client.phone.trim());
     _clients[index] = updated;
@@ -227,8 +256,10 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
 
     final current = await repository.getById(_catalogStateId);
     final legacy = await repository.getById(_legacyCatalogStateId);
-    final products = await _productRepository?.getAll() ?? const <Product>[];
-    final routes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
+    final products =
+        await _productRepository?.getAll() ?? const <Product>[];
+    final routes =
+        await _routeRepository?.getAll() ?? const <ProviderRoute>[];
 
     final mergedTags = <String>[];
     final mergedDistributors = <String>[];
@@ -312,5 +343,6 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     if (future != null) unawaited(future.catchError((_) {}));
   }
 
-  bool _containsClientName(String name) => _clients.any((client) => client.name.toLowerCase() == name.toLowerCase());
+  bool _containsClientName(String name) =>
+      _clients.any((client) => client.name.toLowerCase() == name.toLowerCase());
 }
