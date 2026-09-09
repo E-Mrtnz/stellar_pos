@@ -124,7 +124,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     );
     _clients.add(normalized);
     notifyListeners();
-    unawaited(_clientRepository?.save(normalized));
+    _persist(() => _clientRepository?.save(normalized));
   }
 
   bool updateClient(Client client) {
@@ -141,7 +141,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     );
     _clients[index] = updated;
     notifyListeners();
-    unawaited(_clientRepository?.save(updated));
+    _persist(() => _clientRepository?.save(updated));
     return true;
   }
 
@@ -150,7 +150,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     _clients.removeWhere((client) => client.id == clientId);
     if (before == _clients.length) return;
     notifyListeners();
-    unawaited(_clientRepository?.delete(clientId));
+    _persist(() => _clientRepository?.delete(clientId));
   }
 
   Client? findClientById(String id) {
@@ -176,6 +176,13 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
       if (stored.isNotEmpty) notifyListeners();
     }
     _clientsLoaded = true;
+  }
+
+  void _persist(Future<void>? Function()? operation) {
+    final future = operation?.call();
+    if (future != null) {
+      unawaited(future.catchError((_) {}));
+    }
   }
 
   bool _containsClientName(String name) => _clients.any(
