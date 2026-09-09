@@ -13,10 +13,14 @@ import 'package:stellar_pos/core/models/provider_catalog_state.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
 /// Presentation state coordinator for catalog values and clients.
-/// Pure normalization/comparison rules live in [CatalogValueService].
+///
+/// Categories, brands and distributors have one source of truth here. The
+/// catalog is persisted as a single state record so every UI that needs a
+/// distributor reads the same collection.
 class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   static final Set<String> _externalBrands = <String>{};
   static const _catalogStateId = 'catalog';
+  static const _legacyCatalogStateId = 'provider_catalog';
 
   final CatalogValueService _service;
   final Repository<Client>? _clientRepository;
@@ -89,14 +93,14 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     final value = _service.normalizeName(tag);
     if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) return;
     _tags.add(value);
-    notifyListeners();
     _persistCatalog();
+    notifyListeners();
   }
 
   void removeTag(String tag) {
     _tags.removeWhere((item) => _service.normalizeName(item).toLowerCase() == _service.normalizeName(tag).toLowerCase());
-    notifyListeners();
     _persistCatalog();
+    notifyListeners();
   }
 
   void addBrand(String brand) {
@@ -114,21 +118,57 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     notifyListeners();
   }
 
-  void addDistributor(String distributor) {
+  bool addDistributor(String distributor) {
     final value = _service.normalizeName(distributor);
-    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) return;
+    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) return false;
     _distributors.add(value);
+    _persistCatalog();
     notifyListeners();
+    return true;
   }
 
-  void removeDistributor(String distributor) {
+  bool updateDistributor(String oldDistributor, String newDistributor) {
+    final oldValue = _service.normalizeName(oldDistributor);
+    final newValue = _service.normalizeName(newDistributor);
+    if (oldValue.isEmpty || newValue.isEmpty) return false;
+
+    final index = _distributors.indexWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
+    );
+    if (index < 0) return false;
+
+    final duplicate = _distributors.asMap().entries.any(
+      (entry) =>
+          entry.key != index &&
+          _service.normalizeName(entry.value).toLowerCase() == newValue.toLowerCase(),
+    );
+    if (duplicate) return false;
+
+    _distributors[index] = newValue;
+    _persistCatalog();
+    notifyListeners();
+    return true;
+  }
+
+  bool removeDistributor(String distributor) {
     final normalized = _service.normalizeName(distributor).toLowerCase();
-    _distributors.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
+    final before = _distributors.length;
+    _distributors.removeWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == normalized,
+    );
+    if (_distributors.length == before) return false;
+    _persistCatalog();
     notifyListeners();
+    return true;
   }
 
-  void addDepartment(String department) => addDistributor(department);
-  void removeDepartment(String department) => removeDistributor(department);
+  void addDepartment(String department) {
+    addDistributor(department);
+  }
+
+  void removeDepartment(String department) {
+    removeDistributor(department);
+  }
 
   void addClient(Client client) {
     final name = _service.normalizeName(client.name);
@@ -171,17 +211,52 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   }
 
   Future<void> _loadCatalogFromRepository() async {
-    final catalog = await _catalogRepository?.getById(_catalogStateId);
-    if (catalog != null) {
-      _tags
-        ..clear()
-        ..addAll(catalog.tags);
-      _distributors
-        ..clear()
-        ..addAll(catalog.distributors);
+    final repository = _catalogRepository;
+    if (repository == null) {
+      _catalogLoaded = true;
+      return;
     }
+
+    final current = await repository.getById(_catalogStateId);
+    final legacy = await repository.getById(_legacyCatalogStateId);
+
+    final mergedTags = <String>[];
+    final mergedDistributors = <String>[];
+
+    void merge(ProviderCatalogState? state) {
+      if (state == null) return;
+      for (final tag in state.tags) {
+        final value = _service.normalizeName(tag);
+        if (value.isNotEmpty && !_service.containsIgnoreCase(mergedTags, value)) {
+          mergedTags.add(value);
+        }
+      }
+      for (final distributor in state.distributors) {
+        final value = _service.normalizeName(distributor);
+        if (value.isNotEmpty && !_service.containsIgnoreCase(mergedDistributors, value)) {
+          mergedDistributors.add(value);
+        }
+      }
+    }
+
+    merge(current);
+    merge(legacy);
+
+    _tags
+      ..clear()
+      ..addAll(mergedTags);
+    _distributors
+      ..clear()
+      ..addAll(mergedDistributors);
+
     _catalogLoaded = true;
-    if (catalog != null) notifyListeners();
+
+    // Migrate the legacy provider catalog into the canonical catalog record.
+    if (legacy != null && (current == null || legacy.distributors.any((value) => !_service.containsIgnoreCase(current.distributors, value)))) {
+      _persistCatalog();
+    }
+
+    if (current != null || legacy != null) notifyListeners();
   }
 
   void _persistCatalog() {
