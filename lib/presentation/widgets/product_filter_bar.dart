@@ -217,7 +217,7 @@ class ProductFilterBar extends StatelessWidget {
   ) {
     final selectedDistributor = selectedFilter != null &&
             selectedFilter!.startsWith('distributor:')
-        ? selectedFilter!.substring(11)
+        ? selectedFilter!.substring(12)
         : null;
     final labels = ['Distribuidoras', ...distributors];
 
