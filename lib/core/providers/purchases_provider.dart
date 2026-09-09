@@ -63,7 +63,7 @@ class PurchasesProvider extends ChangeNotifier {
   void addPurchase(PurchaseRecord purchase) {
     _purchases.add(purchase);
     notifyListeners();
-    unawaited(_repository?.save(purchase));
+    _persist(() => _repository?.save(purchase));
   }
 
   void removePurchase(String id) {
@@ -71,7 +71,7 @@ class PurchasesProvider extends ChangeNotifier {
     _purchases.removeWhere((purchase) => purchase.id == id);
     if (_purchases.length == before) return;
     notifyListeners();
-    unawaited(_repository?.delete(id));
+    _persist(() => _repository?.delete(id));
   }
 
   void clearPurchases() {
@@ -80,7 +80,7 @@ class PurchasesProvider extends ChangeNotifier {
     _purchases.clear();
     notifyListeners();
     for (final id in ids) {
-      unawaited(_repository?.delete(id));
+      _persist(() => _repository?.delete(id));
     }
   }
 
@@ -102,5 +102,12 @@ class PurchasesProvider extends ChangeNotifier {
       ..addAll(byId.values);
     _loaded = true;
     if (stored.isNotEmpty) notifyListeners();
+  }
+
+  void _persist(Future<void>? Function()? operation) {
+    final future = operation?.call();
+    if (future != null) {
+      unawaited(future.catchError((_) {}));
+    }
   }
 }
