@@ -2,8 +2,8 @@ name: Repair sales operations
 
 on:
   push:
-    tags:
-      - repair-sales-operations-20260909
+    branches:
+      - feature/sales-operations
 
 permissions:
   contents: write
@@ -52,6 +52,9 @@ jobs:
               if 'deleteSale(' in text:
                   path.write_text(text.replace('deleteSale(', 'annulSale(', 1))
 
+          trigger = Path('lib/presentation/widgets/app_alert.dart')
+          trigger.write_text(trigger.read_text().replace('// TEMP_SALES_REPAIR_TRIGGER\n', ''))
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -59,7 +62,7 @@ jobs:
           cache: true
 
       - name: Format changed Dart files
-        run: dart format lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
+        run: dart format lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart lib/presentation/widgets/app_alert.dart
 
       - name: Analyze project
         run: flutter analyze
@@ -70,6 +73,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/repair-sales-operations.yml
-          git add lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
+          git add lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart lib/presentation/widgets/app_alert.dart
           git commit -m "fix(sales): resolve sales operations compile errors"
           git push origin HEAD:feature/sales-operations
