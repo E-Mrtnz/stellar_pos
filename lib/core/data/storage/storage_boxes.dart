@@ -8,6 +8,7 @@ class StorageBoxes {
   static const products = 'products';
   static const clients = 'clients';
   static const providerRoutes = 'provider_routes';
+  static const providerCatalog = 'provider_catalog';
   static const sales = 'sales';
   static const purchases = 'purchases';
   static const debtAccounts = 'debt_accounts';
