@@ -33,6 +33,8 @@ class SaleLifecycleService {
       total: total,
       received: received ?? sale.received,
       change: change ?? sale.change,
+      status: sale.status,
+      operations: sale.operations,
       metadata: sale.metadata.touch(),
     );
   }
