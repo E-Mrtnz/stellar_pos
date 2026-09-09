@@ -26,7 +26,7 @@ if "String _money(double value) =>" not in dialog_text and marker in dialog_text
     )
 
 change_pattern = re.compile(
-    r"class _ChangeDialogState extends State<_ChangeDialogState> \{.*\Z",
+    r"class _ChangeDialogState extends State<_ChangeDialog> \{.*\Z",
     re.S,
 )
 change_match = change_pattern.search(dialog_text)
