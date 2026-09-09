@@ -131,7 +131,7 @@ replacement = r'''  Widget _saleRow(SaleRecord sale, double paid) {
 
   Widget _statusOperationBadges'''
 
-sales_text, count = pattern.subn(replacement, sales_text, count=1)
+sales_text, count = pattern.subn(lambda _: replacement, sales_text, count=1)
 if count != 1:
     raise SystemExit('Expected _saleRow method was not found.')
 sales_layout.write_text(sales_text)
