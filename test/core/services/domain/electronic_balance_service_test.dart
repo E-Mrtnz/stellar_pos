@@ -12,6 +12,13 @@ void main() {
     expect(service.isValidCategory('Otro'), isFalse);
   });
 
+  test('keeps a stable category order for presentation', () {
+    expect(
+      ElectronicBalanceService.validCategoryOrder,
+      ['Saldo', 'Internet', 'Llamada'],
+    );
+  });
+
   test('calculates provider cost and profit from commission', () {
     expect(service.providerCost(amount: 10, commissionRate: 5), 9.5);
     expect(service.profit(amount: 10, commissionRate: 5), 0.5);
