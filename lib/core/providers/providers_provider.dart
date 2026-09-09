@@ -2,49 +2,48 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:stellar_pos/core/data/repositories/product_repository.dart';
-import 'package:stellar_pos/core/data/repositories/provider_catalog_repository.dart';
-import 'package:stellar_pos/core/data/repositories/provider_route_repository.dart';
-import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
-import 'package:stellar_pos/core/models/product.dart';
-import 'package:stellar_pos/core/models/provider_catalog_state.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
+import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
-/// Presentation state coordinator for distributors and delivery routes.
-/// Catalog normalization rules are centralized in [CatalogValueService].
-class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
-  static const _catalogStateId = 'provider_catalog';
-
+/// Presentation state coordinator for provider routes.
+///
+/// Distributor values are owned by [CatalogProvider]. This provider only
+/// coordinates routes and exposes the catalog values to legacy provider UI.
+class ProvidersProvider extends ChangeNotifier {
   final CatalogValueService _service;
-  final List<String> _distributors = [];
   final List<ProviderRoute> _routes = [];
-  final Repository<ProviderCatalogState>? _catalogRepository;
   final Repository<ProviderRoute>? _routeRepository;
-  final Repository<Product>? _productRepository;
+  CatalogProvider? _catalogProvider;
   bool _loaded = false;
   Future<void>? _loadFuture;
 
   ProvidersProvider({
     CatalogValueService? service,
-    Repository<ProviderCatalogState>? catalogRepository,
+    CatalogProvider? catalogProvider,
     Repository<ProviderRoute>? routeRepository,
-    Repository<Product>? productRepository,
   })  : _service = service ?? const CatalogValueService(),
-        _catalogRepository = catalogRepository ?? ProviderCatalogRepository(),
-        _routeRepository = routeRepository ?? ProviderRouteRepository(),
-        _productRepository = productRepository ?? ProductRepository();
+        _catalogProvider = catalogProvider,
+        _routeRepository = routeRepository;
 
-  List<String> get distributors => _service.uniqueSorted(_distributors);
+  List<String> get distributors =>
+      _catalogProvider?.distributors ?? const <String>[];
+
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
+
+  void attachCatalog(CatalogProvider catalogProvider) {
+    if (identical(_catalogProvider, catalogProvider)) return;
+    _catalogProvider = catalogProvider;
+    notifyListeners();
+  }
 
   Future<void> load() {
     if (_loaded) return Future.value();
     final existing = _loadFuture;
     if (existing != null) return existing;
-    final future = _loadFromRepositories();
+    final future = _loadRoutes();
     _loadFuture = future;
     return future;
   }
@@ -53,54 +52,48 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     return _routes.where((route) => route.type == type).toList();
   }
 
-  @override
-  void registerDistributorValue(String distributor) {
-    addDistributor(distributor);
-  }
-
   bool addDistributor(String name) {
-    final value = _service.normalizeName(name);
-    if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) return false;
-    _distributors.add(value);
-    notifyListeners();
-    _persistCatalog();
-    return true;
+    final catalog = _catalogProvider;
+    if (catalog == null) return false;
+    final added = catalog.addDistributor(name);
+    if (added) notifyListeners();
+    return added;
   }
 
   bool updateDistributor(String oldName, String newName) {
-    final value = _service.normalizeName(newName);
-    if (value.isEmpty) return false;
+    final catalog = _catalogProvider;
+    if (catalog == null) return false;
+    final updated = catalog.updateDistributor(oldName, newName);
+    if (!updated) return false;
+
     final normalizedOld = _service.normalizeName(oldName).toLowerCase();
-    final index = _distributors.indexWhere((item) => _service.normalizeName(item).toLowerCase() == normalizedOld);
-    if (index < 0) return false;
-    final duplicate = _distributors.asMap().entries.any((entry) => entry.key != index && _service.normalizeName(entry.value).toLowerCase() == value.toLowerCase());
-    if (duplicate) return false;
-    _distributors[index] = value;
+    final normalizedNew = _service.normalizeName(newName);
     final changedRoutes = <ProviderRoute>[];
     for (var i = 0; i < _routes.length; i++) {
       final route = _routes[i];
       if (_service.normalizeName(route.distributorName).toLowerCase() == normalizedOld) {
-        final updated = route.copyWith(distributorName: value);
-        _routes[i] = updated;
-        changedRoutes.add(updated);
+        final updatedRoute = route.copyWith(distributorName: normalizedNew);
+        _routes[i] = updatedRoute;
+        changedRoutes.add(updatedRoute);
       }
     }
     notifyListeners();
-    _persistCatalog();
     for (final route in changedRoutes) _persistRoute(route);
     return true;
   }
 
   bool removeDistributor(String name) {
+    final catalog = _catalogProvider;
+    if (catalog == null) return false;
     final normalized = _service.normalizeName(name).toLowerCase();
-    final inUse = _routes.any((route) => _service.normalizeName(route.distributorName).toLowerCase() == normalized);
+    final inUse = _routes.any(
+      (route) =>
+          _service.normalizeName(route.distributorName).toLowerCase() == normalized,
+    );
     if (inUse) return false;
-    final before = _distributors.length;
-    _distributors.removeWhere((item) => _service.normalizeName(item).toLowerCase() == normalized);
-    if (_distributors.length == before) return false;
-    notifyListeners();
-    _persistCatalog();
-    return true;
+    final removed = catalog.removeDistributor(name);
+    if (removed) notifyListeners();
+    return removed;
   }
 
   bool addRoute({
@@ -112,12 +105,22 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (normalizedName.isEmpty || normalizedDays.isEmpty) return false;
-    final existingIndex = _routes.indexWhere((route) => route.type == type && _service.normalizeName(route.distributorName).toLowerCase() == normalizedName.toLowerCase());
+
+    final existingIndex = _routes.indexWhere(
+      (route) =>
+          route.type == type &&
+          _service.normalizeName(route.distributorName).toLowerCase() ==
+              normalizedName.toLowerCase(),
+    );
+
     late final ProviderRoute route;
     if (existingIndex >= 0) {
       final existing = _routes[existingIndex];
       route = existing.copyWith(
-        weekdays: _service.normalizeWeekdays([...existing.weekdays, ...normalizedDays]),
+        weekdays: _service.normalizeWeekdays([
+          ...existing.weekdays,
+          ...normalizedDays,
+        ]),
         colorValue: colorValue,
       );
       _routes[existingIndex] = route;
@@ -131,6 +134,7 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
       );
       _routes.add(route);
     }
+
     notifyListeners();
     _persistRoute(route);
     return true;
@@ -147,8 +151,16 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
     if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) return false;
-    final duplicate = _routes.asMap().entries.any((entry) => entry.key != index && entry.value.type == type && _service.normalizeName(entry.value.distributorName).toLowerCase() == normalizedName.toLowerCase());
+
+    final duplicate = _routes.asMap().entries.any(
+      (entry) =>
+          entry.key != index &&
+          entry.value.type == type &&
+          _service.normalizeName(entry.value.distributorName).toLowerCase() ==
+              normalizedName.toLowerCase(),
+    );
     if (duplicate) return false;
+
     final updated = _routes[index].copyWith(
       type: type,
       distributorName: normalizedName,
@@ -169,45 +181,13 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     unawaited(_routeRepository?.delete(id).catchError((_) {}));
   }
 
-  Future<void> _loadFromRepositories() async {
-    final catalog = await _catalogRepository?.getById(_catalogStateId);
-    if (catalog != null) {
-      _distributors
-        ..clear()
-        ..addAll(catalog.distributors);
-    }
-
-    // Older persisted products already contain their distributor value, but
-    // versions of the local catalog did not persist the distributor list.
-    // Rebuild the catalog from those products so existing data is recovered.
-    final products = await _productRepository?.getAll() ?? const <Product>[];
-    var recovered = false;
-    for (final product in products) {
-      final value = _service.normalizeName(product.department);
-      if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) {
-        continue;
-      }
-      _distributors.add(value);
-      recovered = true;
-    }
-
+  Future<void> _loadRoutes() async {
     final storedRoutes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
     _routes
       ..clear()
       ..addAll(storedRoutes);
     _loaded = true;
-
-    if (recovered) {
-      _persistCatalog();
-    }
-    if (catalog != null || recovered || storedRoutes.isNotEmpty) notifyListeners();
-  }
-
-  void _persistCatalog() {
-    final repository = _catalogRepository;
-    if (repository == null) return;
-    final state = ProviderCatalogState(id: _catalogStateId, distributors: _distributors);
-    unawaited(repository.save(state).catchError((_) {}));
+    if (storedRoutes.isNotEmpty) notifyListeners();
   }
 
   void _persistRoute(ProviderRoute route) {
