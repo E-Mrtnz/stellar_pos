@@ -1,29 +1,66 @@
+import 'package:stellar_pos/core/models/sync_metadata.dart';
+import 'package:stellar_pos/core/utils/id_generator.dart';
+
 enum ElectronicBalanceTransactionType { purchase, sale }
 
-class ElectronicBalanceSaleOption {
+class ElectronicBalanceSaleOption implements SyncableEntity {
+  @override
+  final String id;
   final String category;
   final double amount;
+  @override
+  final SyncMetadata metadata;
 
-  const ElectronicBalanceSaleOption({
+  ElectronicBalanceSaleOption({
+    String? id,
     required this.category,
     required this.amount,
-  });
+    SyncMetadata? metadata,
+  })  : id = id ?? IdGenerator.newId(),
+        metadata = metadata ?? SyncMetadata.initial();
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'category': category,
+        'amount': amount,
+        'metadata': metadata.toMap(),
+      };
+
+  factory ElectronicBalanceSaleOption.fromMap(Map<String, dynamic> map) =>
+      ElectronicBalanceSaleOption(
+        id: map['id']?.toString(),
+        category: map['category']?.toString() ?? '',
+        amount: _double(map['amount']),
+        metadata: _metadata(map['metadata']),
+      );
+
+  static double _double(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0;
+
+  static SyncMetadata _metadata(dynamic value) => value is Map
+      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
+      : SyncMetadata.initial();
 }
 
-class ElectronicBalanceAccount {
+class ElectronicBalanceAccount implements SyncableEntity {
+  @override
   final String id;
   final String companyName;
   final double commissionRate;
   final double balance;
   final List<ElectronicBalanceSaleOption> saleOptions;
+  @override
+  final SyncMetadata metadata;
 
-  const ElectronicBalanceAccount({
+  ElectronicBalanceAccount({
     required this.id,
     required this.companyName,
     required this.commissionRate,
     required this.balance,
     this.saleOptions = const [],
-  });
+    SyncMetadata? metadata,
+  }) : metadata = metadata ?? SyncMetadata.initial();
 
   double get commissionMultiplier => commissionRate / 100;
 
@@ -38,16 +75,30 @@ class ElectronicBalanceAccount {
     double? commissionRate,
     double? balance,
     List<ElectronicBalanceSaleOption>? saleOptions,
+    SyncMetadata? metadata,
+    bool touchMetadata = true,
   }) => ElectronicBalanceAccount(
         id: id ?? this.id,
         companyName: companyName ?? this.companyName,
         commissionRate: commissionRate ?? this.commissionRate,
         balance: balance ?? this.balance,
         saleOptions: saleOptions ?? this.saleOptions,
+        metadata: metadata ??
+            (touchMetadata ? this.metadata.touch() : this.metadata),
       );
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'companyName': companyName,
+        'commissionRate': commissionRate,
+        'balance': balance,
+        'saleOptions': saleOptions.map((option) => option.toMap()).toList(),
+        'metadata': metadata.toMap(),
+      };
 }
 
-class ElectronicBalanceTransaction {
+class ElectronicBalanceTransaction implements SyncableEntity {
+  @override
   final String id;
   final String accountId;
   final ElectronicBalanceTransactionType type;
@@ -58,8 +109,10 @@ class ElectronicBalanceTransaction {
   final String description;
   final DateTime createdAt;
   final String? saleId;
+  @override
+  final SyncMetadata metadata;
 
-  const ElectronicBalanceTransaction({
+  ElectronicBalanceTransaction({
     required this.id,
     required this.accountId,
     required this.type,
@@ -70,5 +123,24 @@ class ElectronicBalanceTransaction {
     required this.description,
     required this.createdAt,
     this.saleId,
-  });
+    SyncMetadata? metadata,
+  }) : metadata = metadata ??
+            SyncMetadata(
+              createdAt: createdAt.toUtc(),
+              updatedAt: createdAt.toUtc(),
+            );
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'accountId': accountId,
+        'type': type.name,
+        'amount': amount,
+        'providerCost': providerCost,
+        'profit': profit,
+        'category': category,
+        'description': description,
+        'createdAt': createdAt.toIso8601String(),
+        'saleId': saleId,
+        'metadata': metadata.toMap(),
+      };
 }
