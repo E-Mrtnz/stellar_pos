@@ -1,12 +1,40 @@
 import 'package:flutter/foundation.dart';
+import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
+import 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';
+import 'package:stellar_pos/core/domain/services/sale_lifecycle_service.dart';
 import 'package:stellar_pos/core/models/electronic_balance.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/services/domain/product_pricing_service.dart';
+import 'package:stellar_pos/core/services/domain/sale_lines_service.dart';
+import 'package:stellar_pos/core/services/domain/sale_totals_service.dart';
 
 class SalesProvider extends ChangeNotifier {
   final List<SaleRecord> _sales = [];
   int _nextTicketNumber = 1;
+
+  final ProductPricingService _pricing;
+  final SaleLinesService _lines;
+  final SaleTotalsService _totals;
+  final InventoryStockService _stock;
+  final ElectronicBalanceService _electronicBalance;
+  final SaleLifecycleService _lifecycle;
+
+  SalesProvider({
+    ProductPricingService? pricing,
+    SaleLinesService? lines,
+    SaleTotalsService? totals,
+    InventoryStockService? stock,
+    ElectronicBalanceService? electronicBalance,
+    SaleLifecycleService? lifecycle,
+  })  : _pricing = pricing ?? const ProductPricingService(),
+        _lines = lines ?? const SaleLinesService(),
+        _totals = totals ?? const SaleTotalsService(),
+        _stock = stock ?? const InventoryStockService(),
+        _electronicBalance =
+            electronicBalance ?? const ElectronicBalanceService(),
+        _lifecycle = lifecycle ?? const SaleLifecycleService();
 
   List<SaleRecord> get sales => List.unmodifiable(_sales);
   SaleRecord? get latestSale => _sales.isEmpty ? null : _sales.last;
@@ -38,7 +66,7 @@ class SalesProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     final ticketNumber = nextTicketNumberPreview;
-    final saleId = '${now.microsecondsSinceEpoch}-$ticketNumber';
+    final saleId = _lifecycle.newSaleId();
     final items = <SaleItemRecord>[];
 
     for (final entry in cartQuantities.entries) {
@@ -48,38 +76,19 @@ class SalesProvider extends ChangeNotifier {
       }
 
       final quantity = entry.value;
-      if (quantity <= 0) {
+      if (!_pricing.canPrice(product, quantity)) {
         throw StateError(
           'La cantidad de un producto debe ser mayor que cero.',
         );
       }
 
-      final lineSubtotal = product.priceForQuantity(quantity);
-      final lineDiscount = subtotal <= 0
-          ? 0.0
-          : discountAmount * (lineSubtotal / subtotal);
-      final hasGroupPricing =
-          product.hasGroupPricing && product.groupQuantity > 0;
-
-      items.add(
-        SaleItemRecord(
-          productId: product.id,
-          productName: product.name,
-          unit: product.unit,
-          brand: product.brand,
-          barcode: product.barcode,
-          cost: product.cost,
-          // Keep the product's real unit price fixed. Group pricing belongs to
-          // the line subtotal, not to the product's unit price.
-          unitPrice: product.price,
-          quantity: quantity,
-          lineSubtotal: lineSubtotal,
-          discount: lineDiscount,
-          lineTotal: lineSubtotal - lineDiscount,
-          imageData: product.imageData,
-          hasGroupPricing: hasGroupPricing,
-        ),
+      final item = _lines.physicalItem(product, quantity);
+      final lineDiscount = _totals.proportionalDiscount(
+        lineSubtotal: item.lineSubtotal,
+        subtotal: subtotal,
+        discountAmount: discountAmount,
       );
+      items.add(_lines.applyDiscount(item, lineDiscount));
     }
 
     final balanceProvider = electronicBalanceProvider;
@@ -96,16 +105,14 @@ class SalesProvider extends ChangeNotifier {
             'La cantidad de una recarga debe ser mayor que cero.',
           );
         }
-        if (!{'Saldo', 'Internet', 'Llamada'}
-            .contains(electronicSale.category)) {
+        if (!_electronicBalance.isValidCategory(electronicSale.category)) {
           throw StateError('El tipo de recarga no es válido.');
         }
-        if (account
-            .amountsForCategory(electronicSale.category)
-            .every(
-              (amount) =>
-                  (amount - electronicSale.amount).abs() > 0.000001,
-            )) {
+        if (!_electronicBalance.supportsAmount(
+          account,
+          electronicSale.category,
+          electronicSale.amount,
+        )) {
           throw StateError(
             'El monto de una recarga ya no está configurado para ${account.companyName}.',
           );
@@ -116,13 +123,16 @@ class SalesProvider extends ChangeNotifier {
 
     for (final electronicSale in electronicSales) {
       final account = balanceAccounts[electronicSale.accountId]!;
-      final lineSubtotal =
-          electronicSale.amount * electronicSale.quantity;
-      final lineDiscount = subtotal <= 0
-          ? 0.0
-          : discountAmount * (lineSubtotal / subtotal);
-      final providerCost =
-          electronicSale.amount * (1 - account.commissionRate / 100);
+      final lineSubtotal = electronicSale.amount * electronicSale.quantity;
+      final lineDiscount = _totals.proportionalDiscount(
+        lineSubtotal: lineSubtotal,
+        subtotal: subtotal,
+        discountAmount: discountAmount,
+      );
+      final providerCost = _electronicBalance.providerCost(
+        amount: electronicSale.amount,
+        commissionRate: account.commissionRate,
+      );
 
       items.add(
         SaleItemRecord(
@@ -196,9 +206,7 @@ class SalesProvider extends ChangeNotifier {
     for (final item in items.where((item) => !item.isElectronicBalance)) {
       final product = productProvider.findById(item.productId);
       if (product != null) {
-        productProvider.updateProduct(
-          product.copyWith(stock: product.stock - item.quantity),
-        );
+        productProvider.updateProduct(_stock.decrease(product, item.quantity));
       }
     }
 
@@ -232,15 +240,16 @@ class SalesProvider extends ChangeNotifier {
     final newPhysical = <String, int>{};
     for (final item in updatedItems) {
       if (item.isElectronicBalance) continue;
-      if (item.quantity <= 0) {
+      if (!_pricing.canPrice(
+        productProvider.findById(item.productId) ?? itemToProductFallback(item),
+        item.quantity,
+      )) {
         throw StateError(
           'La cantidad de un producto debe ser mayor que cero.',
         );
       }
       if (productProvider.findById(item.productId) == null) {
-        throw StateError(
-          'Uno de los productos seleccionados ya no existe.',
-        );
+        throw StateError('Uno de los productos seleccionados ya no existe.');
       }
       newPhysical[item.productId] =
           (newPhysical[item.productId] ?? 0) + item.quantity;
@@ -263,11 +272,11 @@ class SalesProvider extends ChangeNotifier {
         if (account == null || category == null) {
           throw StateError('Una recarga de la venta ya no está disponible.');
         }
-        if (account
-            .amountsForCategory(category)
-            .every(
-              (amount) => (amount - item.unitPrice).abs() > 0.000001,
-            )) {
+        if (!_electronicBalance.supportsAmount(
+          account,
+          category,
+          item.unitPrice,
+        )) {
           throw StateError('Uno de los montos de recarga ya no está configurado.');
         }
       }
@@ -283,37 +292,37 @@ class SalesProvider extends ChangeNotifier {
     for (final entry in oldPhysical.entries) {
       final product = productProvider.findById(entry.key);
       if (product != null) {
-        productProvider.updateProduct(
-          product.copyWith(stock: product.stock + entry.value),
-        );
+        productProvider.updateProduct(_stock.increase(product, entry.value));
       }
     }
 
-    final subtotal = updatedItems.fold<double>(0, (sum, item) {
-      if (item.isElectronicBalance) {
-        return sum + item.unitPrice * item.quantity;
-      }
+    final subtotal = _totals.subtotal(updatedItems.map((item) {
+      if (item.isElectronicBalance) return item.copyWith(lineSubtotal: item.unitPrice * item.quantity);
       final product = productProvider.findById(item.productId);
-      return sum +
-          (product?.priceForQuantity(item.quantity) ??
-              item.unitPrice * item.quantity);
-    });
+      return item.copyWith(
+        lineSubtotal: product == null
+            ? item.unitPrice * item.quantity
+            : _pricing.lineSubtotal(product, item.quantity),
+      );
+    }));
 
     final oldDiscountRate = oldSale.subtotal <= 0
-        ? 0
+        ? 0.0
         : oldSale.discountAmount / oldSale.subtotal;
     final discountAmount = subtotal * oldDiscountRate;
     final cardBase = subtotal - discountAmount;
     final cardFeeRate = cardBase <= 0
-        ? 0
+        ? 0.0
         : oldSale.cardFeeAmount / cardBase;
     final cardFeeAmount = cardBase * cardFeeRate;
-    final total = subtotal - discountAmount + cardFeeAmount;
-    final discountPercent =
-        (oldSale.subtotal <= 0
-                ? oldSale.discountPercent
-                : oldDiscountRate * 100)
-            .toDouble();
+    final total = _totals.total(
+      subtotal: subtotal,
+      discountAmount: discountAmount,
+      cardFeeAmount: cardFeeAmount,
+    );
+    final discountPercent = oldSale.subtotal <= 0
+        ? oldSale.discountPercent
+        : oldDiscountRate * 100;
 
     final finalItems = <SaleItemRecord>[];
     for (final item in updatedItems) {
@@ -327,15 +336,21 @@ class SalesProvider extends ChangeNotifier {
           : null;
       final lineSubtotal = isElectronic
           ? item.unitPrice * item.quantity
-          : (product?.priceForQuantity(item.quantity) ??
-              item.unitPrice * item.quantity);
-      final lineDiscount = subtotal <= 0
-          ? 0.0
-          : discountAmount * lineSubtotal / subtotal;
+          : (product == null
+              ? item.unitPrice * item.quantity
+              : _pricing.lineSubtotal(product, item.quantity));
+      final lineDiscount = _totals.proportionalDiscount(
+        lineSubtotal: lineSubtotal,
+        subtotal: subtotal,
+        discountAmount: discountAmount,
+      );
       final cost = product?.cost ??
           (account == null
               ? item.cost
-              : item.unitPrice * (1 - account.commissionRate / 100));
+              : _electronicBalance.providerCost(
+                  amount: item.unitPrice,
+                  commissionRate: account.commissionRate,
+                ));
       final name = isElectronic && account != null
           ? '${account.companyName} · ${item.electronicBalanceCategory ?? item.unit}'
           : (product?.name ?? item.productName);
@@ -346,13 +361,13 @@ class SalesProvider extends ChangeNotifier {
 
       finalItems.add(
         SaleItemRecord(
+          id: item.id,
           productId: item.productId,
           productName: name,
           unit: product?.unit ?? item.unit,
           brand: product?.brand ?? item.brand,
           barcode: product?.barcode ?? '',
           cost: cost,
-          // Keep the real unit price fixed during edits as well.
           unitPrice: product?.price ?? item.unitPrice,
           quantity: item.quantity,
           lineSubtotal: lineSubtotal,
@@ -363,6 +378,7 @@ class SalesProvider extends ChangeNotifier {
           hasGroupPricing: hasGroupPricing,
           electronicBalanceAccountId: item.electronicBalanceAccountId,
           electronicBalanceCategory: item.electronicBalanceCategory,
+          metadata: item.metadata,
         ),
       );
     }
@@ -394,9 +410,7 @@ class SalesProvider extends ChangeNotifier {
               .toList(),
         );
         if (!registered) {
-          throw StateError(
-            'No se pudo registrar una de las recargas modificadas.',
-          );
+          throw StateError('No se pudo registrar una de las recargas modificadas.');
         }
       }
     }
@@ -404,20 +418,13 @@ class SalesProvider extends ChangeNotifier {
     for (final entry in newPhysical.entries) {
       final product = productProvider.findById(entry.key);
       if (product != null) {
-        productProvider.updateProduct(
-          product.copyWith(stock: product.stock - entry.value),
-        );
+        productProvider.updateProduct(_stock.decrease(product, entry.value));
       }
     }
 
-    final updated = SaleRecord(
-      id: oldSale.id,
-      ticketNumber: oldSale.ticketNumber,
-      createdAt: oldSale.createdAt,
-      clientId: oldSale.clientId,
-      clientName: oldSale.clientName,
-      paymentMethod: oldSale.paymentMethod,
-      items: List.unmodifiable(finalItems),
+    final updated = _lifecycle.touchForUpdate(
+      oldSale,
+      items: finalItems,
       subtotal: subtotal,
       discountPercent: discountPercent,
       discountAmount: discountAmount,
@@ -451,9 +458,7 @@ class SalesProvider extends ChangeNotifier {
     for (final item in sale.items.where((item) => !item.isElectronicBalance)) {
       final product = productProvider.findById(item.productId);
       if (product != null) {
-        productProvider.updateProduct(
-          product.copyWith(stock: product.stock + item.quantity),
-        );
+        productProvider.updateProduct(_stock.increase(product, item.quantity));
       }
     }
 
@@ -479,6 +484,8 @@ class SalesProvider extends ChangeNotifier {
   }
 }
 
+/// DTO used by the presentation/cart layer for electronic-balance lines.
+/// The provider consumes it but does not own its business rules.
 class ElectronicBalanceCartSale {
   final String accountId;
   final String companyName;
@@ -494,3 +501,9 @@ class ElectronicBalanceCartSale {
     required this.quantity,
   });
 }
+
+// Used only to reuse the pricing service's quantity validation without
+// introducing a second validation rule for edited lines.
+// ignore: unused_element
+Never itemToProductFallback(SaleItemRecord item) =>
+    StateError('Producto no disponible.');
