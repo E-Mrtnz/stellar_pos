@@ -2,10 +2,6 @@
 enum SyncState { pending, synced, updated, deleted }
 
 /// Metadata shared by every persisted entity.
-///
-/// Business fields remain independent from synchronization concerns so local
-/// and remote data sources can exchange the same record without the UI knowing
-/// which database is being used.
 class SyncMetadata {
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -31,19 +27,10 @@ class SyncMetadata {
 
   factory SyncMetadata.initial({String? deviceId, String? storeId}) {
     final now = DateTime.now().toUtc();
-    return SyncMetadata(
-      createdAt: now,
-      updatedAt: now,
-      deviceId: deviceId,
-      storeId: storeId,
-    );
+    return SyncMetadata(createdAt: now, updatedAt: now, deviceId: deviceId, storeId: storeId);
   }
 
-  SyncMetadata touch({
-    SyncState? syncState,
-    DateTime? now,
-    bool deleted = false,
-  }) {
+  SyncMetadata touch({SyncState? syncState, DateTime? now, bool deleted = false}) {
     final timestamp = (now ?? DateTime.now()).toUtc();
     return SyncMetadata(
       createdAt: createdAt,
@@ -113,15 +100,13 @@ class SyncMetadata {
 
   static SyncState _syncState(dynamic value) {
     final text = value?.toString();
-    return SyncState.values.firstWhere(
-      (state) => state.name == text,
-      orElse: () => SyncState.pending,
-    );
+    return SyncState.values.firstWhere((state) => state.name == text, orElse: () => SyncState.pending);
   }
 }
 
-/// Common contract for all records that can be persisted and synchronized.
+/// Common contract for records persisted as serialized maps.
 abstract interface class SyncableEntity {
   String get id;
   SyncMetadata get metadata;
+  Map<String, dynamic> toMap();
 }
