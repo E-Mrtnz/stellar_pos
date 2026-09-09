@@ -10,37 +10,26 @@ class DebtService {
       .toList(growable: false);
 
   double totalDebt(Iterable<SaleRecord> sales) =>
-      creditSales(sales).fold(0, (sum, sale) => sum + sale.total);
+      creditSales(sales).fold(0, (sum, sale) => sum + sale.effectiveTotal);
 
   double totalPaid(Iterable<DebtMovement> payments) =>
       payments.fold(0, (sum, payment) => sum + payment.amount);
 
   double paidForClient(String clientId, Iterable<DebtMovement> payments) =>
-      payments
-          .where((payment) => payment.clientId == clientId)
-          .fold(0, (sum, payment) => sum + payment.amount);
+      payments.where((payment) => payment.clientId == clientId).fold(0, (sum, payment) => sum + payment.amount);
 
-  DebtAccount? accountFor(
-    String clientId,
-    Iterable<SaleRecord> sales,
-    Iterable<DebtMovement> payments,
-  ) {
-    final matching = creditSales(sales)
-        .where((sale) => sale.clientId == clientId)
-        .toList(growable: false);
+  DebtAccount? accountFor(String clientId, Iterable<SaleRecord> sales, Iterable<DebtMovement> payments) {
+    final matching = creditSales(sales).where((sale) => sale.clientId == clientId).toList(growable: false);
     if (matching.isEmpty) return null;
     return DebtAccount(
       clientId: clientId,
       clientName: matching.last.clientName,
-      totalDebt: matching.fold(0, (sum, sale) => sum + sale.total),
+      totalDebt: matching.fold(0, (sum, sale) => sum + sale.effectiveTotal),
       totalPaid: paidForClient(clientId, payments),
     );
   }
 
-  List<DebtAccount> accounts(
-    Iterable<SaleRecord> sales,
-    Iterable<DebtMovement> payments,
-  ) {
+  List<DebtAccount> accounts(Iterable<SaleRecord> sales, Iterable<DebtMovement> payments) {
     final byClient = <String, DebtAccount>{};
     for (final sale in creditSales(sales)) {
       final clientId = sale.clientId!;
@@ -48,18 +37,14 @@ class DebtService {
       byClient[clientId] = DebtAccount(
         clientId: clientId,
         clientName: sale.clientName,
-        totalDebt: (current?.totalDebt ?? 0) + sale.total,
+        totalDebt: (current?.totalDebt ?? 0) + sale.effectiveTotal,
         totalPaid: paidForClient(clientId, payments),
       );
     }
     return byClient.values.toList(growable: false);
   }
 
-  double appliedPayment({
-    required double amount,
-    required double remaining,
-    double? maxAmount,
-  }) {
+  double appliedPayment({required double amount, required double remaining, double? maxAmount}) {
     if (amount <= 0 || remaining <= 0.005) return 0;
     final limit = maxAmount ?? remaining;
     if (limit <= 0) return 0;
