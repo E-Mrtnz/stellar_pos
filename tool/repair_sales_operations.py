@@ -32,7 +32,7 @@ pattern = re.compile(
     r"  Widget _saleRow\(SaleRecord sale, double paid\) \{.*?\n  Widget _statusOperationBadges",
     re.S,
 )
-replacement = '''  Widget _saleRow(SaleRecord sale, double paid) {
+replacement = r'''  Widget _saleRow(SaleRecord sale, double paid) {
     final credit = sale.paymentMethod == AppStrings.creditPayment;
     final pending = credit
         ? (sale.effectiveTotal - paid).clamp(0, double.infinity).toDouble()
@@ -60,7 +60,7 @@ replacement = '''  Widget _saleRow(SaleRecord sale, double paid) {
             SizedBox(
               width: 105,
               child: Text(
-                '${_date(sale.createdAt)}\\n$time',
+                '${_date(sale.createdAt)}\n$time',
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
