@@ -25,13 +25,19 @@ if "String _money(double value) =>" not in dialog_text and marker in dialog_text
         1,
     )
 
-change_state = 'class _ChangeDialogState extends State<_ChangeDialogState> {'
-if change_state in dialog_text:
-    dialog_text = dialog_text.replace(
-        change_state,
-        change_state + "\n  String _money(double value) => '\\$${value.toStringAsFixed(2)}';",
-        1,
-    )
+change_pattern = re.compile(
+    r"class _ChangeDialogState extends State<_ChangeDialogState> \{.*\Z",
+    re.S,
+)
+change_match = change_pattern.search(dialog_text)
+if not change_match:
+    raise SystemExit('Expected _ChangeDialogState class was not found.')
+change_section = change_match.group(0).replace('_money(', '_moneyValue(')
+dialog_text = (
+    dialog_text[:change_match.start()]
+    + "String _moneyValue(double value) => '\\$${value.toStringAsFixed(2)}';\n\n"
+    + change_section
+)
 
 amount_marker = "final amount = _item.quantity <= 0 ? 0 : _item.lineTotal * quantity / _item.quantity;"
 if amount_marker in dialog_text:
