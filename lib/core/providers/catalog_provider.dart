@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/app/app_dependencies.dart';
-import 'package:stellar_pos/core/data/repositories/client_repository.dart';
 import 'package:stellar_pos/core/data/repositories/provider_catalog_repository.dart';
 import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
 import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
