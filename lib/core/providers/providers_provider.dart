@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:stellar_pos/core/data/repositories/product_repository.dart';
 import 'package:stellar_pos/core/data/repositories/provider_catalog_repository.dart';
 import 'package:stellar_pos/core/data/repositories/provider_route_repository.dart';
 import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
+import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/models/provider_catalog_state.dart';
 import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
@@ -21,6 +23,7 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
   final List<ProviderRoute> _routes = [];
   final Repository<ProviderCatalogState>? _catalogRepository;
   final Repository<ProviderRoute>? _routeRepository;
+  final Repository<Product>? _productRepository;
   bool _loaded = false;
   Future<void>? _loadFuture;
 
@@ -28,9 +31,11 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
     CatalogValueService? service,
     Repository<ProviderCatalogState>? catalogRepository,
     Repository<ProviderRoute>? routeRepository,
+    Repository<Product>? productRepository,
   })  : _service = service ?? const CatalogValueService(),
         _catalogRepository = catalogRepository ?? ProviderCatalogRepository(),
-        _routeRepository = routeRepository ?? ProviderRouteRepository();
+        _routeRepository = routeRepository ?? ProviderRouteRepository(),
+        _productRepository = productRepository ?? ProductRepository();
 
   List<String> get distributors => _service.uniqueSorted(_distributors);
   List<ProviderRoute> get routes => List.unmodifiable(_routes);
@@ -171,12 +176,31 @@ class ProvidersProvider extends ChangeNotifier implements DistributorCatalog {
         ..clear()
         ..addAll(catalog.distributors);
     }
+
+    // Older persisted products already contain their distributor value, but
+    // versions of the local catalog did not persist the distributor list.
+    // Rebuild the catalog from those products so existing data is recovered.
+    final products = await _productRepository?.getAll() ?? const <Product>[];
+    var recovered = false;
+    for (final product in products) {
+      final value = _service.normalizeName(product.department);
+      if (value.isEmpty || _service.containsIgnoreCase(_distributors, value)) {
+        continue;
+      }
+      _distributors.add(value);
+      recovered = true;
+    }
+
     final storedRoutes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
     _routes
       ..clear()
       ..addAll(storedRoutes);
     _loaded = true;
-    if (catalog != null || storedRoutes.isNotEmpty) notifyListeners();
+
+    if (recovered) {
+      _persistCatalog();
+    }
+    if (catalog != null || recovered || storedRoutes.isNotEmpty) notifyListeners();
   }
 
   void _persistCatalog() {
