@@ -1,1 +1,1 @@
-// Removed: operation records are part of sale.dart.
+// Operation records live in sale.dart.
