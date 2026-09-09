@@ -24,7 +24,24 @@ if "String _money(double value) =>" not in dialog_text and marker in dialog_text
         "  String _money(double value) => '\\$${value.toStringAsFixed(2)}';\n  " + marker,
         1,
     )
-    dialog.write_text(dialog_text)
+
+change_state = 'class _ChangeDialogState extends State<_ChangeDialogState> {'
+if change_state in dialog_text and "class _ChangeDialogState extends State<_ChangeDialogState> {\n  String _money(double value) =>" not in dialog_text:
+    dialog_text = dialog_text.replace(
+        change_state,
+        change_state + "\n  String _money(double value) => '\\$${value.toStringAsFixed(2)}';",
+        1,
+    )
+
+amount_marker = "final amount = _item.quantity <= 0 ? 0 : _item.lineTotal * quantity / _item.quantity;"
+if amount_marker in dialog_text:
+    dialog_text = dialog_text.replace(
+        amount_marker,
+        "final amount = _item.quantity <= 0 ? 0.0 : _item.lineTotal * quantity / _item.quantity;",
+        1,
+    )
+
+dialog.write_text(dialog_text)
 
 sales_layout = Path('lib/presentation/sales/sales_layout.dart')
 sales_text = sales_layout.read_text()
