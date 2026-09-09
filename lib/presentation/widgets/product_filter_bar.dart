@@ -58,37 +58,37 @@ class ProductFilterBar extends StatelessWidget {
 
     return SizedBox(
       height: 38,
-      child: Row(
-        children: [
-          _buildFilterDropdown(context),
-          const SizedBox(width: 10),
-          _buildBrandDropdown(context, brands),
-          const SizedBox(width: 10),
-          _buildDistributorDropdown(context, distributors),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: tags.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return _buildTagChip(
-                    label: 'Todos',
-                    isSelected: selectedTagIndex == 0,
-                    onSelected: () => onTagSelected(0),
-                  );
-                }
-                final tagIndex = index - 1;
-                return _buildTagChip(
-                  label: tags[tagIndex],
-                  isSelected: selectedTagIndex == tagIndex + 1,
-                  onSelected: () => onTagSelected(tagIndex + 1),
-                );
-              },
-            ),
-          ),
-        ],
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: tags.length + 4,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _buildFilterDropdown(context);
+          }
+          if (index == 1) {
+            return _buildBrandDropdown(context, brands);
+          }
+          if (index == 2) {
+            return _buildDistributorDropdown(context, distributors);
+          }
+
+          final tagIndex = index - 3;
+          if (tagIndex == 0) {
+            return _buildTagChip(
+              label: 'Todos',
+              isSelected: selectedTagIndex == 0,
+              onSelected: () => onTagSelected(0),
+            );
+          }
+
+          final categoryIndex = tagIndex - 1;
+          return _buildTagChip(
+            label: tags[categoryIndex],
+            isSelected: selectedTagIndex == categoryIndex + 1,
+            onSelected: () => onTagSelected(categoryIndex + 1),
+          );
+        },
       ),
     );
   }
