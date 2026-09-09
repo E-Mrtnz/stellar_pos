@@ -6,13 +6,15 @@ import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart
 import 'package:stellar_pos/core/data/repositories/electronic_balance_account_repository.dart';
 import 'package:stellar_pos/core/data/repositories/electronic_balance_transaction_repository.dart';
 import 'package:stellar_pos/core/data/repositories/product_repository.dart';
+import 'package:stellar_pos/core/data/repositories/provider_catalog_repository.dart';
+import 'package:stellar_pos/core/data/repositories/provider_route_repository.dart';
 import 'package:stellar_pos/core/data/repositories/purchase_repository.dart';
 import 'package:stellar_pos/core/data/repositories/sale_repository.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
-import 'package:stellar_pos/features/catalog/catalog.dart';
+import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/features/debts/debts.dart';
 import 'package:stellar_pos/features/purchases/purchases.dart';
 import 'package:stellar_pos/features/sales/sales.dart';
@@ -25,13 +27,28 @@ class AppProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => CatalogProvider(clientRepository: ClientRepository())..loadClients()),
-        ChangeNotifierProxyProvider<CatalogProvider, ProductProvider>(
-          create: (context) => ProductProvider(catalogRegistrar: context.read<CatalogProvider>(), repository: ProductRepository())..load(),
-          update: (_, catalog, products) => products ?? ProductProvider(catalogRegistrar: catalog, repository: ProductRepository())..load(),
+        ChangeNotifierProvider(
+          create: (_) => CatalogProvider(clientRepository: ClientRepository())..loadClients(),
         ),
-        ChangeNotifierProvider(create: (_) => ProvidersProvider()),
-        ChangeNotifierProvider(create: (_) => PurchasesProvider(repository: PurchaseRepository())..load()),
+        ChangeNotifierProxyProvider<CatalogProvider, ProductProvider>(
+          create: (context) => ProductProvider(
+            catalogRegistrar: context.read<CatalogProvider>(),
+            repository: ProductRepository(),
+          )..load(),
+          update: (_, catalog, products) => products ?? ProductProvider(
+            catalogRegistrar: catalog,
+            repository: ProductRepository(),
+          )..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ProvidersProvider(
+            catalogRepository: ProviderCatalogRepository(),
+            routeRepository: ProviderRouteRepository(),
+          )..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PurchasesProvider(repository: PurchaseRepository())..load(),
+        ),
         ChangeNotifierProvider(
           create: (_) => ElectronicBalanceProvider(
             accountRepository: ElectronicBalanceAccountRepository(),
@@ -39,9 +56,14 @@ class AppProviders extends StatelessWidget {
           )..load(),
         ),
         ChangeNotifierProvider(create: (_) => PrinterProvider()),
-        ChangeNotifierProvider(create: (_) => SalesProvider(repository: SaleRepository())..load()),
         ChangeNotifierProvider(
-          create: (context) => DebtProvider(context.read<SalesProvider>(), movementRepository: DebtMovementRepository())..load(),
+          create: (_) => SalesProvider(repository: SaleRepository())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => DebtProvider(
+            context.read<SalesProvider>(),
+            movementRepository: DebtMovementRepository(),
+          )..load(),
         ),
       ],
       child: child,
