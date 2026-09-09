@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:stellar_pos/core/domain/services/purchase_totals_service.dart';
+import 'package:stellar_pos/core/app/app_dependencies.dart';
+import 'package:stellar_pos/core/services/domain/purchase_totals_service.dart';
 import 'package:stellar_pos/core/models/purchase.dart';
 
 class PurchasesProvider extends ChangeNotifier {
   PurchasesProvider({PurchaseTotalsService? service})
-      : _service = service ?? const PurchaseTotalsService();
+      : _service = service ?? AppDependencies.purchaseTotals;
 
   final PurchaseTotalsService _service;
   final List<PurchaseRecord> _purchases = [];
