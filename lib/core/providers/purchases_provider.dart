@@ -12,7 +12,8 @@ class PurchasesProvider extends ChangeNotifier {
 
   List<PurchaseRecord> get purchases => List.unmodifiable(_purchases);
 
-  double totalFor(Iterable<PurchaseRecord> records) => _service.total(records.expand((purchase) => purchase.items));
+  double totalFor(Iterable<PurchaseRecord> records) =>
+      _service.totalForPurchases(records);
 
   void addPurchase(PurchaseRecord purchase) {
     _purchases.add(purchase);
