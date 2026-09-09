@@ -3,6 +3,7 @@ export 'catalog_value_service.dart';
 export 'debt_service.dart';
 export 'electronic_balance_service.dart';
 export 'inventory_stock_service.dart';
+export 'purchase_report_service.dart';
 export 'purchase_service.dart';
 export 'purchase_totals_service.dart';
 export 'sale_identity_service.dart';
