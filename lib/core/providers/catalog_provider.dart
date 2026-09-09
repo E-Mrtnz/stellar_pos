@@ -16,8 +16,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   final List<String> _distributors = [];
   final List<Client> _clients = [];
 
-  CatalogProvider({CatalogValueService? service})
-      : _service = service ?? const CatalogValueService();
+  CatalogProvider({CatalogValueService? service}) : _service = service ?? const CatalogValueService();
 
   List<String> get tags => _service.uniqueSorted(_tags);
   List<String> get brands => _service.uniqueSorted({..._brands, ..._externalBrands});
@@ -26,7 +25,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   List<Client> get clients => List.unmodifiable(_clients);
 
   @override
-  void registerBrand(String brand) {
+  void registerBrandValue(String brand) {
     final value = brand.trim();
     if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
     if (_service.containsIgnoreCase(_externalBrands, value)) return;
@@ -34,7 +33,8 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     notifyListeners();
   }
 
-  static void registerBrandLegacy(String brand) {
+  /// Legacy static API kept for compatibility with existing callers.
+  static void registerBrand(String brand) {
     final value = brand.trim();
     if (value.isNotEmpty) _externalBrands.add(value);
   }
