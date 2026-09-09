@@ -3,21 +3,42 @@ import 'package:stellar_pos/core/models/electronic_balance.dart';
 class ElectronicBalanceService {
   const ElectronicBalanceService();
 
-  static const validCategories = <String>{'Saldo', 'Internet', 'Llamada'};
+  static const validCategoryOrder = <String>[
+    'Saldo',
+    'Internet',
+    'Llamada',
+  ];
 
-  bool isValidCategory(String category) => validCategories.contains(category.trim());
+  static const validCategories = <String>{
+    'Saldo',
+    'Internet',
+    'Llamada',
+  };
 
-  double providerCost({required double amount, required double commissionRate}) {
+  bool isValidCategory(String category) =>
+      validCategories.contains(category.trim());
+
+  double providerCost({
+    required double amount,
+    required double commissionRate,
+  }) {
     _validate(amount, commissionRate);
     return amount * (1 - commissionRate / 100);
   }
 
-  double profit({required double amount, required double commissionRate}) {
+  double profit({
+    required double amount,
+    required double commissionRate,
+  }) {
     _validate(amount, commissionRate);
     return amount * commissionRate / 100;
   }
 
-  bool supportsAmount(ElectronicBalanceAccount account, String category, double amount) {
+  bool supportsAmount(
+    ElectronicBalanceAccount account,
+    String category,
+    double amount,
+  ) {
     return isValidCategory(category) &&
         amount > 0 &&
         account.amountsForCategory(category).any(
