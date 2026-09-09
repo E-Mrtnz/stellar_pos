@@ -60,8 +60,8 @@ jobs:
         with:
           sdk: stable
 
-      - name: Validate formatting
-        run: dart format --output=none --set-exit-if-changed lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
+      - name: Format and validate syntax
+        run: dart format lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
 
       - name: Commit fixes and remove temporary workflow
         shell: bash
