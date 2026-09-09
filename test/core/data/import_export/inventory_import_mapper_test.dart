@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/data/import_export/inventory_import_mapper.dart';
 
 void main() {
-  Cell _text(String value) => TextCellValue(value);
-  Cell _number(double value) => DoubleCellValue(value);
-  Cell _integer(int value) => IntCellValue(value);
+  dynamic _text(String value) => TextCellValue(value);
+  dynamic _number(double value) => DoubleCellValue(value);
+  dynamic _integer(int value) => IntCellValue(value);
 
   test('maps exported inventory columns into products', () {
     final rows = <List<dynamic>>[
