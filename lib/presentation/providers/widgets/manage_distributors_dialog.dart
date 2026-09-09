@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
-import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
@@ -41,7 +40,6 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     final value = _controller.text.trim();
     if (value.isEmpty) return;
 
-    final providers = context.read<ProvidersProvider>();
     final catalog = context.read<CatalogProvider>();
     final isEditing = _editingName != null;
 
@@ -54,8 +52,8 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     }
 
     final success = isEditing
-        ? providers.updateDistributor(_editingName!, value)
-        : providers.addDistributor(value);
+        ? catalog.updateDistributor(_editingName!, value)
+        : catalog.addDistributor(value);
 
     if (!success) {
       AppAlert.show(
@@ -65,13 +63,6 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
         type: AppAlertType.warning,
       );
       return;
-    }
-
-    if (!isEditing) {
-      catalog.addDistributor(value);
-    } else {
-      catalog.removeDistributor(_editingName!);
-      catalog.addDistributor(value);
     }
 
     AppAlert.show(
@@ -111,18 +102,8 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
     );
     if (!confirmed || !mounted) return;
 
-    final success = context.read<ProvidersProvider>().removeDistributor(name);
-    if (!success) {
-      AppAlert.show(
-        context,
-        'No puedes eliminar esta distribuidora porque tiene rutas asignadas.',
-        title: 'No se puede eliminar',
-        type: AppAlertType.warning,
-      );
-      return;
-    }
-
-    context.read<CatalogProvider>().removeDistributor(name);
+    final success = context.read<CatalogProvider>().removeDistributor(name);
+    if (!success) return;
 
     if (_editingName?.toLowerCase() == name.toLowerCase()) {
       _cancelEdit();
@@ -138,7 +119,7 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final distributors = context.watch<ProvidersProvider>().distributors;
+    final distributors = context.watch<CatalogProvider>().distributors;
     final editing = _editingName != null;
 
     return Center(
@@ -168,10 +149,7 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
                 IconButton(
                   tooltip: 'Cerrar',
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close,
-                    color: AppColors.textSecondary,
-                  ),
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -200,9 +178,7 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: editing
-                      ? 'Guardar cambios'
-                      : 'Agregar distribuidora',
+                  tooltip: editing ? 'Guardar cambios' : 'Agregar distribuidora',
                   onPressed: _save,
                   style: IconButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -224,10 +200,7 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
                 padding: EdgeInsets.symmetric(vertical: 18),
                 child: Text(
                   'Todavía no hay distribuidoras creadas.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               )
             else
@@ -250,30 +223,20 @@ class _ManageDistributorsDialogState extends State<ManageDistributorsDialog> {
                       ),
                       title: Text(
                         name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                        ),
+                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
                             tooltip: 'Editar',
-                            icon: const Icon(
-                              Icons.edit_outlined,
-                              size: 18,
-                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
                             color: AppColors.primary,
                             onPressed: () => _startEdit(name),
                           ),
                           IconButton(
                             tooltip: 'Eliminar',
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              size: 19,
-                              color: AppColors.dangerRed,
-                            ),
+                            icon: const Icon(Icons.delete_outline, size: 19, color: AppColors.dangerRed),
                             onPressed: () => _delete(name),
                           ),
                         ],
