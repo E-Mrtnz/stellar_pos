@@ -30,6 +30,7 @@ class AppProviders extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CatalogProvider(
             clientRepository: ClientRepository(),
+            productRepository: ProductRepository(),
             catalogRepository: ProviderCatalogRepository(),
           )
             ..load()
