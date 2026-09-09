@@ -10,27 +10,32 @@ class SyncMetadata {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int version;
+  final int schemaVersion;
   final SyncState syncState;
   final DateTime? lastSyncedAt;
   final DateTime? deletedAt;
   final String? deviceId;
+  final String? storeId;
 
   const SyncMetadata({
     required this.createdAt,
     required this.updatedAt,
     this.version = 1,
+    this.schemaVersion = 1,
     this.syncState = SyncState.pending,
     this.lastSyncedAt,
     this.deletedAt,
     this.deviceId,
+    this.storeId,
   });
 
-  factory SyncMetadata.initial({String? deviceId}) {
+  factory SyncMetadata.initial({String? deviceId, String? storeId}) {
     final now = DateTime.now().toUtc();
     return SyncMetadata(
       createdAt: now,
       updatedAt: now,
       deviceId: deviceId,
+      storeId: storeId,
     );
   }
 
@@ -44,10 +49,12 @@ class SyncMetadata {
       createdAt: createdAt,
       updatedAt: timestamp,
       version: version + 1,
+      schemaVersion: schemaVersion,
       syncState: deleted ? SyncState.deleted : (syncState ?? SyncState.updated),
       lastSyncedAt: lastSyncedAt,
       deletedAt: deleted ? timestamp : deletedAt,
       deviceId: deviceId,
+      storeId: storeId,
     );
   }
 
@@ -57,10 +64,12 @@ class SyncMetadata {
       createdAt: createdAt,
       updatedAt: updatedAt,
       version: version,
+      schemaVersion: schemaVersion,
       syncState: SyncState.synced,
       lastSyncedAt: timestamp,
       deletedAt: deletedAt,
       deviceId: deviceId,
+      storeId: storeId,
     );
   }
 
@@ -68,10 +77,12 @@ class SyncMetadata {
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
         'version': version,
+        'schemaVersion': schemaVersion,
         'syncState': syncState.name,
         'lastSyncedAt': lastSyncedAt?.toIso8601String(),
         'deletedAt': deletedAt?.toIso8601String(),
         'deviceId': deviceId,
+        'storeId': storeId,
       };
 
   factory SyncMetadata.fromMap(Map<String, dynamic> map) {
@@ -81,10 +92,12 @@ class SyncMetadata {
       createdAt: created,
       updatedAt: updated,
       version: _int(map['version'], fallback: 1),
+      schemaVersion: _int(map['schemaVersion'], fallback: 1),
       syncState: _syncState(map['syncState']),
       lastSyncedAt: _dateTime(map['lastSyncedAt']),
       deletedAt: _dateTime(map['deletedAt']),
       deviceId: map['deviceId']?.toString(),
+      storeId: map['storeId']?.toString(),
     );
   }
 
