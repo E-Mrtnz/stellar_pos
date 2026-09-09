@@ -15,8 +15,8 @@ class SaleLifecycleService {
     required double discountAmount,
     required double cardFeeAmount,
     required double total,
-    double received = 0,
-    double change = 0,
+    double? received,
+    double? change,
   }) {
     return SaleRecord(
       id: sale.id,
@@ -31,8 +31,8 @@ class SaleLifecycleService {
       discountAmount: discountAmount,
       cardFeeAmount: cardFeeAmount,
       total: total,
-      received: received,
-      change: change,
+      received: received ?? sale.received,
+      change: change ?? sale.change,
       metadata: sale.metadata.touch(),
     );
   }
