@@ -3,6 +3,8 @@ import 'package:stellar_pos/core/models/product.dart';
 class ProductPricingService {
   const ProductPricingService();
 
+  bool canPrice(Product product, int quantity) => quantity > 0;
+
   double lineSubtotal(Product product, int quantity) {
     if (quantity <= 0) return 0;
     if (!product.hasGroupPricing || product.groupQuantity <= 0) {
