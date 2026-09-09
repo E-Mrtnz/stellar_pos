@@ -15,6 +15,7 @@ class TicketGenerator {
     bytes.addAll(generator.text('COMPROBANTE DE VENTA', styles: const PosStyles(align: PosAlign.center, bold: true, codeTable: 'CP1252')));
     bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(generator.text('Ticket: #${ticket.ticketNumber}', styles: const PosStyles(bold: true, codeTable: 'CP1252')));
+    bytes.addAll(generator.text('Estado: ${ticket.status}', styles: const PosStyles(bold: true, codeTable: 'CP1252')));
     bytes.addAll(generator.text('Fecha: ${ticket.date}', styles: const PosStyles(codeTable: 'CP1252')));
     bytes.addAll(generator.text('Hora: ${ticket.time}', styles: const PosStyles(codeTable: 'CP1252')));
     bytes.addAll(generator.text('Cliente: ${ticket.client}', styles: const PosStyles(codeTable: 'CP1252')));
@@ -29,6 +30,15 @@ class TicketGenerator {
     bytes.addAll(_summary(generator, 'Subtotal', ticket.subtotal));
     bytes.addAll(_summary(generator, 'Descuento', ticket.discount));
     bytes.addAll(generator.row([_left('TOTAL', 8, bold: true), _right(_money(ticket.total), 4, bold: true)]));
+    if (ticket.operations.isNotEmpty) {
+      bytes.addAll(generator.feed(1));
+      bytes.addAll(generator.text('OPERACIONES POSTERIORES', styles: const PosStyles(bold: true, codeTable: 'CP1252')));
+      bytes.addAll(generator.hr(ch: '-'));
+      for (final operation in ticket.operations) {
+        bytes.addAll(generator.text(operation.label, styles: const PosStyles(bold: true, codeTable: 'CP1252')));
+        bytes.addAll(generator.text(operation.details, styles: const PosStyles(codeTable: 'CP1252')));
+      }
+    }
     bytes.addAll(generator.feed(1));
     bytes.addAll(generator.text('FORMA DE PAGO: ${ticket.paymentMethod}', styles: const PosStyles(bold: true, codeTable: 'CP1252')));
     bytes.addAll(_summary(generator, 'Recibido', ticket.received)); bytes.addAll(_summary(generator, 'Cambio', ticket.change));
