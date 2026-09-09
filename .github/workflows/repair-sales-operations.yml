@@ -22,6 +22,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           dialog = Path('lib/presentation/dashboard/widgets/sale_detail_dialog.dart')
           text = dialog.read_text()
@@ -35,6 +36,111 @@ jobs:
               replacement = "  String _money(double value) => '\\$${value.toStringAsFixed(2)}';\n  " + marker.strip()
               text = text.replace(marker, replacement, 1)
           dialog.write_text(text)
+
+          sales_layout = Path('lib/presentation/sales/sales_layout.dart')
+          text = sales_layout.read_text()
+          pattern = re.compile(r"  Widget _saleRow\(SaleRecord sale, double paid\) \{.*?\n  Widget _statusOperationBadges", re.S)
+          replacement = '''  Widget _saleRow(SaleRecord sale, double paid) {
+    final credit = sale.paymentMethod == AppStrings.creditPayment;
+    final pending = credit
+        ? (sale.effectiveTotal - paid).clamp(0, double.infinity).toDouble()
+        : 0.0;
+    final items = _effectiveItemCount(sale);
+    final time = '${sale.createdAt.hour.toString().padLeft(2, '0')}:${sale.createdAt.minute.toString().padLeft(2, '0')}';
+    return InkWell(
+      onTap: () => _showDetails(sale, paid),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 78,
+              child: Text(
+                '#${sale.ticketNumber}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 105,
+              child: Text(
+                '${_date(sale.createdAt)}\\n$time',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                sale.clientName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                '$items artículo${items == 1 ? '' : 's'}',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            SizedBox(width: 100, child: _paymentBadge(sale.paymentMethod)),
+            SizedBox(width: 185, child: _statusOperationBadges(sale)),
+            SizedBox(
+              width: 100,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _money(sale.effectiveTotal),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (credit)
+                    Text(
+                      pending <= .005
+                          ? 'Pagada'
+                          : 'Pendiente ${_money(pending)}',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: pending <= .005
+                            ? AppColors.successGreen
+                            : AppColors.dangerRed,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusOperationBadges'''
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Expected sales row method was not found.')
+          sales_layout.write_text(text)
 
           for raw_path in [
               'lib/presentation/dashboard/main_dashboard_layout.dart',
