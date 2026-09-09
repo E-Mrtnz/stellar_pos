@@ -1,22 +1,22 @@
-import 'package:stellar_pos/core/models/electronic_balance.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/models/sale.dart';
-import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
 import 'package:stellar_pos/core/services/domain/product_pricing_service.dart';
 
+/// Pure construction rules for sale lines.
+///
+/// Electronic-balance cart DTOs intentionally remain outside this service for
+/// now because they belong to the sales/application boundary, not the domain
+/// model itself.
 class SaleLinesService {
-  const SaleLinesService({
-    this.pricing = const ProductPricingService(),
-    this.balance = const ElectronicBalanceService(),
-  });
+  const SaleLinesService({this.pricing = const ProductPricingService()});
 
   final ProductPricingService pricing;
-  final ElectronicBalanceService balance;
 
   SaleItemRecord physicalItem(Product product, int quantity) {
-    if (quantity <= 0) {
+    if (!pricing.canPrice(product, quantity)) {
       throw ArgumentError('La cantidad del producto debe ser mayor que cero.');
     }
+
     final lineSubtotal = pricing.lineSubtotal(product, quantity);
     return SaleItemRecord(
       productId: product.id,
@@ -25,6 +25,8 @@ class SaleLinesService {
       brand: product.brand,
       barcode: product.barcode,
       cost: product.cost,
+      // Keep the real product unit price fixed. Group pricing belongs to the
+      // line subtotal, never to the product's stored unit price.
       unitPrice: product.price,
       quantity: quantity,
       lineSubtotal: lineSubtotal,
@@ -32,32 +34,6 @@ class SaleLinesService {
       lineTotal: lineSubtotal,
       imageData: product.imageData,
       hasGroupPricing: product.hasGroupPricing && product.groupQuantity > 0,
-    );
-  }
-
-  SaleItemRecord electronicItem({
-    required ElectronicBalanceAccount account,
-    required ElectronicBalanceSale sale,
-  }) {
-    if (sale.quantity <= 0 || sale.amount <= 0 ||
-        !balance.supportsAmount(account, sale.category, sale.amount)) {
-      throw ArgumentError('La recarga no es válida o ya no está configurada.');
-    }
-    final subtotal = sale.amount * sale.quantity;
-    return SaleItemRecord(
-      productId: 'electronic:${account.id}:${sale.category}:${sale.amount.toStringAsFixed(4)}',
-      productName: '${account.companyName} · ${sale.category}',
-      unit: sale.category,
-      barcode: '',
-      cost: balance.providerCost(amount: sale.amount, commissionRate: account.commissionRate),
-      unitPrice: sale.amount,
-      quantity: sale.quantity,
-      lineSubtotal: subtotal,
-      discount: 0,
-      lineTotal: subtotal,
-      isElectronicBalance: true,
-      electronicBalanceAccountId: account.id,
-      electronicBalanceCategory: sale.category,
     );
   }
 
