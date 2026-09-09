@@ -1,0 +1,74 @@
+name: Repair sales operations
+
+on:
+  push:
+    branches:
+      - feature/sales-operations
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/sales-operations
+          fetch-depth: 0
+
+      - name: Apply targeted fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          dialog = Path('lib/presentation/dashboard/widgets/sale_detail_dialog.dart')
+          text = dialog.read_text()
+          old = "]); });\n  ]));"
+          new = "]); })\n  ]));"
+          if old not in text:
+              raise SystemExit('Expected sale detail list syntax was not found.')
+          text = text.replace(old, new, 1)
+
+          marker = "  void _submit() { final quantity = int.tryParse(_quantityController.text.trim()) ?? 0;"
+          if "String _money(double value) =>" not in text:
+              replacement = "  String _money(double value) => '\\$${value.toStringAsFixed(2)}';\n  " + marker.strip()
+              text = text.replace(marker, replacement, 1)
+          dialog.write_text(text)
+
+          sales_layout = Path('lib/presentation/sales/sales_layout.dart')
+          text = sales_layout.read_text()
+          old = "const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted)])))); }"
+          new = "const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted]))); }"
+          if old not in text:
+              raise SystemExit('Expected sales layout parenthesis was not found.')
+          sales_layout.write_text(text.replace(old, new, 1))
+
+          for raw_path in [
+              'lib/presentation/dashboard/main_dashboard_layout.dart',
+              'lib/presentation/debts/client_purchase_history_dialog.dart',
+          ]:
+              path = Path(raw_path)
+              text = path.read_text()
+              if 'deleteSale(' not in text:
+                  raise SystemExit(f'Expected deleteSale call was not found in {raw_path}.')
+              path.write_text(text.replace('deleteSale(', 'annulSale(', 1))
+
+      - name: Format changed Dart files
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Validate formatting
+        run: dart format --output=none --set-exit-if-changed lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
+
+      - name: Commit fixes and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/repair-sales-operations.yml
+          git add lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/debts/client_purchase_history_dialog.dart
+          git commit -m "fix(sales): resolve sales operations compile errors"
+          git push origin HEAD:feature/sales-operations
