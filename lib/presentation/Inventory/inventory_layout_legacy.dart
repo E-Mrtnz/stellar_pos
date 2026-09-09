@@ -28,30 +28,88 @@ class InventoryLayout extends StatefulWidget {
 }
 
 class _InventoryLayoutState extends State<InventoryLayout> {
+  static const double _tableWidth = 1510;
+
   int _selectedTagIndex = 0;
   String? _selectedFilter = 'all';
   String _searchQuery = '';
   bool _isImporting = false;
   bool _isExporting = false;
+  String _sortColumn = 'product';
+  bool _sortAscending = true;
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
   List<Map<String, dynamic>> _filterProducts(
     List<Map<String, dynamic>> products,
   ) {
-    return ProductFilterUtils.apply(
+    final filtered = ProductFilterUtils.apply(
       products: products,
       searchQuery: _searchQuery,
       selectedFilter: _selectedFilter,
       tags: _tags,
       selectedTagIndex: _selectedTagIndex,
     );
+    final sorted = List<Map<String, dynamic>>.from(filtered);
+    sorted.sort(_compareProducts);
+    return sorted;
+  }
+
+  int _compareProducts(Map<String, dynamic> a, Map<String, dynamic> b) {
+    dynamic value(Map<String, dynamic> product) {
+      switch (_sortColumn) {
+        case 'quantity':
+          return ProductUtils.unit(product).toLowerCase();
+        case 'distributor':
+          return ProductUtils.department(product).toLowerCase();
+        case 'brand':
+          return ProductUtils.brand(product).toLowerCase();
+        case 'category':
+          return ProductUtils.asString(product['category']).toLowerCase();
+        case 'cost':
+          return ProductUtils.cost(product);
+        case 'price':
+          return ProductUtils.price(product);
+        case 'stock':
+          return ProductUtils.stock(product);
+        case 'profit':
+          return ProductUtils.profit(product);
+        case 'percent':
+          return ProductUtils.profitPercentage(product);
+        case 'product':
+        default:
+          return ProductUtils.cleanName(product).toLowerCase();
+      }
+    }
+
+    final first = value(a);
+    final second = value(b);
+    int result;
+    if (first is num && second is num) {
+      result = first.compareTo(second);
+    } else {
+      result = first.toString().compareTo(second.toString());
+    }
+    return _sortAscending ? result : -result;
+  }
+
+  void _sortBy(String column) {
+    setState(() {
+      if (_sortColumn == column) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortColumn = column;
+        _sortAscending = true;
+      }
+    });
   }
 
   Future<void> _createProduct() async =>
       CreateProductDialog.show(context);
+
   Future<void> _createCatalogItem() async =>
       CreateCatalogDialog.show(context);
+
   Future<void> _editProduct(Map<String, dynamic> product) async =>
       CreateProductDialog.show(context, product: product);
 
@@ -75,10 +133,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     }
     setState(() => _isImporting = true);
     try {
-      final extension = _fileExtension(file.name);
       final parsed = await InventoryFileService.parseExcel(
         Uint8List.fromList(bytes),
-        extension,
+        _fileExtension(file.name),
       );
       if (!mounted) return;
       if (parsed.products.isEmpty) {
@@ -90,17 +147,16 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         );
         return;
       }
-      final importResult = _applyImportedProducts(parsed.products);
-      final warningMessage = parsed.errors.isEmpty
-          ? 'Todos los registros válidos fueron procesados correctamente.'
-          : 'Filas omitidas:\n${parsed.errors.join('\n')}';
+      final result = _applyImportedProducts(parsed.products);
       _showFileMessage(
-        warningMessage,
+        parsed.errors.isEmpty
+            ? 'Todos los registros válidos fueron procesados correctamente.'
+            : 'Filas omitidas:\n${parsed.errors.join('\n')}',
         title: parsed.errors.isEmpty
             ? 'Inventario importado'
             : 'Importación completada con avisos',
-        added: importResult.added,
-        updated: importResult.updated,
+        added: result.added,
+        updated: result.updated,
       );
     } finally {
       if (mounted) setState(() => _isImporting = false);
@@ -114,11 +170,14 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     var added = 0;
     var updated = 0;
     final existing = List<Product>.from(productProvider.products);
+
     for (final product in imported) {
-      if (product.category.trim().isNotEmpty)
+      if (product.category.trim().isNotEmpty) {
         catalogProvider.addTag(product.category);
-      if (product.department.trim().isNotEmpty)
+      }
+      if (product.department.trim().isNotEmpty) {
         providersProvider.addDistributor(product.department);
+      }
       final match = _findExistingProduct(existing, product);
       if (match == null) {
         productProvider.addProduct(product);
@@ -130,9 +189,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
           imageData: match.imageData,
         );
         productProvider.updateProduct(updatedProduct);
-        final index = existing.indexWhere(
-          (item) => item.id == match.id,
-        );
+        final index = existing.indexWhere((item) => item.id == match.id);
         if (index >= 0) existing[index] = updatedProduct;
         updated++;
       }
@@ -169,17 +226,19 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       await InventoryFileService.saveExcel(
         context.read<ProductProvider>().products,
       );
-      if (mounted)
+      if (mounted) {
         _showFileMessage(
           'El inventario se exportó correctamente en formato Excel.',
           title: 'Exportación completada',
         );
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         _showFileMessage(
           'No se pudo exportar el inventario.\n$error',
           title: 'Error al exportar',
         );
+      }
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -192,17 +251,19 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       await InventoryFileService.savePdf(
         context.read<ProductProvider>().products,
       );
-      if (mounted)
+      if (mounted) {
         _showFileMessage(
           'El inventario se exportó correctamente en formato PDF.',
           title: 'Exportación completada',
         );
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         _showFileMessage(
           'No se pudo exportar el inventario.\n$error',
           title: 'Error al exportar',
         );
+      }
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -221,11 +282,12 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final icon = isError
         ? Icons.error_outline_rounded
         : isImportResult
-        ? Icons.inventory_2_outlined
-        : Icons.check_circle_outline_rounded;
+            ? Icons.inventory_2_outlined
+            : Icons.check_circle_outline_rounded;
     final iconColor = isError
         ? AppColors.dangerRed
         : AppColors.successGreen;
+
     showDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
@@ -390,16 +452,15 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final totalInvestment = products.fold<double>(
       0,
       (total, product) =>
-          total +
-          ProductUtils.cost(product) * ProductUtils.stock(product),
+          total + ProductUtils.cost(product) * ProductUtils.stock(product),
     );
     final totalSales = products.fold<double>(
       0,
       (total, product) =>
-          total +
-          ProductUtils.price(product) * ProductUtils.stock(product),
+          total + ProductUtils.price(product) * ProductUtils.stock(product),
     );
     final totalProfit = totalSales - totalInvestment;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -429,10 +490,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
                 ),
                 const SizedBox(height: 12),
                 Expanded(child: _buildInventoryTable(filteredProducts)),
-                _buildFloatingActions(),
               ],
             ),
           ),
+          _buildFloatingActions(),
         ],
       ),
     );
@@ -500,8 +561,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             enabled: !_isImporting && !_isExporting,
             onPressed: _importInventory,
           ),
-        if (settings.showInventoryImport &&
-            settings.showInventoryExport)
+        if (settings.showInventoryImport && settings.showInventoryExport)
           const SizedBox(width: 8),
         if (settings.showInventoryExport)
           PopupMenuButton<String>(
@@ -529,10 +589,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               ),
             ],
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 11,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(8),
@@ -552,9 +609,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(
                           Icons.download_outlined,
@@ -585,126 +640,96 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: [
-          _buildTableHeader(),
-          const Divider(height: 1, color: AppColors.border),
-          Expanded(child: _buildInventoryList(products)),
-        ],
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: _tableWidth,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTableHeader(),
+                const Divider(height: 1, color: AppColors.border),
+                if (products.isEmpty)
+                  const SizedBox(
+                    height: 180,
+                    child: Center(
+                      child: Text(
+                        AppStrings.inventoryEmptyMessage,
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  )
+                else
+                  ...products.map(_buildInventoryRow),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildTableHeader() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 1510,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          const SizedBox(width: 40),
+          const SizedBox(width: 12),
+          _sortHeader('Producto', 'product', 245),
+          _sortHeader('Cantidad', 'quantity', 125),
+          _sortHeader('Distribuidora', 'distributor', 150),
+          _sortHeader('Marca', 'brand', 125),
+          _sortHeader('Categoría', 'category', 135),
+          _sortHeader('P. Compra', 'cost', 110),
+          _sortHeader('P. Venta', 'price', 110),
+          _sortHeader('Cant. disponible', 'stock', 135),
+          _sortHeader('Ganancia', 'profit', 110),
+          _sortHeader('%', 'percent', 70),
+          _sortHeader('Editar', 'edit', 45),
+        ],
+      ),
+    );
+  }
+
+  Widget _sortHeader(String label, String column, double width) {
+    final active = _sortColumn == column;
+    final icon = active
+        ? (_sortAscending ? Icons.arrow_upward : Icons.arrow_downward)
+        : Icons.unfold_more;
+    return SizedBox(
+      width: width,
+      child: InkWell(
+        onTap: () => _sortBy(column == 'edit' ? 'product' : column),
+        borderRadius: BorderRadius.circular(6),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(width: 40),
-              const SizedBox(width: 12),
-              const SizedBox(
-                width: 245,
+              Flexible(
                 child: Text(
-                  'Producto',
+                  label,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.inventoryHeader,
                 ),
               ),
-              const SizedBox(
-                width: 125,
-                child: Text(
-                  'Cantidad',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 150,
-                child: Text(
-                  'Distribuidora',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 125,
-                child: Text(
-                  'Marca',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 135,
-                child: Text(
-                  'Categoría',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 110,
-                child: Text(
-                  'P. Compra',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 110,
-                child: Text(
-                  'P. Venta',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 135,
-                child: Text(
-                  'Cant. disponible',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 110,
-                child: Text(
-                  'Ganancia',
-                  style: AppTextStyles.inventoryHeader,
-                ),
-              ),
-              const SizedBox(
-                width: 70,
-                child: Text('%', style: AppTextStyles.inventoryHeader),
-              ),
-              const SizedBox(
-                width: 45,
-                child: Text(
-                  'Editar',
-                  style: AppTextStyles.inventoryHeader,
-                ),
+              const SizedBox(width: 4),
+              Icon(
+                icon,
+                size: 14,
+                color: active
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildInventoryList(List<Map<String, dynamic>> products) {
-    if (products.isEmpty)
-      return const Center(
-        child: Text(
-          AppStrings.inventoryEmptyMessage,
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-      );
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: products.length,
-      separatorBuilder: (_, __) =>
-          const Divider(color: AppColors.chipBackground),
-      itemBuilder: (context, index) =>
-          _buildInventoryRow(products[index]),
     );
   }
 
@@ -714,9 +739,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final stock = ProductUtils.stock(product);
     final minStock = ProductUtils.minStock(product);
     final profit = ProductUtils.profit(product);
-    final profitPercent = ProductUtils.profitPercentage(
-      product,
-    ).toStringAsFixed(0);
+    final profitPercent = ProductUtils.profitPercentage(product).toStringAsFixed(0);
     final name = ProductUtils.cleanName(product);
     final unit = ProductUtils.unit(product);
     final distributor = ProductUtils.department(product);
@@ -725,114 +748,27 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final imageData = ProductUtils.asString(product['imageData']);
     final stockColor = _getStockColor(stock: stock, minStock: minStock);
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 1510,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
             children: [
               _buildInventoryImage(imageData),
               const SizedBox(width: 12),
-              SizedBox(
-                width: 245,
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 125,
-                child: Text(
-                  unit,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 150,
-                child: Text(
-                  distributor.isEmpty ? '—' : distributor,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 125,
-                child: Text(
-                  brand.isEmpty ? '—' : brand,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
+              _textCell(name, 245, primary: true),
+              _textCell(unit, 125),
+              _textCell(distributor.isEmpty ? '—' : distributor, 150),
+              _textCell(brand.isEmpty ? '—' : brand, 125),
+              _textCell(category.isEmpty ? '—' : category, 135),
+              _textCell(ProductUtils.money(cost), 110),
+              _textCell(ProductUtils.money(price), 110, primary: true),
               SizedBox(
                 width: 135,
-                child: Text(
-                  category.isEmpty ? '—' : category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
+                child: _buildStockBadge(stock: stock, color: stockColor),
               ),
-              SizedBox(
-                width: 110,
-                child: Text(
-                  ProductUtils.money(cost),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 110,
-                child: Text(
-                  ProductUtils.money(price),
-                  style: const TextStyle(color: AppColors.textPrimary),
-                ),
-              ),
-              SizedBox(
-                width: 135,
-                child: _buildStockBadge(
-                  stock: stock,
-                  color: stockColor,
-                ),
-              ),
-              SizedBox(
-                width: 110,
-                child: Text(
-                  ProductUtils.money(profit),
-                  style: const TextStyle(
-                    color: AppColors.successGreen,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 70,
-                child: Text(
-                  '$profitPercent%',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
+              _textCell(ProductUtils.money(profit), 110, success: true),
+              _textCell('$profitPercent%', 70),
               SizedBox(
                 width: 45,
                 child: IconButton(
@@ -844,6 +780,31 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               ),
             ],
           ),
+        ),
+        const Divider(height: 1, color: AppColors.chipBackground),
+      ],
+    );
+  }
+
+  Widget _textCell(
+    String text,
+    double width, {
+    bool primary = false,
+    bool success = false,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: success
+              ? AppColors.successGreen
+              : primary
+                  ? AppColors.textPrimary
+                  : AppColors.textSecondary,
+          fontWeight: success || primary ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
     );
@@ -885,8 +846,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   Color _getStockColor({required int stock, required int minStock}) {
     if (stock <= minStock) return AppColors.dangerRed;
-    if (stock <= minStock * AppInventory.warningMultiplier)
+    if (stock <= minStock * AppInventory.warningMultiplier) {
       return AppColors.warningOrange;
+    }
     return AppColors.successGreen;
   }
 
@@ -911,10 +873,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         color: AppColors.chipBackground,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(
-        Icons.image_outlined,
-        color: AppColors.textMuted,
-      ),
+      child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
     );
   }
 
@@ -964,6 +923,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 class _ImportCounters {
   final int added;
   final int updated;
+
   const _ImportCounters({required this.added, required this.updated});
 }
 
@@ -973,6 +933,7 @@ class _InventoryActionButton extends StatelessWidget {
   final bool loading;
   final bool enabled;
   final VoidCallback onPressed;
+
   const _InventoryActionButton({
     required this.label,
     required this.icon,
@@ -990,10 +951,7 @@ class _InventoryActionButton extends StatelessWidget {
         onTap: enabled ? onPressed : null,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 11,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
