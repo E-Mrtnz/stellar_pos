@@ -11,6 +11,7 @@ import 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
 import 'package:stellar_pos/core/models/client.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/models/provider_catalog_state.dart';
+import 'package:stellar_pos/core/models/provider_person.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
 
 /// Presentation state coordinator for catalog values and clients.
@@ -26,6 +27,7 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
   final CatalogValueService _service;
   final Repository<Client>? _clientRepository;
   final Repository<Product>? _productRepository;
+  final Repository<ProviderRoute>? _routeRepository;
   final Repository<ProviderCatalogState>? _catalogRepository;
   final List<String> _tags = [];
   final List<String> _brands = [];
@@ -40,10 +42,12 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
     CatalogValueService? service,
     Repository<Client>? clientRepository,
     Repository<Product>? productRepository,
+    Repository<ProviderRoute>? routeRepository,
     Repository<ProviderCatalogState>? catalogRepository,
   })  : _service = service ?? AppDependencies.catalogValue,
         _clientRepository = clientRepository,
         _productRepository = productRepository,
+        _routeRepository = routeRepository,
         _catalogRepository = catalogRepository ?? ProviderCatalogRepository();
 
   List<String> get tags => _service.uniqueSorted(_tags);
@@ -223,35 +227,39 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
 
     final current = await repository.getById(_catalogStateId);
     final legacy = await repository.getById(_legacyCatalogStateId);
+    final products = await _productRepository?.getAll() ?? const <Product>[];
+    final routes = await _routeRepository?.getAll() ?? const <ProviderRoute>[];
 
     final mergedTags = <String>[];
     final mergedDistributors = <String>[];
 
-    void merge(ProviderCatalogState? state) {
-      if (state == null) return;
-      for (final tag in state.tags) {
-        final value = _service.normalizeName(tag);
-        if (value.isNotEmpty && !_service.containsIgnoreCase(mergedTags, value)) {
-          mergedTags.add(value);
-        }
-      }
-      for (final distributor in state.distributors) {
-        final value = _service.normalizeName(distributor);
-        if (value.isNotEmpty && !_service.containsIgnoreCase(mergedDistributors, value)) {
-          mergedDistributors.add(value);
-        }
+    void addUnique(List<String> target, String raw) {
+      final value = _service.normalizeName(raw);
+      if (value.isNotEmpty && !_service.containsIgnoreCase(target, value)) {
+        target.add(value);
       }
     }
 
-    merge(current);
-    merge(legacy);
-
-    final products = await _productRepository?.getAll() ?? const <Product>[];
-    for (final product in products) {
-      final value = _service.normalizeName(product.department);
-      if (value.isNotEmpty && !_service.containsIgnoreCase(mergedDistributors, value)) {
-        mergedDistributors.add(value);
+    void mergeState(ProviderCatalogState? state) {
+      if (state == null) return;
+      for (final tag in state.tags) addUnique(mergedTags, tag);
+      for (final distributor in state.distributors) {
+        addUnique(mergedDistributors, distributor);
       }
+    }
+
+    mergeState(current);
+    mergeState(legacy);
+
+    // Recover distributors that were already persisted as part of routes.
+    for (final route in routes) {
+      addUnique(mergedDistributors, route.distributorName);
+    }
+
+    // Recover distributors from existing products as an additional migration
+    // path for versions that never persisted the distributor catalog.
+    for (final product in products) {
+      addUnique(mergedDistributors, product.department);
     }
 
     _tags
@@ -263,12 +271,11 @@ class CatalogProvider extends ChangeNotifier implements CatalogRegistrar {
 
     _catalogLoaded = true;
 
-    // Migrate any legacy/product-derived distributor into the canonical record.
-    if (legacy != null || products.isNotEmpty) {
+    if (legacy != null || routes.isNotEmpty || products.isNotEmpty) {
       _persistCatalog();
     }
 
-    if (current != null || legacy != null || products.isNotEmpty) {
+    if (current != null || legacy != null || routes.isNotEmpty || products.isNotEmpty) {
       notifyListeners();
     }
   }
