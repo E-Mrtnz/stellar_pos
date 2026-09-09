@@ -1,4 +1,7 @@
-class Product {
+import 'package:stellar_pos/core/models/sync_metadata.dart';
+
+class Product implements SyncableEntity {
+  @override
   final String id;
   final String name;
   final String unit;
@@ -15,8 +18,10 @@ class Product {
   final bool hasGroupPricing;
   final int groupQuantity;
   final double groupPrice;
+  @override
+  final SyncMetadata metadata;
 
-  const Product({
+  Product({
     required this.id,
     required this.name,
     required this.unit,
@@ -33,7 +38,8 @@ class Product {
     this.hasGroupPricing = false,
     this.groupQuantity = 0,
     this.groupPrice = 0,
-  });
+    SyncMetadata? metadata,
+  }) : metadata = metadata ?? SyncMetadata.initial();
 
   double priceForQuantity(int quantity) {
     if (quantity <= 0) return 0;
@@ -62,6 +68,8 @@ class Product {
     bool? hasGroupPricing,
     int? groupQuantity,
     double? groupPrice,
+    SyncMetadata? metadata,
+    bool touchMetadata = true,
   }) {
     return Product(
       id: id ?? this.id,
@@ -80,60 +88,61 @@ class Product {
       hasGroupPricing: hasGroupPricing ?? this.hasGroupPricing,
       groupQuantity: groupQuantity ?? this.groupQuantity,
       groupPrice: groupPrice ?? this.groupPrice,
+      metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata),
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'unit': unit,
-      'department': department,
-      'brand': brand,
-      'cost': cost,
-      'price': price,
-      'stock': stock,
-      'minStock': minStock,
-      'maxStock': maxStock,
-      'category': category,
-      'barcode': barcode,
-      'imageData': imageData,
-      'hasGroupPricing': hasGroupPricing,
-      'groupQuantity': groupQuantity,
-      'groupPrice': groupPrice,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'name': name,
+        'unit': unit,
+        'department': department,
+        'brand': brand,
+        'cost': cost,
+        'price': price,
+        'stock': stock,
+        'minStock': minStock,
+        'maxStock': maxStock,
+        'category': category,
+        'barcode': barcode,
+        'imageData': imageData,
+        'hasGroupPricing': hasGroupPricing,
+        'groupQuantity': groupQuantity,
+        'groupPrice': groupPrice,
+        'metadata': metadata.toMap(),
+      };
 
-  factory Product.fromMap(Map<String, dynamic> map) {
-    return Product(
-      id: map['id']?.toString() ?? '',
-      name: map['name']?.toString() ?? '',
-      unit: map['unit']?.toString() ?? '',
-      department: map['department']?.toString() ?? '',
-      brand: map['brand']?.toString() ?? '',
-      cost: _toDouble(map['cost']),
-      price: _toDouble(map['price']),
-      stock: _toInt(map['stock']),
-      minStock: _toInt(map['minStock'], fallback: 5),
-      maxStock: _toInt(map['maxStock'], fallback: 40),
-      category: map['category']?.toString() ?? '',
-      barcode: map['barcode']?.toString() ?? '',
-      imageData: map['imageData']?.toString() ?? '',
-      hasGroupPricing: _toBool(map['hasGroupPricing']),
-      groupQuantity: _toInt(map['groupQuantity']),
-      groupPrice: _toDouble(map['groupPrice']),
-    );
-  }
+  factory Product.fromMap(Map<String, dynamic> map) => Product(
+        id: map['id']?.toString() ?? '',
+        name: map['name']?.toString() ?? '',
+        unit: map['unit']?.toString() ?? '',
+        department: map['department']?.toString() ?? '',
+        brand: map['brand']?.toString() ?? '',
+        cost: _toDouble(map['cost']),
+        price: _toDouble(map['price']),
+        stock: _toInt(map['stock']),
+        minStock: _toInt(map['minStock'], fallback: 5),
+        maxStock: _toInt(map['maxStock'], fallback: 40),
+        category: map['category']?.toString() ?? '',
+        barcode: map['barcode']?.toString() ?? '',
+        imageData: map['imageData']?.toString() ?? '',
+        hasGroupPricing: _toBool(map['hasGroupPricing']),
+        groupQuantity: _toInt(map['groupQuantity']),
+        groupPrice: _toDouble(map['groupPrice']),
+        metadata: _metadata(map['metadata']),
+      );
 
-  static double _toDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse(value?.toString() ?? '') ?? 0.0;
-  }
+  static SyncMetadata _metadata(dynamic value) => value is Map
+      ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
+      : SyncMetadata.initial();
 
-  static int _toInt(dynamic value, {int fallback = 0}) {
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? fallback;
-  }
+  static double _toDouble(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0.0;
+
+  static int _toInt(dynamic value, {int fallback = 0}) => value is num
+      ? value.toInt()
+      : int.tryParse(value?.toString() ?? '') ?? fallback;
 
   static bool _toBool(dynamic value) {
     if (value is bool) return value;
