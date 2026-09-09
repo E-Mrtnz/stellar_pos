@@ -1,3 +1,4 @@
+import 'package:stellar_pos/core/data/mappers/product_map_mapper.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/services/domain/product_pricing_service.dart';
 
@@ -56,26 +57,11 @@ class ProductUtils {
 
   /// Compatibility adapter for legacy map-based callers.
   /// The actual group-pricing rule lives in [ProductPricingService].
-  static double priceForQuantity(Map<String, dynamic> product, int quantity) {
-    final model = Product(
-      id: asString(product['id']),
-      name: name(product),
-      unit: unit(product),
-      category: asString(product['category']),
-      brand: brand(product),
-      department: department(product),
-      cost: cost(product),
-      price: price(product),
-      stock: stock(product),
-      minStock: minStock(product),
-      maxStock: maxStock(product),
-      barcode: asString(product['barcode']),
-      hasGroupPricing: asBool(product['hasGroupPricing']),
-      groupQuantity: asInt(product['groupQuantity']),
-      groupPrice: asDouble(product['groupPrice']),
-    );
-    return const ProductPricingService().lineSubtotal(model, quantity);
-  }
+  static double priceForQuantity(Map<String, dynamic> product, int quantity) =>
+      const ProductPricingService().lineSubtotal(
+        ProductMapMapper.fromMap(product),
+        quantity,
+      );
 
   static double profit(Map<String, dynamic> product) => price(product) - cost(product);
 
