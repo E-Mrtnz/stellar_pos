@@ -18,14 +18,9 @@ class DebtProvider extends ChangeNotifier {
   Future<void>? _loadFuture;
   bool _loaded = false;
 
-  DebtProvider(this._salesProvider, {DebtService? service, Repository<DebtMovement>? movementRepository})
-      : _service = service ?? AppDependencies.debt,
-        _movementRepository = movementRepository {
-    _salesProvider.addListener(_onSalesChanged);
-  }
+  DebtProvider(this._salesProvider, {DebtService? service, Repository<DebtMovement>? movementRepository}) : _service = service ?? AppDependencies.debt, _movementRepository = movementRepository { _salesProvider.addListener(_onSalesChanged); }
 
   List<DebtAccount> get accounts => List.unmodifiable(_service.accounts(_salesProvider.sales, _payments));
-
   List<DebtMovement> get movements {
     final result = <DebtMovement>[
       ..._service.creditSales(_salesProvider.sales).map((sale) => DebtMovement(id: sale.id, clientId: sale.clientId ?? '', clientName: sale.clientName, type: DebtMovementType.debt, amount: sale.effectiveTotal, createdAt: sale.createdAt, reference: sale.ticketNumber)),
@@ -33,12 +28,10 @@ class DebtProvider extends ChangeNotifier {
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return List.unmodifiable(result);
   }
-
   double get totalDebt => _service.totalDebt(_salesProvider.sales);
   double get totalPaid => _service.totalPaid(_payments);
   double get totalRemaining => (totalDebt - totalPaid).clamp(0, double.infinity).toDouble();
   int get clientsWithDebt => accounts.where((a) => a.remaining > 0.005).length;
-
   DebtAccount? accountFor(String clientId) => _service.accountFor(clientId, _salesProvider.sales, _payments);
   double paidForClient(String clientId) => _service.paidForClient(clientId, _payments);
 
@@ -58,9 +51,7 @@ class DebtProvider extends ChangeNotifier {
     final now = DateTime.now();
     String? reference;
     final recentSales = _service.creditSales(_salesProvider.sales).where((sale) => sale.clientId == clientId && sale.received > 0.005 && sale.received < sale.effectiveTotal - 0.005 && now.difference(sale.createdAt).inMilliseconds.abs() <= 2000).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    for (final sale in recentSales) {
-      if (!_payments.any((payment) => payment.reference == sale.id)) { reference = sale.id; break; }
-    }
+    for (final sale in recentSales) { if (!_payments.any((payment) => payment.reference == sale.id)) { reference = sale.id; break; } }
     final payment = DebtMovement(id: IdGenerator.newId(), clientId: clientId, clientName: clientName, type: DebtMovementType.payment, amount: appliedAmount, createdAt: now, reference: reference);
     _payments.add(payment);
     notifyListeners();
@@ -69,10 +60,8 @@ class DebtProvider extends ChangeNotifier {
   }
 
   void syncInitialPayment({required String saleId, required String clientId, required String clientName, required double amount}) {
-    SaleRecord? sale;
-    for (final candidate in _salesProvider.sales) {
-      if (candidate.id == saleId) { sale = candidate; break; }
-    }
+    dynamic sale;
+    for (final candidate in _salesProvider.sales) { if (candidate.id == saleId) { sale = candidate; break; } }
     if (sale == null || sale.paymentMethod != 'Fiado') return;
     final existing = _payments.where((payment) => payment.reference == saleId).toList();
     final originalCreatedAt = existing.isEmpty ? null : existing.first.createdAt;
@@ -100,8 +89,7 @@ class DebtProvider extends ChangeNotifier {
     if (changed) notifyListeners();
   }
 
-  @override
-  void dispose() { _salesProvider.removeListener(_onSalesChanged); super.dispose(); }
+  @override void dispose() { _salesProvider.removeListener(_onSalesChanged); super.dispose(); }
   void _onSalesChanged() => notifyListeners();
 
   Future<void> _loadFromRepository() async {
