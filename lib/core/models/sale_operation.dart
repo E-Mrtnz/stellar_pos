@@ -1,0 +1,1 @@
+// Operation records are centralized in sale.dart.
