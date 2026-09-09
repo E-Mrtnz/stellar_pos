@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/app/app_dependencies.dart';
+import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart';
+import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/debt_service.dart';
 import 'package:stellar_pos/core/models/debt.dart';
 import 'package:stellar_pos/core/models/sale.dart';
@@ -10,10 +14,17 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 class DebtProvider extends ChangeNotifier {
   final SalesProvider _salesProvider;
   final DebtService _service;
+  final Repository<DebtMovement>? _movementRepository;
   final List<DebtMovement> _payments = [];
+  Future<void>? _loadFuture;
+  bool _loaded = false;
 
-  DebtProvider(this._salesProvider, {DebtService? service})
-      : _service = service ?? AppDependencies.debt {
+  DebtProvider(
+    this._salesProvider, {
+    DebtService? service,
+    Repository<DebtMovement>? movementRepository,
+  })  : _service = service ?? AppDependencies.debt,
+        _movementRepository = movementRepository {
     _salesProvider.addListener(_onSalesChanged);
   }
 
@@ -54,6 +65,15 @@ class DebtProvider extends ChangeNotifier {
   double paidForClient(String clientId) =>
       _service.paidForClient(clientId, _payments);
 
+  Future<void> load() {
+    if (_loaded) return Future.value();
+    final existing = _loadFuture;
+    if (existing != null) return existing;
+    final future = _loadFromRepository();
+    _loadFuture = future;
+    return future;
+  }
+
   bool recordPayment({
     required String clientId,
     required String clientName,
@@ -88,18 +108,18 @@ class DebtProvider extends ChangeNotifier {
       }
     }
 
-    _payments.add(
-      DebtMovement(
-        id: IdGenerator.newId(),
-        clientId: clientId,
-        clientName: clientName,
-        type: DebtMovementType.payment,
-        amount: appliedAmount,
-        createdAt: now,
-        reference: reference,
-      ),
+    final payment = DebtMovement(
+      id: IdGenerator.newId(),
+      clientId: clientId,
+      clientName: clientName,
+      type: DebtMovementType.payment,
+      amount: appliedAmount,
+      createdAt: now,
+      reference: reference,
     );
+    _payments.add(payment);
     notifyListeners();
+    unawaited(_movementRepository?.save(payment));
     return true;
   }
 
@@ -112,19 +132,22 @@ class DebtProvider extends ChangeNotifier {
     final existing = _payments.where((payment) => payment.reference == saleId).toList();
     final originalCreatedAt = existing.isEmpty ? null : existing.first.createdAt;
     _payments.removeWhere((payment) => payment.reference == saleId);
+    for (final payment in existing) {
+      unawaited(_movementRepository?.delete(payment.id));
+    }
     final appliedAmount = amount.clamp(0, double.infinity).toDouble();
     if (appliedAmount > 0.005) {
-      _payments.add(
-        DebtMovement(
-          id: IdGenerator.newId(),
-          clientId: clientId,
-          clientName: clientName,
-          type: DebtMovementType.payment,
-          amount: appliedAmount,
-          createdAt: originalCreatedAt ?? DateTime.now(),
-          reference: saleId,
-        ),
+      final payment = DebtMovement(
+        id: IdGenerator.newId(),
+        clientId: clientId,
+        clientName: clientName,
+        type: DebtMovementType.payment,
+        amount: appliedAmount,
+        createdAt: originalCreatedAt ?? DateTime.now(),
+        reference: saleId,
       );
+      _payments.add(payment);
+      unawaited(_movementRepository?.save(payment));
     }
     notifyListeners();
   }
@@ -134,7 +157,7 @@ class DebtProvider extends ChangeNotifier {
     for (var i = 0; i < _payments.length; i++) {
       final movement = _payments[i];
       if (movement.clientId != clientId || movement.clientName == clientName) continue;
-      _payments[i] = DebtMovement(
+      final updated = DebtMovement(
         id: movement.id,
         clientId: movement.clientId,
         clientName: clientName,
@@ -142,8 +165,10 @@ class DebtProvider extends ChangeNotifier {
         amount: movement.amount,
         createdAt: movement.createdAt,
         reference: movement.reference,
-        metadata: movement.metadata,
+        metadata: movement.metadata.touch(),
       );
+      _payments[i] = updated;
+      unawaited(_movementRepository?.save(updated));
       changed = true;
     }
     if (changed) notifyListeners();
@@ -156,4 +181,22 @@ class DebtProvider extends ChangeNotifier {
   }
 
   void _onSalesChanged() => notifyListeners();
+
+  Future<void> _loadFromRepository() async {
+    final repository = _movementRepository;
+    if (repository != null) {
+      final stored = await repository.getAll();
+      final byId = <String, DebtMovement>{
+        for (final movement in _payments) movement.id: movement,
+      };
+      for (final movement in stored) {
+        byId.putIfAbsent(movement.id, () => movement);
+      }
+      _payments
+        ..clear()
+        ..addAll(byId.values);
+      if (stored.isNotEmpty) notifyListeners();
+    }
+    _loaded = true;
+  }
 }
