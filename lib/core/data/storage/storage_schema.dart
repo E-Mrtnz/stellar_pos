@@ -7,8 +7,7 @@ import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 ///
 /// Schema changes must be explicit and sequential. A migration is applied
 /// before its version is persisted, so a failed migration is never recorded as
-/// completed. Version 1 is the initial persisted format and therefore has no
-/// data migration steps yet.
+/// completed.
 class StorageSchema {
   const StorageSchema._();
 
@@ -51,19 +50,19 @@ class StorageSchema {
     var version = fromVersion;
     while (version < toVersion) {
       final nextVersion = version + 1;
-      await _runMigration(box, version, nextVersion);
+      await _runMigration(version, nextVersion);
       await box.put(_versionKey, nextVersion);
       version = nextVersion;
     }
   }
 
-  static Future<void> _runMigration(
-    Box<dynamic> box,
-    int fromVersion,
-    int toVersion,
-  ) async {
-    // No migration is required for version 1.
-    // Add explicit `fromVersion -> toVersion` steps here as the data model evolves.
+  static Future<void> _runMigration(int fromVersion, int toVersion) async {
+    // Version 1 is the initial serialized format. The 0 -> 1 step is a
+    // deliberate no-op for installations that may already have a legacy
+    // schema marker. Future structural changes must add their own explicit
+    // version-to-version migration here.
+    if (fromVersion == 0 && toVersion == 1) return;
+
     throw StateError(
       'No existe una migración de almacenamiento definida de $fromVersion a $toVersion.',
     );
