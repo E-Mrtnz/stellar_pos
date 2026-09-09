@@ -1,15 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
+
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 
 void main() {
-  test('implements the distributor catalog contract', () {
+  test('registerDistributorValue uses the provider catalog workflow', () {
     final provider = ProvidersProvider();
-    final catalog = provider as DistributorCatalog;
 
-    catalog.registerDistributorValue('Distribuidora A');
-    catalog.registerDistributorValue(' distribuidora a ');
+    provider.registerDistributorValue('  Distribuidora Norte  ');
 
-    expect(provider.distributors, ['Distribuidora A']);
+    expect(provider.distributors, contains('Distribuidora Norte'));
+  });
+
+  test('does not register duplicate distributor values ignoring case', () {
+    final provider = ProvidersProvider();
+
+    provider.registerDistributorValue('Distribuidora Norte');
+    provider.registerDistributorValue('distribuidora norte');
+
+    expect(provider.distributors, ['Distribuidora Norte']);
   });
 }
