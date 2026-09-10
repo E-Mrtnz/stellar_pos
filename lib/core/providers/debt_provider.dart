@@ -22,14 +22,14 @@ class DebtProvider extends ChangeNotifier {
   DebtProvider(
     this._salesProvider, {
     DebtService? service,
-    Repository<DebtMovement>? movementRepository,
+    DebtMovementRepository? movementRepository,
   }) : _service = service ?? AppDependencies.debt,
        _movementRepository = movementRepository {
     _salesProvider.addListener(_onSalesChanged);
   }
 
   List<DebtAccount> get accounts =>
-      List.unmodifiable(_service.accounts(_salesProvider.sales, _payments));
+      List.unmodifiable(_service.accounts(_salesProvider.sales, _validPayments));
   List<DebtMovement> get movements {
     final result = <DebtMovement>[
       ..._service
@@ -56,7 +56,7 @@ class DebtProvider extends ChangeNotifier {
       (totalDebt - totalPaid).clamp(0, double.infinity).toDouble();
   int get clientsWithDebt => accounts.where((a) => a.remaining > 0.005).length;
   DebtAccount? accountFor(String clientId) =>
-      _service.accountFor(clientId, _salesProvider.sales, _payments);
+      _service.accountFor(clientId, _salesProvider.sales, _validPayments);
   double paidForClient(String clientId) =>
       _service.paidForClient(clientId, _validPayments);
 
