@@ -22,7 +22,7 @@ class DebtProvider extends ChangeNotifier {
   DebtProvider(
     this._salesProvider, {
     DebtService? service,
-    DebtMovementRepository? movementRepository,
+    Repository<DebtMovement>? movementRepository,
   }) : _service = service ?? AppDependencies.debt,
        _movementRepository = movementRepository {
     _salesProvider.addListener(_onSalesChanged);
