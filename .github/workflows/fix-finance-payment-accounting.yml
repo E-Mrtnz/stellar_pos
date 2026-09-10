@@ -20,6 +20,21 @@ jobs:
       - name: Apply fix
         run: python3 tool/finance_payment_fix.py
 
+      - name: Add sale model import
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/core/providers/debt_provider.dart')
+          text = path.read_text()
+          if "package:stellar_pos/core/models/sale.dart" not in text:
+              text = text.replace(
+                  "import 'package:stellar_pos/core/models/debt.dart';",
+                  "import 'package:stellar_pos/core/models/debt.dart';\nimport 'package:stellar_pos/core/models/sale.dart';",
+                  1,
+              )
+              path.write_text(text)
+          PY
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
