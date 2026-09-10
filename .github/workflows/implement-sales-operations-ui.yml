@@ -22,21 +22,9 @@ jobs:
         with:
           flutter-version: '3.35.3'
           channel: stable
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - name: Apply implementation
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Validate implementation
         run: |
-          set +e
-          python tool/implement_sales_operations_ui.py 2>&1 | tee implementation_error.log
-          code=${PIPESTATUS[0]}
-          if [ "$code" -ne 0 ]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add implementation_error.log
-            git commit -m 'chore: record implementation error'
-            git push origin HEAD:feature/sales-operations
-            exit "$code"
-          fi
-      - run: dart format lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
-      - run: dart analyze lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+          dart format --output=none --set-exit-if-changed lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+          dart analyze lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
