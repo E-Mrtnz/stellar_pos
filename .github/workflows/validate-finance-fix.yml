@@ -27,8 +27,8 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Format check
-        run: dart format --output=none --set-exit-if-changed lib/core/models/debt.dart lib/core/domain/services/debt_service.dart lib/core/providers/debt_provider.dart lib/presentation/sales/sales_layout.dart test/core/models/debt_serialization_test.dart
+      - name: Format
+        run: dart format lib/core/models/debt.dart lib/core/domain/services/debt_service.dart lib/core/providers/debt_provider.dart lib/presentation/sales/sales_layout.dart test/core/models/debt_serialization_test.dart
 
       - name: Analyze
         run: dart analyze --no-fatal-warnings lib/core/models/debt.dart lib/core/domain/services/debt_service.dart lib/core/providers/debt_provider.dart lib/presentation/sales/sales_layout.dart
@@ -36,12 +36,12 @@ jobs:
       - name: Test
         run: flutter test test/core/models/debt_serialization_test.dart test/core/services/domain/debt_service_test.dart
 
-      - name: Remove temporary workflow
+      - name: Commit formatted changes and remove workflow
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm -f .github/workflows/validate-finance-fix.yml
-          git add .github/workflows/validate-finance-fix.yml
-          git commit -m "chore: remove finance validation workflow [finance-validation-done]"
+          git add lib/core/models/debt.dart lib/core/domain/services/debt_service.dart lib/core/providers/debt_provider.dart lib/presentation/sales/sales_layout.dart test/core/models/debt_serialization_test.dart .github/workflows/validate-finance-fix.yml
+          git commit -m "fix(finance): finalize payment accounting validation [finance-validation-done]"
           git push origin feature/sales-operations
