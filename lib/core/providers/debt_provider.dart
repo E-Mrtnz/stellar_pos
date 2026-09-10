@@ -28,8 +28,9 @@ class DebtProvider extends ChangeNotifier {
     _salesProvider.addListener(_onSalesChanged);
   }
 
-  List<DebtAccount> get accounts =>
-      List.unmodifiable(_service.accounts(_salesProvider.sales, _validPayments));
+  List<DebtAccount> get accounts => List.unmodifiable(
+    _service.accounts(_salesProvider.sales, _validPayments),
+  );
   List<DebtMovement> get movements {
     final result = <DebtMovement>[
       ..._service
