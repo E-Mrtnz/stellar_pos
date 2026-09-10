@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.head_commit.message != 'fix(sales): implement unified operation POS flow' && github.event.pull_request.head.ref != 'feature/sales-operations' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,20 +25,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - run: python tool/implement_sales_operations_ui.py
+      - name: Apply implementation
+        run: |
+          set +e
+          python tool/implement_sales_operations_ui.py 2>&1 | tee implementation_error.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add implementation_error.log
+            git commit -m 'chore: record implementation error'
+            git push origin HEAD:feature/sales-operations
+            exit "$code"
+          fi
       - run: dart format lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
       - run: dart analyze lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
-      - name: Commit implementation
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
-          git commit -m 'fix(sales): unify operation flow'
-          git push origin HEAD:feature/sales-operations
-      - name: Remove implementation helper
-        if: success()
-        run: |
-          rm -f .github/workflows/implement-sales-operations-ui.yml tool/implement_sales_operations_ui.py
-          git add -A
-          git commit -m 'chore: remove implementation helper'
-          git push origin HEAD:feature/sales-operations
