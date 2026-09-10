@@ -1,0 +1,45 @@
+name: Apply sales operation UI changes
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - feature/sales-operations
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message != 'fix(sales): implement unified operation POS flow' && github.event.pull_request.head.ref != 'feature/sales-operations' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.3'
+          channel: stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python tool/implement_sales_operations_ui.py
+      - run: dart format lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+      - run: dart analyze lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+      - name: Commit implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+          git commit -m 'fix(sales): unify operation flow'
+          git push origin HEAD:feature/sales-operations
+      - name: Remove implementation helper
+        if: success()
+        run: |
+          rm -f .github/workflows/implement-sales-operations-ui.yml tool/implement_sales_operations_ui.py
+          git add -A
+          git commit -m 'chore: remove implementation helper'
+          git push origin HEAD:feature/sales-operations
