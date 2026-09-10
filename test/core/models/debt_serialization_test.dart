@@ -42,4 +42,21 @@ void main() {
     expect(restored.paidPercentage, 0.35);
     expect(restored.metadata.version, account.metadata.version);
   });
+
+  test('DebtMovement preserves initial payment flag', () {
+    final movement = DebtMovement(
+      id: 'payment-1',
+      clientId: 'client-1',
+      clientName: 'Cliente',
+      type: DebtMovementType.payment,
+      amount: 1.25,
+      createdAt: DateTime(2026, 9, 9, 10, 0),
+      reference: 'sale-1',
+      isInitialPayment: true,
+    );
+
+    final restored = DebtMovement.fromMap(movement.toMap());
+    expect(restored.isInitialPayment, isTrue);
+    expect(restored.reference, 'sale-1');
+  });
 }

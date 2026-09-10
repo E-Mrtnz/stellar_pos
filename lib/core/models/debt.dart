@@ -11,6 +11,7 @@ class DebtMovement implements SyncableEntity {
   final double amount;
   final DateTime createdAt;
   final String? reference;
+  final bool isInitialPayment;
   @override
   final SyncMetadata metadata;
 
@@ -22,34 +23,42 @@ class DebtMovement implements SyncableEntity {
     required this.amount,
     required this.createdAt,
     this.reference,
+    this.isInitialPayment = false,
     SyncMetadata? metadata,
-  }) : metadata = metadata ??
-            SyncMetadata(
-              createdAt: createdAt.toUtc(),
-              updatedAt: createdAt.toUtc(),
-            );
+  }) : metadata =
+           metadata ??
+           SyncMetadata(
+             createdAt: createdAt.toUtc(),
+             updatedAt: createdAt.toUtc(),
+           );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'clientId': clientId,
-        'clientName': clientName,
-        'type': type.name,
-        'amount': amount,
-        'createdAt': createdAt.toIso8601String(),
-        'reference': reference,
-        'metadata': metadata.toMap(),
-      };
+    'id': id,
+    'clientId': clientId,
+    'clientName': clientName,
+    'type': type.name,
+    'amount': amount,
+    'createdAt': createdAt.toIso8601String(),
+    'reference': reference,
+    'isInitialPayment': isInitialPayment,
+    'metadata': metadata.toMap(),
+  };
 
   factory DebtMovement.fromMap(Map<String, dynamic> map) => DebtMovement(
-        id: map['id']?.toString() ?? '',
-        clientId: map['clientId']?.toString() ?? '',
-        clientName: map['clientName']?.toString() ?? '',
-        type: _type(map['type']),
-        amount: _double(map['amount']),
-        createdAt: _date(map['createdAt']),
-        reference: map['reference']?.toString(),
-        metadata: _metadata(map['metadata']),
-      );
+    id: map['id']?.toString() ?? '',
+    clientId: map['clientId']?.toString() ?? '',
+    clientName: map['clientName']?.toString() ?? '',
+    type: _type(map['type']),
+    amount: _double(map['amount']),
+    createdAt: _date(map['createdAt']),
+    reference: map['reference']?.toString(),
+    isInitialPayment: _bool(map['isInitialPayment']),
+    metadata: _metadata(map['metadata']),
+  );
+
+  static bool _bool(dynamic value) => value is bool
+      ? value
+      : ['true', '1', 'si', 'sí'].contains(value?.toString().toLowerCase());
 
   static DebtMovementType _type(dynamic value) =>
       DebtMovementType.values.firstWhere(
@@ -60,7 +69,7 @@ class DebtMovement implements SyncableEntity {
   static DateTime _date(dynamic value) => value is DateTime
       ? value.toUtc()
       : DateTime.tryParse(value?.toString() ?? '')?.toUtc() ??
-          DateTime.now().toUtc();
+            DateTime.now().toUtc();
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()
@@ -104,30 +113,30 @@ class DebtAccount implements SyncableEntity {
     SyncMetadata? metadata,
     bool touchMetadata = true,
   }) => DebtAccount(
-        clientId: clientId ?? this.clientId,
-        clientName: clientName ?? this.clientName,
-        totalDebt: totalDebt ?? this.totalDebt,
-        totalPaid: totalPaid ?? this.totalPaid,
-        metadata: metadata ??
-            (touchMetadata ? this.metadata.touch() : this.metadata),
-      );
+    clientId: clientId ?? this.clientId,
+    clientName: clientName ?? this.clientName,
+    totalDebt: totalDebt ?? this.totalDebt,
+    totalPaid: totalPaid ?? this.totalPaid,
+    metadata:
+        metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata),
+  );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'clientId': clientId,
-        'clientName': clientName,
-        'totalDebt': totalDebt,
-        'totalPaid': totalPaid,
-        'metadata': metadata.toMap(),
-      };
+    'id': id,
+    'clientId': clientId,
+    'clientName': clientName,
+    'totalDebt': totalDebt,
+    'totalPaid': totalPaid,
+    'metadata': metadata.toMap(),
+  };
 
   factory DebtAccount.fromMap(Map<String, dynamic> map) => DebtAccount(
-        clientId: map['clientId']?.toString() ?? map['id']?.toString() ?? '',
-        clientName: map['clientName']?.toString() ?? '',
-        totalDebt: _double(map['totalDebt']),
-        totalPaid: _double(map['totalPaid']),
-        metadata: _metadata(map['metadata']),
-      );
+    clientId: map['clientId']?.toString() ?? map['id']?.toString() ?? '',
+    clientName: map['clientName']?.toString() ?? '',
+    totalDebt: _double(map['totalDebt']),
+    totalPaid: _double(map['totalPaid']),
+    metadata: _metadata(map['metadata']),
+  );
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()

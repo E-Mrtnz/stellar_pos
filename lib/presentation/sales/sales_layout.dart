@@ -186,16 +186,48 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   double _collectedFromSale(SaleRecord sale) => sale.effectiveCollected;
-  double _laterPayments(List<DebtMovement> movements, DateTimeRange range) =>
-      movements
-          .where(
-            (movement) =>
-                movement.type == DebtMovementType.payment &&
-                movement.reference == null &&
-                !movement.createdAt.isBefore(range.start) &&
-                movement.createdAt.isBefore(range.end),
-          )
-          .fold(0, (sum, movement) => sum + movement.amount);
+  double _laterPayments(
+    List<SaleRecord> sales,
+    List<DebtMovement> movements,
+    DateTimeRange range,
+  ) {
+    final activeCredits = sales
+        .where(
+          (sale) =>
+              sale.paymentMethod == AppStrings.creditPayment &&
+              sale.clientId != null &&
+              !sale.isAnnulled,
+        )
+        .toList();
+    final byId = <String, SaleRecord>{
+      for (final sale in activeCredits) sale.id: sale,
+    };
+    final byClient = <String, List<SaleRecord>>{};
+    for (final sale in activeCredits) {
+      final clientId = sale.clientId;
+      if (clientId != null) byClient.putIfAbsent(clientId, () => []).add(sale);
+    }
+
+    return movements
+        .where(
+          (movement) =>
+              movement.type == DebtMovementType.payment &&
+              !movement.isInitialPayment &&
+              !movement.createdAt.isBefore(range.start) &&
+              movement.createdAt.isBefore(range.end),
+        )
+        .fold(0.0, (sum, movement) {
+          final reference = movement.reference?.trim();
+          final valid = reference != null && reference.isNotEmpty
+              ? byId[reference]?.clientId == movement.clientId
+              : byClient[movement.clientId]?.any(
+                      (sale) => !sale.createdAt.isAfter(movement.createdAt),
+                    ) ??
+                    false;
+          return valid ? sum + movement.amount : sum;
+        });
+  }
+
   int _effectiveItemCount(SaleRecord sale) {
     if (sale.isAnnulled) return 0;
     var count = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
@@ -236,7 +268,11 @@ class _SalesLayoutState extends State<SalesLayout> {
             (sum, sale) =>
                 sum + (sale.effectiveTotal - sale.effectiveCollected),
           );
-      final laterPayments = _laterPayments(debtProvider.movements, range);
+      final laterPayments = _laterPayments(
+        salesProvider.sales,
+        debtProvider.movements,
+        range,
+      );
       final profit = sales.fold(0.0, (sum, sale) => sum + sale.effectiveProfit);
       final itemCount = sales.fold<int>(
         0,
