@@ -14,6 +14,8 @@ import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class SaleDetailDialog extends StatelessWidget {
   static ValueChanged<SaleRecord>? editHandler;
+  static ValueChanged<SaleRecord>? returnHandler;
+  static ValueChanged<SaleRecord>? changeHandler;
   final SaleRecord sale;
   final Future<void> Function() onPrint;
   final double? paidAmount;
@@ -370,7 +372,10 @@ class SaleDetailDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _returnItems(context),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              returnHandler?.call(sale);
+                            },
                             icon: const Icon(
                               Icons.assignment_return_outlined,
                               size: 17,
@@ -381,7 +386,10 @@ class SaleDetailDialog extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _changeItem(context),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              changeHandler?.call(sale);
+                            },
                             icon: const Icon(Icons.swap_horiz, size: 17),
                             label: const Text('Cambio'),
                           ),

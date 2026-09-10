@@ -25,6 +25,8 @@ import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
+enum _SaleOperationMode { none, edit, returnItem, change }
+
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
   @override
@@ -46,6 +48,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedPaymentMethod = AppPaymentMethods.cash;
   String? _selectedDebtor;
   SaleRecord? _editingSale;
+  _SaleOperationMode _saleOperationMode = _SaleOperationMode.none;
+  final Map<String, int> _operationOriginalQuantities = {};
   final TextEditingController _discountAmountController =
       TextEditingController();
   final TextEditingController _discountPercentController =
@@ -61,11 +65,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void initState() {
     super.initState();
     SaleDetailDialog.editHandler = _startEditingSale;
+    SaleDetailDialog.returnHandler = _startReturnOperation;
+    SaleDetailDialog.changeHandler = _startChangeOperation;
   }
 
   @override
   void dispose() {
     SaleDetailDialog.editHandler = null;
+    SaleDetailDialog.returnHandler = null;
+    SaleDetailDialog.changeHandler = null;
     _productNotFoundTimer?.cancel();
     _productNotFoundOverlay?.remove();
     _discountAmountController.dispose();
@@ -353,6 +361,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     setState(() {
       _editingSale = sale;
+      _saleOperationMode = _SaleOperationMode.edit;
+      _operationOriginalQuantities
+        ..clear()
+        ..addAll(physical);
       _cartQuantities
         ..clear()
         ..addAll(physical);
@@ -379,6 +391,227 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           : '';
       _selectedNavIndex = AppNavigation.home;
     });
+  }
+
+  void _startReturnOperation(SaleRecord sale) =>
+      _startSaleOperation(sale, _SaleOperationMode.returnItem);
+
+  void _startChangeOperation(SaleRecord sale) =>
+      _startSaleOperation(sale, _SaleOperationMode.change);
+
+  void _startSaleOperation(SaleRecord sale, _SaleOperationMode mode) {
+    if (!sale.isCompleted || !sale.canOperateToday) {
+      AppAlert.show(
+        context,
+        'Las devoluciones y cambios solo pueden realizarse el mismo día de la venta.',
+        title: 'Operación no disponible',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+    final physical = <String, int>{};
+    for (final item in sale.items) {
+      if (item.isElectronicBalance) continue;
+      physical[item.productId] =
+          (physical[item.productId] ?? 0) + item.quantity;
+    }
+    if (physical.isEmpty) {
+      AppAlert.show(
+        context,
+        'Esta venta no contiene productos físicos para esta operación.',
+        title: 'Operación no disponible',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+    setState(() {
+      _editingSale = sale;
+      _saleOperationMode = mode;
+      _operationOriginalQuantities
+        ..clear()
+        ..addAll(physical);
+      _cartQuantities
+        ..clear()
+        ..addAll(physical);
+      _electronicBalanceSelection = [];
+      _discountAmountController.clear();
+      _discountPercentController.clear();
+      _cashReceivedController.clear();
+      _selectedPaymentMethod = AppPaymentMethods.cash;
+      _selectedDebtor = null;
+      _selectedNavIndex = AppNavigation.home;
+    });
+  }
+
+  void _cancelSaleOperation() {
+    _clearCart();
+    setState(() {
+      _editingSale = null;
+      _saleOperationMode = _SaleOperationMode.none;
+      _operationOriginalQuantities.clear();
+      _selectedPaymentMethod = AppPaymentMethods.cash;
+    });
+  }
+
+  Map<String, int> _operationRemovedQuantities() {
+    final ids = <String>{
+      ..._operationOriginalQuantities.keys,
+      ..._cartQuantities.keys,
+    };
+    final result = <String, int>{};
+    for (final id in ids) {
+      final value =
+          (_operationOriginalQuantities[id] ?? 0) - (_cartQuantities[id] ?? 0);
+      if (value > 0) result[id] = value;
+    }
+    return result;
+  }
+
+  Map<String, int> _operationAddedQuantities() {
+    final ids = <String>{
+      ..._operationOriginalQuantities.keys,
+      ..._cartQuantities.keys,
+    };
+    final result = <String, int>{};
+    for (final id in ids) {
+      final value =
+          (_cartQuantities[id] ?? 0) - (_operationOriginalQuantities[id] ?? 0);
+      if (value > 0) result[id] = value;
+    }
+    return result;
+  }
+
+  double _operationUnitPrice(SaleRecord sale, String productId) {
+    for (final item in sale.items) {
+      if (item.productId == productId && item.quantity > 0)
+        return item.lineTotal / item.quantity;
+    }
+    return 0;
+  }
+
+  double get _operationDifference {
+    final sale = _editingSale;
+    if (sale == null || _saleOperationMode == _SaleOperationMode.edit) return 0;
+    var value = 0.0;
+    for (final entry in _operationRemovedQuantities().entries) {
+      value -= _operationUnitPrice(sale, entry.key) * entry.value;
+    }
+    for (final entry in _operationAddedQuantities().entries) {
+      final product = context.read<ProductProvider>().findById(entry.key);
+      if (product != null) value += product.priceForQuantity(1) * entry.value;
+    }
+    return value;
+  }
+
+  String _money(double value) => '\$${value.toStringAsFixed(2)}';
+
+  Future<void> _processReturnOperation() async {
+    final sale = _editingSale;
+    if (sale == null) return;
+    final returned = _operationRemovedQuantities();
+    if (returned.isEmpty || _operationAddedQuantities().isNotEmpty) {
+      AppAlert.show(
+        context,
+        'En una devolución solo puedes retirar productos de la venta original. Usa Cambio para reemplazar productos.',
+        title: 'Devolución inválida',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+    try {
+      final updated = context.read<SalesProvider>().returnItems(
+        saleId: sale.id,
+        quantitiesByProduct: returned,
+        productProvider: context.read<ProductProvider>(),
+      );
+      context.read<DebtProvider>().syncInitialPayment(
+        saleId: updated.id,
+        clientId: updated.clientId ?? '',
+        clientName: updated.clientName,
+        amount: updated.effectiveCollected,
+      );
+      final refund = _operationDifference.abs();
+      _cancelSaleOperation();
+      AppAlert.show(
+        context,
+        'Devolución registrada. Monto a devolver: ${_money(refund)}.',
+        title: 'Devolución registrada',
+        type: AppAlertType.success,
+      );
+    } catch (error) {
+      AppAlert.show(
+        context,
+        error.toString().replaceFirst('Bad state: ', ''),
+        title: 'No se pudo registrar la devolución',
+        type: AppAlertType.error,
+      );
+    }
+  }
+
+  Future<void> _processChangeOperation() async {
+    final sale = _editingSale;
+    if (sale == null) return;
+    final outgoing = _operationRemovedQuantities();
+    final incoming = _operationAddedQuantities();
+    final outCount = outgoing.values.fold<int>(0, (a, b) => a + b);
+    final inCount = incoming.values.fold<int>(0, (a, b) => a + b);
+    if (outgoing.isEmpty || incoming.isEmpty || outCount != inCount) {
+      AppAlert.show(
+        context,
+        'Retira los productos que salen y agrega la misma cantidad de productos de reemplazo.',
+        title: 'Cambio incompleto',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+    try {
+      final outs = outgoing.entries.toList();
+      final ins = incoming.entries.toList();
+      final sales = context.read<SalesProvider>();
+      while (outs.isNotEmpty && ins.isNotEmpty) {
+        final out = outs.removeAt(0);
+        final input = ins.removeAt(0);
+        final quantity = out.value < input.value ? out.value : input.value;
+        sales.changeItem(
+          saleId: sale.id,
+          sourceProductId: out.key,
+          quantity: quantity,
+          replacementProductId: input.key,
+          productProvider: context.read<ProductProvider>(),
+        );
+        if (out.value > quantity)
+          outs.insert(0, MapEntry(out.key, out.value - quantity));
+        if (input.value > quantity)
+          ins.insert(0, MapEntry(input.key, input.value - quantity));
+      }
+      final difference = _operationDifference;
+      final updated = sales.sales.firstWhere((item) => item.id == sale.id);
+      context.read<DebtProvider>().syncInitialPayment(
+        saleId: updated.id,
+        clientId: updated.clientId ?? '',
+        clientName: updated.clientName,
+        amount: updated.effectiveCollected,
+      );
+      _cancelSaleOperation();
+      final message = difference < -0.005
+          ? 'Devolver ${_money(difference.abs())} al cliente.'
+          : difference > 0.005
+          ? 'Cobrar ${_money(difference)} al cliente.'
+          : 'No hay diferencia de dinero.';
+      AppAlert.show(
+        context,
+        message,
+        title: 'Cambio registrado',
+        type: AppAlertType.success,
+      );
+    } catch (error) {
+      AppAlert.show(
+        context,
+        error.toString().replaceFirst('Bad state: ', ''),
+        title: 'No se pudo registrar el cambio',
+        type: AppAlertType.error,
+      );
+    }
   }
 
   Future<void> _updateSale() async {
@@ -525,6 +758,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _clearCart();
       setState(() {
         _editingSale = null;
+        _saleOperationMode = _SaleOperationMode.none;
+        _operationOriginalQuantities.clear();
         _selectedPaymentMethod = AppPaymentMethods.cash;
       });
       AppAlert.show(
@@ -795,8 +1030,35 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   onClearCart: _clearCart,
                   onCreateSale: _editingSale == null
                       ? _createSale
-                      : _updateSale,
+                      : _saleOperationMode == _SaleOperationMode.edit
+                      ? _updateSale
+                      : _saleOperationMode == _SaleOperationMode.returnItem
+                      ? _processReturnOperation
+                      : _processChangeOperation,
                   isEditing: _editingSale != null,
+                  operationLabel: _saleOperationMode == _SaleOperationMode.edit
+                      ? 'Actualizar venta'
+                      : _saleOperationMode == _SaleOperationMode.returnItem
+                      ? 'Registrar devolución'
+                      : _saleOperationMode == _SaleOperationMode.change
+                      ? 'Registrar cambio'
+                      : null,
+                  operationDifference:
+                      _saleOperationMode == _SaleOperationMode.none ||
+                          _saleOperationMode == _SaleOperationMode.edit
+                      ? null
+                      : _operationDifference,
+                  operationDifferenceLabel:
+                      _saleOperationMode == _SaleOperationMode.returnItem
+                      ? 'Devolución al cliente'
+                      : _operationDifference < -0.005
+                      ? 'Devolver al cliente'
+                      : _operationDifference > 0.005
+                      ? 'Cobrar al cliente'
+                      : 'Diferencia',
+                  onCancelOperation: _editingSale == null
+                      ? null
+                      : _cancelSaleOperation,
                   ticketNumber:
                       _editingSale?.ticketNumber ??
                       context.watch<SalesProvider>().nextTicketNumberPreview,

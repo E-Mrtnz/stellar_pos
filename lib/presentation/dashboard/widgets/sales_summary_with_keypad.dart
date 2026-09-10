@@ -33,6 +33,10 @@ class SalesSummaryWithKeypad extends StatefulWidget {
   final VoidCallback onCreateSale;
   final String ticketNumber;
   final bool isEditing;
+  final String? operationLabel;
+  final double? operationDifference;
+  final String? operationDifferenceLabel;
+  final VoidCallback? onCancelOperation;
 
   const SalesSummaryWithKeypad({
     super.key,
@@ -61,6 +65,10 @@ class SalesSummaryWithKeypad extends StatefulWidget {
     required this.onCreateSale,
     required this.ticketNumber,
     this.isEditing = false,
+    this.operationLabel,
+    this.operationDifference,
+    this.operationDifferenceLabel,
+    this.onCancelOperation,
   });
 
   @override
@@ -82,18 +90,29 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     final beforeIds = catalog.clients.map((client) => client.id).toSet();
     await CreateClientDialog.show(context);
     if (!mounted) return;
-    final created = catalog.clients.where((client) => !beforeIds.contains(client.id)).toList();
+    final created = catalog.clients
+        .where((client) => !beforeIds.contains(client.id))
+        .toList();
     if (created.isNotEmpty) widget.onDebtorChanged(created.last.name);
   }
 
-  void _activate(TextEditingController controller, ValueChanged<String> onChanged) {
+  void _activate(
+    TextEditingController controller,
+    ValueChanged<String> onChanged,
+  ) {
     if (!mounted) return;
-    setState(() { _activeController = controller; _activeOnChanged = onChanged; });
+    setState(() {
+      _activeController = controller;
+      _activeOnChanged = onChanged;
+    });
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _updateKeypadPosition();
-      if (_keypadOverlayEntry == null) _showKeypadOverlay(); else _keypadOverlayEntry!.markNeedsBuild();
+      if (_keypadOverlayEntry == null)
+        _showKeypadOverlay();
+      else
+        _keypadOverlayEntry!.markNeedsBuild();
     });
   }
 
@@ -107,11 +126,21 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     final desiredTop = topLeft.dy + size.height - NumericKeypad.height;
     final maxLeft = screenSize.width - NumericKeypad.width - _screenPadding;
     final maxTop = screenSize.height - NumericKeypad.height - _screenPadding;
-    _keypadPosition = Offset(desiredLeft.clamp(_screenPadding, maxLeft < _screenPadding ? _screenPadding : maxLeft), desiredTop.clamp(_screenPadding, maxTop < _screenPadding ? _screenPadding : maxTop));
+    _keypadPosition = Offset(
+      desiredLeft.clamp(
+        _screenPadding,
+        maxLeft < _screenPadding ? _screenPadding : maxLeft,
+      ),
+      desiredTop.clamp(
+        _screenPadding,
+        maxTop < _screenPadding ? _screenPadding : maxTop,
+      ),
+    );
   }
 
   void _showKeypadOverlay() {
-    if (!mounted || _activeController == null || _keypadOverlayEntry != null) return;
+    if (!mounted || _activeController == null || _keypadOverlayEntry != null)
+      return;
     final overlay = Overlay.of(context, rootOverlay: true);
     _keypadOverlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -119,7 +148,19 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
         top: _keypadPosition.dy,
         width: NumericKeypad.width,
         height: NumericKeypad.height,
-        child: TapRegion(groupId: _keypadGroup, child: Focus(canRequestFocus: false, skipTraversal: true, child: NumericKeypad(onInput: _input, onBackspace: _backspace, onClear: _clear, onDecimal: _decimal))),
+        child: TapRegion(
+          groupId: _keypadGroup,
+          child: Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            child: NumericKeypad(
+              onInput: _input,
+              onBackspace: _backspace,
+              onClear: _clear,
+              onDecimal: _decimal,
+            ),
+          ),
+        ),
       ),
     );
     overlay.insert(_keypadOverlayEntry!);
@@ -129,7 +170,10 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     _keypadOverlayEntry?.remove();
     _keypadOverlayEntry = null;
     if (!mounted) return;
-    setState(() { _activeController = null; _activeOnChanged = null; });
+    setState(() {
+      _activeController = null;
+      _activeOnChanged = null;
+    });
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
   }
 
@@ -142,17 +186,39 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     final controller = _activeController;
     final onChanged = _activeOnChanged;
     if (controller == null || onChanged == null) return;
-    controller.value = TextEditingValue(text: value, selection: TextSelection.collapsed(offset: value.length));
+    controller.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
     onChanged(value);
   }
 
-  void _input(String digit) { final controller = _activeController; if (controller == null) return; _setText('${controller.text}$digit'); }
-  void _decimal() { final controller = _activeController; if (controller == null || controller.text.contains('.')) return; _setText(controller.text.isEmpty ? '0.' : '${controller.text}.'); }
-  void _backspace() { final controller = _activeController; if (controller == null || controller.text.isEmpty) return; _setText(controller.text.substring(0, controller.text.length - 1)); }
+  void _input(String digit) {
+    final controller = _activeController;
+    if (controller == null) return;
+    _setText('${controller.text}$digit');
+  }
+
+  void _decimal() {
+    final controller = _activeController;
+    if (controller == null || controller.text.contains('.')) return;
+    _setText(controller.text.isEmpty ? '0.' : '${controller.text}.');
+  }
+
+  void _backspace() {
+    final controller = _activeController;
+    if (controller == null || controller.text.isEmpty) return;
+    _setText(controller.text.substring(0, controller.text.length - 1));
+  }
+
   void _clear() => _setText('');
 
   @override
-  void dispose() { _keypadOverlayEntry?.remove(); _keypadOverlayEntry = null; super.dispose(); }
+  void dispose() {
+    _keypadOverlayEntry?.remove();
+    _keypadOverlayEntry = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +231,10 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           cartQuantities: widget.cartQuantities,
           products: widget.products,
           selectedPaymentMethod: widget.selectedPaymentMethod,
-          onPaymentMethodChanged: (value) { _closeKeypad(); widget.onPaymentMethodChanged(value); },
+          onPaymentMethodChanged: (value) {
+            _closeKeypad();
+            widget.onPaymentMethodChanged(value);
+          },
           selectedDebtor: widget.selectedDebtor,
           debtorsList: widget.debtorsList,
           onDebtorChanged: widget.onDebtorChanged,
@@ -177,9 +246,12 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onDiscountPercentChanged: widget.onDiscountPercentChanged,
           onCashReceivedChanged: widget.onCashReceivedChanged,
           onPaymentInputFocused: (controller) {
-            if (controller == widget.discountPercentController) _activate(controller, widget.onDiscountPercentChanged);
-            else if (controller == widget.discountAmountController) _activate(controller, widget.onDiscountAmountChanged);
-            else if (controller == widget.cashReceivedController) _activate(controller, widget.onCashReceivedChanged);
+            if (controller == widget.discountPercentController)
+              _activate(controller, widget.onDiscountPercentChanged);
+            else if (controller == widget.discountAmountController)
+              _activate(controller, widget.onDiscountAmountChanged);
+            else if (controller == widget.cashReceivedController)
+              _activate(controller, widget.onCashReceivedChanged);
           },
           subtotal: widget.subtotal,
           cardFeeAmount: widget.cardFeeAmount,
@@ -193,6 +265,10 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onCreateSale: _createSaleAndCloseKeypad,
           ticketNumber: widget.ticketNumber,
           isEditing: widget.isEditing,
+          operationLabel: widget.operationLabel,
+          operationDifference: widget.operationDifference,
+          operationDifferenceLabel: widget.operationDifferenceLabel,
+          onCancelOperation: widget.onCancelOperation,
         ),
       ),
     );
