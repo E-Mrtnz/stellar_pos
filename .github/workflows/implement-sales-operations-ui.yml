@@ -24,7 +24,17 @@ jobs:
           channel: stable
       - name: Install dependencies
         run: flutter pub get
-      - name: Validate implementation
+      - name: Apply final implementation
+        run: python tool/finalize_sales_operation_flow.py
+      - name: Format and analyze
         run: |
-          dart format --output=none --set-exit-if-changed lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+          dart format lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
           dart analyze lib/presentation/dashboard/main_dashboard_layout.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/widgets/sale_detail_dialog.dart lib/core/providers/sales_provider.dart
+      - name: Commit final implementation and remove temporary tooling
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f tool/finalize_sales_operation_flow.py tool/implement_sales_operations_ui.py .github/workflows/implement-sales-operations-ui.yml implementation_error.log
+          git add -A
+          git commit -m 'feat(sales): unify return and change POS flow'
+          git push origin HEAD:feature/sales-operations
