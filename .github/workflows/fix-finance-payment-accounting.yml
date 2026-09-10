@@ -27,6 +27,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Get dependencies
+        run: flutter pub get
+
       - name: Format
         run: |
           dart format \
