@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/date_aware_sales_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/numeric_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
@@ -182,6 +184,49 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     widget.onCreateSale();
   }
 
+  Future<void> _selectSaleDate(DateAwareSalesProvider sales) async {
+    if (widget.isEditing) return;
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: sales.selectedSaleDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year, now.month, now.day),
+      helpText: 'Seleccionar fecha de venta',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+    if (selected != null && mounted) sales.setSelectedSaleDate(selected);
+  }
+
+  String _formatDate(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+
+  Widget _buildSaleDate(DateAwareSalesProvider sales) {
+    final enabled = !widget.isEditing;
+    return Positioned(
+      top: 38,
+      right: widget.cartQuantities.isNotEmpty ? 92 : 12,
+      child: InkWell(
+        onTap: enabled ? () => _selectSaleDate(sales) : null,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: Text(
+            _formatDate(sales.selectedSaleDate),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: enabled ? null : Theme.of(context).disabledColor,
+              decoration: enabled ? TextDecoration.underline : null,
+              decorationThickness: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _setText(String value) {
     final controller = _activeController;
     final onChanged = _activeOnChanged;
@@ -222,53 +267,62 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
 
   @override
   Widget build(BuildContext context) {
+    final salesProvider = context.watch<SalesProvider>();
+    final dateAwareSales = salesProvider as DateAwareSalesProvider;
+
     return TapRegion(
       groupId: _keypadGroup,
       onTapOutside: (_) => _closeKeypad(),
       child: KeyedSubtree(
         key: _panelKey,
-        child: SalesSummaryPanel(
-          cartQuantities: widget.cartQuantities,
-          products: widget.products,
-          selectedPaymentMethod: widget.selectedPaymentMethod,
-          onPaymentMethodChanged: (value) {
-            _closeKeypad();
-            widget.onPaymentMethodChanged(value);
-          },
-          selectedDebtor: widget.selectedDebtor,
-          debtorsList: widget.debtorsList,
-          onDebtorChanged: widget.onDebtorChanged,
-          onCreateClient: _createClientAndSelect,
-          discountAmountController: widget.discountAmountController,
-          discountPercentController: widget.discountPercentController,
-          cashReceivedController: widget.cashReceivedController,
-          onDiscountAmountChanged: widget.onDiscountAmountChanged,
-          onDiscountPercentChanged: widget.onDiscountPercentChanged,
-          onCashReceivedChanged: widget.onCashReceivedChanged,
-          onPaymentInputFocused: (controller) {
-            if (controller == widget.discountPercentController)
-              _activate(controller, widget.onDiscountPercentChanged);
-            else if (controller == widget.discountAmountController)
-              _activate(controller, widget.onDiscountAmountChanged);
-            else if (controller == widget.cashReceivedController)
-              _activate(controller, widget.onCashReceivedChanged);
-          },
-          subtotal: widget.subtotal,
-          cardFeeAmount: widget.cardFeeAmount,
-          total: widget.total,
-          change: widget.change,
-          onAddToCart: widget.onAddToCart,
-          onDecrementQuantity: widget.onDecrementQuantity,
-          onQuantityChanged: widget.onQuantityChanged,
-          onRemoveFromCart: widget.onRemoveFromCart,
-          onClearCart: widget.onClearCart,
-          onCreateSale: _createSaleAndCloseKeypad,
-          ticketNumber: widget.ticketNumber,
-          isEditing: widget.isEditing,
-          operationLabel: widget.operationLabel,
-          operationDifference: widget.operationDifference,
-          operationDifferenceLabel: widget.operationDifferenceLabel,
-          onCancelOperation: widget.onCancelOperation,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SalesSummaryPanel(
+              cartQuantities: widget.cartQuantities,
+              products: widget.products,
+              selectedPaymentMethod: widget.selectedPaymentMethod,
+              onPaymentMethodChanged: (value) {
+                _closeKeypad();
+                widget.onPaymentMethodChanged(value);
+              },
+              selectedDebtor: widget.selectedDebtor,
+              debtorsList: widget.debtorsList,
+              onDebtorChanged: widget.onDebtorChanged,
+              onCreateClient: _createClientAndSelect,
+              discountAmountController: widget.discountAmountController,
+              discountPercentController: widget.discountPercentController,
+              cashReceivedController: widget.cashReceivedController,
+              onDiscountAmountChanged: widget.onDiscountAmountChanged,
+              onDiscountPercentChanged: widget.onDiscountPercentChanged,
+              onCashReceivedChanged: widget.onCashReceivedChanged,
+              onPaymentInputFocused: (controller) {
+                if (controller == widget.discountPercentController)
+                  _activate(controller, widget.onDiscountPercentChanged);
+                else if (controller == widget.discountAmountController)
+                  _activate(controller, widget.onDiscountAmountChanged);
+                else if (controller == widget.cashReceivedController)
+                  _activate(controller, widget.onCashReceivedChanged);
+              },
+              subtotal: widget.subtotal,
+              cardFeeAmount: widget.cardFeeAmount,
+              total: widget.total,
+              change: widget.change,
+              onAddToCart: widget.onAddToCart,
+              onDecrementQuantity: widget.onDecrementQuantity,
+              onQuantityChanged: widget.onQuantityChanged,
+              onRemoveFromCart: widget.onRemoveFromCart,
+              onClearCart: widget.onClearCart,
+              onCreateSale: _createSaleAndCloseKeypad,
+              ticketNumber: widget.ticketNumber,
+              isEditing: widget.isEditing,
+              operationLabel: widget.operationLabel,
+              operationDifference: widget.operationDifference,
+              operationDifferenceLabel: widget.operationDifferenceLabel,
+              onCancelOperation: widget.onCancelOperation,
+            ),
+            _buildSaleDate(dateAwareSales),
+          ],
         ),
       ),
     );
