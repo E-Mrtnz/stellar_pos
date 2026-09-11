@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:stellar_pos/core/data/repositories/sale_repository.dart';
 import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 import 'package:stellar_pos/core/models/sale.dart';
