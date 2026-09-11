@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
+import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
@@ -120,7 +121,7 @@ class _CentralProductGridState extends State<CentralProductGrid> {
     }
     _lastBarcodeInputAt = now;
 
-    return KeyEventResult.ignored;
+    return KeyEventResult.handled;
   }
 
   Map<String, dynamic>? _findProductByBarcode(String barcode) {
