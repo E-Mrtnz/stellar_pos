@@ -90,7 +90,44 @@ class SaleItemRecord implements SyncableEntity {
   @override
   final SyncMetadata metadata;
 
-  SaleItemRecord({String? id, required this.productId, required this.productName, required this.unit, this.brand = '', required this.barcode, required this.cost, required this.unitPrice, required this.quantity, required this.lineSubtotal, required this.discount, required this.lineTotal, this.imageData = '', this.isElectronicBalance = false, this.hasGroupPricing = false, this.electronicBalanceAccountId, this.electronicBalanceCategory, SyncMetadata? metadata}) : id = id ?? IdGenerator.newId(), metadata = metadata ?? SyncMetadata.initial();
+  SaleItemRecord({
+    String? id,
+    required this.productId,
+    required String productName,
+    required this.unit,
+    this.brand = '',
+    required this.barcode,
+    required this.cost,
+    required this.unitPrice,
+    required this.quantity,
+    required this.lineSubtotal,
+    required this.discount,
+    required this.lineTotal,
+    this.imageData = '',
+    this.isElectronicBalance = false,
+    this.hasGroupPricing = false,
+    this.electronicBalanceAccountId,
+    this.electronicBalanceCategory,
+    SyncMetadata? metadata,
+  })  : id = id ?? IdGenerator.newId(),
+        productName = _normalizeElectronicProductName(
+          productName,
+          isElectronicBalance,
+          electronicBalanceCategory,
+        ),
+        metadata = metadata ?? SyncMetadata.initial();
+
+  static String _normalizeElectronicProductName(
+    String value,
+    bool electronic,
+    String? category,
+  ) {
+    final name = value.trim();
+    final type = category?.trim() ?? '';
+    if (!electronic || type.isEmpty || name.isEmpty) return name;
+    if (name == type || name.endsWith(' · $type')) return name;
+    return '$name · $type';
+  }
 
   Map<String, dynamic> toMap() => {'id': id, 'productId': productId, 'productName': productName, 'unit': unit, 'brand': brand, 'barcode': barcode, 'cost': cost, 'unitPrice': unitPrice, 'quantity': quantity, 'lineSubtotal': lineSubtotal, 'discount': discount, 'lineTotal': lineTotal, 'imageData': imageData, 'isElectronicBalance': isElectronicBalance, 'hasGroupPricing': hasGroupPricing, 'electronicBalanceAccountId': electronicBalanceAccountId, 'electronicBalanceCategory': electronicBalanceCategory, 'metadata': metadata.toMap()};
 
