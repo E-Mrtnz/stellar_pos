@@ -103,6 +103,16 @@ class SaleItemRecord implements SyncableEntity {
 }
 
 class SaleRecord implements SyncableEntity {
+  static DateTime? _creationDateOverride;
+
+  static void setCreationDateOverride(DateTime date) {
+    _creationDateOverride = date;
+  }
+
+  static void clearCreationDateOverride() {
+    _creationDateOverride = null;
+  }
+
   @override String id;
   String ticketNumber;
   DateTime createdAt;
@@ -121,7 +131,28 @@ class SaleRecord implements SyncableEntity {
   List<SaleOperationRecord> operations;
   @override SyncMetadata metadata;
 
-  SaleRecord({required this.id, required this.ticketNumber, required this.createdAt, required this.clientId, required this.clientName, required this.paymentMethod, required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent, required this.discountAmount, required this.cardFeeAmount, required this.total, required this.received, required this.change, this.status = SaleStatus.completed, List<SaleOperationRecord> operations = const [], SyncMetadata? metadata}) : items = List.unmodifiable(items), operations = List.unmodifiable(operations), metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
+  SaleRecord({required this.id, required this.ticketNumber, required this.createdAt, required this.clientId, required this.clientName, required this.paymentMethod, required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent, required this.discountAmount, required this.cardFeeAmount, required this.total, required this.received, required this.change, this.status = SaleStatus.completed, List<SaleOperationRecord> operations = const [], SyncMetadata? metadata}) : items = List.unmodifiable(items), operations = List.unmodifiable(operations), metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc()) {
+    final override = _creationDateOverride;
+    if (override != null) {
+      final original = createdAt;
+      createdAt = DateTime(
+        override.year,
+        override.month,
+        override.day,
+        original.hour,
+        original.minute,
+        original.second,
+        original.millisecond,
+        original.microsecond,
+      );
+      if (metadata == null) {
+        this.metadata = SyncMetadata(
+          createdAt: createdAt.toUtc(),
+          updatedAt: createdAt.toUtc(),
+        );
+      }
+    }
+  }
 
   bool get isCompleted => status == SaleStatus.completed;
   bool get isAnnulled => status == SaleStatus.annulled;
@@ -142,6 +173,11 @@ class SaleRecord implements SyncableEntity {
       profit += operation.itemsIn.fold<double>(0, (sum, item) => sum + (item.unitPrice * item.quantity - item.discount - item.cost * item.quantity));
     }
     return profit;
+  }
+
+  void updateCreatedAt(DateTime value) {
+    createdAt = value;
+    metadata = metadata.touch();
   }
 
   SaleRecord copyWith({String? id, String? ticketNumber, DateTime? createdAt, String? clientId, String? clientName, String? paymentMethod, List<SaleItemRecord>? items, double? subtotal, double? discountPercent, double? discountAmount, double? cardFeeAmount, double? total, double? received, double? change, SaleStatus? status, List<SaleOperationRecord>? operations, SyncMetadata? metadata, bool touchMetadata = false}) => SaleRecord(id: id ?? this.id, ticketNumber: ticketNumber ?? this.ticketNumber, createdAt: createdAt ?? this.createdAt, clientId: clientId ?? this.clientId, clientName: clientName ?? this.clientName, paymentMethod: paymentMethod ?? this.paymentMethod, items: items ?? this.items, subtotal: subtotal ?? this.subtotal, discountPercent: discountPercent ?? this.discountPercent, discountAmount: discountAmount ?? this.discountAmount, cardFeeAmount: cardFeeAmount ?? this.cardFeeAmount, total: total ?? this.total, received: received ?? this.received, change: change ?? this.change, status: status ?? this.status, operations: operations ?? this.operations, metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
