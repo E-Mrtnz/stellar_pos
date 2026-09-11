@@ -157,6 +157,12 @@ class _CentralProductGridState extends State<CentralProductGrid> {
       selectedTagIndex: widget.selectedTagIndex,
     );
 
+    final sortedProducts = List<Map<String, dynamic>>.from(filteredProducts)
+      ..sort((a, b) => ProductUtils.asString(a['name'])
+          .trim()
+          .toLowerCase()
+          .compareTo(ProductUtils.asString(b['name']).trim().toLowerCase()));
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -183,9 +189,9 @@ class _CentralProductGridState extends State<CentralProductGrid> {
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 12),
           Expanded(
-            child: filteredProducts.isEmpty && widget.onElectronicBalanceTap == null
+            child: sortedProducts.isEmpty && widget.onElectronicBalanceTap == null
                 ? _buildEmptyState()
-                : _buildProductGrid(filteredProducts),
+                : _buildProductGrid(sortedProducts),
           ),
         ],
       ),
