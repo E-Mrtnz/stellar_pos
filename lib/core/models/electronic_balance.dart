@@ -40,6 +40,17 @@ class ElectronicBalanceAccount implements SyncableEntity {
   double get commissionMultiplier => commissionRate / 100;
   List<double> amountsForCategory(String category) => saleOptions.where((option) => option.category == category).map((option) => option.amount).toList();
 
+  List<String> get saleCategories {
+    final result = <String>[];
+    const standard = ['Saldo', 'Internet', 'Llamada'];
+    for (final category in standard) result.add(category);
+    for (final option in saleOptions) {
+      final category = option.category.trim();
+      if (category.isNotEmpty && !result.contains(category)) result.add(category);
+    }
+    return List.unmodifiable(result);
+  }
+
   ElectronicBalanceAccount copyWith({String? id, String? companyName, double? commissionRate, double? balance, List<ElectronicBalanceSaleOption>? saleOptions, SyncMetadata? metadata, bool touchMetadata = true}) => ElectronicBalanceAccount(
     id: id ?? this.id, companyName: companyName ?? this.companyName, commissionRate: commissionRate ?? this.commissionRate, balance: balance ?? this.balance, saleOptions: saleOptions ?? this.saleOptions,
     metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
