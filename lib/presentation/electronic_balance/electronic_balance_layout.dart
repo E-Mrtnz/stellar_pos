@@ -18,11 +18,6 @@ class ElectronicBalanceLayout extends StatelessWidget {
         builder: (_) => _BalancePurchaseDialog(account: account),
       );
 
-  Future<void> _sale(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(
-        context: context,
-        builder: (_) => _BalanceSaleDialog(account: account),
-      );
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ElectronicBalanceProvider>();
@@ -49,7 +44,6 @@ class ElectronicBalanceLayout extends StatelessWidget {
                         sold: provider.totalSold(account.id),
                         profit: provider.totalProfit(account.id),
                         onPurchase: () => _purchase(context, account),
-                        onSale: () => _sale(context, account),
                         onHistory: () => _history(context, account),
                         onEdit: () => _account(context, account),
                         onDelete: () => _delete(context, account),
@@ -90,12 +84,11 @@ class _BalanceAccountCard extends StatelessWidget {
   final double sold;
   final double profit;
   final VoidCallback onPurchase;
-  final VoidCallback onSale;
   final VoidCallback onHistory;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _BalanceAccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onSale, required this.onHistory, required this.onEdit, required this.onDelete});
+  const _BalanceAccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onHistory, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -124,8 +117,6 @@ class _BalanceAccountCard extends StatelessWidget {
             const SizedBox(height: 14),
             Row(children: [
               Expanded(child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
-              const SizedBox(width: 10),
-              Expanded(child: FilledButton.icon(onPressed: onSale, icon: const Icon(Icons.point_of_sale_outlined, size: 18), label: const Text('Vender saldo'))),
             ]),
           ]),
         ),
@@ -251,8 +242,23 @@ class _BalancePurchaseDialog extends StatefulWidget {
 
 class _BalancePurchaseDialogState extends State<_BalancePurchaseDialog> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+
   @override
-  void dispose() { _controller.dispose(); super.dispose(); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => AlertDialog(
         title: const Text('Comprar saldo'),
@@ -261,7 +267,14 @@ class _BalancePurchaseDialogState extends State<_BalancePurchaseDialog> {
           const SizedBox(height: 4),
           Text('Comisión aplicada: ${widget.account.commissionRate.toStringAsFixed(2)}%'),
           const SizedBox(height: 14),
-          TextField(controller: _controller, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Saldo comprado', prefixText: '\$')),
+          TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            autofocus: false,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(labelText: 'Saldo comprado', prefixText: '\$'),
+          ),
         ])),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: () {
           final amount = double.tryParse(_controller.text.replaceAll(',', '.'));
@@ -270,76 +283,6 @@ class _BalancePurchaseDialogState extends State<_BalancePurchaseDialog> {
           Navigator.pop(context);
         }, child: const Text('Registrar compra'))],
       );
-}
-
-class _BalanceSaleDialog extends StatefulWidget {
-  final ElectronicBalanceAccount account;
-  const _BalanceSaleDialog({required this.account});
-  @override
-  State<_BalanceSaleDialog> createState() => _BalanceSaleDialogState();
-}
-
-class _BalanceSaleDialogState extends State<_BalanceSaleDialog> {
-  static const _categories = ['Saldo', 'Internet', 'Llamada'];
-  String _category = 'Saldo';
-  final Map<String, int> _selected = {};
-  final Map<String, TextEditingController> _controllers = {};
-
-  @override
-  void dispose() { for (final c in _controllers.values) c.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    final account = widget.account;
-    final options = account.amountsForCategory(_category);
-    double total = 0;
-    for (final e in _selected.entries) { final i = e.key.indexOf('|'); if (i >= 0) total += (double.tryParse(e.key.substring(i + 1)) ?? 0) * e.value; }
-    final profit = total * account.commissionRate / 100;
-    final selectedEntries = _selected.entries.where((e) => e.key.startsWith('$_category|')).toList();
-
-    return AlertDialog(
-      title: const Text('Vender saldo'),
-      content: SizedBox(width: 480, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${account.companyName} · Disponible: \$${account.balance.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(initialValue: _category, decoration: const InputDecoration(labelText: 'Tipo de venta'), items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) { if (v != null) setState(() => _category = v); }),
-        const SizedBox(height: 14),
-        const Text('Selecciona uno o varios montos', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        if (options.isEmpty) const Text('No hay montos configurados para esta categoría.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
-        else Wrap(spacing: 8, runSpacing: 8, children: options.map((amount) {
-          final key = _key(_category, amount); final selected = _selected.containsKey(key);
-          return FilterChip(label: Text('\$${_formatAmount(amount)}'), selected: selected, onSelected: (value) { setState(() { if (value) { _selected[key] = 1; _controllers[key]?.dispose(); _controllers[key] = TextEditingController(text: '1'); } else { _selected.remove(key); _controllers.remove(key)?.dispose(); } }); });
-        }).toList()),
-        if (selectedEntries.isNotEmpty) ...[
-          const SizedBox(height: 16), const Text('Cantidad por monto', style: TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 8),
-          ...selectedEntries.map((entry) {
-            final amount = double.tryParse(entry.key.substring(entry.key.indexOf('|') + 1)) ?? 0;
-            final controller = _controllers.putIfAbsent(entry.key, () => TextEditingController(text: '${entry.value}'));
-            return Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [Expanded(child: Text('\$${_formatAmount(amount)}', style: const TextStyle(fontWeight: FontWeight.w600))), SizedBox(width: 90, child: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cantidad', isDense: true), onChanged: (v) { final q = int.tryParse(v); if (q != null && q > 0) _selected[entry.key] = q; }))]));
-          }),
-        ],
-        if (total > 0) ...[
-          const SizedBox(height: 12), const Divider(),
-          Text('Total vendido: \$${total.toStringAsFixed(2)}'),
-          Text('Cliente paga: \$${total.toStringAsFixed(2)}'),
-          Text('Ganancia: \$${profit.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.bold)),
-        ],
-      ]))),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: total <= 0 ? null : _register, child: const Text('Registrar ventas'))],
-    );
-  }
-
-  void _register() {
-    final sales = <ElectronicBalanceSale>[];
-    for (final e in _selected.entries) { final i = e.key.indexOf('|'); if (i < 0) continue; final amount = double.tryParse(e.key.substring(i + 1)) ?? 0; if (amount > 0 && e.value > 0) sales.add(ElectronicBalanceSale(amount: amount, quantity: e.value, category: e.key.substring(0, i))); }
-    final ok = context.read<ElectronicBalanceProvider>().registerSales(accountId: widget.account.id, sales: sales);
-    if (!ok) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo registrar la venta.'))); return; }
-    Navigator.pop(context);
-  }
-
-  String _key(String category, double amount) => '$category|${amount.toStringAsFixed(4)}';
-  static String _formatAmount(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 }
 
 class _BalanceSalesHistoryDialog extends StatelessWidget {
