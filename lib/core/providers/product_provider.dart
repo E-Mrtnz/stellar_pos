@@ -39,6 +39,26 @@ class ProductProvider extends ChangeNotifier {
     return _firstOrNull((product) => product.barcode.trim() == normalized);
   }
 
+  Product? findDuplicateProduct(Product product, {String? excludingId}) {
+    final excluded = excludingId ?? product.id;
+    final barcode = product.barcode.trim();
+    if (barcode.isNotEmpty) {
+      final duplicate = _firstOrNull(
+        (item) => item.id != excluded && item.barcode.trim() == barcode,
+      );
+      if (duplicate != null) return duplicate;
+    }
+
+    final name = _normalizeProductName(product.name);
+    if (name.isNotEmpty) {
+      return _firstOrNull(
+        (item) =>
+            item.id != excluded && _normalizeProductName(item.name) == name,
+      );
+    }
+    return null;
+  }
+
   Future<void> load() {
     if (_loaded) return Future.value();
     final existing = _loadFuture;
@@ -49,9 +69,12 @@ class ProductProvider extends ChangeNotifier {
     return future;
   }
 
-  void addProduct(Product product) {
+  bool addProduct(Product product) {
     final id = product.id.isEmpty ? IdGenerator.newId() : product.id;
     final normalized = product.copyWith(id: id, touchMetadata: false);
+    if (findDuplicateProduct(normalized, excludingId: normalized.id) != null) {
+      return false;
+    }
 
     _catalogRegistrar?.registerBrandValue(normalized.brand);
     _catalogRegistrar?.registerCategoryValue(normalized.category);
@@ -59,11 +82,15 @@ class ProductProvider extends ChangeNotifier {
     _products.add(normalized);
     notifyListeners();
     _persist(() => _repository?.save(normalized));
+    return true;
   }
 
   bool updateProduct(Product product) {
     final index = _products.indexWhere((item) => item.id == product.id);
     if (index < 0) return false;
+    if (findDuplicateProduct(product, excludingId: product.id) != null) {
+      return false;
+    }
 
     final current = _products[index];
     final updated = product.copyWith(
@@ -139,4 +166,7 @@ class ProductProvider extends ChangeNotifier {
     }
     return null;
   }
+
+  String _normalizeProductName(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
