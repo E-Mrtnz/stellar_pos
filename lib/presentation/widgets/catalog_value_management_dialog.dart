@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/app_confirm_dialog.dart';
 
@@ -119,6 +120,21 @@ class _CatalogValueManagementDialogState extends State<CatalogValueManagementDia
         type: AppAlertType.warning,
       );
       return;
+    }
+
+    if (isEditing && oldValue != value) {
+      final products = context.read<ProductProvider>();
+      switch (widget.type) {
+        case CatalogValueType.category:
+          products.renameCategoryReferences(oldValue, value);
+          break;
+        case CatalogValueType.brand:
+          products.renameBrandReferences(oldValue, value);
+          break;
+        case CatalogValueType.distributor:
+          products.renameDistributorReferences(oldValue, value);
+          break;
+      }
     }
 
     AppAlert.show(
