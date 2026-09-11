@@ -124,16 +124,12 @@ class ProductFilterBar extends StatelessWidget {
   }
 
   Widget _buildFilterDropdown(BuildContext context) {
-    final labels = [
-      'Sin filtro',
-      ..._filterOptions.map((option) => option.label),
-    ];
+    final labels = _filterOptions.map((option) => option.label).toList();
     return _dropdownContainer(
       width: _contentWidth(context, labels),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String?>(
           value: _statusValue(),
-          hint: const Text('Sin filtro', overflow: TextOverflow.ellipsis),
           isExpanded: true,
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
@@ -143,31 +139,31 @@ class ProductFilterBar extends StatelessWidget {
           style: _dropdownTextStyle,
           dropdownColor: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(10),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Sin filtro', overflow: TextOverflow.ellipsis),
-            ),
-            ..._filterOptions.map(
-              (option) => DropdownMenuItem<String?>(
-                value: option.id,
-                child: Text(option.label, overflow: TextOverflow.ellipsis),
-              ),
-            ),
-          ],
-          onChanged: onFilterChanged,
+          items: _filterOptions
+              .map(
+                (option) => DropdownMenuItem<String?>(
+                  value: option.id,
+                  child: Text(option.label, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            onTagSelected(0);
+            onFilterChanged(value);
+          },
         ),
       ),
     );
   }
 
-  String? _statusValue() {
-    if (selectedFilter != null &&
-        (selectedFilter!.startsWith('brand:') ||
-            selectedFilter!.startsWith('distributor:'))) {
-      return null;
+  String _statusValue() {
+    if (selectedFilter == null ||
+        selectedFilter!.startsWith('brand:') ||
+        selectedFilter!.startsWith('distributor:')) {
+      return 'all';
     }
-    return selectedFilter;
+    return selectedFilter!;
   }
 
   Widget _buildBrandDropdown(BuildContext context, List<String> brands) {
@@ -204,8 +200,10 @@ class ProductFilterBar extends StatelessWidget {
               ),
             ),
           ],
-          onChanged: (value) =>
-              onFilterChanged(value == null ? null : 'brand:$value'),
+          onChanged: (value) {
+            onTagSelected(0);
+            onFilterChanged(value == null ? null : 'brand:$value');
+          },
         ),
       ),
     );
@@ -257,9 +255,12 @@ class ProductFilterBar extends StatelessWidget {
               ),
             ),
           ],
-          onChanged: (value) => onFilterChanged(
-            value == null ? null : 'distributor:$value',
-          ),
+          onChanged: (value) {
+            onTagSelected(0);
+            onFilterChanged(
+              value == null ? null : 'distributor:$value',
+            );
+          },
         ),
       ),
     );
