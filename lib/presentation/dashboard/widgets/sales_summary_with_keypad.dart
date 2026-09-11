@@ -111,10 +111,11 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _updateKeypadPosition();
-      if (_keypadOverlayEntry == null)
+      if (_keypadOverlayEntry == null) {
         _showKeypadOverlay();
-      else
+      } else {
         _keypadOverlayEntry!.markNeedsBuild();
+      }
     });
   }
 
@@ -141,8 +142,9 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   }
 
   void _showKeypadOverlay() {
-    if (!mounted || _activeController == null || _keypadOverlayEntry != null)
+    if (!mounted || _activeController == null || _keypadOverlayEntry != null) {
       return;
+    }
     final overlay = Overlay.of(context, rootOverlay: true);
     _keypadOverlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -199,34 +201,6 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     if (selected != null && mounted) sales.setSelectedSaleDate(selected);
   }
 
-  String _formatDate(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
-
-  Widget _buildSaleDate(DateAwareSalesProvider sales) {
-    final enabled = !widget.isEditing;
-    return Positioned(
-      top: 38,
-      right: widget.cartQuantities.isNotEmpty ? 92 : 12,
-      child: InkWell(
-        onTap: enabled ? () => _selectSaleDate(sales) : null,
-        borderRadius: BorderRadius.circular(4),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-          child: Text(
-            _formatDate(sales.selectedSaleDate),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: enabled ? null : Theme.of(context).disabledColor,
-              decoration: enabled ? TextDecoration.underline : null,
-              decorationThickness: 1.2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _setText(String value) {
     final controller = _activeController;
     final onChanged = _activeOnChanged;
@@ -275,54 +249,53 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
       onTapOutside: (_) => _closeKeypad(),
       child: KeyedSubtree(
         key: _panelKey,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            SalesSummaryPanel(
-              cartQuantities: widget.cartQuantities,
-              products: widget.products,
-              selectedPaymentMethod: widget.selectedPaymentMethod,
-              onPaymentMethodChanged: (value) {
-                _closeKeypad();
-                widget.onPaymentMethodChanged(value);
-              },
-              selectedDebtor: widget.selectedDebtor,
-              debtorsList: widget.debtorsList,
-              onDebtorChanged: widget.onDebtorChanged,
-              onCreateClient: _createClientAndSelect,
-              discountAmountController: widget.discountAmountController,
-              discountPercentController: widget.discountPercentController,
-              cashReceivedController: widget.cashReceivedController,
-              onDiscountAmountChanged: widget.onDiscountAmountChanged,
-              onDiscountPercentChanged: widget.onDiscountPercentChanged,
-              onCashReceivedChanged: widget.onCashReceivedChanged,
-              onPaymentInputFocused: (controller) {
-                if (controller == widget.discountPercentController)
-                  _activate(controller, widget.onDiscountPercentChanged);
-                else if (controller == widget.discountAmountController)
-                  _activate(controller, widget.onDiscountAmountChanged);
-                else if (controller == widget.cashReceivedController)
-                  _activate(controller, widget.onCashReceivedChanged);
-              },
-              subtotal: widget.subtotal,
-              cardFeeAmount: widget.cardFeeAmount,
-              total: widget.total,
-              change: widget.change,
-              onAddToCart: widget.onAddToCart,
-              onDecrementQuantity: widget.onDecrementQuantity,
-              onQuantityChanged: widget.onQuantityChanged,
-              onRemoveFromCart: widget.onRemoveFromCart,
-              onClearCart: widget.onClearCart,
-              onCreateSale: _createSaleAndCloseKeypad,
-              ticketNumber: widget.ticketNumber,
-              isEditing: widget.isEditing,
-              operationLabel: widget.operationLabel,
-              operationDifference: widget.operationDifference,
-              operationDifferenceLabel: widget.operationDifferenceLabel,
-              onCancelOperation: widget.onCancelOperation,
-            ),
-            _buildSaleDate(dateAwareSales),
-          ],
+        child: SalesSummaryPanel(
+          cartQuantities: widget.cartQuantities,
+          products: widget.products,
+          selectedPaymentMethod: widget.selectedPaymentMethod,
+          onPaymentMethodChanged: (value) {
+            _closeKeypad();
+            widget.onPaymentMethodChanged(value);
+          },
+          selectedDebtor: widget.selectedDebtor,
+          debtorsList: widget.debtorsList,
+          onDebtorChanged: widget.onDebtorChanged,
+          onCreateClient: _createClientAndSelect,
+          discountAmountController: widget.discountAmountController,
+          discountPercentController: widget.discountPercentController,
+          cashReceivedController: widget.cashReceivedController,
+          onDiscountAmountChanged: widget.onDiscountAmountChanged,
+          onDiscountPercentChanged: widget.onDiscountPercentChanged,
+          onCashReceivedChanged: widget.onCashReceivedChanged,
+          onPaymentInputFocused: (controller) {
+            if (controller == widget.discountPercentController) {
+              _activate(controller, widget.onDiscountPercentChanged);
+            } else if (controller == widget.discountAmountController) {
+              _activate(controller, widget.onDiscountAmountChanged);
+            } else if (controller == widget.cashReceivedController) {
+              _activate(controller, widget.onCashReceivedChanged);
+            }
+          },
+          subtotal: widget.subtotal,
+          cardFeeAmount: widget.cardFeeAmount,
+          total: widget.total,
+          change: widget.change,
+          onAddToCart: widget.onAddToCart,
+          onDecrementQuantity: widget.onDecrementQuantity,
+          onQuantityChanged: widget.onQuantityChanged,
+          onRemoveFromCart: widget.onRemoveFromCart,
+          onClearCart: widget.onClearCart,
+          onCreateSale: _createSaleAndCloseKeypad,
+          ticketNumber: widget.ticketNumber,
+          saleDate: dateAwareSales.selectedSaleDate,
+          onSaleDateTap: widget.isEditing
+              ? null
+              : () => _selectSaleDate(dateAwareSales),
+          isEditing: widget.isEditing,
+          operationLabel: widget.operationLabel,
+          operationDifference: widget.operationDifference,
+          operationDifferenceLabel: widget.operationDifferenceLabel,
+          onCancelOperation: widget.onCancelOperation,
         ),
       ),
     );
