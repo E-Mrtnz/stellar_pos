@@ -29,7 +29,7 @@ class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialo
   late final List<ElectronicBalanceCartItem> _initialSelection;
   String? _accountId;
   String _category = 'Saldo';
-  static const _categories = ['Saldo', 'Internet', 'Llamada'];
+  static const _standardCategories = ['Saldo', 'Internet', 'Llamada'];
 
   @override
   void initState() {
@@ -51,6 +51,7 @@ class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialo
     final provider = context.watch<ElectronicBalanceProvider>();
     final accounts = provider.accounts;
     final account = _accountId == null ? null : provider.findAccount(_accountId!);
+    final categories = account?.saleCategories ?? _standardCategories;
     final options = account?.amountsForCategory(_category) ?? const <double>[];
     final count = _selected.values.fold<int>(0, (sum, item) => sum + item.quantity);
 
@@ -92,10 +93,18 @@ class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialo
                                 account: account,
                                 accounts: accounts,
                                 category: _category,
-                                categories: _categories,
+                                categories: categories,
                                 options: options,
                                 selected: _selected,
-                                onCompanyChanged: (id) => setState(() => _accountId = id),
+                                onCompanyChanged: (id) {
+                                  final next = provider.findAccount(id);
+                                  setState(() {
+                                    _accountId = id;
+                                    if (next != null && !next.saleCategories.contains(_category)) {
+                                      _category = next.saleCategories.first;
+                                    }
+                                  });
+                                },
                                 onCategoryChanged: (value) => setState(() => _category = value),
                                 onAmountTap: (amount) => _increment(account, _category, amount),
                                 onAmountLongPress: _remove,
