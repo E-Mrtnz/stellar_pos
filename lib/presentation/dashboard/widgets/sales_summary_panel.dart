@@ -31,6 +31,8 @@ class SalesSummaryPanel extends StatelessWidget {
   final VoidCallback onClearCart;
   final VoidCallback onCreateSale;
   final String ticketNumber;
+  final DateTime saleDate;
+  final VoidCallback? onSaleDateTap;
   final bool isEditing;
   final String? operationLabel;
   final double? operationDifference;
@@ -65,6 +67,8 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.onClearCart,
     required this.onCreateSale,
     required this.ticketNumber,
+    required this.saleDate,
+    this.onSaleDateTap,
     this.isEditing = false,
     this.operationLabel,
     this.operationDifference,
@@ -126,42 +130,19 @@ class SalesSummaryPanel extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (cartQuantities.isNotEmpty)
-                        SizedBox(
-                          height: 26,
-                          child: OutlinedButton.icon(
-                            onPressed: onClearCart,
-                            icon: const Icon(
-                              Icons.delete_sweep_outlined,
-                              size: 14,
-                              color: AppColors.dangerRed,
-                            ),
-                            label: const Text(
-                              'Borrar todo',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.dangerRed,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 0,
-                              ),
-                              side: BorderSide(
-                                color: AppColors.dangerRed.withAlpha(120),
-                                width: 1,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              backgroundColor: Colors.transparent,
-                            ),
-                          ),
-                        ),
+                      if (cartQuantities.isEmpty) _buildSaleDate(),
                     ],
                   ),
+                  if (cartQuantities.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildClearCartButton(),
+                        _buildSaleDate(),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   const Divider(color: AppColors.border, height: 1),
                   const SizedBox(height: 6),
@@ -202,6 +183,62 @@ class SalesSummaryPanel extends StatelessWidget {
           ),
           _buildPaymentSection(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSaleDate() {
+    final enabled = onSaleDateTap != null;
+    final text =
+        '${saleDate.day.toString().padLeft(2, '0')}/${saleDate.month.toString().padLeft(2, '0')}/${saleDate.year}';
+    return InkWell(
+      onTap: onSaleDateTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+            decoration: enabled ? TextDecoration.underline : null,
+            decorationThickness: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClearCartButton() {
+    return SizedBox(
+      height: 26,
+      child: OutlinedButton.icon(
+        onPressed: onClearCart,
+        icon: const Icon(
+          Icons.delete_sweep_outlined,
+          size: 14,
+          color: AppColors.dangerRed,
+        ),
+        label: const Text(
+          'Borrar todo',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.dangerRed,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          side: BorderSide(
+            color: AppColors.dangerRed.withAlpha(120),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          backgroundColor: Colors.transparent,
+        ),
       ),
     );
   }
