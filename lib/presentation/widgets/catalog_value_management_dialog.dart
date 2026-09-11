@@ -13,10 +13,7 @@ class CatalogValueManagementDialog extends StatefulWidget {
 
   const CatalogValueManagementDialog({super.key, required this.type});
 
-  static Future<void> show(
-    BuildContext context, {
-    required CatalogValueType type,
-  }) {
+  static Future<void> show(BuildContext context, {required CatalogValueType type}) {
     return showDialog<void>(
       context: context,
       barrierColor: AppColors.overlayBackground,
@@ -29,62 +26,38 @@ class CatalogValueManagementDialog extends StatefulWidget {
   }
 
   @override
-  State<CatalogValueManagementDialog> createState() =>
-      _CatalogValueManagementDialogState();
+  State<CatalogValueManagementDialog> createState() => _CatalogValueManagementDialogState();
 }
 
-class _CatalogValueManagementDialogState
-    extends State<CatalogValueManagementDialog> {
+class _CatalogValueManagementDialogState extends State<CatalogValueManagementDialog> {
   final _controller = TextEditingController();
   String? _editingName;
 
   bool get _editing => _editingName != null;
 
-  String get _title {
-    switch (widget.type) {
-      case CatalogValueType.category:
-        return 'Categorías';
-      case CatalogValueType.brand:
-        return 'Marcas';
-      case CatalogValueType.distributor:
-        return 'Distribuidoras';
-    }
-  }
+  String get _title => switch (widget.type) {
+        CatalogValueType.category => 'Categorías',
+        CatalogValueType.brand => 'Marcas',
+        CatalogValueType.distributor => 'Distribuidoras',
+      };
 
-  String get _singular {
-    switch (widget.type) {
-      case CatalogValueType.category:
-        return 'categoría';
-      case CatalogValueType.brand:
-        return 'marca';
-      case CatalogValueType.distributor:
-        return 'distribuidora';
-    }
-  }
+  String get _singular => switch (widget.type) {
+        CatalogValueType.category => 'categoría',
+        CatalogValueType.brand => 'marca',
+        CatalogValueType.distributor => 'distribuidora',
+      };
 
-  String get _hint => 'Nombre de la $_singular';
+  List<String> _values(CatalogProvider catalog) => switch (widget.type) {
+        CatalogValueType.category => catalog.tags,
+        CatalogValueType.brand => catalog.brands,
+        CatalogValueType.distributor => catalog.distributors,
+      };
 
-  List<String> _values(CatalogProvider catalog) {
-    switch (widget.type) {
-      case CatalogValueType.category:
-        return catalog.tags;
-      case CatalogValueType.brand:
-        return catalog.brands;
-      case CatalogValueType.distributor:
-        return catalog.distributors;
-    }
-  }
-
-  IconData get _icon {
-    switch (widget.type) {
-      case CatalogValueType.category:
-        return Icons.label_outline;
-      case CatalogValueType.brand:
-        return Icons.sell_outlined;
-      case CatalogValueType.distributor:
-        return Icons.business_outlined;
-    }
-  }
+  IconData get _icon => switch (widget.type) {
+        CatalogValueType.category => Icons.label_outline,
+        CatalogValueType.brand => Icons.sell_outlined,
+        CatalogValueType.distributor => Icons.business_outlined,
+      };
 
   bool _isDuplicate(List<String> values, String value, {String? excluding}) {
     final normalized = value.trim().toLowerCase();
@@ -115,27 +88,27 @@ class _CatalogValueManagementDialogState
     }
 
     if (isEditing) {
-      final confirmed = await AppConfirmDialog.update(
-        context,
-        itemName: 'esta $_singular',
-      );
+      final confirmed = await AppConfirmDialog.update(context, itemName: 'esta $_singular');
       if (!confirmed || !mounted) return;
     }
 
     bool success;
     switch (widget.type) {
       case CatalogValueType.category:
-        if (isEditing) catalog.removeTag(oldValue!);
-        catalog.addTag(value);
-        success = true;
+        success = isEditing
+            ? catalog.updateTag(oldValue!, value)
+            : catalog.addTag(value);
+        break;
       case CatalogValueType.brand:
-        if (isEditing) catalog.removeBrand(oldValue!);
-        catalog.addBrand(value);
-        success = true;
+        success = isEditing
+            ? catalog.updateBrand(oldValue!, value)
+            : catalog.addBrand(value);
+        break;
       case CatalogValueType.distributor:
         success = isEditing
             ? catalog.updateDistributor(oldValue!, value)
             : catalog.addDistributor(value);
+        break;
     }
 
     if (!success) {
@@ -169,9 +142,7 @@ class _CatalogValueManagementDialogState
     setState(() {
       _editingName = value;
       _controller.text = value;
-      _controller.selection = TextSelection.collapsed(
-        offset: _controller.text.length,
-      );
+      _controller.selection = TextSelection.collapsed(offset: value.length);
     });
   }
 
@@ -183,28 +154,25 @@ class _CatalogValueManagementDialogState
   }
 
   Future<void> _delete(String value) async {
-    final confirmed = await AppConfirmDialog.delete(
-      context,
-      itemName: 'esta $_singular',
-    );
+    final confirmed = await AppConfirmDialog.delete(context, itemName: 'esta $_singular');
     if (!confirmed || !mounted) return;
 
     final catalog = context.read<CatalogProvider>();
-    bool success = true;
+    bool success;
     switch (widget.type) {
       case CatalogValueType.category:
-        catalog.removeTag(value);
+        success = catalog.removeTag(value);
+        break;
       case CatalogValueType.brand:
-        catalog.removeBrand(value);
+        success = catalog.removeBrand(value);
+        break;
       case CatalogValueType.distributor:
         success = catalog.removeDistributor(value);
+        break;
     }
 
     if (!success) return;
-
-    if (_editingName?.toLowerCase() == value.toLowerCase()) {
-      _cancelEdit();
-    }
+    if (_editingName?.toLowerCase() == value.toLowerCase()) _cancelEdit();
 
     AppAlert.show(
       context,
@@ -214,8 +182,7 @@ class _CatalogValueManagementDialogState
     );
   }
 
-  String _capitalize(String value) =>
-      value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';
+  String _capitalize(String value) => value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';
 
   @override
   void dispose() {
@@ -236,11 +203,7 @@ class _CatalogValueManagementDialogState
           borderRadius: BorderRadius.circular(AppDimensions.dialogRadius),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowColor,
-              blurRadius: 18,
-              offset: Offset(0, 8),
-            ),
+            BoxShadow(color: AppColors.shadowColor, blurRadius: 18, offset: Offset(0, 8)),
           ],
         ),
         child: Column(
@@ -251,11 +214,7 @@ class _CatalogValueManagementDialogState
                 Expanded(
                   child: Text(
                     _title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                 ),
                 IconButton(
@@ -275,7 +234,7 @@ class _CatalogValueManagementDialogState
                     onSubmitted: (_) => _save(),
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: _hint,
+                      hintText: 'Nombre de la $_singular',
                       filled: true,
                       fillColor: AppColors.inputBackground,
                       border: OutlineInputBorder(
@@ -293,18 +252,11 @@ class _CatalogValueManagementDialogState
                 IconButton(
                   tooltip: _editing ? 'Guardar cambios' : 'Agregar',
                   onPressed: _save,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                   icon: Icon(_editing ? Icons.check : Icons.add),
                 ),
                 if (_editing)
-                  IconButton(
-                    tooltip: 'Cancelar edición',
-                    onPressed: _cancelEdit,
-                    icon: const Icon(Icons.close),
-                  ),
+                  IconButton(tooltip: 'Cancelar edición', onPressed: _cancelEdit, icon: const Icon(Icons.close)),
               ],
             ),
             const SizedBox(height: 16),
@@ -313,10 +265,7 @@ class _CatalogValueManagementDialogState
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 child: Text(
                   'Todavía no hay ${_title.toLowerCase()} creadas.',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               )
             else
@@ -325,25 +274,14 @@ class _CatalogValueManagementDialogState
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: values.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1, color: AppColors.border),
+                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
                   itemBuilder: (context, index) {
                     final value = values[index];
                     return ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        _icon,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                      title: Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
+                      leading: Icon(_icon, color: AppColors.primary, size: 20),
+                      title: Text(value, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -355,11 +293,7 @@ class _CatalogValueManagementDialogState
                           ),
                           IconButton(
                             tooltip: 'Eliminar',
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              size: 19,
-                              color: AppColors.dangerRed,
-                            ),
+                            icon: const Icon(Icons.delete_outline, size: 19, color: AppColors.dangerRed),
                             onPressed: () => _delete(value),
                           ),
                         ],
