@@ -109,6 +109,20 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     _showValidation('Completa los campos obligatorios.'); return false;
   }
 
+  String? _duplicateMessage(Product product, ProductProvider provider) {
+    final duplicate = provider.findDuplicateProduct(
+      product,
+      excludingId: _isEditing ? product.id : null,
+    );
+    if (duplicate == null) return null;
+
+    final barcode = product.barcode.trim();
+    if (barcode.isNotEmpty && duplicate.barcode.trim() == barcode) {
+      return 'El código de barras "$barcode" ya existe en el producto "${duplicate.name}".';
+    }
+    return 'Ya existe un producto con el nombre "${duplicate.name}".';
+  }
+
   void _clearError(String field) { if (_invalidFields.contains(field)) setState(() => _invalidFields.remove(field)); }
   bool _invalid(String field) => _invalidFields.contains(field);
   void _updateStock(int value) { if (value < 0) return; setState(() { _stock = value; _stockController.text = '$_stock'; _invalidFields.remove('stock'); }); }
@@ -136,8 +150,35 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       groupQuantity: _hasGroupPricing ? _readInt(_groupQuantityController.text) : 0, groupPrice: _hasGroupPricing ? _price(_groupPriceController.text) : 0,
     );
     final provider = context.read<ProductProvider>();
-    if (_isEditing) { final confirmed = await AppConfirmDialog.update(context, itemName: 'este producto'); if (!confirmed || !mounted) return; provider.updateProduct(product); AppAlert.show(context, 'El producto se actualizó correctamente.', title: 'Producto actualizado', type: AppAlertType.success); }
-    else { provider.addProduct(product); }
+    final duplicateMessage = _duplicateMessage(product, provider);
+    if (duplicateMessage != null) {
+      AppAlert.show(
+        context,
+        duplicateMessage,
+        title: duplicateMessage.startsWith('El código')
+            ? 'Código de barras duplicado'
+            : 'Nombre de producto duplicado',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
+
+    if (_isEditing) {
+      final confirmed = await AppConfirmDialog.update(context, itemName: 'este producto');
+      if (!confirmed || !mounted) return;
+      final updated = provider.updateProduct(product);
+      if (!updated) {
+        AppAlert.show(context, 'No se pudo actualizar el producto.', title: 'No se pudo guardar', type: AppAlertType.warning);
+        return;
+      }
+      AppAlert.show(context, 'El producto se actualizó correctamente.', title: 'Producto actualizado', type: AppAlertType.success);
+    } else {
+      final added = provider.addProduct(product);
+      if (!added) {
+        AppAlert.show(context, 'El producto ya existe o coincide con otro producto registrado.', title: 'No se pudo guardar', type: AppAlertType.warning);
+        return;
+      }
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -226,7 +267,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     ]);
   }
 
-  Widget _counter(String label, TextEditingController controller, FocusNode node, VoidCallback inc, VoidCallback dec, ValueChanged<String> changed, bool invalid) => Container(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: invalid ? Colors.red.shade400 : Colors.white.withOpacity(0.5), width: invalid ? 1.8 : 1.2)), child: Column(mainAxisSize: MainAxisSize.min, children: [InkWell(onTap: inc, child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white70)), child: const Icon(Icons.add, color: Colors.white, size: 14))), const SizedBox(height: 2), SizedBox(width: 55, child: Column(children: [TextField(controller: controller, focusNode: node, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'))], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16), cursorColor: Colors.white, textAlign: TextAlign.center, decoration: const InputDecoration(hintText: '0', hintStyle: TextStyle(color: Colors.white60), isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 1), border: InputBorder.none), onChanged: changed), Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10))])), const SizedBox(height: 2), InkWell(onTap: dec, child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white70)), child: const Icon(Icons.remove, color: Colors.white, size: 14)))]));
+  Widget _counter(String label, TextEditingController controller, FocusNode node, VoidCallback inc, VoidCallback dec, ValueChanged<String> changed, bool invalid) => Container(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: invalid ? Colors.red.shade400 : Colors.white.withOpacity(0.5), width: invalid ? 1.8 : 1.2)), child: Column(mainAxisSize: MainAxisSize.min, children: [InkWell(onTap: inc, child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white70)), child: const Icon(Icons.add, color: Colors.white, size: 14))), const SizedBox(height: 2), SizedBox(width: 55, child: Column(children: [TextField(controller: controller, focusNode: node, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'))], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16), cursorColor: Colors.white, textAlign: TextAlign.center, decoration: const InputDecoration(hintText: '0', hintStyle: TextStyle(color: Colors.white60), isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 1), border: InputBorder.none), onChanged: changed), Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10))])), const SizedBox(height: 2), InkWell(onTap: dec, child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white70)), child: const Icon(Icons.remove, color: Colors.white, size: 14))) ]));
 
   Widget _field(TextEditingController controller, String hint, {String? prefix, Widget? suffix, TextInputType? type, TextInputFormatter? formatter, bool invalid = false, ValueChanged<String>? changed}) => TextField(controller: controller, keyboardType: type, inputFormatters: formatter == null ? null : [formatter], onChanged: changed, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary), decoration: InputDecoration(isDense: true, hintText: hint, hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted), prefixText: prefix, suffixIcon: suffix, filled: true, fillColor: invalid ? Colors.red.withOpacity(0.06) : AppColors.inputBackground, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: invalid ? Colors.red : AppColors.border, width: invalid ? 1.8 : 1)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: invalid ? Colors.red : AppColors.border, width: invalid ? 1.8 : 1)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: invalid ? Colors.red : AppColors.primary, width: 1.8))));
 
