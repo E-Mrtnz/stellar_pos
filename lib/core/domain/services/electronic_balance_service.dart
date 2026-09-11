@@ -15,8 +15,7 @@ class ElectronicBalanceService {
     'Llamada',
   };
 
-  bool isValidCategory(String category) =>
-      validCategories.contains(category.trim());
+  bool isValidCategory(String category) => category.trim().isNotEmpty;
 
   double providerCost({
     required double amount,
