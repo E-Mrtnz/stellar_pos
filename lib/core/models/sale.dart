@@ -113,18 +113,10 @@ class SaleItemRecord implements SyncableEntity {
         isElectronicBalance = isElectronicBalance,
         electronicBalanceAccountId = electronicBalanceAccountId,
         electronicBalanceCategory = electronicBalanceCategory,
-        productName = _normalizeElectronicProductName(
-          productName,
-          isElectronicBalance,
-          electronicBalanceCategory,
-        ),
+        productName = _normalizeElectronicProductName(productName, isElectronicBalance, electronicBalanceCategory),
         metadata = metadata ?? SyncMetadata.initial();
 
-  static String _normalizeElectronicProductName(
-    String value,
-    bool electronic,
-    String? category,
-  ) {
+  static String _normalizeElectronicProductName(String value, bool electronic, String? category) {
     final name = value.trim();
     final type = category?.trim() ?? '';
     if (!electronic || type.isEmpty || name.isEmpty) return name;
@@ -175,21 +167,9 @@ class SaleRecord implements SyncableEntity {
     final override = _creationDateOverride;
     if (override != null) {
       final original = createdAt;
-      createdAt = DateTime(
-        override.year,
-        override.month,
-        override.day,
-        original.hour,
-        original.minute,
-        original.second,
-        original.millisecond,
-        original.microsecond,
-      );
+      createdAt = DateTime(override.year, override.month, override.day, original.hour, original.minute, original.second, original.millisecond, original.microsecond);
       if (metadata == null) {
-        this.metadata = SyncMetadata(
-          createdAt: createdAt.toUtc(),
-          updatedAt: createdAt.toUtc(),
-        );
+        this.metadata = SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
       }
     }
   }
@@ -202,9 +182,7 @@ class SaleRecord implements SyncableEntity {
   }
   double get operationDelta => operations.fold(0, (sum, operation) => sum + operation.amountDelta);
   double get effectiveTotal => isAnnulled ? 0 : (total + operationDelta).clamp(0, double.infinity).toDouble();
-  double get effectiveCollected => paymentMethod == 'Fiado'
-      ? (received + operationDelta).clamp(0, effectiveTotal).toDouble()
-      : effectiveTotal;
+  double get effectiveCollected => paymentMethod == 'Fiado' ? (received + operationDelta).clamp(0, effectiveTotal).toDouble() : effectiveTotal;
   double get effectiveProfit {
     if (isAnnulled) return 0;
     var profit = items.fold<double>(0, (sum, item) => sum + (item.unitPrice * item.quantity - item.discount - item.cost * item.quantity));
@@ -231,7 +209,7 @@ class SaleRecord implements SyncableEntity {
     final hour = createdAt.hour % 12 == 0 ? 12 : createdAt.hour % 12;
     final period = createdAt.hour >= 12 ? 'PM' : 'AM';
     final time = '${hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} $period';
-    return SaleTicketData(ticketNumber: ticketNumber, date: date, time: time, client: clientName, status: isAnnulled ? 'ANULADA' : 'COMPLETADA', operations: operations.map((operation) => SaleTicketOperation(label: operation.label, amountDelta: operation.amountDelta, details: _ticketOperationDetails(operation))).toList(growable: false), items: items.map((item) => SaleTicketItem(quantity: item.quantity, description: item.productName, brand: item.brand, unit: item.unit, unitPrice: item.hasGroupPricing ? item.lineTotal : item.unitPrice, discount: item.discount, total: item.lineTotal)).toList(growable: false), subtotal: subtotal, discount: discountAmount, cardFee: cardFeeAmount, total: effectiveTotal, paymentMethod: paymentMethod, received: effectiveCollected, change: change);
+    return SaleTicketData(ticketNumber: ticketNumber, date: date, time: time, client: clientName, status: isAnnulled ? 'ANULADA' : 'COMPLETADA', operations: operations.map((operation) => SaleTicketOperation(label: operation.label, amountDelta: operation.amountDelta, details: _ticketOperationDetails(operation))).toList(growable: false), items: items.map((item) => SaleTicketItem(quantity: item.quantity, description: item.productName, brand: item.brand, unit: item.isElectronicBalance ? '' : item.unit, unitPrice: item.hasGroupPricing ? item.lineTotal : item.unitPrice, discount: item.discount, total: item.lineTotal)).toList(growable: false), subtotal: subtotal, discount: discountAmount, cardFee: cardFeeAmount, total: effectiveTotal, paymentMethod: paymentMethod, received: effectiveCollected, change: change);
   }
 
   static String _ticketOperationDetails(SaleOperationRecord operation) {
