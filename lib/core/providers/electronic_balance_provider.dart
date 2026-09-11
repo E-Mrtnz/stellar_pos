@@ -91,12 +91,27 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     for (final option in options) {
       final category = option.category.trim();
       if (option.amount <= 0 || !_service.isValidCategory(category)) continue;
-      if (seen.add('$category|${option.amount.toStringAsFixed(4)}')) normalized.add(ElectronicBalanceSaleOption(category: category, amount: option.amount));
+      if (seen.add('$category|${option.amount.toStringAsFixed(4)}')) {
+        normalized.add(ElectronicBalanceSaleOption(category: category, amount: option.amount));
+      }
     }
+
+    final customOrder = <String>[];
+    for (final option in normalized) {
+      if (!validCategories.contains(option.category) && !customOrder.contains(option.category)) {
+        customOrder.add(option.category);
+      }
+    }
+    final categoryRank = <String, int>{
+      for (var i = 0; i < validCategories.length; i++) validCategories[i]: i,
+    };
     normalized.sort((a, b) {
-      final byCategory = validCategories.indexOf(a.category).compareTo(validCategories.indexOf(b.category));
+      final aRank = categoryRank[a.category] ?? (validCategories.length + customOrder.indexOf(a.category));
+      final bRank = categoryRank[b.category] ?? (validCategories.length + customOrder.indexOf(b.category));
+      final byCategory = aRank.compareTo(bRank);
       return byCategory == 0 ? a.amount.compareTo(b.amount) : byCategory;
     });
+
     final account = _accounts[index].copyWith(saleOptions: normalized);
     _accounts[index] = account;
     notifyListeners();
