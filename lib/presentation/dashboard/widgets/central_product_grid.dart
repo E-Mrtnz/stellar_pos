@@ -81,7 +81,15 @@ class _CentralProductGridState extends State<CentralProductGrid> {
   }
 
   KeyEventResult _handleBarcodeKey(KeyEvent event) {
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
+      return KeyEventResult.ignored;
+    }
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final focusedWidget = FocusManager.instance.primaryFocus?.context;
+    if (focusedWidget?.findAncestorWidgetOfExactType<EditableText>() != null) {
+      return KeyEventResult.ignored;
+    }
 
     final isEnter =
         event.logicalKey == LogicalKeyboardKey.enter ||
