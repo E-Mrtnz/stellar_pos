@@ -39,24 +39,17 @@ class ProductProvider extends ChangeNotifier {
     return _firstOrNull((product) => product.barcode.trim() == normalized);
   }
 
+  /// Returns a product only when its barcode is already used by another
+  /// product. Product names are intentionally not considered unique because
+  /// the same product can exist in multiple presentations/units.
   Product? findDuplicateProduct(Product product, {String? excludingId}) {
     final excluded = excludingId ?? product.id;
     final barcode = product.barcode.trim();
-    if (barcode.isNotEmpty) {
-      final duplicate = _firstOrNull(
-        (item) => item.id != excluded && item.barcode.trim() == barcode,
-      );
-      if (duplicate != null) return duplicate;
-    }
+    if (barcode.isEmpty) return null;
 
-    final name = _normalizeProductName(product.name);
-    if (name.isNotEmpty) {
-      return _firstOrNull(
-        (item) =>
-            item.id != excluded && _normalizeProductName(item.name) == name,
-      );
-    }
-    return null;
+    return _firstOrNull(
+      (item) => item.id != excluded && item.barcode.trim() == barcode,
+    );
   }
 
   Future<void> load() {
@@ -105,6 +98,62 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
     _persist(() => _repository?.save(updated));
     return true;
+  }
+
+  /// Renames a catalog reference across every in-memory product and persists
+  /// the affected products. This keeps product references valid when a
+  /// category, brand or distributor is renamed from its catalog manager.
+  int renameBrandReferences(String oldValue, String newValue) =>
+      _renameReference(
+        oldValue: oldValue,
+        newValue: newValue,
+        read: (product) => product.brand,
+        write: (product) => product.copyWith(brand: newValue),
+      );
+
+  int renameCategoryReferences(String oldValue, String newValue) =>
+      _renameReference(
+        oldValue: oldValue,
+        newValue: newValue,
+        read: (product) => product.category,
+        write: (product) => product.copyWith(category: newValue),
+      );
+
+  int renameDistributorReferences(String oldValue, String newValue) =>
+      _renameReference(
+        oldValue: oldValue,
+        newValue: newValue,
+        read: (product) => product.department,
+        write: (product) => product.copyWith(department: newValue),
+      );
+
+  int _renameReference({
+    required String oldValue,
+    required String newValue,
+    required String Function(Product product) read,
+    required Product Function(Product product) write,
+  }) {
+    final oldNormalized = _normalizeCatalogValue(oldValue);
+    final newTrimmed = newValue.trim();
+    if (oldNormalized.isEmpty || newTrimmed.isEmpty) return 0;
+
+    var changed = 0;
+    final updatedProducts = <Product>[];
+    for (var index = 0; index < _products.length; index++) {
+      final product = _products[index];
+      if (_normalizeCatalogValue(read(product)) != oldNormalized) continue;
+      final updated = write(product);
+      _products[index] = updated;
+      updatedProducts.add(updated);
+      changed++;
+    }
+
+    if (changed == 0) return 0;
+    notifyListeners();
+    for (final product in updatedProducts) {
+      _persist(() => _repository?.save(product));
+    }
+    return changed;
   }
 
   bool deleteProduct(String id) {
@@ -167,6 +216,6 @@ class ProductProvider extends ChangeNotifier {
     return null;
   }
 
-  String _normalizeProductName(String value) =>
+  String _normalizeCatalogValue(String value) =>
       value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
