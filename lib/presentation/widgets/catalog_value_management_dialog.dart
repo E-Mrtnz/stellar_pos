@@ -86,6 +86,15 @@ class _CatalogValueManagementDialogState
     }
   }
 
+  bool _isDuplicate(List<String> values, String value, {String? excluding}) {
+    final normalized = value.trim().toLowerCase();
+    final excluded = excluding?.trim().toLowerCase();
+    return values.any((item) {
+      final candidate = item.trim().toLowerCase();
+      return candidate == normalized && candidate != excluded;
+    });
+  }
+
   Future<void> _save() async {
     final value = _controller.text.trim();
     if (value.isEmpty) return;
@@ -93,6 +102,17 @@ class _CatalogValueManagementDialogState
     final catalog = context.read<CatalogProvider>();
     final oldValue = _editingName;
     final isEditing = oldValue != null;
+    final values = _values(catalog);
+
+    if (_isDuplicate(values, value, excluding: oldValue)) {
+      AppAlert.show(
+        context,
+        'Ya existe una $_singular con ese nombre.',
+        title: 'No se pudo guardar',
+        type: AppAlertType.warning,
+      );
+      return;
+    }
 
     if (isEditing) {
       final confirmed = await AppConfirmDialog.update(
@@ -102,22 +122,26 @@ class _CatalogValueManagementDialogState
       if (!confirmed || !mounted) return;
     }
 
-    final success = switch (widget.type) {
-      CatalogValueType.category => isEditing
-          ? catalog.updateTag(oldValue!, value)
-          : catalog.addTag(value),
-      CatalogValueType.brand => isEditing
-          ? catalog.updateBrand(oldValue!, value)
-          : catalog.addBrand(value),
-      CatalogValueType.distributor => isEditing
-          ? catalog.updateDistributor(oldValue!, value)
-          : catalog.addDistributor(value),
-    };
+    bool success;
+    switch (widget.type) {
+      case CatalogValueType.category:
+        if (isEditing) catalog.removeTag(oldValue!);
+        catalog.addTag(value);
+        success = true;
+      case CatalogValueType.brand:
+        if (isEditing) catalog.removeBrand(oldValue!);
+        catalog.addBrand(value);
+        success = true;
+      case CatalogValueType.distributor:
+        success = isEditing
+            ? catalog.updateDistributor(oldValue!, value)
+            : catalog.addDistributor(value);
+    }
 
     if (!success) {
       AppAlert.show(
         context,
-        'Ya existe una $_singular con ese nombre.',
+        'No se pudo guardar la $_singular.',
         title: 'No se pudo guardar',
         type: AppAlertType.warning,
       );
@@ -166,11 +190,15 @@ class _CatalogValueManagementDialogState
     if (!confirmed || !mounted) return;
 
     final catalog = context.read<CatalogProvider>();
-    final success = switch (widget.type) {
-      CatalogValueType.category => catalog.removeTag(value),
-      CatalogValueType.brand => catalog.removeBrand(value),
-      CatalogValueType.distributor => catalog.removeDistributor(value),
-    };
+    bool success = true;
+    switch (widget.type) {
+      case CatalogValueType.category:
+        catalog.removeTag(value);
+      case CatalogValueType.brand:
+        catalog.removeBrand(value);
+      case CatalogValueType.distributor:
+        success = catalog.removeDistributor(value);
+    }
 
     if (!success) return;
 
@@ -284,7 +312,7 @@ class _CatalogValueManagementDialogState
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 child: Text(
-                  'Todavía no hay $_singular${_singular.endsWith('a') ? 's' : 's'} creadas.',
+                  'Todavía no hay ${_title.toLowerCase()} creadas.',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
