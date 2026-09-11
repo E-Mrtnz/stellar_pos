@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
@@ -7,7 +8,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
-class CentralProductGrid extends StatelessWidget {
+class CentralProductGrid extends StatefulWidget {
   final List<Map<String, dynamic>> products;
   final Map<String, int> cartQuantities;
   final List<String> tags;
@@ -42,13 +43,109 @@ class CentralProductGrid extends StatelessWidget {
   });
 
   @override
+  State<CentralProductGrid> createState() => _CentralProductGridState();
+}
+
+class _CentralProductGridState extends State<CentralProductGrid> {
+  static const _scannerTimeout = Duration(milliseconds: 120);
+  static const _minimumBarcodeLength = 6;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _barcodeBuffer = '';
+  DateTime? _lastBarcodeInputAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.text = widget.searchQuery;
+    FocusManager.instance.addEarlyKeyEventHandler(_handleBarcodeKey);
+  }
+
+  @override
+  void didUpdateWidget(covariant CentralProductGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.searchQuery != _searchController.text) {
+      _searchController.value = TextEditingValue(
+        text: widget.searchQuery,
+        selection: TextSelection.collapsed(offset: widget.searchQuery.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeEarlyKeyEventHandler(_handleBarcodeKey);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _handleBarcodeKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final isEnter =
+        event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+
+    if (isEnter) {
+      final barcode = _barcodeBuffer;
+      _barcodeBuffer = '';
+      _lastBarcodeInputAt = null;
+
+      if (barcode.length >= _minimumBarcodeLength) {
+        final product = _findProductByBarcode(barcode);
+        if (product != null) {
+          _clearSearchForScanner();
+          widget.onAddToCart(product['id'].toString());
+          return KeyEventResult.handled;
+        }
+      }
+
+      return KeyEventResult.ignored;
+    }
+
+    final character = event.character;
+    if (character == null || character.isEmpty || character.trim().isEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    final now = DateTime.now();
+    final elapsed = _lastBarcodeInputAt == null
+        ? null
+        : now.difference(_lastBarcodeInputAt!);
+
+    if (elapsed == null || elapsed > _scannerTimeout) {
+      _barcodeBuffer = character;
+    } else {
+      _barcodeBuffer += character;
+    }
+    _lastBarcodeInputAt = now;
+
+    return KeyEventResult.ignored;
+  }
+
+  Map<String, dynamic>? _findProductByBarcode(String barcode) {
+    for (final product in widget.products) {
+      final productBarcode = ProductUtils.asString(product['barcode']).trim();
+      if (productBarcode == barcode) return product;
+    }
+    return null;
+  }
+
+  void _clearSearchForScanner() {
+    if (_searchController.text.isEmpty) return;
+    _searchController.clear();
+    widget.onSearchChanged?.call('');
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final filteredProducts = ProductFilterUtils.apply(
-      products: products,
-      searchQuery: searchQuery,
-      selectedFilter: selectedFilter,
-      tags: tags,
-      selectedTagIndex: selectedTagIndex,
+      products: widget.products,
+      searchQuery: widget.searchQuery,
+      selectedFilter: widget.selectedFilter,
+      tags: widget.tags,
+      selectedTagIndex: widget.selectedTagIndex,
     );
 
     return Container(
@@ -61,20 +158,23 @@ class CentralProductGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProductSearchBar(onChanged: onSearchChanged ?? (_) {}),
+          ProductSearchBar(
+            controller: _searchController,
+            onChanged: widget.onSearchChanged ?? (_) {},
+          ),
           const SizedBox(height: 12),
           ProductFilterBar(
-            tags: tags,
-            selectedFilter: selectedFilter,
-            onFilterChanged: onFilterChanged,
-            selectedTagIndex: selectedTagIndex,
-            onTagSelected: onTagSelected,
+            tags: widget.tags,
+            selectedFilter: widget.selectedFilter,
+            onFilterChanged: widget.onFilterChanged,
+            selectedTagIndex: widget.selectedTagIndex,
+            onTagSelected: widget.onTagSelected,
           ),
           const SizedBox(height: 12),
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 12),
           Expanded(
-            child: filteredProducts.isEmpty && onElectronicBalanceTap == null
+            child: filteredProducts.isEmpty && widget.onElectronicBalanceTap == null
                 ? _buildEmptyState()
                 : _buildProductGrid(filteredProducts),
           ),
@@ -104,9 +204,9 @@ class CentralProductGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         if (index == 0) {
           return _ElectronicBalanceCard(
-            selection: electronicBalanceSelection,
-            onTap: onElectronicBalanceTap,
-            onManage: onElectronicBalanceManage,
+            selection: widget.electronicBalanceSelection,
+            onTap: widget.onElectronicBalanceTap,
+            onManage: widget.onElectronicBalanceManage,
           );
         }
 
@@ -115,9 +215,9 @@ class CentralProductGrid extends StatelessWidget {
 
         return ProductCard(
           product: product,
-          quantityInCart: cartQuantities[productId] ?? 0,
-          onAdd: () => onAddToCart(productId),
-          onRemove: () => onRemoveFromCart(productId),
+          quantityInCart: widget.cartQuantities[productId] ?? 0,
+          onAdd: () => widget.onAddToCart(productId),
+          onRemove: () => widget.onRemoveFromCart(productId),
         );
       },
     );
