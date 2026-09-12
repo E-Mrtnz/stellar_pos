@@ -108,6 +108,37 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   Future<void> _editProduct(Map<String, dynamic> product) =>
       CreateProductDialog.show(context, product: product);
 
+  Future<void> _duplicateProduct(Map<String, dynamic> product) async {
+    final productName = ProductUtils.cleanName(product);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        title: const Text('Duplicar producto'),
+        content: Text('¿Deseas duplicar "$productName"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.copy_outlined),
+            label: const Text('Duplicar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final duplicate = Map<String, dynamic>.from(product)
+      ..['id'] = ''
+      ..['barcode'] = ''
+      ..['stock'] = 0;
+
+    await CreateProductDialog.show(context, product: duplicate);
+  }
+
   Future<void> _importInventory() async {
     if (_isImporting) return;
     final result = await FilePicker.pickFiles(
@@ -608,23 +639,29 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(
-            children: [
-              _buildInventoryImage(imageData),
-              const SizedBox(width: 12),
-              _buildProductNameCell(name, product, 245),
-              _textCell(unit, 125),
-              _textCell(distributor.isEmpty ? '—' : distributor, 150),
-              _textCell(brand.isEmpty ? '—' : brand, 125),
-              _textCell(category.isEmpty ? '—' : category, 135),
-              _textCell(ProductUtils.money(cost), 110),
-              _textCell(ProductUtils.money(price), 110, primary: true),
-              SizedBox(width: 135, child: _buildStockBadge(stock: stock, color: stockColor)),
-              _textCell(ProductUtils.money(profit), 110, success: true),
-              _textCell('$profitPercent%', 70),
-            ],
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onLongPress: () => _duplicateProduct(product),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  _buildInventoryImage(imageData),
+                  const SizedBox(width: 12),
+                  _buildProductNameCell(name, product, 245),
+                  _textCell(unit, 125),
+                  _textCell(distributor.isEmpty ? '—' : distributor, 150),
+                  _textCell(brand.isEmpty ? '—' : brand, 125),
+                  _textCell(category.isEmpty ? '—' : category, 135),
+                  _textCell(ProductUtils.money(cost), 110),
+                  _textCell(ProductUtils.money(price), 110, primary: true),
+                  SizedBox(width: 135, child: _buildStockBadge(stock: stock, color: stockColor)),
+                  _textCell(ProductUtils.money(profit), 110, success: true),
+                  _textCell('$profitPercent%', 70),
+                ],
+              ),
+            ),
           ),
         ),
         const Divider(height: 1, color: AppColors.chipBackground),
