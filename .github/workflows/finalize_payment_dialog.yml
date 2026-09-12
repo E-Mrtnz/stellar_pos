@@ -13,4 +13,196 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "payment dialog patch runner"
+      - name: Patch dialog
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/presentation/debts/debts_layout.dart')
+          text = path.read_text()
+          marker = 'class _PaymentDialog extends StatefulWidget {'
+          start = text.find(marker)
+          if start < 0:
+              raise SystemExit('Payment dialog marker not found')
+          replacement = '''class _PaymentDialog extends StatefulWidget {
+  final String clientName;
+  final double debt;
+
+  const _PaymentDialog({required this.clientName, required this.debt});
+
+  static Future<double?> show(
+    BuildContext context, {
+    required String clientName,
+    required double debt,
+  }) {
+    return showDialog<double>(
+      context: context,
+      barrierColor: AppColors.overlayBackground,
+      builder: (_) => Dialog(
+        backgroundColor: AppColors.cardBackground,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: _PaymentDialog(clientName: clientName, debt: debt),
+        ),
+      ),
+    );
+  }
+
+  @override
+  State<_PaymentDialog> createState() => _PaymentDialogState();
+}
+
+class _PaymentDialogState extends State<_PaymentDialog> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  double get _received => double.tryParse(_controller.text.replaceAll(',', '.')) ?? 0;
+  double get _change => (_received - widget.debt).clamp(0, double.infinity).toDouble();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _refresh() => setState(() {});
+  void _input(String value) {
+    _controller.text += value;
+    _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+    _refresh();
+  }
+  void _backspace() {
+    if (_controller.text.isEmpty) return;
+    _controller.text = _controller.text.substring(0, _controller.text.length - 1);
+    _refresh();
+  }
+  void _clear() {
+    _controller.clear();
+    _refresh();
+  }
+  void _decimal() {
+    if (_controller.text.contains('.')) return;
+    _input(_controller.text.isEmpty ? '0.' : '.');
+  }
+  void _save() {
+    final amount = _received;
+    if (amount <= 0) return;
+    Navigator.pop(context, amount);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 22, 26, 22),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(color: AppColors.primary.withAlpha(22), borderRadius: BorderRadius.circular(13)),
+                      child: const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(child: Text('Registrar abono', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+                    IconButton(onPressed: () => Navigator.pop(context), tooltip: 'Cerrar', icon: const Icon(Icons.close, color: AppColors.textSecondary)),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(13), border: Border.all(color: AppColors.border)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [const Icon(Icons.person_outline, size: 20, color: AppColors.primary), const SizedBox(width: 9), Expanded(child: Text(widget.clientName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)))]),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(10)),
+                        child: Row(children: [
+                          const Icon(Icons.receipt_long_outlined, size: 20, color: AppColors.dangerRed),
+                          const SizedBox(width: 9),
+                          const Text('Deuda restante', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          const Spacer(),
+                          Text('\$${widget.debt.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dangerRed)),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text('Monto recibido', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                const SizedBox(height: 5),
+                TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  onChanged: (_) => _refresh(),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                  decoration: InputDecoration(
+                    prefixText: '\$ ',
+                    hintText: '0.00',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 1.6)),
+                  ),
+                ),
+                if (_change > 0.005) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                    decoration: BoxDecoration(color: AppColors.successGreen.withAlpha(14), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.successGreen.withAlpha(55))),
+                    child: Row(children: [
+                      const Icon(Icons.currency_exchange_rounded, size: 19, color: AppColors.successGreen),
+                      const SizedBox(width: 8),
+                      const Expanded(child: Text('Cambio a entregar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      Text('\$${_change.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.successGreen)),
+                    ]),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Row(children: [
+                  Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Cancelar'))),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: FilledButton.icon(onPressed: _save, icon: const Icon(Icons.check, size: 19), label: const Text('Registrar abono'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))))),
+                ]),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          SizedBox(width: 290, child: Center(child: Transform.scale(scale: 1.12, child: NumericKeypad(onInput: _input, onBackspace: _backspace, onClear: _clear, onDecimal: _decimal)))),
+        ],
+      ),
+    );
+  }
+}
+'''
+          path.write_text(text[:start] + replacement)
+          PY
+      - name: Commit patched code
+        run: |
+          git config user.name "E-Z"
+          git config user.email "68935117+E-Mrtnz@users.noreply.github.com"
+          git add lib/presentation/debts/debts_layout.dart
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "fix: finalize payment dialog"
+          git push origin feature/finalization
