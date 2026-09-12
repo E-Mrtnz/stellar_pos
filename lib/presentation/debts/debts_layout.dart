@@ -153,20 +153,54 @@ class _DebtsLayoutState extends State<DebtsLayout> {
     final remaining = (debt - paid).clamp(0, double.infinity).toDouble();
     final expanded = _expandedGroups.contains(group.id);
     return Container(
-      decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withAlpha(8),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: AppColors.primary.withAlpha(75), width: 1.2),
+      ),
       child: Column(children: [
-        InkWell(onTap: () => setState(() => expanded ? _expandedGroups.remove(group.id) : _expandedGroups.add(group.id)), borderRadius: BorderRadius.circular(11), child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-          Row(children: [
-            Container(width: 36, height: 36, decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), shape: BoxShape.circle), child: const Icon(Icons.groups_outlined, color: AppColors.primary, size: 20)),
-            const SizedBox(width: 9),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(group.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)), Text('${members.length} integrantes', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])),
-            Text(_money(remaining), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: remaining > .005 ? AppColors.dangerRed : AppColors.successGreen)),
-            const SizedBox(width: 5), Icon(expanded ? Icons.expand_less : Icons.expand_more, color: AppColors.textSecondary),
-          ]),
-          const SizedBox(height: 9),
-          Row(children: [Expanded(child: _AmountBox('Deuda', _money(debt), AppColors.dangerRed)), const SizedBox(width: 7), Expanded(child: _AmountBox('Abonado', _money(paid), AppColors.successGreen)), const SizedBox(width: 7), Expanded(child: _AmountBox('Restante', _money(remaining), remaining > .005 ? AppColors.warningOrange : AppColors.successGreen))]),
-        ]))),
-        if (expanded) Padding(padding: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Column(children: members.map((c) => Padding(padding: const EdgeInsets.only(top: 7), child: _clientCard(c, debts, sales, compact: true))).toList())),
+        InkWell(
+          onTap: () => setState(() => expanded ? _expandedGroups.remove(group.id) : _expandedGroups.add(group.id)),
+          borderRadius: BorderRadius.circular(13),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(12),
+              borderRadius: expanded ? const BorderRadius.vertical(top: Radius.circular(13)) : BorderRadius.circular(13),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(children: [
+              Row(children: [
+                Container(width: 36, height: 36, decoration: BoxDecoration(color: AppColors.primary.withAlpha(28), shape: BoxShape.circle), child: const Icon(Icons.groups_rounded, color: AppColors.primary, size: 20)),
+                const SizedBox(width: 9),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(child: Text(group.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+                    const SizedBox(width: 7),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.primary.withAlpha(28), borderRadius: BorderRadius.circular(5)), child: const Text('GRUPO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .4, color: AppColors.primary))),
+                  ]),
+                  const SizedBox(height: 2),
+                  Text('${members.length} integrantes', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                ])),
+                Text(_money(remaining), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: remaining > .005 ? AppColors.dangerRed : AppColors.successGreen)),
+                const SizedBox(width: 5),
+                Icon(expanded ? Icons.expand_less : Icons.expand_more, color: AppColors.primary),
+              ]),
+              const SizedBox(height: 9),
+              Row(children: [Expanded(child: _AmountBox('Deuda', _money(debt), AppColors.dangerRed)), const SizedBox(width: 7), Expanded(child: _AmountBox('Abonado', _money(paid), AppColors.successGreen)), const SizedBox(width: 7), Expanded(child: _AmountBox('Restante', _money(remaining), remaining > .005 ? AppColors.warningOrange : AppColors.successGreen))]),
+            ]),
+          ),
+        ),
+        if (expanded)
+          Container(
+            decoration: const BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.vertical(bottom: Radius.circular(13))),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(padding: const EdgeInsets.fromLTRB(5, 0, 5, 4), child: Row(children: [const Icon(Icons.people_outline, size: 14, color: AppColors.primary), const SizedBox(width: 5), const Text('INTEGRANTES DEL GRUPO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .45, color: AppColors.primary)), const Spacer(), Text('${members.length}', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
+              const Divider(height: 8, color: AppColors.border),
+              ...members.map((c) => Padding(padding: const EdgeInsets.only(bottom: 7), child: _clientCard(c, debts, sales, compact: true))),
+              if (members.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Center(child: Text('Este grupo no tiene clientes asignados.', style: TextStyle(color: AppColors.textMuted, fontSize: 11)))),
+            ]),
+          ),
       ]),
     );
   }
@@ -234,46 +268,13 @@ class _AmountBox extends StatelessWidget {
 class _ClientCard extends StatelessWidget {
   final Client client; final DebtAccount account; final int purchaseCount; final bool compact; final VoidCallback onEdit, onHistory; final VoidCallback? onPayment;
   const _ClientCard({required this.client, required this.account, required this.purchaseCount, required this.compact, required this.onEdit, required this.onHistory, required this.onPayment});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.fromLTRB(compact ? 9 : 12, compact ? 8 : 11, 10, compact ? 8 : 10),
-    decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.border)),
-    child: Column(children: [
-      Row(children: [
-        Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), shape: BoxShape.circle), child: const Icon(Icons.person_outline, size: 19, color: AppColors.primary)),
-        const SizedBox(width: 9),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(client.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          if (client.phone.isNotEmpty) Text(client.phone, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-        ])),
-        if (purchaseCount > 0) TextButton.icon(onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined, size: 15), label: Text('$purchaseCount compras'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 10))),
-        IconButton(tooltip: 'Editar', onPressed: onEdit, icon: const Icon(Icons.edit_outlined, size: 17), color: AppColors.textSecondary, visualDensity: VisualDensity.compact),
-      ]),
-      const SizedBox(height: 9),
-      Row(children: [
-        Expanded(child: _AmountBox('Deuda', '\$${account.totalDebt.toStringAsFixed(2)}', AppColors.dangerRed)),
-        const SizedBox(width: 7),
-        Expanded(child: _AmountBox('Abonado', '\$${account.totalPaid.toStringAsFixed(2)}', AppColors.successGreen)),
-        const SizedBox(width: 7),
-        Expanded(child: _AmountBox('Restante', '\$${account.remaining.toStringAsFixed(2)}', account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
-      ]),
-      if (onPayment != null) Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: onPayment, icon: const Icon(Icons.payments_outlined, size: 15), label: const Text('Registrar abono'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact))),
-    ]),
-  );
+  @override Widget build(BuildContext context) => Container(padding: EdgeInsets.fromLTRB(compact ? 9 : 12, compact ? 8 : 11, 10, compact ? 8 : 10), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.border)), child: Column(children: [Row(children: [Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), shape: BoxShape.circle), child: const Icon(Icons.person_outline, size: 19, color: AppColors.primary)), const SizedBox(width: 9), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(client.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)), if (client.phone.isNotEmpty) Text(client.phone, style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), if (purchaseCount > 0) TextButton.icon(onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined, size: 15), label: Text('$purchaseCount compras'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 10))), IconButton(tooltip: 'Editar', onPressed: onEdit, icon: const Icon(Icons.edit_outlined, size: 17), color: AppColors.textSecondary, visualDensity: VisualDensity.compact)]), const SizedBox(height: 9), Row(children: [Expanded(child: _AmountBox('Deuda', '\$${account.totalDebt.toStringAsFixed(2)}', AppColors.dangerRed)), const SizedBox(width: 7), Expanded(child: _AmountBox('Abonado', '\$${account.totalPaid.toStringAsFixed(2)}', AppColors.successGreen)), const SizedBox(width: 7), Expanded(child: _AmountBox('Restante', '\$${account.remaining.toStringAsFixed(2)}', account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen))]), if (onPayment != null) Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: onPayment, icon: const Icon(Icons.payments_outlined, size: 15), label: const Text('Registrar abono'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact)))]));
 }
 
 class _MovementTile extends StatelessWidget {
   final DebtMovement movement;
   const _MovementTile(this.movement);
-  @override Widget build(BuildContext context) {
-    final isPayment = movement.type == DebtMovementType.payment;
-    return Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.border)), child: Row(children: [
-      Icon(isPayment ? Icons.payments_outlined : Icons.receipt_long_outlined, size: 17, color: isPayment ? AppColors.successGreen : AppColors.dangerRed),
-      const SizedBox(width: 8),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(movement.clientName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text(isPayment ? 'Abono' : 'Fiado', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
-      Text('${isPayment ? '+' : ''}\$${movement.amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isPayment ? AppColors.successGreen : AppColors.dangerRed)),
-    ]));
-  }
+  @override Widget build(BuildContext context) { final isPayment = movement.type == DebtMovementType.payment; return Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.border)), child: Row(children: [Icon(isPayment ? Icons.payments_outlined : Icons.receipt_long_outlined, size: 17, color: isPayment ? AppColors.successGreen : AppColors.dangerRed), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(movement.clientName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text(isPayment ? 'Abono' : 'Fiado', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])), Text('${isPayment ? '+' : ''}\$${movement.amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isPayment ? AppColors.successGreen : AppColors.dangerRed))])); }
 }
 
 class _EmptyState extends StatelessWidget {
@@ -299,14 +300,5 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   void _clear() { _controller.clear(); setState(() {}); }
   void _decimal() { if (!_controller.text.contains('.')) _input('.'); }
   void _save() { final amount = double.tryParse(_controller.text); if (amount == null || amount <= 0) return; Navigator.pop(context, amount); }
-  @override Widget build(BuildContext context) => Dialog(child: SizedBox(width: 390, child: Padding(padding: const EdgeInsets.all(20), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Text('Registrar abono', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-      const SizedBox(height: 5), Text(widget.clientName, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-      const SizedBox(height: 16), Text('Deuda restante: \$${widget.debt.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-      const SizedBox(height: 10), TextField(controller: _controller, focusNode: _focusNode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], decoration: const InputDecoration(labelText: 'Monto recibido')),
-      const SizedBox(height: 16), Row(children: [Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: _save, child: const Text('Registrar')))]),
-    ])),
-    const SizedBox(width: 12), NumericKeypad(onInput: _input, onBackspace: _backspace, onClear: _clear, onDecimal: _decimal),
-  ]))));
+  @override Widget build(BuildContext context) => Dialog(child: SizedBox(width: 390, child: Padding(padding: const EdgeInsets.all(20), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [const Text('Registrar abono', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary)), const SizedBox(height: 5), Text(widget.clientName, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), const SizedBox(height: 16), Text('Deuda restante: \$${widget.debt.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), const SizedBox(height: 10), TextField(controller: _controller, focusNode: _focusNode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], decoration: const InputDecoration(labelText: 'Monto recibido')), const SizedBox(height: 16), Row(children: [Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: _save, child: const Text('Registrar')))])])), const SizedBox(width: 12), NumericKeypad(onInput: _input, onBackspace: _backspace, onClear: _clear, onDecimal: _decimal)]))));
 }
