@@ -56,9 +56,9 @@ class _CatalogValueManagementDialogState extends State<CatalogValueManagementDia
 
   List<String> _values(BuildContext context) {
     if (_isClientGroup) {
-      return context.watch<ClientGroupProvider>().groups.map((group) => group.name).toList();
+      return context.read<ClientGroupProvider>().groups.map((group) => group.name).toList();
     }
-    final catalog = context.watch<CatalogProvider>();
+    final catalog = context.read<CatalogProvider>();
     return switch (widget.type) {
       CatalogValueType.category => catalog.tags,
       CatalogValueType.brand => catalog.brands,
@@ -253,7 +253,15 @@ class _CatalogValueManagementDialogState extends State<CatalogValueManagementDia
 
   @override
   Widget build(BuildContext context) {
-    final values = _values(context);
+    // Watch providers here so the dialog rebuilds after create/edit/delete.
+    final values = _isClientGroup
+        ? context.watch<ClientGroupProvider>().groups.map((group) => group.name).toList()
+        : switch (widget.type) {
+            CatalogValueType.category => context.watch<CatalogProvider>().tags,
+            CatalogValueType.brand => context.watch<CatalogProvider>().brands,
+            CatalogValueType.distributor => context.watch<CatalogProvider>().distributors,
+            CatalogValueType.clientGroup => const <String>[],
+          };
     final clients = _isClientGroup ? context.watch<CatalogProvider>().clients : const [];
 
     return Center(
@@ -311,9 +319,9 @@ class _CatalogValueManagementDialogState extends State<CatalogValueManagementDia
             ),
             if (_isClientGroup) ...[
               const SizedBox(height: 14),
-              Align(
+              const Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Clientes del grupo', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
+                child: Text('Clientes del grupo', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
               ),
               const SizedBox(height: 6),
               Container(
