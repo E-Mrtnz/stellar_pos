@@ -1,0 +1,16 @@
+name: Finalize payment dialog
+
+on:
+  push:
+    branches:
+      - feature/finalization
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "payment dialog patch runner"
