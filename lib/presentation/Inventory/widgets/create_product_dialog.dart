@@ -64,7 +64,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   List<String> get _tags => context.watch<CatalogProvider>().tags;
   List<String> get _brands => context.watch<CatalogProvider>().brands;
   List<String> get _distributors => context.watch<ProvidersProvider>().distributors;
-  bool get _isEditing => widget.product != null;
+  bool get _isEditing => widget.product != null && (widget.product?['id']?.toString().trim().isNotEmpty ?? false);
 
   @override
   void initState() {
