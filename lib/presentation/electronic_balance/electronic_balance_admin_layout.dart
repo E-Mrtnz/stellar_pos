@@ -8,64 +8,27 @@ import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 class ElectronicBalanceAdminLayout extends StatelessWidget {
   const ElectronicBalanceAdminLayout({super.key});
 
-  Future<void> _edit(BuildContext context, [ElectronicBalanceAccount? account]) => showDialog<void>(
-        context: context,
-        builder: (_) => _AccountDialog(account: account),
-      );
+  Future<void> _edit(BuildContext context, [ElectronicBalanceAccount? account]) => showDialog<void>(context: context, builder: (_) => _AccountDialog(account: account));
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ElectronicBalanceProvider>();
-    return Padding(
-      padding: const EdgeInsets.all(AppDimensions.pagePadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Expanded(child: Text('Saldo electrónico', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary))),
-            FilledButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add, size: 19), label: const Text('Agregar compañía')),
-          ]),
-          const SizedBox(height: 12),
-          Expanded(
-            child: provider.accounts.isEmpty
-                ? Center(child: OutlinedButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add), label: const Text('Agregar compañía')))
-                : ListView.separated(
-                    itemCount: provider.accounts.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, index) {
-                      final account = provider.accounts[index];
-                      return _AccountCard(
-                        account: account,
-                        sold: provider.totalSold(account.id),
-                        profit: provider.totalProfit(account.id),
-                        onPurchase: () => _purchase(context, account),
-                        onHistory: () => _history(context, account),
-                        onEdit: () => _edit(context, account),
-                        onDelete: () => _delete(context, account),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
+    return Padding(padding: const EdgeInsets.all(AppDimensions.pagePadding), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [const Expanded(child: Text('Saldo electrónico', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary))), FilledButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add, size: 19), label: const Text('Agregar compañía'))]),
+      const SizedBox(height: 12),
+      Expanded(child: provider.accounts.isEmpty ? Center(child: OutlinedButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add), label: const Text('Agregar compañía'))) : ListView.separated(
+        itemCount: provider.accounts.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, index) { final account = provider.accounts[index]; return _AccountCard(account: account, sold: provider.totalSold(account.id), profit: provider.totalProfit(account.id), onPurchase: () => _purchase(context, account), onHistory: () => _history(context, account), onEdit: () => _edit(context, account), onDelete: () => _delete(context, account)); },
+      )),
+    ]));
   }
 
   Future<void> _purchase(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(context: context, builder: (_) => _PurchaseDialog(account: account));
   Future<void> _history(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(context: context, builder: (_) => _HistoryDialog(account: account));
 
   Future<void> _delete(BuildContext context, ElectronicBalanceAccount account) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Eliminar compañía'),
-        content: Text('¿Deseas eliminar ${account.companyName}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Eliminar')),
-        ],
-      ),
-    );
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(title: const Text('Eliminar compañía'), content: Text('¿Deseas eliminar ${account.companyName}?'), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Eliminar'))]));
     if (confirmed != true || !context.mounted) return;
     final removed = context.read<ElectronicBalanceProvider>().removeAccount(account.id);
     if (!removed) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se puede eliminar una compañía con movimientos registrados.')));
@@ -73,59 +36,23 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  final ElectronicBalanceAccount account;
-  final double sold;
-  final double profit;
-  final VoidCallback onPurchase;
-  final VoidCallback onHistory;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final ElectronicBalanceAccount account; final double sold; final double profit; final VoidCallback onPurchase, onHistory, onEdit, onDelete;
   const _AccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onHistory, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) => Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius), side: const BorderSide(color: AppColors.border)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            Row(children: [
-              Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle), child: const Icon(Icons.sim_card_outlined, color: AppColors.primary)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                if (account.saleCategories.length > 3) Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-              ])),
-              IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)),
-              IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
-              IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline)),
-            ]),
-            const Divider(height: 24),
-            Row(children: [
-              _Metric('Disponible', account.balance, true),
-              _Metric('Vendido', sold, false),
-              _Metric('Ganancia', profit, false),
-            ]),
-            const SizedBox(height: 14),
-            SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
-          ]),
-        ),
-      );
+  @override Widget build(BuildContext context) => Card(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius), side: const BorderSide(color: AppColors.border)), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+    Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle), child: const Icon(Icons.sim_card_outlined, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)), Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), if (account.saleCategories.length > 3) Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)), IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)), IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline))]),
+    const Divider(height: 24), Row(children: [_Metric('Disponible', account.balance, true), _Metric('Vendido', sold, false), _Metric('Ganancia', profit, false)]),
+    const SizedBox(height: 14), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
+  ])));
 }
 
 class _Metric extends StatelessWidget {
-  final String label;
-  final double value;
-  final bool emphasize;
+  final String label; final double value; final bool emphasize;
   const _Metric(this.label, this.value, this.emphasize);
-  @override
-  Widget build(BuildContext context) => Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)), const SizedBox(height: 3), Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: emphasize ? 16 : 13, fontWeight: FontWeight.bold, color: emphasize ? AppColors.primary : AppColors.textPrimary))]));
+  @override Widget build(BuildContext context) => Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)), const SizedBox(height: 3), Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: emphasize ? 16 : 13, fontWeight: FontWeight.bold, color: emphasize ? AppColors.primary : AppColors.textPrimary))]));
 }
 
 class _CustomField {
-  final TextEditingController name;
-  final TextEditingController amounts;
+  final TextEditingController name; final TextEditingController amounts;
   _CustomField({String category = '', String values = ''}) : name = TextEditingController(text: category), amounts = TextEditingController(text: values);
   void dispose() { name.dispose(); amounts.dispose(); }
 }
@@ -166,24 +93,24 @@ class _AccountDialogState extends State<_AccountDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: Text(widget.account == null ? 'Agregar compañía' : 'Editar compañía'),
-        content: SizedBox(width: 520, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Compañía', hintText: 'Ej. Tigo', prefixIcon: Icon(Icons.business_outlined))),
-          const SizedBox(height: 12),
-          TextField(controller: _rate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Comisión (%)', suffixText: '%', prefixIcon: Icon(Icons.percent_outlined))),
-          const SizedBox(height: 18),
-          const Align(alignment: Alignment.centerLeft, child: Text('Montos de venta', style: TextStyle(fontWeight: FontWeight.bold))),
-          const SizedBox(height: 6),
-          const Align(alignment: Alignment.centerLeft, child: Text('Los montos se separan por comas. Las categorías personalizadas aparecen después de Saldo, Internet y Llamada.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
-          const SizedBox(height: 12),
-          _AmountsField(_saldo, 'Saldo'), const SizedBox(height: 10),
-          _AmountsField(_internet, 'Internet'), const SizedBox(height: 10),
-          _AmountsField(_llamada, 'Llamada'), const SizedBox(height: 14),
-          ..._custom.asMap().entries.map((entry) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _CustomFieldView(index: entry.key, field: entry.value, onRemove: () => setState(() { final f = _custom.removeAt(entry.key); f.dispose(); })))),
-          Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: () => setState(() => _custom.add(_CustomField())), icon: const Icon(Icons.add, size: 18), label: const Text('Agregar otra categoría')),
-        ]))),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: _save, child: Text(widget.account == null ? 'Agregar' : 'Guardar'))],
-      );
+    title: Text(widget.account == null ? 'Agregar compañía' : 'Editar compañía'),
+    content: SizedBox(width: 520, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      TextField(controller: _name, decoration: const InputDecoration(labelText: 'Compañía', hintText: 'Ej. Tigo', prefixIcon: Icon(Icons.business_outlined))),
+      const SizedBox(height: 12),
+      TextField(controller: _rate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Comisión (%)', suffixText: '%', prefixIcon: Icon(Icons.percent_outlined))),
+      const SizedBox(height: 18),
+      const Align(alignment: Alignment.centerLeft, child: Text('Montos de venta', style: TextStyle(fontWeight: FontWeight.bold))),
+      const SizedBox(height: 6),
+      const Align(alignment: Alignment.centerLeft, child: Text('Los montos se separan por comas. Las categorías personalizadas aparecen después de Saldo, Internet y Llamada.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+      const SizedBox(height: 12),
+      _AmountsField(_saldo, 'Saldo'), const SizedBox(height: 10),
+      _AmountsField(_internet, 'Internet'), const SizedBox(height: 10),
+      _AmountsField(_llamada, 'Llamada'), const SizedBox(height: 14),
+      ..._custom.asMap().entries.map((entry) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _CustomFieldView(index: entry.key, field: entry.value, onRemove: () => setState(() { final f = _custom.removeAt(entry.key); f.dispose(); })))),
+      Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: () => setState(() => _custom.add(_CustomField())), icon: const Icon(Icons.add, size: 18), label: const Text('Agregar otra categoría'))),
+    ]))),
+    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: _save, child: Text(widget.account == null ? 'Agregar' : 'Guardar'))],
+  );
 
   void _save() {
     final name = _name.text.trim();
@@ -218,16 +145,13 @@ class _AccountDialogState extends State<_AccountDialog> {
 }
 
 class _AmountsField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
+  final TextEditingController controller; final String label;
   const _AmountsField(this.controller, this.label);
   @override Widget build(BuildContext context) => TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label, hintText: 'Ej. 1.50, 2.50, 5, 10'));
 }
 
 class _CustomFieldView extends StatelessWidget {
-  final int index;
-  final _CustomField field;
-  final VoidCallback onRemove;
+  final int index; final _CustomField field; final VoidCallback onRemove;
   const _CustomFieldView({required this.index, required this.field, required this.onRemove});
   @override Widget build(BuildContext context) => Row(children: [Expanded(child: TextField(controller: field.name, decoration: const InputDecoration(labelText: 'Categoría personalizada'))), const SizedBox(width: 8), Expanded(child: TextField(controller: field.amounts, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Montos separados por comas'))), IconButton(tooltip: 'Eliminar categoría', onPressed: onRemove, icon: const Icon(Icons.delete_outline, color: AppColors.dangerRed))]);
 }
