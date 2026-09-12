@@ -13,6 +13,7 @@ class StorageBoxes {
   static const purchases = 'purchases';
   static const debtAccounts = 'debt_accounts';
   static const debtMovements = 'debt_movements';
+  static const clientGroups = 'client_groups';
   static const electronicBalanceAccounts = 'electronic_balance_accounts';
   static const electronicBalanceTransactions = 'electronic_balance_transactions';
   static const storageMetadata = '__storage_metadata';
