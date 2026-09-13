@@ -11,7 +11,12 @@ class PurchaseItemRecord implements SyncableEntity {
   final String imageData;
   final double unitCost;
   final int quantity;
+  final int bonusQuantity;
+  final int totalQuantity;
+  final double salePrice;
+  final double discount;
   final double total;
+  final double effectiveUnitCost;
   @override
   final SyncMetadata metadata;
 
@@ -24,9 +29,19 @@ class PurchaseItemRecord implements SyncableEntity {
     this.imageData = '',
     required this.unitCost,
     required this.quantity,
+    this.bonusQuantity = 0,
+    int? totalQuantity,
+    this.salePrice = 0,
+    this.discount = 0,
     required this.total,
+    double? effectiveUnitCost,
     SyncMetadata? metadata,
   })  : id = id ?? IdGenerator.newId(),
+        totalQuantity = totalQuantity ?? quantity + bonusQuantity,
+        effectiveUnitCost = effectiveUnitCost ??
+            ((quantity + bonusQuantity) <= 0
+                ? 0
+                : total / (quantity + bonusQuantity)),
         metadata = metadata ?? SyncMetadata.initial();
 
   Map<String, dynamic> toMap() => {
@@ -38,7 +53,12 @@ class PurchaseItemRecord implements SyncableEntity {
         'imageData': imageData,
         'unitCost': unitCost,
         'quantity': quantity,
+        'bonusQuantity': bonusQuantity,
+        'totalQuantity': totalQuantity,
+        'salePrice': salePrice,
+        'discount': discount,
         'total': total,
+        'effectiveUnitCost': effectiveUnitCost,
         'metadata': metadata.toMap(),
       };
 
@@ -52,13 +72,22 @@ class PurchaseItemRecord implements SyncableEntity {
         imageData: map['imageData']?.toString() ?? '',
         unitCost: _double(map['unitCost']),
         quantity: _int(map['quantity']),
+        bonusQuantity: _int(map['bonusQuantity']),
+        totalQuantity: map.containsKey('totalQuantity')
+            ? _int(map['totalQuantity'])
+            : _int(map['quantity']) + _int(map['bonusQuantity']),
+        salePrice: _double(map['salePrice']),
+        discount: _double(map['discount']),
         total: _double(map['total']),
+        effectiveUnitCost: map.containsKey('effectiveUnitCost')
+            ? _double(map['effectiveUnitCost'])
+            : null,
         metadata: _metadata(map['metadata']),
       );
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()
-      : double.tryParse(value?.toString() ?? '') ?? 0;
+      : double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ?? 0;
 
   static int _int(dynamic value) => value is num
       ? value.toInt()
@@ -78,6 +107,7 @@ class PurchaseRecord implements SyncableEntity {
   final String paymentMethod;
   final List<PurchaseItemRecord> items;
   final double subtotal;
+  final double discount;
   final double total;
   @override
   final SyncMetadata metadata;
@@ -90,6 +120,7 @@ class PurchaseRecord implements SyncableEntity {
     required this.paymentMethod,
     required List<PurchaseItemRecord> items,
     required this.subtotal,
+    this.discount = 0,
     required this.total,
     SyncMetadata? metadata,
   }) : items = List.unmodifiable(items),
@@ -99,7 +130,7 @@ class PurchaseRecord implements SyncableEntity {
               updatedAt: arrivalAt.toUtc(),
             );
 
-  int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
+  int get itemCount => items.fold(0, (sum, item) => sum + item.totalQuantity);
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -109,6 +140,7 @@ class PurchaseRecord implements SyncableEntity {
         'paymentMethod': paymentMethod,
         'items': items.map((item) => item.toMap()).toList(),
         'subtotal': subtotal,
+        'discount': discount,
         'total': total,
         'metadata': metadata.toMap(),
       };
@@ -118,9 +150,10 @@ class PurchaseRecord implements SyncableEntity {
         invoiceNumber: map['invoiceNumber']?.toString() ?? '',
         distributorName: map['distributorName']?.toString() ?? '',
         arrivalAt: _date(map['arrivalAt']),
-        paymentMethod: map['paymentMethod']?.toString() ?? '',
+        paymentMethod: map['paymentMethod']?.toString() ?? 'Contado',
         items: _items(map['items']),
         subtotal: _double(map['subtotal']),
+        discount: _double(map['discount']),
         total: _double(map['total']),
         metadata: _metadata(map['metadata']),
       );
@@ -140,7 +173,7 @@ class PurchaseRecord implements SyncableEntity {
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()
-      : double.tryParse(value?.toString() ?? '') ?? 0;
+      : double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ?? 0;
 
   static SyncMetadata _metadata(dynamic value) => value is Map
       ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))
