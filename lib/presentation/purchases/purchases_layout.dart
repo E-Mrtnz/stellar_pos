@@ -303,19 +303,8 @@ class _PurchaseDetailDialog extends StatelessWidget {
   Future<void> _delete(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Eliminar compra'),
-        content: const Text('Esta acción eliminará la compra del historial y revertirá las unidades que agregó al inventario. ¿Deseas continuar?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.dangerRed),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Eliminar'),
-          ),
-        ],
-      ),
+      barrierColor: AppColors.overlayBackground,
+      builder: (_) => const _PurchaseDeleteConfirmationDialog(),
     );
     if (confirmed != true || !context.mounted) return;
     final deleted = await context.read<PurchasesProvider>().deletePurchase(purchase, context.read<ProductProvider>());
@@ -393,6 +382,109 @@ class _PurchaseDetailDialog extends StatelessWidget {
         ])),
         Text(_money(item.total), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
       ]),
+    );
+  }
+}
+
+class _PurchaseDeleteConfirmationDialog extends StatelessWidget {
+  const _PurchaseDeleteConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: 430,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(color: AppColors.shadowColor, blurRadius: 24, offset: Offset(0, 10)),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: AppColors.dangerRed.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: AppColors.dangerRed, size: 31),
+            ),
+            const SizedBox(height: 15),
+            const Text(
+              'Eliminar compra',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta compra se eliminará del historial y se revertirán las unidades que agregó al inventario.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, height: 1.45, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.dangerRed.withAlpha(10),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: AppColors.dangerRed.withAlpha(45)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: AppColors.dangerRed, size: 19),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta acción no se puede deshacer.',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.dangerRed),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                    ),
+                    child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.dangerRed,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(44),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                    ),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text('Eliminar compra', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
