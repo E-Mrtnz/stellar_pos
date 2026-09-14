@@ -12,6 +12,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class PurchaseCreationDialog extends StatefulWidget {
   const PurchaseCreationDialog({super.key});
@@ -501,7 +502,12 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   }
 
   void _error(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppAlert.show(
+      context,
+      message,
+      title: 'No se puede continuar',
+      type: AppAlertType.error,
+    );
   }
 
   Uint8List? _decode(String value) {
