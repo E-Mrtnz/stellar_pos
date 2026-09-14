@@ -49,15 +49,12 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
   DateTimeRange _range() {
     final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
     switch (_period) {
-      case _PurchasePeriod.daily:
-        return DateTimeRange(start: day, end: day.add(const Duration(days: 1)));
+      case _PurchasePeriod.daily: return DateTimeRange(start: day, end: day.add(const Duration(days: 1)));
       case _PurchasePeriod.weekly:
         final start = day.subtract(Duration(days: day.weekday - 1));
         return DateTimeRange(start: start, end: start.add(const Duration(days: 7)));
-      case _PurchasePeriod.monthly:
-        return DateTimeRange(start: DateTime(day.year, day.month), end: DateTime(day.year, day.month + 1));
-      case _PurchasePeriod.yearly:
-        return DateTimeRange(start: DateTime(day.year), end: DateTime(day.year + 1));
+      case _PurchasePeriod.monthly: return DateTimeRange(start: DateTime(day.year, day.month), end: DateTime(day.year, day.month + 1));
+      case _PurchasePeriod.yearly: return DateTimeRange(start: DateTime(day.year), end: DateTime(day.year + 1));
       case _PurchasePeriod.custom:
         final start = _customStart ?? day;
         final end = _customEnd ?? start;
@@ -103,7 +100,6 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     final bonusCount = purchases.fold(0, (sum, purchase) => sum + purchase.items.fold(0, (inner, item) => inner + item.bonusQuantity));
     final supplierCount = purchases.map((p) => p.distributorName.toLowerCase()).toSet().length;
     final range = _range();
-
     final metrics = <PeriodSummaryMetric>[
       PeriodSummaryMetric('Compras', _money(purchaseTotal)),
       PeriodSummaryMetric('Ventas', _money(salesTotal)),
@@ -135,43 +131,22 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
               Expanded(child: Row(children: [Expanded(flex: 3, child: _list(purchases)), const SizedBox(width: 12), Expanded(child: PeriodSummaryPanel(metrics: metrics, rangeLabel: '${_date(range.start)} → ${_date(range.end.subtract(const Duration(days: 1)))}'))])),
             ],
           ),
-          Positioned(right: 0, bottom: 0, child: FloatingActionButton.extended(onPressed: _newPurchase, backgroundColor: AppColors.primary, icon: const Icon(Icons.add_shopping_cart_outlined, color: Colors.white), label: const Text('Nueva compra', style: TextStyle(color: Colors.white)))),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: FloatingActionButton(
+              onPressed: _newPurchase,
+              tooltip: 'Nueva compra',
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add_shopping_cart_outlined, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _metric(String label, double amount, IconData icon, Color color) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadowColor,
-                blurRadius: 8,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: color),
-              const SizedBox(width: 9),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                  const SizedBox(height: 2),
-                  Text(_money(amount), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
+  Widget _metric(String label, double amount, IconData icon, Color color) => Expanded(child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.cardRadius), border: Border.all(color: AppColors.border), boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 8, offset: Offset(0, 3))]), child: Row(children: [Icon(icon, size: 20, color: color), const SizedBox(width: 9), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)), const SizedBox(height: 2), Text(_money(amount), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))])]));
 
   Widget _menuSurface(IconData icon, String label) => Container(constraints: const BoxConstraints(minHeight: 42), padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 17, color: AppColors.textSecondary), const SizedBox(width: 7), Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))]));
 
@@ -209,29 +184,13 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
 class _PurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
   const _PurchaseDetailDialog(this.purchase);
-
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
   @override
-  Widget build(BuildContext context) => Dialog(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700), child: Column(children: [
-    Padding(padding: const EdgeInsets.fromLTRB(20, 16, 12, 12), child: Row(children: [const Icon(Icons.receipt_long_outlined, color: AppColors.primary), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Detalle de compra', style: AppTextStyles.sectionTitle), Text(purchase.distributorName, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))])), IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))])),
-    const Divider(height: 1),
-    Padding(padding: const EdgeInsets.all(16), child: Row(children: [Expanded(child: _info('Factura', purchase.invoiceNumber.isEmpty ? '—' : purchase.invoiceNumber)), Expanded(child: _info('Fecha', _date(purchase.arrivalAt))), Expanded(child: _info('Pago', 'Contado'))])),
-    const Divider(height: 1),
-    Expanded(child: ListView.separated(padding: const EdgeInsets.all(16), itemCount: purchase.items.length, separatorBuilder: (_, __) => const SizedBox(height: 7), itemBuilder: (_, index) => _item(purchase.items[index]))),
-    Padding(padding: const EdgeInsets.all(16), child: Row(children: [const Spacer(), const Text('Total pagado', style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 28), Text(_money(purchase.total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary))])),
-  ])));
+  Widget build(BuildContext context) => Dialog(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700), child: Column(children: [Padding(padding: const EdgeInsets.fromLTRB(20, 16, 12, 12), child: Row(children: [const Icon(Icons.receipt_long_outlined, color: AppColors.primary), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Detalle de compra', style: AppTextStyles.sectionTitle), Text(purchase.distributorName, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))])), IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))])), const Divider(height: 1), Padding(padding: const EdgeInsets.all(16), child: Row(children: [Expanded(child: _info('Factura', purchase.invoiceNumber.isEmpty ? '—' : purchase.invoiceNumber)), Expanded(child: _info('Fecha', _date(purchase.arrivalAt))), Expanded(child: _info('Pago', 'Contado'))])), const Divider(height: 1), Expanded(child: ListView.separated(padding: const EdgeInsets.all(16), itemCount: purchase.items.length, separatorBuilder: (_, __) => const SizedBox(height: 7), itemBuilder: (_, index) => _item(purchase.items[index]))), Padding(padding: const EdgeInsets.all(16), child: Row(children: [const Spacer(), const Text('Total pagado', style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 28), Text(_money(purchase.total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary))]))])));
 
   Widget _info(String label, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)), const SizedBox(height: 3), Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))]);
-
-  Widget _item(PurchaseItemRecord item) {
-    final image = _decode(item.imageData);
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.border)), child: Row(children: [Container(width: 48, height: 48, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8)), child: image == null ? const Icon(Icons.image_outlined, color: AppColors.textMuted) : Image.memory(image, fit: BoxFit.contain)), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.productName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)), Text('${item.quantity} compradas  •  ${item.bonusQuantity} bonificadas  •  ${item.totalQuantity} recibidas', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary))])), Text(_money(item.unitCost), style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)), const SizedBox(width: 18), Text(_money(item.total), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))]));
-  }
-
-  Uint8List? _decode(String value) {
-    if (value.trim().isEmpty) return null;
-    try { return base64Decode(value.contains(',') ? value.split(',').last : value); } catch (_) { return null; }
-  }
+  Widget _item(PurchaseItemRecord item) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)), child: Row(children: [_image(item.imageData), const SizedBox(width: 9), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.productName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)), const SizedBox(height: 3), Text('${item.totalQuantity} recibidas · ${item.bonusQuantity} bonificadas', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary))])), Text(_money(item.total), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800))]));
+  Widget _image(String data) { Uint8List? bytes; try { if (data.trim().isNotEmpty) bytes = base64Decode(data.contains(',') ? data.split(',').last : data); } catch (_) {} return Container(width: 42, height: 42, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: bytes == null ? const Icon(Icons.image_outlined, size: 18, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain)); }
 }
