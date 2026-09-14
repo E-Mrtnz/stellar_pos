@@ -663,6 +663,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
               Text(item.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
               const SizedBox(height: 5),
               _currentPrices(item.product),
+              const SizedBox(height: 6),
+              _stockPreview(item),
             ])),
             IconButton(tooltip: 'Eliminar', onPressed: widget.onDelete, icon: const Icon(Icons.delete_outline, size: 20)),
           ]),
@@ -701,6 +703,33 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
             ]),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _stockPreview(_DraftPurchaseItem item) {
+    final currentStock = item.product.stock;
+    final projectedStock = currentStock + item.received;
+    return Tooltip(
+      message: 'Stock actual: $currentStock\nStock después de la compra: $projectedStock',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.successGreen.withAlpha(18),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: AppColors.successGreen.withAlpha(105)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.inventory_2_outlined, size: 15, color: AppColors.successGreen),
+            const SizedBox(width: 5),
+            Text(
+              'Stock $currentStock → $projectedStock',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.successGreen),
+            ),
+          ],
+        ),
       ),
     );
   }
