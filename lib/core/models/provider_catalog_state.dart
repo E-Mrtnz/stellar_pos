@@ -33,14 +33,20 @@ class ProviderCatalogState implements SyncableEntity {
       ProviderCatalogState(
         id: map['id']?.toString() ?? 'provider_catalog',
         distributors: map['distributors'] is Iterable
-            ? map['distributors'].map((value) => value.toString()).toList()
-            : const [],
+            ? (map['distributors'] as Iterable)
+                .map<String>((value) => value.toString())
+                .toList()
+            : const <String>[],
         tags: map['tags'] is Iterable
-            ? map['tags'].map((value) => value.toString()).toList()
-            : const [],
+            ? (map['tags'] as Iterable)
+                .map<String>((value) => value.toString())
+                .toList()
+            : const <String>[],
         brands: map['brands'] is Iterable
-            ? map['brands'].map((value) => value.toString()).toList()
-            : const [],
+            ? (map['brands'] as Iterable)
+                .map<String>((value) => value.toString())
+                .toList()
+            : const <String>[],
         metadata: map['metadata'] is Map
             ? SyncMetadata.fromMap(Map<String, dynamic>.from(map['metadata']))
             : SyncMetadata.initial(),
