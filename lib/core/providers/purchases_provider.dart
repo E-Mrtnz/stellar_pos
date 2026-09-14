@@ -31,26 +31,13 @@ class PurchasesProvider extends ChangeNotifier {
 
   List<PurchaseRecord> get purchases => List.unmodifiable(_purchases);
 
-  double totalFor(Iterable<PurchaseRecord> records) =>
-      _service.totalForPurchases(records);
-
-  double purchasesTotal(Iterable<PurchaseRecord> records) =>
-      _reportService.purchasesTotal(records);
-
-  int purchaseCount(Iterable<PurchaseRecord> records) =>
-      _reportService.purchaseCount(records);
-
-  int purchasedItemCount(Iterable<PurchaseRecord> records) =>
-      _reportService.purchasedItemCount(records);
-
-  int supplierCount(Iterable<PurchaseRecord> records) =>
-      _reportService.supplierCount(records);
-
-  double salesTotal(Iterable<SaleRecord> records) =>
-      _reportService.salesTotal(records);
-
-  double grossProfit(Iterable<SaleRecord> records) =>
-      _reportService.grossProfit(records);
+  double totalFor(Iterable<PurchaseRecord> records) => _service.totalForPurchases(records);
+  double purchasesTotal(Iterable<PurchaseRecord> records) => _reportService.purchasesTotal(records);
+  int purchaseCount(Iterable<PurchaseRecord> records) => _reportService.purchaseCount(records);
+  int purchasedItemCount(Iterable<PurchaseRecord> records) => _reportService.purchasedItemCount(records);
+  int supplierCount(Iterable<PurchaseRecord> records) => _reportService.supplierCount(records);
+  double salesTotal(Iterable<SaleRecord> records) => _reportService.salesTotal(records);
+  double grossProfit(Iterable<SaleRecord> records) => _reportService.grossProfit(records);
 
   Future<void> load() {
     if (_loaded) return Future.value();
@@ -67,6 +54,64 @@ class PurchasesProvider extends ChangeNotifier {
     _persist(() => _repository?.save(purchase));
   }
 
+  Future<bool> updatePurchase(
+    PurchaseRecord purchase,
+    ProductProvider productProvider,
+  ) async {
+    final index = _purchases.indexWhere((entry) => entry.id == purchase.id);
+    if (index < 0) return false;
+
+    final previous = _purchases[index];
+    final oldByProduct = <String, PurchaseItemRecord>{
+      for (final item in previous.items) item.productId: item,
+    };
+    final newByProduct = <String, PurchaseItemRecord>{
+      for (final item in purchase.items) item.productId: item,
+    };
+    final productIds = {...oldByProduct.keys, ...newByProduct.keys};
+
+    for (final productId in productIds) {
+      final product = productProvider.findById(productId);
+      if (product == null) continue;
+      final oldItem = oldByProduct[productId];
+      final newItem = newByProduct[productId];
+      var stock = product.stock - (oldItem?.totalQuantity ?? 0) + (newItem?.totalQuantity ?? 0);
+      var cost = product.cost;
+      var price = product.price;
+
+      if (oldItem != null && oldItem.previousCost != null &&
+          (cost - oldItem.unitCost).abs() < 0.0001) {
+        cost = oldItem.previousCost!;
+      }
+      if (oldItem != null && oldItem.previousSalePrice != null &&
+          (price - oldItem.salePrice).abs() < 0.0001) {
+        price = oldItem.previousSalePrice!;
+      }
+
+      if (newItem != null && newItem.quantity > 0) {
+        if (oldItem != null &&
+            (newItem.unitCost - oldItem.unitCost).abs() < 0.0001 &&
+            oldItem.previousCost != null) {
+          cost = oldItem.unitCost;
+        }
+        if (oldItem != null &&
+            (newItem.salePrice - oldItem.salePrice).abs() < 0.0001 &&
+            oldItem.previousSalePrice != null) {
+          price = oldItem.salePrice;
+        }
+      }
+
+      productProvider.updateProduct(
+        product.copyWith(stock: stock, cost: cost, price: price),
+      );
+    }
+
+    _purchases[index] = purchase;
+    notifyListeners();
+    await _repository?.save(purchase);
+    return true;
+  }
+
   Future<bool> deletePurchase(
     PurchaseRecord purchase,
     ProductProvider productProvider,
@@ -77,21 +122,15 @@ class PurchasesProvider extends ChangeNotifier {
 
       var restoredCost = product.cost;
       var restoredPrice = product.price;
-      if (item.previousCost != null &&
-          (product.cost - item.unitCost).abs() < 0.0001) {
+      if (item.previousCost != null && (product.cost - item.unitCost).abs() < 0.0001) {
         restoredCost = item.previousCost!;
       }
-      if (item.previousSalePrice != null &&
-          (product.price - item.salePrice).abs() < 0.0001) {
+      if (item.previousSalePrice != null && (product.price - item.salePrice).abs() < 0.0001) {
         restoredPrice = item.previousSalePrice!;
       }
 
       productProvider.updateProduct(
-        product.copyWith(
-          stock: product.stock - item.totalQuantity,
-          cost: restoredCost,
-          price: restoredPrice,
-        ),
+        product.copyWith(stock: product.stock - item.totalQuantity, cost: restoredCost, price: restoredPrice),
       );
     }
 
@@ -117,9 +156,7 @@ class PurchasesProvider extends ChangeNotifier {
     final ids = _purchases.map((purchase) => purchase.id).toList(growable: false);
     _purchases.clear();
     notifyListeners();
-    for (final id in ids) {
-      _persist(() => _repository?.delete(id));
-    }
+    for (final id in ids) _persist(() => _repository?.delete(id));
   }
 
   Future<void> _loadFromRepository() async {
@@ -129,23 +166,15 @@ class PurchasesProvider extends ChangeNotifier {
       return;
     }
     final stored = await repository.getAll();
-    final byId = <String, PurchaseRecord>{
-      for (final purchase in _purchases) purchase.id: purchase,
-    };
-    for (final purchase in stored) {
-      byId.putIfAbsent(purchase.id, () => purchase);
-    }
-    _purchases
-      ..clear()
-      ..addAll(byId.values);
+    final byId = <String, PurchaseRecord>{for (final purchase in _purchases) purchase.id: purchase};
+    for (final purchase in stored) byId.putIfAbsent(purchase.id, () => purchase);
+    _purchases..clear()..addAll(byId.values);
     _loaded = true;
     if (stored.isNotEmpty) notifyListeners();
   }
 
   void _persist(Future<void>? Function()? operation) {
     final future = operation?.call();
-    if (future != null) {
-      unawaited(future.catchError((_) {}));
-    }
+    if (future != null) unawaited(future.catchError((_) {}));
   }
 }
