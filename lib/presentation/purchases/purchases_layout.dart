@@ -168,6 +168,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
               onPressed: _newPurchase,
               tooltip: 'Nueva compra',
               backgroundColor: AppColors.primary,
+              shape: const CircleBorder(),
               child: const Icon(Icons.add_shopping_cart_outlined, color: Colors.white),
             ),
           ),
@@ -315,16 +316,25 @@ class _PurchaseDetailDialog extends StatelessWidget {
             Padding(padding: const EdgeInsets.all(16), child: Row(children: [
               Expanded(child: _info('Factura', purchase.invoiceNumber.isEmpty ? '—' : purchase.invoiceNumber)),
               Expanded(child: _info('Fecha', _date(purchase.arrivalAt))),
-              Expanded(child: _info('Pago', purchase.paymentMethod)),
+              Expanded(child: _info('Pago', purchase.paymentMethod.isEmpty ? 'Contado' : purchase.paymentMethod)),
+              Expanded(child: _info('Total', _money(purchase.total), strong: true)),
             ])),
             const Divider(height: 1),
-            Expanded(child: ListView.separated(padding: const EdgeInsets.all(16), itemCount: purchase.items.length, separatorBuilder: (_, __) => const SizedBox(height: 7), itemBuilder: (_, index) => _item(purchase.items[index]))),
-            Padding(padding: const EdgeInsets.all(16), child: Row(children: [const Spacer(), const Text('Total pagado', style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 28), Text(_money(purchase.total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary))])),
+            Expanded(child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: purchase.items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (_, index) => _item(purchase.items[index]),
+            )),
           ]),
         ),
       );
 
-  Widget _info(String label, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)), const SizedBox(height: 3), Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))]);
+  Widget _info(String label, String value, {bool strong = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+        const SizedBox(height: 3),
+        Text(value, style: TextStyle(fontSize: 12, fontWeight: strong ? FontWeight.w900 : FontWeight.w700, color: strong ? AppColors.primary : null)),
+      ]);
 
   Widget _item(PurchaseItemRecord item) {
     Uint8List? bytes;
