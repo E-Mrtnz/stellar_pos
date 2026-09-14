@@ -16,7 +16,13 @@ class PurchaseItemRecord implements SyncableEntity {
   final double salePrice;
   final double? previousCost;
   final double? previousSalePrice;
+  /// Total monetary discount applied to the purchased quantity.
   final double discount;
+  /// Percentage shown on the supplier invoice, when provided.
+  final double? discountPercent;
+  /// VAT amount shown on the supplier invoice. Null means the entered price
+  /// already includes VAT (or the invoice did not provide a separate VAT).
+  final double? iva;
   final double total;
   final double effectiveUnitCost;
   @override
@@ -37,6 +43,8 @@ class PurchaseItemRecord implements SyncableEntity {
     this.previousCost,
     this.previousSalePrice,
     this.discount = 0,
+    this.discountPercent,
+    this.iva,
     required this.total,
     double? effectiveUnitCost,
     SyncMetadata? metadata,
@@ -63,6 +71,8 @@ class PurchaseItemRecord implements SyncableEntity {
         'previousCost': previousCost,
         'previousSalePrice': previousSalePrice,
         'discount': discount,
+        'discountPercent': discountPercent,
+        'iva': iva,
         'total': total,
         'effectiveUnitCost': effectiveUnitCost,
         'metadata': metadata.toMap(),
@@ -83,9 +93,17 @@ class PurchaseItemRecord implements SyncableEntity {
             ? _int(map['totalQuantity'])
             : _int(map['quantity']) + _int(map['bonusQuantity']),
         salePrice: _double(map['salePrice']),
-        previousCost: map['previousCost'] == null ? null : _double(map['previousCost']),
-        previousSalePrice: map['previousSalePrice'] == null ? null : _double(map['previousSalePrice']),
+        previousCost: map['previousCost'] == null
+            ? null
+            : _double(map['previousCost']),
+        previousSalePrice: map['previousSalePrice'] == null
+            ? null
+            : _double(map['previousSalePrice']),
         discount: _double(map['discount']),
+        discountPercent: map['discountPercent'] == null
+            ? null
+            : _double(map['discountPercent']),
+        iva: map['iva'] == null ? null : _double(map['iva']),
         total: _double(map['total']),
         effectiveUnitCost: map.containsKey('effectiveUnitCost')
             ? _double(map['effectiveUnitCost'])
