@@ -541,7 +541,53 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
 
   Widget _quantityField(TextEditingController controller, String label, IconData icon) => Container(height: 53, padding: const EdgeInsets.fromLTRB(7, 5, 5, 4), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)), const SizedBox(height: 2), Expanded(child: Row(children: [Icon(icon, size: 15, color: AppColors.textSecondary), const SizedBox(width: 3), Expanded(child: TextField(controller: controller, keyboardType: TextInputType.number, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800), decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), onChanged: (_) => _emit())), _stepButton(Icons.remove, 'Disminuir', () => _step(controller, -1)), const SizedBox(width: 2), _stepButton(Icons.add, 'Aumentar', () => _step(controller, 1))]))]));
   Widget _stepButton(IconData icon, String tooltip, VoidCallback onPressed) => SizedBox(width: 21, height: 27, child: IconButton(tooltip: tooltip, onPressed: onPressed, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, iconSize: 14, icon: Icon(icon)));
-  Widget _readonly(String label, String value, IconData icon, {Color? color}) => Container(height: 53, padding: const EdgeInsets.fromLTRB(7, 5, 7, 4), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)), const SizedBox(height: 2), Expanded(child: Row(children: [Icon(icon, size: 15, color: AppColors.textSecondary), const SizedBox(width: 5), Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)))]]));
+  Widget _readonly(String label, String value, IconData icon, {Color? color}) {
+    return Container(
+      height: 53,
+      padding: const EdgeInsets.fromLTRB(7, 5, 7, 4),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 8,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Row(
+              children: [
+                Icon(icon, size: 15, color: AppColors.textSecondary),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CostChange { final Product product; final double newCost; const _CostChange(this.product, this.newCost); }
