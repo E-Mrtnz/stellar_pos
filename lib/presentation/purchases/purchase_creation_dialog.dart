@@ -668,34 +668,34 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
           ]),
           const SizedBox(height: 9),
           Container(
-            padding: const EdgeInsets.all(9),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
             child: Column(children: [
               Row(children: [
                 Expanded(child: _quantityField(_purchasedController, 'Compradas', Icons.shopping_cart_outlined)),
-                const SizedBox(width: 7),
+                const SizedBox(width: 6),
                 Expanded(child: _quantityField(_bonusController, 'Bonificadas', Icons.card_giftcard_outlined)),
-                const SizedBox(width: 7),
+                const SizedBox(width: 6),
                 Expanded(child: _readonly('Recibidas', '${item.received}', Icons.inventory_2_outlined)),
-                const SizedBox(width: 7),
+                const SizedBox(width: 6),
                 Expanded(child: _numberField(_costController, 'Costo unitario', Icons.attach_money)),
-                const SizedBox(width: 7),
+                const SizedBox(width: 6),
                 Expanded(child: _numberField(_discountController, 'Descuento', Icons.discount_outlined, suffix: '\$ / %')),
-                const SizedBox(width: 7),
+                const SizedBox(width: 6),
                 Expanded(child: _readonly('Total', widget.money(item.totalCost), Icons.calculate_outlined, color: AppColors.primary)),
               ]),
-              const SizedBox(height: 9),
+              const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                padding: const EdgeInsets.fromLTRB(9, 7, 9, 7),
                 decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9)),
                 child: Row(children: [
-                  const Icon(Icons.sell_outlined, size: 17, color: AppColors.primary),
+                  const Icon(Icons.sell_outlined, size: 16, color: AppColors.primary),
                   const SizedBox(width: 7),
                   const Text('Cambiar precio de venta', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   Text('Actual ${widget.money(item.product.price)}', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
                   const SizedBox(width: 8),
-                  SizedBox(width: 125, child: _numberField(_saleController, 'Nuevo precio', Icons.edit_outlined)),
+                  SizedBox(width: 122, child: _numberField(_saleController, 'Nuevo precio', Icons.edit_outlined)),
                 ]),
               ),
             ]),
@@ -734,55 +734,120 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   }
 
   Widget _numberField(TextEditingController controller, String label, IconData icon, {String? suffix}) {
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 17),
-        suffixText: suffix,
-        border: const OutlineInputBorder(),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+    return Container(
+      height: 53,
+      padding: const EdgeInsets.fromLTRB(7, 5, 7, 4),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
-      onChanged: (_) => _emit(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Row(children: [
+              Icon(icon, size: 15, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                  onChanged: (_) => _emit(),
+                ),
+              ),
+              if (suffix != null) ...[
+                const SizedBox(width: 3),
+                Text(suffix, maxLines: 1, style: const TextStyle(fontSize: 7, color: AppColors.textMuted, fontWeight: FontWeight.w700)),
+              ],
+            ]),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _quantityField(TextEditingController controller, String label, IconData icon) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 17),
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(visualDensity: VisualDensity.compact, tooltip: 'Disminuir', onPressed: () => _step(controller, -1), icon: const Icon(Icons.remove, size: 16)),
-            IconButton(visualDensity: VisualDensity.compact, tooltip: 'Aumentar', onPressed: () => _step(controller, 1), icon: const Icon(Icons.add, size: 16)),
-          ],
-        ),
-        border: const OutlineInputBorder(),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+    return Container(
+      height: 53,
+      padding: const EdgeInsets.fromLTRB(7, 5, 5, 4),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
-      onChanged: (_) => _emit(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Row(children: [
+              Icon(icon, size: 15, color: AppColors.textSecondary),
+              const SizedBox(width: 3),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                  onChanged: (_) => _emit(),
+                ),
+              ),
+              _stepButton(Icons.remove, 'Disminuir', () => _step(controller, -1)),
+              const SizedBox(width: 2),
+              _stepButton(Icons.add, 'Aumentar', () => _step(controller, 1)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepButton(IconData icon, String tooltip, VoidCallback onPressed) {
+    return SizedBox(
+      width: 21,
+      height: 27,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        iconSize: 14,
+        icon: Icon(icon),
+      ),
     );
   }
 
   Widget _readonly(String label, String value, IconData icon, {Color? color}) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 17),
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: AppColors.inputBackground,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+    return Container(
+      height: 53,
+      padding: const EdgeInsets.fromLTRB(7, 5, 7, 4),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Row(children: [
+              Icon(icon, size: 15, color: AppColors.textSecondary),
+              const SizedBox(width: 5),
+              Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color))),
+            ]),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -839,31 +904,45 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 760),
+        constraints: const BoxConstraints(maxWidth: 620, maxHeight: 600),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 18, 14, 10),
+              padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
               child: Row(children: [
+                const Icon(Icons.price_change_outlined, color: AppColors.primary, size: 22),
+                const SizedBox(width: 8),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Actualizar costos', style: AppTextStyles.sectionTitle),
-                  const SizedBox(height: 4),
-                  Text('Estos ${widget.changes.length} productos tienen un costo diferente al registrado.', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 2),
+                  Text('Estos ${widget.changes.length} productos tienen un costo diferente al registrado.', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
                 ])),
-                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                IconButton(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20)),
               ]),
             ),
             const Divider(height: 1),
             Expanded(
               child: ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                 itemCount: widget.changes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, index) => _costCard(widget.changes[index]),
               ),
             ),
-            Padding(padding: const EdgeInsets.fromLTRB(18, 5, 18, 16), child: Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _skipAll, child: const Text('Saltar todos')))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 14, 10),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _skipAll,
+                  icon: const Icon(Icons.skip_next_outlined, size: 17),
+                  label: const Text('Saltar todos'),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -877,74 +956,83 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
     return Opacity(
       opacity: done ? 0.5 : 1,
       child: Container(
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 40,
+                height: 40,
                 clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-                child: bytes == null ? const Icon(Icons.image_outlined, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain),
+                decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.border)),
+                child: bytes == null ? const Icon(Icons.image_outlined, size: 18, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain),
               ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(change.product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800))),
-              if (done) const Icon(Icons.check_circle_outline, color: AppColors.successGreen),
+              const SizedBox(width: 9),
+              Expanded(child: Text(change.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+              if (done) const Icon(Icons.check_circle_outline, color: AppColors.successGreen, size: 19),
             ]),
-            const SizedBox(height: 9),
+            const SizedBox(height: 7),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(9)),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8)),
               child: Row(children: [
                 Expanded(child: _price('Actual', change.product.cost)),
-                const Icon(Icons.arrow_forward_outlined, size: 20, color: AppColors.textMuted),
+                const Icon(Icons.arrow_forward_outlined, size: 17, color: AppColors.textMuted),
                 Expanded(child: _price('Nuevo', change.newCost, color: AppColors.successGreen)),
               ]),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.primary.withAlpha(18),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(7),
                 border: Border.all(color: AppColors.primary.withAlpha(70)),
               ),
               child: const Text(
                 'El nuevo costo reemplazará al anterior.',
-                style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: done ? null : () => _resolve(change, true),
-                  icon: const Icon(Icons.check, size: 17),
-                  label: Text('Registrar ${change.newCost.toStringAsFixed(2)} como costo'),
+                  icon: const Icon(Icons.check, size: 15),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                  label: FittedBox(fit: BoxFit.scaleDown, child: Text('Registrar ${change.newCost.toStringAsFixed(2)} como costo')),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               SizedBox(
-                width: 96,
+                width: 102,
                 child: OutlinedButton.icon(
                   onPressed: done ? null : () => _resolve(change, false),
-                  icon: const Icon(Icons.close, size: 17),
-                  label: const Text('Saltar'),
+                  icon: const Icon(Icons.close, size: 15),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                  label: const Text('Saltar', maxLines: 1),
                 ),
               ),
             ]),
-            CheckboxListTile(
-              value: _skipFuture[change.product.id] ?? false,
-              onChanged: done ? null : (value) => setState(() => _skipFuture[change.product.id] = value ?? false),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('No volver a preguntarme para este producto', style: TextStyle(fontSize: 10)),
-              subtitle: const Text('Solo durante este registro de compra.', style: TextStyle(fontSize: 8)),
-            ),
+            const SizedBox(height: 2),
+            Row(children: [
+              SizedBox(
+                width: 30,
+                height: 30,
+                child: Checkbox(
+                  value: _skipFuture[change.product.id] ?? false,
+                  onChanged: done ? null : (value) => setState(() => _skipFuture[change.product.id] = value ?? false),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Expanded(child: Text('No volver a preguntarme para este producto', style: TextStyle(fontSize: 9))),
+              const SizedBox(width: 5),
+              const Text('Solo esta compra', style: TextStyle(fontSize: 8, color: AppColors.textMuted)),
+            ]),
           ],
         ),
       ),
@@ -954,9 +1042,9 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
   Widget _price(String label, double value, {Color? color}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
-          const SizedBox(height: 2),
-          Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+          Text(label, style: const TextStyle(fontSize: 8, color: AppColors.textMuted)),
+          const SizedBox(height: 1),
+          Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: color)),
         ],
       );
 
