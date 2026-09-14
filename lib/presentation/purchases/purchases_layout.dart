@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/purchase.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/purchases/purchase_creation_dialog.dart';
@@ -297,6 +298,30 @@ class _PurchaseDetailDialog extends StatelessWidget {
 
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  String _time(DateTime value) => '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar compra'),
+        content: const Text('Esta acción eliminará la compra del historial y revertirá las unidades que agregó al inventario. ¿Deseas continuar?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.dangerRed),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final deleted = await context.read<PurchasesProvider>().deletePurchase(purchase, context.read<ProductProvider>());
+    if (!context.mounted) return;
+    Navigator.pop(context, deleted);
+  }
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -316,9 +341,23 @@ class _PurchaseDetailDialog extends StatelessWidget {
             Padding(padding: const EdgeInsets.all(16), child: Row(children: [
               Expanded(child: _info('Factura', purchase.invoiceNumber.isEmpty ? '—' : purchase.invoiceNumber)),
               Expanded(child: _info('Fecha', _date(purchase.arrivalAt))),
+              Expanded(child: _info('Hora', _time(purchase.arrivalAt))),
               Expanded(child: _info('Pago', purchase.paymentMethod.isEmpty ? 'Contado' : purchase.paymentMethod)),
               Expanded(child: _info('Total', _money(purchase.total), strong: true)),
             ])),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: () => _delete(context),
+                  icon: const Icon(Icons.delete_outline, size: 17),
+                  label: const Text('Eliminar compra'),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.dangerRed),
+                ),
+              ),
+            ),
             const Divider(height: 1),
             Expanded(child: ListView.separated(
               padding: const EdgeInsets.all(16),

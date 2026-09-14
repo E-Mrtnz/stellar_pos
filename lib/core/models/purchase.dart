@@ -14,6 +14,8 @@ class PurchaseItemRecord implements SyncableEntity {
   final int bonusQuantity;
   final int totalQuantity;
   final double salePrice;
+  final double? previousCost;
+  final double? previousSalePrice;
   final double discount;
   final double total;
   final double effectiveUnitCost;
@@ -32,6 +34,8 @@ class PurchaseItemRecord implements SyncableEntity {
     this.bonusQuantity = 0,
     int? totalQuantity,
     this.salePrice = 0,
+    this.previousCost,
+    this.previousSalePrice,
     this.discount = 0,
     required this.total,
     double? effectiveUnitCost,
@@ -56,6 +60,8 @@ class PurchaseItemRecord implements SyncableEntity {
         'bonusQuantity': bonusQuantity,
         'totalQuantity': totalQuantity,
         'salePrice': salePrice,
+        'previousCost': previousCost,
+        'previousSalePrice': previousSalePrice,
         'discount': discount,
         'total': total,
         'effectiveUnitCost': effectiveUnitCost,
@@ -77,6 +83,8 @@ class PurchaseItemRecord implements SyncableEntity {
             ? _int(map['totalQuantity'])
             : _int(map['quantity']) + _int(map['bonusQuantity']),
         salePrice: _double(map['salePrice']),
+        previousCost: map['previousCost'] == null ? null : _double(map['previousCost']),
+        previousSalePrice: map['previousSalePrice'] == null ? null : _double(map['previousSalePrice']),
         discount: _double(map['discount']),
         total: _double(map['total']),
         effectiveUnitCost: map.containsKey('effectiveUnitCost')

@@ -9,6 +9,7 @@ import 'package:stellar_pos/core/domain/services/purchase_report_service.dart';
 import 'package:stellar_pos/core/services/domain/purchase_totals_service.dart';
 import 'package:stellar_pos/core/models/purchase.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
 
 /// Presentation state coordinator for purchase records.
 /// Report calculations are delegated to [PurchaseReportService].
@@ -64,6 +65,43 @@ class PurchasesProvider extends ChangeNotifier {
     _purchases.add(purchase);
     notifyListeners();
     _persist(() => _repository?.save(purchase));
+  }
+
+  Future<bool> deletePurchase(
+    PurchaseRecord purchase,
+    ProductProvider productProvider,
+  ) async {
+    for (final item in purchase.items) {
+      final product = productProvider.findById(item.productId);
+      if (product == null) continue;
+
+      var restoredCost = product.cost;
+      var restoredPrice = product.price;
+      if (item.previousCost != null &&
+          (product.cost - item.unitCost).abs() < 0.0001) {
+        restoredCost = item.previousCost!;
+      }
+      if (item.previousSalePrice != null &&
+          (product.price - item.salePrice).abs() < 0.0001) {
+        restoredPrice = item.previousSalePrice!;
+      }
+
+      productProvider.updateProduct(
+        product.copyWith(
+          stock: product.stock - item.totalQuantity,
+          cost: restoredCost,
+          price: restoredPrice,
+        ),
+      );
+    }
+
+    final before = _purchases.length;
+    _purchases.removeWhere((entry) => entry.id == purchase.id);
+    if (_purchases.length == before) return false;
+
+    notifyListeners();
+    await _repository?.delete(purchase.id);
+    return true;
   }
 
   void removePurchase(String id) {

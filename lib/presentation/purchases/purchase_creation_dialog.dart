@@ -465,15 +465,18 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
         id: IdGenerator.newId(),
         invoiceNumber: _invoiceController.text.trim(),
         distributorName: _distributor!.trim(),
-        arrivalAt: _date,
+        arrivalAt: DateTime(_date.year, _date.month, _date.day, DateTime.now().hour, DateTime.now().minute, DateTime.now().second),
         paymentMethod: 'Contado',
-        items: _items.map((item) => PurchaseItemRecord(
+        items: _items.map((item) {
+          return PurchaseItemRecord(
           productId: item.product.id,
           productName: item.product.name,
           unit: item.product.unit,
           barcode: item.product.barcode,
           imageData: item.product.imageData,
           unitCost: item.unitCost,
+          previousCost: item.product.cost,
+          previousSalePrice: item.product.price,
           quantity: item.purchasedQuantity,
           bonusQuantity: item.bonusQuantity,
           totalQuantity: item.received,
@@ -481,7 +484,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           discount: item.discount,
           total: item.totalCost,
           effectiveUnitCost: item.effectiveUnitCost,
-        )).toList(),
+        );
+        }).toList(),
         subtotal: _total,
         discount: _items.fold(0, (sum, item) => sum + item.discount),
         total: _total,
