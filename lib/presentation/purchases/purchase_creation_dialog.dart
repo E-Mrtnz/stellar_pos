@@ -229,7 +229,34 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     });
   }
 
-  Widget _purchaseItems() => Container(decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)), child: Column(children: [Padding(padding: const EdgeInsets.all(12), child: Row(children: [const Expanded(child: Text('Productos de la compra', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800))), if (_items.isNotEmpty) Text('$_received recibidas  •  $_bonuses bonificadas', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))])), const Divider(height: 1), Expanded(child: _items.isEmpty ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.add_shopping_cart_outlined, size: 44, color: AppColors.textMuted), SizedBox(height: 8), Text('Selecciona productos de la izquierda', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)), SizedBox(height: 3), Text('El escáner está activo al abrir esta ventana.', style: TextStyle(fontSize: 10, color: AppColors.textMuted))])) : ListView.separated(padding: const EdgeInsets.all(10), itemCount: _items.length, separatorBuilder: (_, __) => const SizedBox(height: 8), itemBuilder: (_, index) => _item(index))]));
+  Widget _purchaseItems() => Container(
+        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.all(12), child: Row(children: [const Expanded(child: Text('Productos de la compra', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800))), if (_items.isNotEmpty) Text('$_received recibidas  •  $_bonuses bonificadas', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))])),
+          const Divider(height: 1),
+          Expanded(
+            child: _items.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_shopping_cart_outlined, size: 44, color: AppColors.textMuted),
+                        SizedBox(height: 8),
+                        Text('Selecciona productos de la izquierda', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        SizedBox(height: 3),
+                        Text('El escáner está activo al abrir esta ventana.', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(10),
+                    itemCount: _items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, index) => _item(index),
+                  ),
+          ),
+        ]),
+      );
 
   Widget _item(int index) {
     final item = _items[index];
