@@ -318,7 +318,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
 
       final records = _items.map((item) {
         final old = oldItems[item.product.id];
-        final discountAmountPerUnit = item.originalUnitCost == null ? 0 : (item.originalUnitCost! - item.discountedUnitCost).clamp(0, double.infinity).toDouble();
+        final discountAmountPerUnit = item.originalUnitCost == null ? 0.0 : (item.originalUnitCost! - item.discountedUnitCost).clamp(0.0, double.infinity).toDouble();
         return PurchaseItemRecord(
           productId: item.product.id,
           productName: item.product.name,
@@ -332,7 +332,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           bonusQuantity: item.bonusQuantity,
           totalQuantity: item.received,
           salePrice: item.salePrice,
-          discount: discountAmountPerUnit * item.purchasedQuantity,
+          discount: (discountAmountPerUnit * item.purchasedQuantity).toDouble(),
           discountPercent: item.discountPercent > 0 ? item.discountPercent : null,
           iva: item.iva,
           total: item.totalCost,
@@ -349,8 +349,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           arrivalAt: DateTime(_date.year, _date.month, _date.day, previous.arrivalAt.hour, previous.arrivalAt.minute, previous.arrivalAt.second),
           paymentMethod: previous.paymentMethod,
           items: records,
-          subtotal: _items.fold(0, (sum, item) => sum + item.netSubtotal),
-          discount: records.fold(0, (sum, item) => sum + item.discount),
+          subtotal: _items.fold(0.0, (sum, item) => sum + item.netSubtotal),
+          discount: records.fold(0.0, (sum, item) => sum + item.discount),
           total: _total,
         );
         final ok = await context.read<PurchasesProvider>().updatePurchase(updated, productProvider, updateCostIds: updateCostIds, updatePriceIds: updatePriceIds);
@@ -368,8 +368,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           arrivalAt: DateTime(_date.year, _date.month, _date.day, DateTime.now().hour, DateTime.now().minute, DateTime.now().second),
           paymentMethod: 'Contado',
           items: records,
-          subtotal: _items.fold(0, (sum, item) => sum + item.netSubtotal),
-          discount: records.fold(0, (sum, item) => sum + item.discount),
+          subtotal: _items.fold(0.0, (sum, item) => sum + item.netSubtotal),
+          discount: records.fold(0.0, (sum, item) => sum + item.discount),
           total: _total,
         ));
       }
@@ -580,7 +580,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
         ]),
         const SizedBox(height: 7),
         Row(children: [
-          Expanded(child: _numberField(_ivaController, 'IVA ($)', Icons.receipt_long_outlined, onChanged: _emit, hint: 'Opcional')), const SizedBox(width: 6),
+          Expanded(child: _numberField(_ivaController, 'IVA (\$)', Icons.receipt_long_outlined, onChanged: _emit, hint: 'Opcional')), const SizedBox(width: 6),
           Expanded(child: _readonly('Total', widget.money(item.totalCost), Icons.calculate_outlined, color: AppColors.primary)), const SizedBox(width: 6),
           Expanded(child: _numberField(_saleController, 'Nuevo precio', Icons.edit_outlined, onChanged: _emit)),
         ]),
