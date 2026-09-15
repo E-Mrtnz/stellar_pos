@@ -2,8 +2,7 @@ name: Implement inventory and purchase improvements
 
 on:
   push:
-    branches:
-      - feature/finalization
+    branches: [feature/finalization]
 
 permissions:
   contents: write
@@ -19,205 +18,83 @@ jobs:
           ref: feature/finalization
           fetch-depth: 0
 
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+          cache: false
+
       - name: Apply changes
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
+          def edit(path, replacements):
+              p=Path(path); s=p.read_text()
+              for old,new,label in replacements:
+                  if old not in s: raise SystemExit(f'Missing target: {label}')
+                  s=s.replace(old,new,1)
+              p.write_text(s)
 
-          def read(path):
-              return Path(path).read_text()
+          edit('lib/core/models/product.dart', [
+            ("  final int groupQuantity;\n  final double groupPrice;", "  final int groupQuantity;\n  final double groupPrice;\n  final int purchaseUnitsPerPresentation;", 'product field'),
+            ("this.groupQuantity = 0, this.groupPrice = 0, SyncMetadata? metadata})", "this.groupQuantity = 0, this.groupPrice = 0, this.purchaseUnitsPerPresentation = 0, SyncMetadata? metadata})", 'product constructor'),
+            ("double? groupPrice, SyncMetadata? metadata, bool touchMetadata = true})", "double? groupPrice, int? purchaseUnitsPerPresentation, SyncMetadata? metadata, bool touchMetadata = true})", 'copyWith signature'),
+            ("      groupPrice: groupPrice ?? this.groupPrice,\n      metadata:", "      groupPrice: groupPrice ?? this.groupPrice,\n      purchaseUnitsPerPresentation: purchaseUnitsPerPresentation ?? this.purchaseUnitsPerPresentation,\n      metadata:", 'copyWith field'),
+            ("'groupQuantity': groupQuantity, 'groupPrice': groupPrice, 'metadata': metadata.toMap()", "'groupQuantity': groupQuantity, 'groupPrice': groupPrice, 'purchaseUnitsPerPresentation': purchaseUnitsPerPresentation, 'metadata': metadata.toMap()", 'toMap'),
+            ("groupQuantity: _int(map['groupQuantity']), groupPrice: _double(map['groupPrice']), metadata:", "groupQuantity: _int(map['groupQuantity']), groupPrice: _double(map['groupPrice']), purchaseUnitsPerPresentation: _int(map['purchaseUnitsPerPresentation']), metadata:", 'fromMap'),
+          ])
 
-          def write(path, text):
-              Path(path).write_text(text)
+          edit('lib/core/domain/services/inventory_stock_service.dart', [
+            ("  bool canSell(Product product, int quantity) {", """  int adjustmentToPhysical(Product product, int physicalStock) {\n    if (physicalStock < 0) {\n      throw ArgumentError.value(physicalStock, 'physicalStock', 'No puede ser negativo.');\n    }\n    return physicalStock - product.stock;\n  }\n\n  Product adjustToPhysical(Product product, int physicalStock) {\n    final adjustment = adjustmentToPhysical(product, physicalStock);\n    if (adjustment == 0) return product;\n    return product.copyWith(stock: product.stock + adjustment, touchMetadata: true);\n  }\n\n  bool canSell(Product product, int quantity) {""", 'stock service')
+          ])
 
-          def replace_once(text, old, new, label):
-              if old not in text:
-                  raise SystemExit(f'Missing target for {label}')
-              return text.replace(old, new, 1)
+          edit('lib/core/providers/product_provider.dart', [
+            ("import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';\n", "import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';\nimport 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';\n", 'provider import'),
+            ("  final Repository<Product>? _repository;\n", "  final Repository<Product>? _repository;\n  static const _inventoryStockService = InventoryStockService();\n", 'provider service'),
+            ("  /// Renames a catalog reference across every in-memory product and persists\n", """  bool updateStockToPhysical(String id, int physicalStock) {\n    final index = _products.indexWhere((item) => item.id == id);\n    if (index < 0 || physicalStock < 0) return false;\n    final current = _products[index];\n    final updated = _inventoryStockService.adjustToPhysical(current, physicalStock);\n    if (identical(updated, current)) return true;\n    _products[index] = updated;\n    notifyListeners();\n    _persist(() => _repository?.save(updated));\n    return true;\n  }\n\n  /// Renames a catalog reference across every in-memory product and persists\n""", 'provider physical update')
+          ])
 
-          # Product: remember the usual purchase presentation size independently per product.
-          path = 'lib/core/models/product.dart'
-          text = read(path)
-          text = replace_once(
-              text,
-              "  final int groupQuantity;\n  final double groupPrice;",
-              "  final int groupQuantity;\n  final double groupPrice;\n  final int purchaseUnitsPerPresentation;",
-              'product field',
-          )
-          text = replace_once(
-              text,
-              "this.groupQuantity = 0, this.groupPrice = 0, SyncMetadata? metadata})",
-              "this.groupQuantity = 0, this.groupPrice = 0, this.purchaseUnitsPerPresentation = 0, SyncMetadata? metadata})",
-              'product constructor',
-          )
-          text = replace_once(
-              text,
-              "double? groupPrice, SyncMetadata? metadata, bool touchMetadata = true})",
-              "double? groupPrice, int? purchaseUnitsPerPresentation, SyncMetadata? metadata, bool touchMetadata = true})",
-              'product copyWith signature',
-          )
-          text = replace_once(
-              text,
-              "      groupPrice: groupPrice ?? this.groupPrice,\n      metadata:",
-              "      groupPrice: groupPrice ?? this.groupPrice,\n      purchaseUnitsPerPresentation: purchaseUnitsPerPresentation ?? this.purchaseUnitsPerPresentation,\n      metadata:",
-              'product copyWith body',
-          )
-          text = replace_once(
-              text,
-              "'groupQuantity': groupQuantity, 'groupPrice': groupPrice, 'metadata': metadata.toMap()",
-              "'groupQuantity': groupQuantity, 'groupPrice': groupPrice, 'purchaseUnitsPerPresentation': purchaseUnitsPerPresentation, 'metadata': metadata.toMap()",
-              'product toMap',
-          )
-          text = replace_once(
-              text,
-              "groupQuantity: _int(map['groupQuantity']), groupPrice: _double(map['groupPrice']), metadata:",
-              "groupQuantity: _int(map['groupQuantity']), groupPrice: _double(map['groupPrice']), purchaseUnitsPerPresentation: _int(map['purchaseUnitsPerPresentation']), metadata:",
-              'product fromMap',
-          )
-          write(path, text)
+          edit('lib/presentation/Inventory/widgets/create_product_dialog.dart', [
+            ("  bool _hasGroupPricing = false;\n  bool _groupExpanded = false;", "  bool _hasGroupPricing = false;\n  bool _groupExpanded = false;\n  bool _stockExpanded = false;\n  int _registeredStock = 0;", 'editor state'),
+            ("    _stock = _readInt(p?['stock']); _minStock = _readInt(p?['minStock']); _maxStock = _readInt(p?['maxStock']);", "    _stock = _readInt(p?['stock']); _registeredStock = _stock; _minStock = _readInt(p?['minStock']); _maxStock = _readInt(p?['maxStock']);", 'registered stock'),
+            ("    final product = Product(\n      id: widget.product?['id']?.toString() ?? '', name: _nameController.text.trim(), unit: _unitController.text.trim(), department: _selectedDistributor ?? '', brand: _selectedBrand ?? '',\n      cost: _price(_buyPriceController.text), price: _price(_sellPriceController.text), stock: _readInt(_stockController.text), minStock:", "    final physicalStock = _readInt(_stockController.text);\n    final product = Product(\n      id: widget.product?['id']?.toString() ?? '', name: _nameController.text.trim(), unit: _unitController.text.trim(), department: _selectedDistributor ?? '', brand: _selectedBrand ?? '',\n      cost: _price(_buyPriceController.text), price: _price(_sellPriceController.text), stock: physicalStock, minStock:", 'physical stock'),
+            ("      final updated = provider.updateProduct(product);\n      if (!updated) {", "      final updated = provider.updateProduct(product.copyWith(stock: _registeredStock));\n      if (!updated) {", 'edit product stock'),
+            ("        return;\n      }\n      AppAlert.show(context, 'El producto se actualizó correctamente.'", "        return;\n      }\n      if (!provider.updateStockToPhysical(product.id, physicalStock)) {\n        AppAlert.show(context, 'No se pudo actualizar el inventario físico.', title: 'No se pudo guardar', type: AppAlertType.warning);\n        return;\n      }\n      AppAlert.show(context, 'El producto se actualizó correctamente.'", 'apply physical adjustment'),
+          ])
 
-          # Inventory domain: make physical-count adjustment an explicit operation.
-          path = 'lib/core/domain/services/inventory_stock_service.dart'
-          text = read(path)
-          anchor = "  bool canSell(Product product, int quantity) {"
-          insert = """  /// Returns the delta needed to reconcile the registered stock with a physical count.\n  int adjustmentToPhysical(Product product, int physicalStock) {\n    if (physicalStock < 0) {\n      throw ArgumentError.value(physicalStock, 'physicalStock', 'No puede ser negativo.');\n    }\n    return physicalStock - product.stock;\n  }\n\n  /// Applies a physical inventory count without treating it as an arbitrary\n  /// overwrite: the resulting stock is obtained by applying the calculated\n  /// adjustment to the registered stock.\n  Product adjustToPhysical(Product product, int physicalStock) {\n    final adjustment = adjustmentToPhysical(product, physicalStock);\n    if (adjustment == 0) return product;\n    return product.copyWith(\n      stock: product.stock + adjustment,\n      touchMetadata: true,\n    );\n  }\n\n"""
-          text = replace_once(text, anchor, insert + anchor, 'inventory physical adjustment')
-          write(path, text)
+          p=Path('lib/presentation/Inventory/widgets/create_product_dialog.dart'); s=p.read_text()
+          old="""    return Center(child: SingleChildScrollView(child: SizedBox(width: 480, child: Stack(clipBehavior: Clip.none, children: [\n      Positioned(top: 0, bottom: 0, right: 0, width: 155, child: Container(\n        decoration: const BoxDecoration(color: Color(0xFF3B82F6), borderRadius: BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20))),\n        padding: const EdgeInsets.only(left: 70, right: 8, top: 12, bottom: 12),\n        child: Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [\n          _counter('stock', _stockController, _stockFocusNode, () => _updateStock(_currentValue(_stockController, _stock) + 1), () => _updateStock(_currentValue(_stockController, _stock) - 1), (value) { _stock = _readInt(value); _clearError('stock'); }, _invalid('stock')),\n          _counter('mín', _minStockController, _minStockFocusNode, () => _updateMinStock(_currentValue(_minStockController, _minStock) + 1), () => _updateMinStock(_currentValue(_minStockController, _minStock) - 1), (value) { _minStock = _readInt(value); _clearError('minStock'); }, _invalid('minStock')),\n          _counter('máx', _maxStockController, _maxStockFocusNode, () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) + 1), () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) - 1), (value) { _maxStock = _readInt(value); _clearError('maxStock'); }, _invalid('maxStock')),\n        ]),\n      )),\n      Padding(padding: const EdgeInsets.only(right: 85), child: Column(mainAxisSize: MainAxisSize.min, children: [\n"""
+          new="""    final adjustment = _stock - _registeredStock;\n    return Center(child: SingleChildScrollView(child: SizedBox(width: 480, child: Stack(clipBehavior: Clip.none, children: [\n      AnimatedPositioned(duration: const Duration(milliseconds: 180), curve: Curves.easeOut, top: 0, bottom: 0, right: 0, width: _stockExpanded ? 155 : 34, child: Container(\n        decoration: const BoxDecoration(color: Color(0xFF3B82F6), borderRadius: BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20))),\n        padding: EdgeInsets.only(left: _stockExpanded ? 70 : 4, right: 4, top: 12, bottom: 12),\n        child: _stockExpanded\n            ? Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [\n                _stockSummary(_registeredStock, _stock, adjustment),\n                _counter('stock físico', _stockController, _stockFocusNode, () => _updateStock(_currentValue(_stockController, _stock) + 1), () => _updateStock(_currentValue(_stockController, _stock) - 1), (value) { _stock = _readInt(value); _clearError('stock'); }, _invalid('stock')),\n                _counter('mín', _minStockController, _minStockFocusNode, () => _updateMinStock(_currentValue(_minStockController, _minStock) + 1), () => _updateMinStock(_currentValue(_minStockController, _minStock) - 1), (value) { _minStock = _readInt(value); _clearError('minStock'); }, _invalid('minStock')),\n                _counter('máx', _maxStockController, _maxStockFocusNode, () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) + 1), () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) - 1), (value) { _maxStock = _readInt(value); _clearError('maxStock'); }, _invalid('maxStock')),\n                InkWell(onTap: () => setState(() => _stockExpanded = false), child: const Icon(Icons.keyboard_arrow_right_rounded, color: Colors.white, size: 22)),\n              ])\n            : Center(child: IconButton(tooltip: 'Mostrar inventario', onPressed: () => setState(() => _stockExpanded = true), icon: const Icon(Icons.keyboard_arrow_left_rounded, color: Colors.white, size: 21))),\n      )),\n      Padding(padding: EdgeInsets.only(right: _stockExpanded ? 85 : 0), child: Column(mainAxisSize: MainAxisSize.min, children: [\n"""
+          if old not in s: raise SystemExit('Missing target: fixed inventory panel')
+          s=s.replace(old,new,1)
+          anchor="  Widget _counter(String label, TextEditingController controller, FocusNode node, VoidCallback inc, VoidCallback dec, ValueChanged<String> changed, bool invalid)"
+          summary="""  Widget _stockSummary(int registered, int physical, int adjustment) => Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6), decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white.withOpacity(0.25))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('INVENTARIO', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text('Registrado: $registered', style: const TextStyle(color: Colors.white70, fontSize: 9)), Text('Físico: $physical', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)), Text('Ajuste: ${adjustment >= 0 ? '+' : ''}$adjustment', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)), Text('Nuevo stock: $physical', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900))]));\n\n"""
+          if anchor not in s: raise SystemExit('Missing target: counter helper')
+          s=s.replace(anchor,summary+anchor,1); p.write_text(s)
 
-          # Product provider: persist a physical-count reconciliation through the domain rule.
-          path = 'lib/core/providers/product_provider.dart'
-          text = read(path)
-          text = replace_once(
-              text,
-              "import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';\n",
-              "import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';\nimport 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';\n",
-              'product provider import',
-          )
-          text = replace_once(
-              text,
-              "  final Repository<Product>? _repository;\n",
-              "  final Repository<Product>? _repository;\n  static const _inventoryStockService = InventoryStockService();\n",
-              'product provider service',
-          )
-          anchor = "  /// Renames a catalog reference across every in-memory product and persists\n"
-          method = """  /// Reconciles the registered stock with a physical count. The caller provides\n  /// the count found in the store; the domain service calculates the adjustment\n  /// from the stock already registered in the system.\n  bool updateStockToPhysical(String id, int physicalStock) {\n    final index = _products.indexWhere((item) => item.id == id);\n    if (index < 0 || physicalStock < 0) return false;\n\n    final current = _products[index];\n    final updated = _inventoryStockService.adjustToPhysical(\n      current,\n      physicalStock,\n    );\n    if (identical(updated, current)) return true;\n\n    _products[index] = updated;\n    notifyListeners();\n    _persist(() => _repository?.save(updated));\n    return true;\n  }\n\n"""
-          text = replace_once(text, anchor, method + anchor, 'product provider physical update')
-          write(path, text)
+          p=Path('lib/presentation/purchases/purchase_creation_dialog.dart'); s=p.read_text()
+          def rep(old,new,label):
+              nonlocal s
+              if old not in s: raise SystemExit(f'Missing target: {label}')
+              s=s.replace(old,new,1)
+          rep("""        _items.add(\n          _DraftPurchaseItem(\n            product: product,\n            purchasedQuantity: 1,\n            bonusQuantity: 0,\n            unitsPerPresentation: 1,\n            originalPresentationPrice: product.cost,\n""", """        final rememberedUnits = product.purchaseUnitsPerPresentation;\n        final hasRememberedPresentation = rememberedUnits > 0;\n        _items.add(\n          _DraftPurchaseItem(\n            product: product,\n            purchasedQuantity: hasRememberedPresentation ? 1 : 0,\n            bonusQuantity: 0,\n            unitsPerPresentation: hasRememberedPresentation ? rememberedUnits : 0,\n            originalPresentationPrice: product.cost,\n""", 'remembered purchase defaults')
+          rep("        final old = oldItems[item.product.id];\n        final unitCost = item.unitCost;\n", """        final old = oldItems[item.product.id];\n        final unitCost = item.unitCost;\n        if (item.unitsPerPresentation > 0 && current.purchaseUnitsPerPresentation != item.unitsPerPresentation) {\n          productProvider.updateProduct(current.copyWith(purchaseUnitsPerPresentation: item.unitsPerPresentation));\n        }\n""", 'persist presentation')
+          rep("  bool _originalAutofilled = false;\n  bool _discountedAutofilled = false;", "  bool _originalAutofilled = false;\n  bool _discountedAutofilled = false;\n  bool _purchasedAutofilled = false;\n  bool _presentationAutofilled = false;", 'autofill flags')
+          rep("""    final item = widget.item;\n    _purchasedController = TextEditingController(\n      text: widget.useDefaultHints ? '' : '${item.purchasedQuantity}',\n    );""", """    final item = widget.item;\n    final rememberedPresentation = item.product.purchaseUnitsPerPresentation > 0;\n    _purchasedAutofilled = widget.useDefaultHints && rememberedPresentation;\n    _presentationAutofilled = widget.useDefaultHints && rememberedPresentation;\n    _purchasedController = TextEditingController(\n      text: widget.useDefaultHints ? (rememberedPresentation ? '1' : '') : '${item.purchasedQuantity}',\n    );""", 'quantity defaults')
+          rep("""    _presentationController = TextEditingController(\n      text: widget.useDefaultHints ? '' : '${item.unitsPerPresentation}',\n    );""", """    _presentationController = TextEditingController(\n      text: widget.useDefaultHints ? (rememberedPresentation ? '${item.product.purchaseUnitsPerPresentation}' : '') : '${item.unitsPerPresentation}',\n    );""", 'presentation default')
+          for a,b in [("'Compradas'","'Fardos'"),("'Unid./present.'","'Unid. por fardo'"),("'Sin descuento'","'Precio sin desc.'"),("'Desc. %'","'Descuento %'"),("'Con descuento'","'Precio con desc.'"),("'Nuevo precio'","'Precio de venta'")]: s=s.replace(a,b)
+          rep("""                    hint: '0',\n                  ),\n                ),\n                const SizedBox(width: 4),\n                Expanded(\n                  child: _quantityField(\n                    _bonusController,""", """                    hint: '0',\n                    autoFilled: _purchasedAutofilled,\n                  ),\n                ),\n                const SizedBox(width: 4),\n                Expanded(\n                  child: _quantityField(\n                    _bonusController,""", 'fardo feedback')
+          rep("""                    _presentationController,\n                    'Unid. por fardo',\n                    Icons.inventory_2_outlined,\n                    hint: '0',\n""", """                    _presentationController,\n                    'Unid. por fardo',\n                    Icons.inventory_2_outlined,\n                    hint: '0',\n                    autoFilled: _presentationAutofilled,\n""", 'presentation feedback')
+          rep("""    String? hint,\n  }) => _fieldBox(\n    label,\n    icon,\n    Row(\n""", """    String? hint,\n    bool autoFilled = false,\n  }) => _fieldBox(\n    label,\n    icon,\n    Row(\n""", 'quantity helper signature')
+          rep("            onChanged: (_) => _emit(),", """            onChanged: (_) {\n              if (controller == _purchasedController) _purchasedAutofilled = false;\n              if (controller == _presentationController) _presentationAutofilled = false;\n              _emit();\n            },""", 'quantity manual feedback')
+          rep("""      ],\n    ),\n  );\n\n  Widget _stepButton""", """      ],\n    ),\n    color: autoFilled ? AppColors.successGreen.withAlpha(12) : null,\n    autoFilled: autoFilled,\n  );\n\n  Widget _stepButton""", 'quantity auto style')
+          p.write_text(s)
 
-          # Product editor: keep the card minimal and make the stock side panel collapsible.
-          path = 'lib/presentation/Inventory/widgets/create_product_dialog.dart'
-          text = read(path)
-          text = replace_once(
-              text,
-              "  bool _hasGroupPricing = false;\n  bool _groupExpanded = false;",
-              "  bool _hasGroupPricing = false;\n  bool _groupExpanded = false;\n  bool _stockExpanded = false;\n  int _registeredStock = 0;",
-              'product editor state',
-          )
-          text = replace_once(
-              text,
-              "    _stock = _readInt(p?['stock']); _minStock = _readInt(p?['minStock']); _maxStock = _readInt(p?['maxStock']);",
-              "    _stock = _readInt(p?['stock']); _registeredStock = _stock; _minStock = _readInt(p?['minStock']); _maxStock = _readInt(p?['maxStock']);",
-              'registered stock initialization',
-          )
-          # Use the current physical count as the product's final stock value, but reconcile it through ProductProvider on edits.
-          old_save = """    final product = Product(\n      id: widget.product?['id']?.toString() ?? '', name: _nameController.text.trim(), unit: _unitController.text.trim(), department: _selectedDistributor ?? '', brand: _selectedBrand ?? '',\n      cost: _price(_buyPriceController.text), price: _price(_sellPriceController.text), stock: _readInt(_stockController.text), minStock: _readInt(_minStockController.text), maxStock: _readInt(_maxStockController.text),\n"""
-          new_save = """    final physicalStock = _readInt(_stockController.text);\n    final product = Product(\n      id: widget.product?['id']?.toString() ?? '', name: _nameController.text.trim(), unit: _unitController.text.trim(), department: _selectedDistributor ?? '', brand: _selectedBrand ?? '',\n      cost: _price(_buyPriceController.text), price: _price(_sellPriceController.text), stock: physicalStock, minStock: _readInt(_minStockController.text), maxStock: _readInt(_maxStockController.text),\n"""
-          text = replace_once(text, old_save, new_save, 'product editor save stock')
-          old_update = """      final updated = provider.updateProduct(product);\n      if (!updated) {\n        AppAlert.show(context, 'No se pudo actualizar el producto.', title: 'No se pudo guardar', type: AppAlertType.warning);\n        return;\n      }\n"""
-          new_update = """      final updated = provider.updateProduct(product.copyWith(stock: _registeredStock));\n      if (!updated) {\n        AppAlert.show(context, 'No se pudo actualizar el producto.', title: 'No se pudo guardar', type: AppAlertType.warning);\n        return;\n      }\n      if (!provider.updateStockToPhysical(product.id, physicalStock)) {\n        AppAlert.show(context, 'No se pudo actualizar el inventario físico.', title: 'No se pudo guardar', type: AppAlertType.warning);\n        return;\n      }\n"""
-          text = replace_once(text, old_update, new_update, 'physical stock save')
-          # Replace the always-visible side panel with an animated collapsed/expanded panel.
-          old_panel = """    return Center(child: SingleChildScrollView(child: SizedBox(width: 480, child: Stack(clipBehavior: Clip.none, children: [\n      Positioned(top: 0, bottom: 0, right: 0, width: 155, child: Container(\n        decoration: const BoxDecoration(color: Color(0xFF3B82F6), borderRadius: BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20))),\n        padding: const EdgeInsets.only(left: 70, right: 8, top: 12, bottom: 12),\n        child: Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [\n          _counter('stock', _stockController, _stockFocusNode, () => _updateStock(_currentValue(_stockController, _stock) + 1), () => _updateStock(_currentValue(_stockController, _stock) - 1), (value) { _stock = _readInt(value); _clearError('stock'); }, _invalid('stock')),\n          _counter('mín', _minStockController, _minStockFocusNode, () => _updateMinStock(_currentValue(_minStockController, _minStock) + 1), () => _updateMinStock(_currentValue(_minStockController, _minStock) - 1), (value) { _minStock = _readInt(value); _clearError('minStock'); }, _invalid('minStock')),\n          _counter('máx', _maxStockController, _maxStockFocusNode, () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) + 1), () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) - 1), (value) { _maxStock = _readInt(value); _clearError('maxStock'); }, _invalid('maxStock')),\n        ]),\n      )),\n      Padding(padding: const EdgeInsets.only(right: 85), child: Column(mainAxisSize: MainAxisSize.min, children: [\n"""
-          new_panel = """    final adjustment = _stock - _registeredStock;\n    return Center(child: SingleChildScrollView(child: SizedBox(width: 480, child: Stack(clipBehavior: Clip.none, children: [\n      AnimatedPositioned(\n        duration: const Duration(milliseconds: 180),\n        curve: Curves.easeOut,\n        top: 0,\n        bottom: 0,\n        right: 0,\n        width: _stockExpanded ? 155 : 34,\n        child: Container(\n          decoration: const BoxDecoration(color: Color(0xFF3B82F6), borderRadius: BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20))),\n          padding: EdgeInsets.only(left: _stockExpanded ? 70 : 4, right: 4, top: 12, bottom: 12),\n          child: _stockExpanded\n              ? Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [\n                  _stockSummary(_registeredStock, _stock, adjustment),\n                  _counter('stock físico', _stockController, _stockFocusNode, () => _updateStock(_currentValue(_stockController, _stock) + 1), () => _updateStock(_currentValue(_stockController, _stock) - 1), (value) { _stock = _readInt(value); _clearError('stock'); }, _invalid('stock')),\n                  _counter('mín', _minStockController, _minStockFocusNode, () => _updateMinStock(_currentValue(_minStockController, _minStock) + 1), () => _updateMinStock(_currentValue(_minStockController, _minStock) - 1), (value) { _minStock = _readInt(value); _clearError('minStock'); }, _invalid('minStock')),\n                  _counter('máx', _maxStockController, _maxStockFocusNode, () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) + 1), () => _updateMaxStock(_currentValue(_maxStockController, _maxStock) - 1), (value) { _maxStock = _readInt(value); _clearError('maxStock'); }, _invalid('maxStock')),\n                  InkWell(onTap: () => setState(() => _stockExpanded = false), child: const Icon(Icons.keyboard_arrow_right_rounded, color: Colors.white, size: 22)),\n                ])\n              : Center(child: IconButton(tooltip: 'Mostrar inventario', onPressed: () => setState(() => _stockExpanded = true), icon: const Icon(Icons.keyboard_arrow_left_rounded, color: Colors.white, size: 21))),\n        ),\n      ),\n      Padding(padding: EdgeInsets.only(right: _stockExpanded ? 85 : 0), child: Column(mainAxisSize: MainAxisSize.min, children: [\n"""
-          text = replace_once(text, old_panel, new_panel, 'collapsible inventory panel')
-          # Add summary widget before the existing counter helper.
-          anchor = "  Widget _counter(String label, TextEditingController controller, FocusNode node, VoidCallback inc, VoidCallback dec, ValueChanged<String> changed, bool invalid)"
-          summary = """  Widget _stockSummary(int registered, int physical, int adjustment) => Container(\n    width: double.infinity,\n    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),\n    decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white.withOpacity(0.25))),\n    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [\n      const Text('INVENTARIO', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),\n      const SizedBox(height: 4),\n      Text('Registrado: $registered', style: const TextStyle(color: Colors.white70, fontSize: 9)),\n      Text('Físico: $physical', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),\n      Text('Ajuste: ${adjustment >= 0 ? '+' : ''}$adjustment', style: TextStyle(color: adjustment == 0 ? Colors.white70 : Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),\n      Text('Nuevo stock: $physical', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),\n    ]),\n  );\n\n"""
-          text = replace_once(text, anchor, summary + anchor, 'stock summary')
-          write(path, text)
-
-          # Purchases: use the product's remembered presentation size and clarify labels.
-          path = 'lib/presentation/purchases/purchase_creation_dialog.dart'
-          text = read(path)
-          old_add = """        _items.add(\n          _DraftPurchaseItem(\n            product: product,\n            purchasedQuantity: 1,\n            bonusQuantity: 0,\n            unitsPerPresentation: 1,\n            originalPresentationPrice: product.cost,\n"""
-          new_add = """        final rememberedUnits = product.purchaseUnitsPerPresentation;\n        final hasRememberedPresentation = rememberedUnits > 0;\n        _items.add(\n          _DraftPurchaseItem(\n            product: product,\n            purchasedQuantity: hasRememberedPresentation ? 1 : 0,\n            bonusQuantity: 0,\n            unitsPerPresentation: hasRememberedPresentation ? rememberedUnits : 0,\n            originalPresentationPrice: product.cost,\n"""
-          text = replace_once(text, old_add, new_add, 'purchase remembered presentation')
-          # Persist the remembered presentation size whenever a valid purchase line is saved.
-          anchor = "        final old = oldItems[item.product.id];\n        final unitCost = item.unitCost;\n"
-          replacement = """        final old = oldItems[item.product.id];\n        final unitCost = item.unitCost;\n        if (item.unitsPerPresentation > 0 &&\n            current.purchaseUnitsPerPresentation != item.unitsPerPresentation) {\n          productProvider.updateProduct(\n            current.copyWith(\n              purchaseUnitsPerPresentation: item.unitsPerPresentation,\n            ),\n          );\n        }\n"""
-          text = replace_once(text, anchor, replacement, 'purchase presentation persistence')
-          # Purchase card state: show remembered defaults and visual feedback.
-          text = replace_once(
-              text,
-              "  bool _originalAutofilled = false;\n  bool _discountedAutofilled = false;",
-              "  bool _originalAutofilled = false;\n  bool _discountedAutofilled = false;\n  bool _purchasedAutofilled = false;\n  bool _presentationAutofilled = false;",
-              'purchase autofill flags',
-          )
-          text = replace_once(
-              text,
-              "    final item = widget.item;\n    _purchasedController = TextEditingController(\n      text: widget.useDefaultHints ? '' : '${item.purchasedQuantity}',\n    );",
-              "    final item = widget.item;\n    final rememberedPresentation = item.product.purchaseUnitsPerPresentation > 0;\n    _purchasedAutofilled = widget.useDefaultHints && rememberedPresentation;\n    _presentationAutofilled = widget.useDefaultHints && rememberedPresentation;\n    _purchasedController = TextEditingController(\n      text: widget.useDefaultHints ? (rememberedPresentation ? '1' : '') : '${item.purchasedQuantity}',\n    );",
-              'purchase quantity autofill',
-          )
-          text = replace_once(
-              text,
-              "    _presentationController = TextEditingController(\n      text: widget.useDefaultHints ? '' : '${item.unitsPerPresentation}',\n    );",
-              "    _presentationController = TextEditingController(\n      text: widget.useDefaultHints ? (rememberedPresentation ? '${item.product.purchaseUnitsPerPresentation}' : '') : '${item.unitsPerPresentation}',\n    );",
-              'purchase presentation autofill',
-          )
-          # More explicit purchase field labels.
-          text = text.replace("'Compradas'", "'Fardos'")
-          text = text.replace("'Unid./present.'", "'Unid. por fardo'")
-          text = text.replace("'Sin descuento'", "'Precio sin desc.'")
-          text = text.replace("'Desc. %'", "'Descuento %'")
-          text = text.replace("'Con descuento'", "'Precio con desc.'")
-          text = text.replace("'Nuevo precio'", "'Precio de venta'")
-          # Feed the remembered-field feedback into the two quantity fields.
-          text = replace_once(
-              text,
-              "                    _purchasedController,\n                    'Fardos',\n                    Icons.shopping_cart_outlined,\n                    hint: '0',\n",
-              "                    _purchasedController,\n                    'Fardos',\n                    Icons.shopping_cart_outlined,\n                    hint: '0',\n                    autoFilled: _purchasedAutofilled,\n",
-              'fardo feedback',
-          )
-          text = replace_once(
-              text,
-              "                    _presentationController,\n                    'Unid. por fardo',\n                    Icons.inventory_2_outlined,\n                    hint: '0',\n",
-              "                    _presentationController,\n                    'Unid. por fardo',\n                    Icons.inventory_2_outlined,\n                    hint: '0',\n                    autoFilled: _presentationAutofilled,\n",
-              'units per package feedback',
-          )
-          # Let quantity fields expose the same subtle auto-filled styling used by prices.
-          text = replace_once(
-              text,
-              "  Widget _quantityField(\n    TextEditingController controller,\n    String label,\n    IconData icon, {\n    String? hint,\n  }) => _fieldBox(",
-              "  Widget _quantityField(\n    TextEditingController controller,\n    String label,\n    IconData icon, {\n    String? hint,\n    bool autoFilled = false,\n  }) => _fieldBox(",
-              'quantity field signature',
-          )
-          text = replace_once(
-              text,
-              "            onChanged: (_) => _emit(),\n",
-              "            onChanged: (_) {\n              if (controller == _purchasedController) _purchasedAutofilled = false;\n              if (controller == _presentationController) _presentationAutofilled = false;\n              _emit();\n            },\n",
-              'quantity manual edit feedback',
-          )
-          text = replace_once(
-              text,
-              "    Row(\n      children: [\n        Expanded(",
-              "    Row(\n      children: [\n        Expanded(",
-              'quantity field stable anchor',
-          )
-          # Add autoFilled to the field box call without disturbing its existing child tree.
-          old_box = """  }) => _fieldBox(\n    label,\n    icon,\n    Row(\n"""
-          new_box = """  }) => _fieldBox(\n    label,\n    icon,\n    Row(\n"""
-          # The fieldBox call is closed near the end of the quantity helper; target that exact suffix.
-          suffix = """      ],\n    ),\n  );\n\n  Widget _stepButton"""
-          suffix_new = """      ],\n    ),\n    color: autoFilled ? AppColors.successGreen.withAlpha(12) : null,\n    autoFilled: autoFilled,\n  );\n\n  Widget _stepButton"""
-          text = replace_once(text, suffix, suffix_new, 'quantity field autofill styling')
-          write(path, text)
-
-          # Add focused unit tests for the physical reconciliation rule.
-          path = 'test/core/services/domain/inventory_stock_service_test.dart'
-          test_text = """import 'package:flutter_test/flutter_test.dart';\nimport 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';\nimport 'package:stellar_pos/core/models/product.dart';\n\nvoid main() {\n  const service = InventoryStockService();\n\n  Product productWithStock(int stock) => Product(\n        id: 'p1',\n        name: 'Producto',\n        unit: 'u',\n        department: '',\n        cost: 1,\n        price: 2,\n        stock: stock,\n        minStock: 0,\n        maxStock: 100,\n        category: '',\n        barcode: '1',\n      );\n\n  test('calculates a positive adjustment from negative registered stock', () {\n    final product = productWithStock(-3);\n    expect(service.adjustmentToPhysical(product, 5), 8);\n    expect(service.adjustToPhysical(product, 5).stock, 5);\n  });\n\n  test('calculates a negative adjustment when physical stock is lower', () {\n    final product = productWithStock(10);\n    expect(service.adjustmentToPhysical(product, 7), -3);\n    expect(service.adjustToPhysical(product, 7).stock, 7);\n  });\n\n  test('keeps stock unchanged when the physical count matches', () {\n    final product = productWithStock(4);\n    expect(service.adjustmentToPhysical(product, 4), 0);\n    expect(service.adjustToPhysical(product, 4).stock, 4);\n  });\n}\n"""
-          write(path, test_text)
+          t=Path('test/core/services/domain/inventory_stock_service_test.dart')
+          t.parent.mkdir(parents=True, exist_ok=True)
+          t.write_text("""import 'package:flutter_test/flutter_test.dart';\nimport 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';\nimport 'package:stellar_pos/core/models/product.dart';\n\nvoid main() {\n  const service = InventoryStockService();\n  Product product(int stock) => Product(id: 'p', name: 'P', unit: 'u', department: '', cost: 1, price: 2, stock: stock, minStock: 0, maxStock: 100, category: '', barcode: '1');\n  test('reconciles negative registered stock with physical count', () {\n    final p = product(-3);\n    expect(service.adjustmentToPhysical(p, 5), 8);\n    expect(service.adjustToPhysical(p, 5).stock, 5);\n  });\n  test('reconciles a lower physical count', () {\n    final p = product(10);\n    expect(service.adjustmentToPhysical(p, 7), -3);\n    expect(service.adjustToPhysical(p, 7).stock, 7);\n  });\n}\n""")
           PY
 
       - name: Validate formatting and tests
