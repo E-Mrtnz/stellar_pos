@@ -18,22 +18,18 @@ class PurchaseCreationDialog extends StatefulWidget {
   final PurchaseRecord? purchase;
   const PurchaseCreationDialog({super.key, this.purchase});
 
-  static Future<bool?> show(
-    BuildContext context, {
-    PurchaseRecord? purchase,
-  }) => showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => PurchaseCreationDialog(purchase: purchase),
-  );
+  static Future<bool?> show(BuildContext context, {PurchaseRecord? purchase}) =>
+      showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => PurchaseCreationDialog(purchase: purchase),
+      );
 
   @override
-  State<PurchaseCreationDialog> createState() =>
-      _PurchaseCreationDialogState();
+  State<PurchaseCreationDialog> createState() => _PurchaseCreationDialogState();
 }
 
-class _PurchaseCreationDialogState
-    extends State<PurchaseCreationDialog> {
+class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   static const _scannerTimeout = Duration(milliseconds: 120);
   final _invoiceController = TextEditingController();
   final _searchController = TextEditingController();
@@ -45,12 +41,11 @@ class _PurchaseCreationDialogState
   bool _saving = false;
   bool _dirty = false;
   bool get _editing => widget.purchase != null;
-  double get _total =>
-      _items.fold(0.0, (sum, item) => sum + item.totalCost);
-  int get _received =>
-      _items.fold(0, (sum, item) => sum + item.received);
-  int get _bonuses =>
-      _items.fold(0, (sum, item) => sum + item.bonusQuantity);
+  double get _total => _items.fold(0.0, (sum, item) => sum + item.totalCost);
+  double get _totalWithIva =>
+      _items.fold(0.0, (sum, item) => sum + item.totalCostWithIva);
+  int get _received => _items.fold(0, (sum, item) => sum + item.received);
+  int get _bonuses => _items.fold(0, (sum, item) => sum + item.bonusQuantity);
 
   @override
   void initState() {
@@ -61,9 +56,7 @@ class _PurchaseCreationDialogState
       _invoiceController.text = purchase.invoiceNumber;
       _distributor = purchase.distributorName;
       _date = purchase.arrivalAt;
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _loadDraft(purchase),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadDraft(purchase));
     }
   }
 
@@ -100,7 +93,7 @@ class _PurchaseCreationDialogState
             final paidPresentations = record.quantity;
 
             final totalPaid = paidPresentations > 0
-                ? record.total / paidPresentations
+                ? (record.total / paidPresentations) - (record.iva ?? 0.0)
                 : 0.0;
             final double? ivaPerPresentation = record.iva;
             final discountedPresentationPrice = totalPaid > 0
@@ -135,9 +128,7 @@ class _PurchaseCreationDialogState
 
   @override
   void dispose() {
-    FocusManager.instance.removeEarlyKeyEventHandler(
-      _barcodeKeyHandler,
-    );
+    FocusManager.instance.removeEarlyKeyEventHandler(_barcodeKeyHandler);
     _invoiceController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -150,8 +141,7 @@ class _PurchaseCreationDialogState
       return KeyEventResult.ignored;
     }
     final focusedContext = FocusManager.instance.primaryFocus?.context;
-    if (focusedContext?.findAncestorWidgetOfExactType<EditableText>() !=
-        null) {
+    if (focusedContext?.findAncestorWidgetOfExactType<EditableText>() != null) {
       return KeyEventResult.ignored;
     }
     final enter =
@@ -162,9 +152,7 @@ class _PurchaseCreationDialogState
       _scannerBuffer = '';
       _lastScannerKey = null;
       if (code.length >= 6) {
-        final product = context.read<ProductProvider>().findByBarcode(
-          code,
-        );
+        final product = context.read<ProductProvider>().findByBarcode(code);
         if (product != null) {
           FocusManager.instance.primaryFocus?.unfocus();
           _searchController.clear();
@@ -175,9 +163,7 @@ class _PurchaseCreationDialogState
       return KeyEventResult.ignored;
     }
     final character = event.character;
-    if (character == null ||
-        character.isEmpty ||
-        character.trim().isEmpty) {
+    if (character == null || character.isEmpty || character.trim().isEmpty) {
       return KeyEventResult.ignored;
     }
     final now = DateTime.now();
@@ -216,23 +202,16 @@ class _PurchaseCreationDialogState
   }
 
   int _baseStock(Product product) =>
-      (product.stock - _oldQuantity(product.id))
-          .clamp(0, 1 << 30)
-          .toInt();
+      (product.stock - _oldQuantity(product.id)).clamp(0, 1 << 30).toInt();
 
   @override
   Widget build(BuildContext context) {
     final products = _visibleProducts(context.watch<ProductProvider>());
-    final distributors = context
-        .watch<ProvidersProvider>()
-        .distributors;
+    final distributors = context.watch<ProvidersProvider>().distributors;
     return Dialog(
       insetPadding: const EdgeInsets.all(18),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 1180,
-          maxHeight: 900,
-        ),
+        constraints: const BoxConstraints(maxWidth: 1180, maxHeight: 900),
         child: Column(
           children: [
             _header(),
@@ -266,9 +245,7 @@ class _PurchaseCreationDialogState
     child: Row(
       children: [
         Icon(
-          _editing
-              ? Icons.edit_note_outlined
-              : Icons.shopping_bag_outlined,
+          _editing ? Icons.edit_note_outlined : Icons.shopping_bag_outlined,
           color: AppColors.primary,
           size: 22,
         ),
@@ -281,10 +258,7 @@ class _PurchaseCreationDialogState
         ),
         if (_editing)
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 5,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color: AppColors.primary.withAlpha(18),
               borderRadius: BorderRadius.circular(7),
@@ -318,10 +292,7 @@ class _PurchaseCreationDialogState
             prefixIcon: Icon(Icons.storefront_outlined, size: 18),
             border: OutlineInputBorder(),
             isDense: true,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
-            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           ),
           items: distributors
               .map(
@@ -354,10 +325,7 @@ class _PurchaseCreationDialogState
             prefixIcon: Icon(Icons.receipt_long_outlined, size: 18),
             border: OutlineInputBorder(),
             isDense: true,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
-            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           ),
         ),
       ),
@@ -371,15 +339,9 @@ class _PurchaseCreationDialogState
               prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
               border: OutlineInputBorder(),
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             ),
-            child: Text(
-              _dateText(_date),
-              style: const TextStyle(fontSize: 12),
-            ),
+            child: Text(_dateText(_date), style: const TextStyle(fontSize: 12)),
           ),
         ),
       ),
@@ -403,10 +365,7 @@ class _PurchaseCreationDialogState
             SizedBox(width: 6),
             Text(
               'Contado',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -431,18 +390,12 @@ class _PurchaseCreationDialogState
               const Expanded(
                 child: Text(
                   'Agregar productos',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                 ),
               ),
               Text(
                 '${products.length} disponibles',
-                style: const TextStyle(
-                  fontSize: 9,
-                  color: AppColors.textMuted,
-                ),
+                style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -478,16 +431,14 @@ class _PurchaseCreationDialogState
                 )
               : GridView.builder(
                   padding: const EdgeInsets.all(7),
-                  gridDelegate:
-                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 155,
-                        mainAxisExtent: 82,
-                        crossAxisSpacing: 6,
-                        mainAxisSpacing: 6,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 155,
+                    mainAxisExtent: 82,
+                    crossAxisSpacing: 6,
+                    mainAxisSpacing: 6,
+                  ),
                   itemCount: products.length,
-                  itemBuilder: (_, index) =>
-                      _productCard(products[index]),
+                  itemBuilder: (_, index) => _productCard(products[index]),
                 ),
         ),
       ],
@@ -557,9 +508,7 @@ class _PurchaseCreationDialogState
   }
 
   void _addProduct(Product product) {
-    final index = _items.indexWhere(
-      (item) => item.product.id == product.id,
-    );
+    final index = _items.indexWhere((item) => item.product.id == product.id);
     setState(() {
       _dirty = true;
       if (index >= 0) {
@@ -600,10 +549,7 @@ class _PurchaseCreationDialogState
               const Expanded(
                 child: Text(
                   'Productos de la compra',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                 ),
               ),
               if (_items.isNotEmpty)
@@ -650,6 +596,7 @@ class _PurchaseCreationDialogState
       item: item,
       money: _money,
       baseStock: _baseStock(item.product),
+      useDefaultHints: !_editing,
       onChanged: (updated) => setState(() {
         _items[index] = updated;
         _dirty = true;
@@ -668,19 +615,12 @@ class _PurchaseCreationDialogState
         if (_editing)
           OutlinedButton(
             onPressed: _saving ? null : _cancel,
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(fontSize: 11),
-            ),
+            child: const Text('Cancelar', style: TextStyle(fontSize: 11)),
           ),
         const SizedBox(width: 12),
         _stat('Unidades recibidas', '$_received'),
         const SizedBox(width: 12),
-        _stat(
-          'Bonificaciones',
-          '$_bonuses',
-          color: AppColors.successGreen,
-        ),
+        _stat('Bonificaciones', '$_bonuses', color: AppColors.successGreen),
         const Spacer(),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -715,10 +655,7 @@ class _PurchaseCreationDialogState
                     color: Colors.white,
                   ),
                 )
-              : Icon(
-                  _editing ? Icons.save_outlined : Icons.check,
-                  size: 17,
-                ),
+              : Icon(_editing ? Icons.save_outlined : Icons.check, size: 17),
           label: Text(
             _saving
                 ? 'Guardando...'
@@ -815,9 +752,7 @@ class _PurchaseCreationDialogState
         return;
       }
       if (item.originalPresentationPrice <= 0) {
-        _error(
-          'Ingresa el precio sin descuento en ${item.product.name}.',
-        );
+        _error('Ingresa el precio sin descuento en ${item.product.name}.');
         return;
       }
       if (item.discountedPresentationPrice <= 0) {
@@ -832,10 +767,7 @@ class _PurchaseCreationDialogState
     try {
       final productProvider = context.read<ProductProvider>();
       final oldItems = _editing
-          ? {
-              for (final item in widget.purchase!.items)
-                item.productId: item,
-            }
+          ? {for (final item in widget.purchase!.items) item.productId: item}
           : <String, PurchaseItemRecord>{};
       final costChanges = <_CostChange>[];
       final updatePriceIds = <String>{};
@@ -900,8 +832,7 @@ class _PurchaseCreationDialogState
           imageData: item.product.imageData,
           unitCost: item.unitCost,
           previousCost: old?.previousCost ?? item.product.cost,
-          previousSalePrice:
-              old?.previousSalePrice ?? item.product.price,
+          previousSalePrice: old?.previousSalePrice ?? item.product.price,
           quantity: item.purchasedQuantity,
           bonusQuantity: item.bonusQuantity,
           unitsPerPresentation: item.unitsPerPresentation,
@@ -912,7 +843,7 @@ class _PurchaseCreationDialogState
               ? item.discountPercent
               : null,
           iva: item.ivaPerPresentation,
-          total: item.totalCost,
+          total: item.totalCostWithIva,
           effectiveUnitCost: item.unitCost,
         );
       }).toList();
@@ -933,20 +864,15 @@ class _PurchaseCreationDialogState
           ),
           paymentMethod: previous.paymentMethod,
           items: records,
-          subtotal: _items.fold(
-            0.0,
-            (sum, item) => sum + item.netSubtotal,
-          ),
-          total: _total,
+          subtotal: _items.fold(0.0, (sum, item) => sum + item.netSubtotal),
+          total: _totalWithIva,
         );
-        final ok = await context
-            .read<PurchasesProvider>()
-            .updatePurchase(
-              updated,
-              productProvider,
-              updateCostIds: updateCostIds,
-              updatePriceIds: updatePriceIds,
-            );
+        final ok = await context.read<PurchasesProvider>().updatePurchase(
+          updated,
+          productProvider,
+          updateCostIds: updateCostIds,
+          updatePriceIds: updatePriceIds,
+        );
         if (!ok) throw StateError('La compra ya no existe.');
       } else {
         for (final item in _items) {
@@ -976,16 +902,10 @@ class _PurchaseCreationDialogState
             ),
             paymentMethod: 'Contado',
             items: records,
-            subtotal: _items.fold(
-              0.0,
-              (sum, item) => sum + item.netSubtotal,
-            ),
+            subtotal: _items.fold(0.0, (sum, item) => sum + item.netSubtotal),
 
-            discount: records.fold(
-              0.0,
-              (sum, item) => sum + item.discount,
-            ),
-            total: _total,
+            discount: records.fold(0.0, (sum, item) => sum + item.discount),
+            total: _totalWithIva,
           ),
         );
       }
@@ -1008,9 +928,7 @@ class _PurchaseCreationDialogState
   Uint8List? _decode(String value) {
     if (value.trim().isEmpty) return null;
     try {
-      return base64Decode(
-        value.contains(',') ? value.split(',').last : value,
-      );
+      return base64Decode(value.contains(',') ? value.split(',').last : value);
     } catch (_) {
       return null;
     }
@@ -1040,8 +958,7 @@ class _DraftPurchaseItem {
     required this.salePrice,
   });
 
-  int get received =>
-      purchasedQuantity * unitsPerPresentation + bonusQuantity;
+  int get received => purchasedQuantity * unitsPerPresentation + bonusQuantity;
 
   double get discountAmountPerPresentation =>
       (originalPresentationPrice - discountedPresentationPrice)
@@ -1051,14 +968,13 @@ class _DraftPurchaseItem {
   double get discountAmount =>
       discountAmountPerPresentation * purchasedQuantity;
 
-  double get totalCost =>
-      discountedPresentationPrice * purchasedQuantity;
+  double get totalCost => discountedPresentationPrice * purchasedQuantity;
 
-  double get netSubtotal =>
-      (discountedPresentationPrice - (ivaPerPresentation ?? 0.0))
-          .clamp(0, double.infinity)
-          .toDouble() *
+  double get totalCostWithIva =>
+      (discountedPresentationPrice + (ivaPerPresentation ?? 0.0)) *
       purchasedQuantity;
+
+  double get netSubtotal => discountedPresentationPrice * purchasedQuantity;
 
   double get unitCost => unitsPerPresentation <= 0
       ? 0.0
@@ -1077,8 +993,7 @@ class _DraftPurchaseItem {
     product: product,
     purchasedQuantity: purchasedQuantity ?? this.purchasedQuantity,
     bonusQuantity: bonusQuantity ?? this.bonusQuantity,
-    unitsPerPresentation:
-        unitsPerPresentation ?? this.unitsPerPresentation,
+    unitsPerPresentation: unitsPerPresentation ?? this.unitsPerPresentation,
     originalPresentationPrice:
         originalPresentationPrice ?? this.originalPresentationPrice,
     discountedPresentationPrice:
@@ -1095,6 +1010,7 @@ class _PurchaseItemCard extends StatefulWidget {
   final _DraftPurchaseItem item;
   final String Function(double) money;
   final int baseStock;
+  final bool useDefaultHints;
   final ValueChanged<_DraftPurchaseItem> onChanged;
   final VoidCallback onDelete;
 
@@ -1103,6 +1019,7 @@ class _PurchaseItemCard extends StatefulWidget {
     required this.item,
     required this.money,
     required this.baseStock,
+    required this.useDefaultHints,
     required this.onChanged,
     required this.onDelete,
   });
@@ -1117,30 +1034,40 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   late final TextEditingController _presentationController;
   late final TextEditingController _originalController;
   late final TextEditingController _discountController;
+  late final TextEditingController _discountedController;
   late final TextEditingController _ivaController;
   late final TextEditingController _saleController;
   bool _updating = false;
+  bool _originalAutofilled = false;
+  bool _discountedAutofilled = false;
 
   @override
   void initState() {
     super.initState();
     final item = widget.item;
     _purchasedController = TextEditingController(
-      text: '${item.purchasedQuantity}',
+      text: widget.useDefaultHints ? '' : '${item.purchasedQuantity}',
     );
     _bonusController = TextEditingController(
-      text: '${item.bonusQuantity}',
+      text: widget.useDefaultHints ? '' : '${item.bonusQuantity}',
     );
     _presentationController = TextEditingController(
-      text: '${item.unitsPerPresentation}',
+      text: widget.useDefaultHints ? '' : '${item.unitsPerPresentation}',
     );
     _originalController = TextEditingController(
-      text: item.originalPresentationPrice.toStringAsFixed(2),
+      text: widget.useDefaultHints
+          ? ''
+          : item.originalPresentationPrice.toStringAsFixed(2),
     );
     _discountController = TextEditingController(
-      text: item.discountPercent > 0
+      text: !widget.useDefaultHints
           ? item.discountPercent.toStringAsFixed(2)
           : '',
+    );
+    _discountedController = TextEditingController(
+      text: widget.useDefaultHints
+          ? ''
+          : item.discountedPresentationPrice.toStringAsFixed(2),
     );
     _ivaController = TextEditingController(
       text: item.ivaPerPresentation?.toStringAsFixed(2) ?? '',
@@ -1155,36 +1082,47 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     super.didUpdateWidget(oldWidget);
     final old = oldWidget.item;
     final current = widget.item;
-    if (old.purchasedQuantity != current.purchasedQuantity)
+    if (old.purchasedQuantity != current.purchasedQuantity &&
+        _shouldSync(_purchasedController, current.purchasedQuantity))
       _replace(_purchasedController, '${current.purchasedQuantity}');
-    if (old.bonusQuantity != current.bonusQuantity)
+    if (old.bonusQuantity != current.bonusQuantity &&
+        _shouldSync(_bonusController, current.bonusQuantity))
       _replace(_bonusController, '${current.bonusQuantity}');
-    if (old.unitsPerPresentation != current.unitsPerPresentation)
-      _replace(
-        _presentationController,
-        '${current.unitsPerPresentation}',
-      );
-    if ((old.originalPresentationPrice -
-                current.originalPresentationPrice)
-            .abs() >
-        0.0001)
+    if (old.unitsPerPresentation != current.unitsPerPresentation &&
+        _shouldSync(_presentationController, current.unitsPerPresentation))
+      _replace(_presentationController, '${current.unitsPerPresentation}');
+    if ((old.originalPresentationPrice - current.originalPresentationPrice)
+                .abs() >
+            0.0001 &&
+        _shouldSync(_originalController, current.originalPresentationPrice))
       _replace(
         _originalController,
         current.originalPresentationPrice.toStringAsFixed(2),
       );
-    if ((old.discountPercent - current.discountPercent).abs() > 0.0001)
+    if ((old.discountPercent - current.discountPercent).abs() > 0.0001 &&
+        _shouldSync(_discountController, current.discountPercent))
       _replace(
         _discountController,
         current.discountPercent > 0
             ? current.discountPercent.toStringAsFixed(2)
             : '',
       );
-    if (old.ivaPerPresentation != current.ivaPerPresentation)
+    if ((old.discountedPresentationPrice - current.discountedPresentationPrice)
+                .abs() >
+            0.0001 &&
+        _shouldSync(_discountedController, current.discountedPresentationPrice))
+      _replace(
+        _discountedController,
+        current.discountedPresentationPrice.toStringAsFixed(2),
+      );
+    if (old.ivaPerPresentation != current.ivaPerPresentation &&
+        _shouldSync(_ivaController, current.ivaPerPresentation ?? 0.0))
       _replace(
         _ivaController,
         current.ivaPerPresentation?.toStringAsFixed(2) ?? '',
       );
-    if ((old.salePrice - current.salePrice).abs() > 0.0001)
+    if ((old.salePrice - current.salePrice).abs() > 0.0001 &&
+        _shouldSync(_saleController, current.salePrice))
       _replace(_saleController, current.salePrice.toStringAsFixed(2));
   }
 
@@ -1199,8 +1137,11 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       int.tryParse(controller.text.trim()) ?? 0;
 
   double _number(TextEditingController controller) =>
-      double.tryParse(controller.text.trim().replaceAll(',', '.')) ??
-      0.0;
+      double.tryParse(controller.text.trim().replaceAll(',', '.')) ?? 0.0;
+
+  bool _shouldSync(TextEditingController controller, num value) =>
+      controller.text.trim().isNotEmpty &&
+      (_number(controller) - value).abs() > 0.0001;
 
   double? _numberOrNull(TextEditingController controller) {
     final text = controller.text.trim().replaceAll(',', '.');
@@ -1209,13 +1150,28 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
 
   void _recalculateFromOriginal() {
     if (_updating) return;
+    _originalAutofilled = false;
     final original = _number(_originalController);
-    final discount = _number(
-      _discountController,
-    ).clamp(0, 100).toDouble();
     if (original <= 0) return;
+    final hasManualDiscountedValue =
+        _discountedController.text.trim().isNotEmpty && !_discountedAutofilled;
+    final enteredDiscounted = _number(_discountedController);
+    final discounted = hasManualDiscountedValue
+        ? enteredDiscounted.clamp(0, original).toDouble()
+        : original * (1 - _number(_discountController).clamp(0, 100) / 100);
+    final discount = ((1 - discounted / original) * 100)
+        .clamp(0, 100)
+        .toDouble();
     _updating = true;
-    final discounted = original * (1 - discount / 100);
+    if (!hasManualDiscountedValue ||
+        (enteredDiscounted - discounted).abs() > 0.0001) {
+      _replace(_discountedController, discounted.toStringAsFixed(2));
+      _discountedAutofilled = true;
+    }
+    _replace(
+      _discountController,
+      discount > 0 ? discount.toStringAsFixed(2) : '',
+    );
     _updating = false;
     widget.onChanged(
       widget.item.copyWith(
@@ -1228,18 +1184,90 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
 
   void _recalculateFromDiscount() {
     if (_updating) return;
-    final discount = _number(
-      _discountController,
-    ).clamp(0, 100).toDouble();
+    final discount = _number(_discountController).clamp(0, 100).toDouble();
     final original = _number(_originalController);
-    if (original <= 0) return;
+    final discounted = _number(_discountedController);
+    final hasManualOriginalValue =
+        _originalController.text.trim().isNotEmpty && !_originalAutofilled;
+    final hasManualDiscountedValue =
+        _discountedController.text.trim().isNotEmpty && !_discountedAutofilled;
+    if (!hasManualOriginalValue && !hasManualDiscountedValue) return;
+
     _updating = true;
-    final discounted = original * (1 - discount / 100);
+    if (hasManualOriginalValue) {
+      final calculatedDiscounted = original * (1 - discount / 100);
+      _replace(_discountedController, calculatedDiscounted.toStringAsFixed(2));
+      _discountedAutofilled = true;
+      _updating = false;
+      widget.onChanged(
+        widget.item.copyWith(
+          originalPresentationPrice: original,
+          discountedPresentationPrice: calculatedDiscounted,
+          discountPercent: discount,
+        ),
+      );
+      return;
+    }
+
+    if (discount < 100) {
+      final calculatedOriginal = discounted / (1 - discount / 100);
+      _replace(_originalController, calculatedOriginal.toStringAsFixed(2));
+      _originalAutofilled = true;
+      _updating = false;
+      widget.onChanged(
+        widget.item.copyWith(
+          originalPresentationPrice: calculatedOriginal,
+          discountedPresentationPrice: discounted,
+          discountPercent: discount,
+        ),
+      );
+      return;
+    }
+    _updating = false;
+  }
+
+  void _recalculateFromDiscounted() {
+    if (_updating) return;
+    _discountedAutofilled = false;
+    final original = _number(_originalController);
+    final enteredDiscounted = _number(_discountedController);
+    final discount = _number(_discountController).clamp(0, 100).toDouble();
+    final hasManualOriginalValue =
+        _originalController.text.trim().isNotEmpty && !_originalAutofilled;
+    if (!hasManualOriginalValue && discount < 100) {
+      final calculatedOriginal = enteredDiscounted / (1 - discount / 100);
+      _updating = true;
+      _replace(_originalController, calculatedOriginal.toStringAsFixed(2));
+      _originalAutofilled = true;
+      _updating = false;
+      widget.onChanged(
+        widget.item.copyWith(
+          originalPresentationPrice: calculatedOriginal,
+          discountedPresentationPrice: enteredDiscounted,
+          discountPercent: discount,
+        ),
+      );
+      return;
+    }
+    final discounted = enteredDiscounted.clamp(0, original).toDouble();
+    final calculatedDiscount = ((1 - discounted / original) * 100)
+        .clamp(0, 100)
+        .toDouble();
+
+    _updating = true;
+    if ((enteredDiscounted - discounted).abs() > 0.0001) {
+      _replace(_discountedController, discounted.toStringAsFixed(2));
+    }
+    _replace(
+      _discountController,
+      calculatedDiscount > 0 ? calculatedDiscount.toStringAsFixed(2) : '',
+    );
     _updating = false;
     widget.onChanged(
       widget.item.copyWith(
+        originalPresentationPrice: original,
         discountedPresentationPrice: discounted,
-        discountPercent: discount,
+        discountPercent: calculatedDiscount,
       ),
     );
   }
@@ -1247,9 +1275,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   void _emit({bool recalculateDiscount = false}) {
     if (_updating) return;
     final original = _number(_originalController);
-    final discount = _number(
-      _discountController,
-    ).clamp(0, 100).toDouble();
+    final discount = _number(_discountController).clamp(0, 100).toDouble();
     final discounted = recalculateDiscount
         ? original * (1 - discount / 100)
         : widget.item.discountedPresentationPrice;
@@ -1258,9 +1284,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
         purchasedQuantity: _integer(
           _purchasedController,
         ).clamp(0, 1 << 30).toInt(),
-        bonusQuantity: _integer(
-          _bonusController,
-        ).clamp(0, 1 << 30).toInt(),
+        bonusQuantity: _integer(_bonusController).clamp(0, 1 << 30).toInt(),
         unitsPerPresentation: _integer(
           _presentationController,
         ).clamp(1, 1 << 30).toInt(),
@@ -1297,6 +1321,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     _presentationController.dispose();
     _originalController.dispose();
     _discountController.dispose();
+    _discountedController.dispose();
     _ivaController.dispose();
     _saleController.dispose();
     super.dispose();
@@ -1354,6 +1379,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     _purchasedController,
                     'Compradas',
                     Icons.shopping_cart_outlined,
+                    hint: '0',
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1362,6 +1388,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     _bonusController,
                     'Bonificadas',
                     Icons.card_giftcard_outlined,
+                    hint: '0',
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1370,6 +1397,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     _presentationController,
                     'Unid./present.',
                     Icons.inventory_2_outlined,
+                    hint: '0',
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1387,6 +1415,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     'Sin descuento',
                     Icons.sell_outlined,
                     onChanged: _recalculateFromOriginal,
+                    hint: '0.00',
+                    autoFilled: _originalAutofilled,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1396,16 +1426,18 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     'Desc. %',
                     Icons.discount_outlined,
                     onChanged: _recalculateFromDiscount,
+                    hint: '0',
                   ),
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: _readonly(
+                  child: _editablePrice(
+                    _discountedController,
                     'Con descuento',
-                    widget.money(item.discountedPresentationPrice),
                     Icons.local_offer_outlined,
-                    color: AppColors.primary,
-                    filled: true,
+                    onChanged: _recalculateFromDiscounted,
+                    hint: '0.00',
+                    autoFilled: _discountedAutofilled,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1435,6 +1467,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     'Nuevo precio',
                     Icons.edit_outlined,
                     onChanged: _emit,
+                    hint: '0.00',
                   ),
                 ),
               ],
@@ -1459,6 +1492,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     Widget child, {
     Color? color,
     bool editable = true,
+    bool autoFilled = false,
   }) => Container(
     height: 48,
     padding: const EdgeInsets.fromLTRB(5, 4, 5, 3),
@@ -1466,9 +1500,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       color: color ?? AppColors.inputBackground,
       borderRadius: BorderRadius.circular(6),
       border: Border.all(
-        color: editable
-            ? AppColors.border
-            : AppColors.primary.withAlpha(70),
+        color: editable ? AppColors.border : AppColors.primary.withAlpha(70),
       ),
     ),
     child: Column(
@@ -1482,18 +1514,20 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 7,
-                color: editable
-                    ? AppColors.textSecondary
-                    : AppColors.primary,
+                color: editable ? AppColors.textSecondary : AppColors.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
             if (!editable) ...[
               const SizedBox(width: 3),
+              const Icon(Icons.lock_outline, size: 8, color: AppColors.primary),
+            ],
+            if (autoFilled) ...[
+              const SizedBox(width: 3),
               const Icon(
-                Icons.lock_outline,
+                Icons.auto_awesome,
                 size: 8,
-                color: AppColors.primary,
+                color: AppColors.successGreen,
               ),
             ],
           ],
@@ -1505,9 +1539,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
               Icon(
                 icon,
                 size: 12,
-                color: editable
-                    ? AppColors.textSecondary
-                    : AppColors.primary,
+                color: editable ? AppColors.textSecondary : AppColors.primary,
               ),
               const SizedBox(width: 2),
               Expanded(child: child),
@@ -1523,22 +1555,29 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     String label,
     IconData icon, {
     required VoidCallback onChanged,
+    String? hint,
+    bool autoFilled = false,
   }) => _fieldBox(
     label,
     icon,
     TextField(
       controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(
-        decimal: true,
-      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-      decoration: const InputDecoration(
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*$')),
+      ],
+      decoration: InputDecoration(
         border: InputBorder.none,
         isDense: true,
         contentPadding: EdgeInsets.zero,
+        hintText: hint,
+        hintStyle: const TextStyle(fontWeight: FontWeight.normal),
       ),
       onChanged: (_) => onChanged(),
     ),
+    color: autoFilled ? AppColors.successGreen.withAlpha(12) : null,
+    autoFilled: autoFilled,
   );
 
   Widget _numberField(
@@ -1552,15 +1591,17 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     icon,
     TextField(
       controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(
-        decimal: true,
-      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*$')),
+      ],
       decoration: InputDecoration(
         border: InputBorder.none,
         isDense: true,
         contentPadding: EdgeInsets.zero,
         hintText: hint,
+        hintStyle: const TextStyle(fontWeight: FontWeight.normal),
       ),
       onChanged: (_) => onChanged(),
     ),
@@ -1569,8 +1610,9 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   Widget _quantityField(
     TextEditingController controller,
     String label,
-    IconData icon,
-  ) => _fieldBox(
+    IconData icon, {
+    String? hint,
+  }) => _fieldBox(
     label,
     icon,
     Row(
@@ -1580,44 +1622,37 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
             controller: controller,
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-            decoration: const InputDecoration(
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
               border: InputBorder.none,
               isDense: true,
               contentPadding: EdgeInsets.zero,
+              hintText: hint,
+              hintStyle: const TextStyle(fontWeight: FontWeight.normal),
             ),
             onChanged: (_) => _emit(),
           ),
         ),
-        _stepButton(
-          Icons.remove,
-          'Disminuir',
-          () => _step(controller, -1),
-        ),
+        _stepButton(Icons.remove, 'Disminuir', () => _step(controller, -1)),
         _stepButton(Icons.add, 'Aumentar', () => _step(controller, 1)),
       ],
     ),
   );
 
-  Widget _stepButton(
-    IconData icon,
-    String tooltip,
-    VoidCallback onPressed,
-  ) => SizedBox(
-    width: 16,
-    height: 22,
-    child: IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      iconSize: 11,
-      icon: Icon(icon),
-    ),
-  );
+  Widget _stepButton(IconData icon, String tooltip, VoidCallback onPressed) =>
+      SizedBox(
+        width: 16,
+        height: 22,
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          iconSize: 11,
+          icon: Icon(icon),
+        ),
+      );
 
   Widget _readonly(
     String label,
@@ -1632,11 +1667,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       value,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: color,
-      ),
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color),
     ),
     color: filled ? (color ?? AppColors.primary).withAlpha(12) : null,
     editable: false,
@@ -1646,18 +1677,12 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     children: [
       Text(
         'C ${widget.money(product.cost)}',
-        style: const TextStyle(
-          fontSize: 7,
-          fontWeight: FontWeight.w700,
-        ),
+        style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w700),
       ),
       const SizedBox(width: 7),
       Text(
         'V ${widget.money(product.price)}',
-        style: const TextStyle(
-          fontSize: 7,
-          fontWeight: FontWeight.w700,
-        ),
+        style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w700),
       ),
     ],
   );
@@ -1686,9 +1711,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   Uint8List? _decode(String value) {
     if (value.trim().isEmpty) return null;
     try {
-      return base64Decode(
-        value.contains(',') ? value.split(',').last : value,
-      );
+      return base64Decode(value.contains(',') ? value.split(',').last : value);
     } catch (_) {
       return null;
     }
@@ -1704,10 +1727,7 @@ class _CostChange {
 class _CostDecision {
   final bool updateCost;
   final bool skipFuture;
-  const _CostDecision({
-    required this.updateCost,
-    required this.skipFuture,
-  });
+  const _CostDecision({required this.updateCost, required this.skipFuture});
 }
 
 class _CostChangesDialog extends StatefulWidget {
@@ -1749,10 +1769,7 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    insetPadding: const EdgeInsets.symmetric(
-      horizontal: 24,
-      vertical: 32,
-    ),
+    insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 620, maxHeight: 600),
       child: Column(
@@ -1801,8 +1818,7 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
               padding: const EdgeInsets.all(10),
               itemCount: widget.changes.length,
               separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (_, index) =>
-                  _costCard(widget.changes[index]),
+              itemBuilder: (_, index) => _costCard(widget.changes[index]),
             ),
           ),
           Padding(
@@ -1879,10 +1895,7 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
             const SizedBox(height: 5),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 5,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
                 color: AppColors.primary.withAlpha(18),
                 borderRadius: BorderRadius.circular(6),
@@ -1901,15 +1914,11 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: done
-                        ? null
-                        : () => _resolve(change, true),
+                    onPressed: done ? null : () => _resolve(change, true),
                     icon: const Icon(Icons.check, size: 14),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 31),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                     ),
                     label: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -1923,20 +1932,13 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
                 SizedBox(
                   width: 88,
                   child: OutlinedButton.icon(
-                    onPressed: done
-                        ? null
-                        : () => _resolve(change, false),
+                    onPressed: done ? null : () => _resolve(change, false),
                     icon: const Icon(Icons.close, size: 14),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 31),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
                     ),
-                    label: const Text(
-                      'Saltar',
-                      style: TextStyle(fontSize: 10),
-                    ),
+                    label: const Text('Saltar', style: TextStyle(fontSize: 10)),
                   ),
                 ),
               ],
@@ -1952,8 +1954,8 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
                     onChanged: done
                         ? null
                         : (value) => setState(
-                            () => _skipFuture[change.product.id] =
-                                value ?? false,
+                            () =>
+                                _skipFuture[change.product.id] = value ?? false,
                           ),
                   ),
                 ),
@@ -1966,10 +1968,7 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
                 ),
                 const Text(
                   'Solo esta compra',
-                  style: TextStyle(
-                    fontSize: 7,
-                    color: AppColors.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 7, color: AppColors.textMuted),
                 ),
               ],
             ),
