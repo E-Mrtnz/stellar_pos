@@ -22,6 +22,26 @@ class InventoryStockService {
     );
   }
 
+  int adjustmentToPhysical(Product product, int physicalStock) {
+    if (physicalStock < 0) {
+      throw ArgumentError.value(
+        physicalStock,
+        'physicalStock',
+        'No puede ser negativo.',
+      );
+    }
+    return physicalStock - product.stock;
+  }
+
+  Product adjustToPhysical(Product product, int physicalStock) {
+    final adjustment = adjustmentToPhysical(product, physicalStock);
+    if (adjustment == 0) return product;
+    return product.copyWith(
+      stock: product.stock + adjustment,
+      touchMetadata: true,
+    );
+  }
+
   bool canSell(Product product, int quantity) {
     return quantity > 0 && product.stock >= quantity;
   }
@@ -32,7 +52,11 @@ class InventoryStockService {
 
   void _validateQuantity(int quantity) {
     if (quantity <= 0) {
-      throw ArgumentError.value(quantity, 'quantity', 'Debe ser mayor que cero.');
+      throw ArgumentError.value(
+        quantity,
+        'quantity',
+        'Debe ser mayor que cero.',
+      );
     }
   }
 }

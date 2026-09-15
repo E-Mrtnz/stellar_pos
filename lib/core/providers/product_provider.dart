@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
+import 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
@@ -16,14 +17,15 @@ class ProductProvider extends ChangeNotifier {
   final List<Product> _products = [];
   final CatalogRegistrar? _catalogRegistrar;
   final Repository<Product>? _repository;
+  static const _inventoryStockService = InventoryStockService();
   Future<void>? _loadFuture;
   bool _loaded = false;
 
   ProductProvider({
     CatalogRegistrar? catalogRegistrar,
     Repository<Product>? repository,
-  })  : _catalogRegistrar = catalogRegistrar,
-        _repository = repository;
+  }) : _catalogRegistrar = catalogRegistrar,
+       _repository = repository;
 
   List<Product> get products => List.unmodifiable(_products);
 
@@ -94,6 +96,21 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerBrandValue(updated.brand);
     _catalogRegistrar?.registerCategoryValue(updated.category);
     _catalogRegistrar?.registerDistributorValue(updated.department);
+    _products[index] = updated;
+    notifyListeners();
+    _persist(() => _repository?.save(updated));
+    return true;
+  }
+
+  bool updateStockToPhysical(String id, int physicalStock) {
+    final index = _products.indexWhere((item) => item.id == id);
+    if (index < 0 || physicalStock < 0) return false;
+    final current = _products[index];
+    final updated = _inventoryStockService.adjustToPhysical(
+      current,
+      physicalStock,
+    );
+    if (identical(updated, current)) return true;
     _products[index] = updated;
     notifyListeners();
     _persist(() => _repository?.save(updated));

@@ -516,12 +516,16 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           purchasedQuantity: _items[index].purchasedQuantity + 1,
         );
       } else {
+        final rememberedUnits = product.purchaseUnitsPerPresentation;
+        final hasRememberedPresentation = rememberedUnits > 0;
         _items.add(
           _DraftPurchaseItem(
             product: product,
-            purchasedQuantity: 1,
+            purchasedQuantity: hasRememberedPresentation ? 1 : 0,
             bonusQuantity: 0,
-            unitsPerPresentation: 1,
+            unitsPerPresentation: hasRememberedPresentation
+                ? rememberedUnits
+                : 0,
             originalPresentationPrice: product.cost,
             discountedPresentationPrice: product.cost,
             discountPercent: 0.0,
@@ -779,6 +783,14 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
 
         final old = oldItems[item.product.id];
         final unitCost = item.unitCost;
+        if (item.unitsPerPresentation > 0 &&
+            current.purchaseUnitsPerPresentation != item.unitsPerPresentation) {
+          productProvider.updateProduct(
+            current.copyWith(
+              purchaseUnitsPerPresentation: item.unitsPerPresentation,
+            ),
+          );
+        }
         if ((current.cost - unitCost).abs() > 0.0001) {
           final changedFromOriginal =
               !_editing ||
@@ -1040,19 +1052,31 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   bool _updating = false;
   bool _originalAutofilled = false;
   bool _discountedAutofilled = false;
+  bool _purchasedAutofilled = false;
+  bool _presentationAutofilled = false;
 
   @override
   void initState() {
     super.initState();
     final item = widget.item;
+    final rememberedPresentation =
+        item.product.purchaseUnitsPerPresentation > 0;
+    _purchasedAutofilled = widget.useDefaultHints && rememberedPresentation;
+    _presentationAutofilled = widget.useDefaultHints && rememberedPresentation;
     _purchasedController = TextEditingController(
-      text: widget.useDefaultHints ? '' : '${item.purchasedQuantity}',
+      text: widget.useDefaultHints
+          ? (rememberedPresentation ? '1' : '')
+          : '${item.purchasedQuantity}',
     );
     _bonusController = TextEditingController(
       text: widget.useDefaultHints ? '' : '${item.bonusQuantity}',
     );
     _presentationController = TextEditingController(
-      text: widget.useDefaultHints ? '' : '${item.unitsPerPresentation}',
+      text: widget.useDefaultHints
+          ? (rememberedPresentation
+                ? '${item.product.purchaseUnitsPerPresentation}'
+                : '')
+          : '${item.unitsPerPresentation}',
     );
     _originalController = TextEditingController(
       text: widget.useDefaultHints
@@ -1377,9 +1401,10 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _quantityField(
                     _purchasedController,
-                    'Compradas',
+                    'Fardos',
                     Icons.shopping_cart_outlined,
                     hint: '0',
+                    autoFilled: _purchasedAutofilled,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1395,9 +1420,10 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _quantityField(
                     _presentationController,
-                    'Unid./present.',
+                    'Unid. por fardo',
                     Icons.inventory_2_outlined,
                     hint: '0',
+                    autoFilled: _presentationAutofilled,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1412,7 +1438,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _editablePrice(
                     _originalController,
-                    'Sin descuento',
+                    'Precio sin desc.',
                     Icons.sell_outlined,
                     onChanged: _recalculateFromOriginal,
                     hint: '0.00',
@@ -1423,7 +1449,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _numberField(
                     _discountController,
-                    'Desc. %',
+                    'Descuento %',
                     Icons.discount_outlined,
                     onChanged: _recalculateFromDiscount,
                     hint: '0',
@@ -1433,7 +1459,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _editablePrice(
                     _discountedController,
-                    'Con descuento',
+                    'Precio con desc.',
                     Icons.local_offer_outlined,
                     onChanged: _recalculateFromDiscounted,
                     hint: '0.00',
@@ -1464,7 +1490,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _numberField(
                     _saleController,
-                    'Nuevo precio',
+                    'Precio de venta',
                     Icons.edit_outlined,
                     onChanged: _emit,
                     hint: '0.00',
@@ -1612,6 +1638,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     String label,
     IconData icon, {
     String? hint,
+    bool autoFilled = false,
   }) => _fieldBox(
     label,
     icon,
@@ -1631,13 +1658,21 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
               hintText: hint,
               hintStyle: const TextStyle(fontWeight: FontWeight.normal),
             ),
-            onChanged: (_) => _emit(),
+            onChanged: (_) {
+              if (controller == _purchasedController)
+                _purchasedAutofilled = false;
+              if (controller == _presentationController)
+                _presentationAutofilled = false;
+              _emit();
+            },
           ),
         ),
         _stepButton(Icons.remove, 'Disminuir', () => _step(controller, -1)),
         _stepButton(Icons.add, 'Aumentar', () => _step(controller, 1)),
       ],
     ),
+    color: autoFilled ? AppColors.successGreen.withAlpha(12) : null,
+    autoFilled: autoFilled,
   );
 
   Widget _stepButton(IconData icon, String tooltip, VoidCallback onPressed) =>

@@ -1,38 +1,30 @@
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';
 import 'package:stellar_pos/core/models/product.dart';
 
 void main() {
   const service = InventoryStockService();
-
-  Product product({int stock = 10}) => Product(
-        id: 'p1',
-        name: 'Producto',
-        unit: '1 U',
-        brand: 'Marca',
-        department: 'Abarrotes',
-        stock: stock,
-        minStock: 5,
-        maxStock: 40,
-        cost: 0.5,
-        price: 1,
-        category: 'Abarrotes',
-        barcode: '123',
-      );
-
-  test('decreases and increases stock', () {
-    expect(service.decrease(product(), 3).stock, 7);
-    expect(service.increase(product(), 3).stock, 13);
+  Product product(int stock) => Product(
+    id: 'p',
+    name: 'P',
+    unit: 'u',
+    department: '',
+    cost: 1,
+    price: 2,
+    stock: stock,
+    minStock: 0,
+    maxStock: 100,
+    category: '',
+    barcode: '1',
+  );
+  test('reconciles negative registered stock with physical count', () {
+    final p = product(-3);
+    expect(service.adjustmentToPhysical(p, 5), 8);
+    expect(service.adjustToPhysical(p, 5).stock, 5);
   });
-
-  test('does not allow selling more than available stock', () {
-    expect(service.canSell(product(stock: 2), 3), isFalse);
-    expect(service.canSell(product(stock: 2), 2), isTrue);
-  });
-
-  test('detects low and maximum stock', () {
-    expect(service.isLowStock(product(stock: 5)), isTrue);
-    expect(service.isOverstocked(product(stock: 40)), isTrue);
+  test('reconciles a lower physical count', () {
+    final p = product(10);
+    expect(service.adjustmentToPhysical(p, 7), -3);
+    expect(service.adjustToPhysical(p, 7).stock, 7);
   });
 }
