@@ -9,9 +9,12 @@ class PurchaseItemRecord implements SyncableEntity {
   final String unit;
   final String barcode;
   final String imageData;
+  /// Cost of one inventory unit, based on the pre-discount product value.
   final double unitCost;
   final int quantity;
   final int bonusQuantity;
+  /// Number of inventory units contained in one purchased presentation.
+  final int unitsPerPresentation;
   final int totalQuantity;
   final double salePrice;
   final double? previousCost;
@@ -38,6 +41,7 @@ class PurchaseItemRecord implements SyncableEntity {
     required this.unitCost,
     required this.quantity,
     this.bonusQuantity = 0,
+    int? unitsPerPresentation,
     int? totalQuantity,
     this.salePrice = 0,
     this.previousCost,
@@ -49,11 +53,19 @@ class PurchaseItemRecord implements SyncableEntity {
     double? effectiveUnitCost,
     SyncMetadata? metadata,
   })  : id = id ?? IdGenerator.newId(),
-        totalQuantity = totalQuantity ?? quantity + bonusQuantity,
+        unitsPerPresentation = (unitsPerPresentation == null || unitsPerPresentation <= 0)
+            ? 1
+            : unitsPerPresentation,
+        totalQuantity = totalQuantity ??
+            quantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation) +
+                bonusQuantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation),
         effectiveUnitCost = effectiveUnitCost ??
-            ((quantity + bonusQuantity) <= 0
+            ((totalQuantity ??
+                        quantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation) +
+                            bonusQuantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation)) <=
+                    0
                 ? 0
-                : total / (quantity + bonusQuantity)),
+                : unitCost),
         metadata = metadata ?? SyncMetadata.initial();
 
   Map<String, dynamic> toMap() => {
@@ -66,6 +78,7 @@ class PurchaseItemRecord implements SyncableEntity {
         'unitCost': unitCost,
         'quantity': quantity,
         'bonusQuantity': bonusQuantity,
+        'unitsPerPresentation': unitsPerPresentation,
         'totalQuantity': totalQuantity,
         'salePrice': salePrice,
         'previousCost': previousCost,
@@ -89,25 +102,20 @@ class PurchaseItemRecord implements SyncableEntity {
         unitCost: _double(map['unitCost']),
         quantity: _int(map['quantity']),
         bonusQuantity: _int(map['bonusQuantity']),
+        unitsPerPresentation: map.containsKey('unitsPerPresentation')
+            ? _int(map['unitsPerPresentation'])
+            : 1,
         totalQuantity: map.containsKey('totalQuantity')
             ? _int(map['totalQuantity'])
-            : _int(map['quantity']) + _int(map['bonusQuantity']),
+            : null,
         salePrice: _double(map['salePrice']),
-        previousCost: map['previousCost'] == null
-            ? null
-            : _double(map['previousCost']),
-        previousSalePrice: map['previousSalePrice'] == null
-            ? null
-            : _double(map['previousSalePrice']),
+        previousCost: map['previousCost'] == null ? null : _double(map['previousCost']),
+        previousSalePrice: map['previousSalePrice'] == null ? null : _double(map['previousSalePrice']),
         discount: _double(map['discount']),
-        discountPercent: map['discountPercent'] == null
-            ? null
-            : _double(map['discountPercent']),
+        discountPercent: map['discountPercent'] == null ? null : _double(map['discountPercent']),
         iva: map['iva'] == null ? null : _double(map['iva']),
         total: _double(map['total']),
-        effectiveUnitCost: map.containsKey('effectiveUnitCost')
-            ? _double(map['effectiveUnitCost'])
-            : null,
+        effectiveUnitCost: map.containsKey('effectiveUnitCost') ? _double(map['effectiveUnitCost']) : null,
         metadata: _metadata(map['metadata']),
       );
 
@@ -150,47 +158,41 @@ class PurchaseRecord implements SyncableEntity {
     required this.total,
     SyncMetadata? metadata,
   }) : items = List.unmodifiable(items),
-       metadata = metadata ??
-            SyncMetadata(
-              createdAt: arrivalAt.toUtc(),
-              updatedAt: arrivalAt.toUtc(),
-            );
+       metadata = metadata ?? SyncMetadata(
+         createdAt: arrivalAt.toUtc(),
+         updatedAt: arrivalAt.toUtc(),
+       );
 
   int get itemCount => items.fold(0, (sum, item) => sum + item.totalQuantity);
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'invoiceNumber': invoiceNumber,
-        'distributorName': distributorName,
-        'arrivalAt': arrivalAt.toIso8601String(),
-        'paymentMethod': paymentMethod,
-        'items': items.map((item) => item.toMap()).toList(),
-        'subtotal': subtotal,
-        'discount': discount,
-        'total': total,
-        'metadata': metadata.toMap(),
-      };
+    'id': id,
+    'invoiceNumber': invoiceNumber,
+    'distributorName': distributorName,
+    'arrivalAt': arrivalAt.toIso8601String(),
+    'paymentMethod': paymentMethod,
+    'items': items.map((item) => item.toMap()).toList(),
+    'subtotal': subtotal,
+    'discount': discount,
+    'total': total,
+    'metadata': metadata.toMap(),
+  };
 
   factory PurchaseRecord.fromMap(Map<String, dynamic> map) => PurchaseRecord(
-        id: map['id']?.toString() ?? '',
-        invoiceNumber: map['invoiceNumber']?.toString() ?? '',
-        distributorName: map['distributorName']?.toString() ?? '',
-        arrivalAt: _date(map['arrivalAt']),
-        paymentMethod: map['paymentMethod']?.toString() ?? 'Contado',
-        items: _items(map['items']),
-        subtotal: _double(map['subtotal']),
-        discount: _double(map['discount']),
-        total: _double(map['total']),
-        metadata: _metadata(map['metadata']),
-      );
+    id: map['id']?.toString() ?? '',
+    invoiceNumber: map['invoiceNumber']?.toString() ?? '',
+    distributorName: map['distributorName']?.toString() ?? '',
+    arrivalAt: _date(map['arrivalAt']),
+    paymentMethod: map['paymentMethod']?.toString() ?? 'Contado',
+    items: _items(map['items']),
+    subtotal: _double(map['subtotal']),
+    discount: _double(map['discount']),
+    total: _double(map['total']),
+    metadata: _metadata(map['metadata']),
+  );
 
   static List<PurchaseItemRecord> _items(dynamic value) => value is Iterable
-      ? value
-          .whereType<Map>()
-          .map((item) => PurchaseItemRecord.fromMap(
-                Map<String, dynamic>.from(item),
-              ))
-          .toList()
+      ? value.whereType<Map>().map((item) => PurchaseItemRecord.fromMap(Map<String, dynamic>.from(item))).toList()
       : const [];
 
   static DateTime _date(dynamic value) => value is DateTime
