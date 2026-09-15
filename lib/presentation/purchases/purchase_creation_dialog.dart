@@ -18,8 +18,7 @@ class PurchaseCreationDialog extends StatefulWidget {
   final PurchaseRecord? purchase;
   const PurchaseCreationDialog({super.key, this.purchase});
 
-  static Future<bool?> show(BuildContext context, {PurchaseRecord? purchase}) =>
-      showDialog<bool>(
+  static Future<bool?> show(BuildContext context, {PurchaseRecord? purchase}) => showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (_) => PurchaseCreationDialog(purchase: purchase),
@@ -44,7 +43,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   bool get _editing => widget.purchase != null;
   double get _total => _items.fold(0.0, (sum, item) => sum + item.totalCost);
   int get _received => _items.fold(0, (sum, item) => sum + item.received);
-  int get _bonuses => _items.fold(0, (sum, item) => sum + item.bonusQuantity * item.unitsPerPresentation);
+  int get _bonuses => _items.fold(0, (sum, item) => sum + item.bonusQuantity);
 
   @override
   void initState() {
@@ -82,15 +81,24 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
             imageData: item.imageData,
           );
           final discount = item.discountPercent ?? 0;
-          final discounted = item.quantity > 0 ? item.total / item.quantity : item.unitCost;
-          final original = discount > 0 ? item.unitCost / (1 - discount / 100) : item.unitCost;
+          final units = item.unitsPerPresentation <= 0 ? 1 : item.unitsPerPresentation;
+          // PurchaseItemRecord.unitCost is the inventory-unit cost. Rebuild
+          // the presentation values from that canonical value so editing a
+          // purchase never divides the cost again on every save.
+          final originalPresentationNet = item.unitCost * units;
+          final ivaPerPresentation = item.quantity > 0 && item.iva != null
+              ? item.iva!
+              : 0.0;
+          final discountedPresentationNet = item.quantity > 0
+              ? ((item.total / item.quantity) - ivaPerPresentation).clamp(0.0, double.infinity).toDouble()
+              : originalPresentationNet * (1 - discount / 100);
           return _DraftPurchaseItem(
             product: product,
             purchasedQuantity: item.quantity,
             bonusQuantity: item.bonusQuantity,
-            unitsPerPresentation: item.unitsPerPresentation,
-            originalUnitCost: original,
-            discountedUnitCost: discounted,
+            unitsPerPresentation: units,
+            originalUnitCost: originalPresentationNet,
+            discountedUnitCost: discountedPresentationNet,
             discountPercent: discount,
             iva: item.iva,
             salePrice: item.salePrice,
@@ -167,17 +175,15 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           children: [
             _header(),
             const Divider(height: 1),
-            Padding(padding: const EdgeInsets.all(14), child: _purchaseInfo(distributors)),
+            Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 8), child: _purchaseInfo(distributors)),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Column(
-                  children: [
-                    _productPicker(products),
-                    const SizedBox(height: 14),
-                    _purchaseItems(),
-                  ],
-                ),
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                child: Column(children: [
+                  _productPicker(products),
+                  const SizedBox(height: 10),
+                  _purchaseItems(),
+                ]),
               ),
             ),
             const Divider(height: 1),
@@ -189,69 +195,45 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   }
 
   Widget _header() => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
-        child: Row(
-          children: [
-            Icon(_editing ? Icons.edit_note_outlined : Icons.shopping_bag_outlined, color: AppColors.primary, size: 25),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_editing ? 'Modificar compra' : 'Nueva compra', style: AppTextStyles.sectionTitle),
-                  const SizedBox(height: 2),
-                  Text(_editing ? 'Actualiza los datos de la compra${widget.purchase!.invoiceNumber.isEmpty ? '' : ' ${widget.purchase!.invoiceNumber}'}. Los cambios se aplicarán sobre el registro existente.' : 'Registra productos, bonificaciones y costos.', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-            if (_editing) Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primary.withAlpha(55))), child: const Text('MODIFICACIÓN', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.primary))),
-            IconButton(onPressed: _saving ? null : _cancel, icon: const Icon(Icons.close)),
-          ],
-        ),
+        padding: const EdgeInsets.fromLTRB(18, 10, 10, 8),
+        child: Row(children: [
+          Icon(_editing ? Icons.edit_note_outlined : Icons.shopping_bag_outlined, color: AppColors.primary, size: 22),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_editing ? 'Modificar compra' : 'Nueva compra', style: AppTextStyles.sectionTitle)),
+          if (_editing) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), borderRadius: BorderRadius.circular(7)), child: const Text('MODIFICACIÓN', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppColors.primary))),
+          IconButton(onPressed: _saving ? null : _cancel, icon: const Icon(Icons.close, size: 20)),
+        ]),
       );
 
-  Widget _purchaseInfo(List<String> distributors) => Row(
-        children: [
-          Expanded(flex: 2, child: DropdownButtonFormField<String>(initialValue: _distributor, isExpanded: true, decoration: const InputDecoration(labelText: 'Distribuidora', prefixIcon: Icon(Icons.storefront_outlined), border: OutlineInputBorder(), isDense: true), items: distributors.map((name) => DropdownMenuItem(value: name, child: Text(name, overflow: TextOverflow.ellipsis))).toList(), onChanged: _saving ? null : (value) => setState(() { _distributor = value; _dirty = true; }))),
-          const SizedBox(width: 10),
-          Expanded(child: TextField(controller: _invoiceController, enabled: !_saving, onChanged: (_) => setState(() => _dirty = true), decoration: const InputDecoration(labelText: 'N.º de factura', prefixIcon: Icon(Icons.receipt_long_outlined), border: OutlineInputBorder(), isDense: true))),
-          const SizedBox(width: 10),
-          Expanded(child: InkWell(onTap: _saving ? null : _pickDate, child: InputDecorator(decoration: const InputDecoration(labelText: 'Fecha', prefixIcon: Icon(Icons.calendar_today_outlined), border: OutlineInputBorder(), isDense: true), child: Text(_dateText(_date))))),
-          const SizedBox(width: 10),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.border)), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.payments_outlined, size: 18, color: AppColors.successGreen), SizedBox(width: 7), Text('Contado', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))])),
-        ],
-      );
+  Widget _purchaseInfo(List<String> distributors) => Row(children: [
+        Expanded(flex: 2, child: DropdownButtonFormField<String>(initialValue: _distributor, isExpanded: true, decoration: const InputDecoration(labelText: 'Distribuidora', prefixIcon: Icon(Icons.storefront_outlined, size: 18), border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)), items: distributors.map((name) => DropdownMenuItem(value: name, child: Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)))).toList(), onChanged: _saving ? null : (value) => setState(() { _distributor = value; _dirty = true; }))),
+        const SizedBox(width: 8),
+        Expanded(child: TextField(controller: _invoiceController, enabled: !_saving, onChanged: (_) => setState(() => _dirty = true), decoration: const InputDecoration(labelText: 'N.º de factura', prefixIcon: Icon(Icons.receipt_long_outlined, size: 18), border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)))),
+        const SizedBox(width: 8),
+        Expanded(child: InkWell(onTap: _saving ? null : _pickDate, child: InputDecorator(decoration: const InputDecoration(labelText: 'Fecha', prefixIcon: Icon(Icons.calendar_today_outlined, size: 18), border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)), child: Text(_dateText(_date), style: const TextStyle(fontSize: 12))))),
+        const SizedBox(width: 8),
+        Container(height: 40, padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.payments_outlined, size: 17, color: AppColors.successGreen), SizedBox(width: 6), Text('Contado', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700))])),
+      ]);
 
   Widget _productPicker(List<Product> products) => Container(
         width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 260, maxHeight: 390),
-        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-        child: Column(
-          children: [
-            Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 8), child: Row(children: [const Expanded(child: Text('Agregar productos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800))), Text('${products.length} disponibles', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])),
-            Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: TextField(controller: _searchController, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'Buscar producto...', prefixIcon: Icon(Icons.search), border: OutlineInputBorder(), isDense: true))),
-            const Divider(height: 1),
-            Expanded(child: products.isEmpty ? const Center(child: Text('No hay productos registrados.')) : GridView.builder(padding: const EdgeInsets.all(10), gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 175, mainAxisExtent: 132, crossAxisSpacing: 8, mainAxisSpacing: 8), itemCount: products.length, itemBuilder: (_, index) => _productCard(products[index]))),
-          ],
-        ),
+        constraints: const BoxConstraints(minHeight: 205, maxHeight: 275),
+        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(10, 9, 10, 7), child: Row(children: [const Expanded(child: Text('Agregar productos', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800))), Text('${products.length} disponibles', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
+          Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 7), child: SizedBox(height: 38, child: TextField(controller: _searchController, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'Buscar producto...', prefixIcon: Icon(Icons.search, size: 18), border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 7))))),
+          const Divider(height: 1),
+          Expanded(child: products.isEmpty ? const Center(child: Text('No hay productos registrados.', style: TextStyle(fontSize: 11))) : GridView.builder(padding: const EdgeInsets.all(7), gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 155, mainAxisExtent: 82, crossAxisSpacing: 6, mainAxisSpacing: 6), itemCount: products.length, itemBuilder: (_, index) => _productCard(products[index]))),
+        ]),
       );
 
   Widget _productCard(Product product) {
     final bytes = _decode(product.imageData);
-    return InkWell(
-      onTap: _saving ? null : () => _addProduct(product),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Center(child: bytes == null ? const Icon(Icons.inventory_2_outlined, size: 32, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain))),
-          Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text('Costo ${_money(product.cost)}  •  Stock ${product.stock}', style: const TextStyle(fontSize: 8, color: AppColors.textSecondary)),
-        ]),
-      ),
-    );
+    return InkWell(onTap: _saving ? null : () => _addProduct(product), borderRadius: BorderRadius.circular(8), child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: Row(children: [
+      Container(width: 38, height: 38, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(6)), child: bytes == null ? const Icon(Icons.inventory_2_outlined, size: 21, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain)),
+      const SizedBox(width: 7),
+      Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)), const SizedBox(height: 2), Text('Costo ${_money(product.cost)} · Stock ${product.stock}', style: const TextStyle(fontSize: 7, color: AppColors.textSecondary))])),
+    ])));
   }
 
   void _addProduct(Product product) {
@@ -268,47 +250,30 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
 
   Widget _purchaseItems() => Container(
         width: double.infinity,
-        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-        child: Column(
-          children: [
-            Padding(padding: const EdgeInsets.all(12), child: Row(children: [const Expanded(child: Text('Productos de la compra', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800))), if (_items.isNotEmpty) Text('$_received recibidas  •  $_bonuses bonificadas', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))])),
-            const Divider(height: 1),
-            _items.isEmpty
-                ? const SizedBox(height: 170, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.add_shopping_cart_outlined, size: 44, color: AppColors.textMuted), SizedBox(height: 8), Text('Selecciona productos de arriba', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)), SizedBox(height: 3), Text('El escáner está activo al abrir esta ventana.', style: TextStyle(fontSize: 10, color: AppColors.textMuted))])))
-                : ListView.separated(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), padding: const EdgeInsets.all(10), itemCount: _items.length, separatorBuilder: (_, __) => const SizedBox(height: 8), itemBuilder: (_, index) => _item(index)),
-          ],
-        ),
+        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 7), child: Row(children: [const Expanded(child: Text('Productos de la compra', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800))), if (_items.isNotEmpty) Text('$_received recibidas · $_bonuses bonificadas', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary))])),
+          const Divider(height: 1),
+          _items.isEmpty ? const SizedBox(height: 125, child: Center(child: Text('Selecciona productos de arriba', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)))) : ListView.separated(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), padding: const EdgeInsets.all(7), itemCount: _items.length, separatorBuilder: (_, __) => const SizedBox(height: 6), itemBuilder: (_, index) => _item(index)),
+        ]),
       );
 
   Widget _item(int index) {
     final item = _items[index];
-    return _PurchaseItemCard(
-      key: ValueKey(item.product.id),
-      item: item,
-      money: _money,
-      baseStock: _baseStock(item.product),
-      onChanged: (updated) => setState(() { _items[index] = updated; _dirty = true; }),
-      onDelete: () => setState(() { _items.removeAt(index); _dirty = true; }),
-    );
+    return _PurchaseItemCard(key: ValueKey(item.product.id), item: item, money: _money, baseStock: _baseStock(item.product), onChanged: (updated) => setState(() { _items[index] = updated; _dirty = true; }), onDelete: () => setState(() { _items.removeAt(index); _dirty = true; }));
   }
 
-  Widget _footer() => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 11, 20, 13),
-        child: Row(
-          children: [
-            if (_editing) OutlinedButton(onPressed: _saving ? null : _cancel, child: const Text('Cancelar')),
-            _stat('Unidades recibidas', '$_received'),
-            const SizedBox(width: 14),
-            _stat('Bonificaciones', '$_bonuses', color: AppColors.successGreen),
-            const Spacer(),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [const Text('TOTAL PAGADO', style: TextStyle(fontSize: 9, color: AppColors.textMuted, fontWeight: FontWeight.w700)), Text(_money(_total), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: AppColors.primary))]),
-            const SizedBox(width: 16),
-            FilledButton.icon(onPressed: _saving || _items.isEmpty ? null : _save, icon: _saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(_editing ? Icons.save_outlined : Icons.check), label: Text(_saving ? 'Guardando...' : (_editing ? 'Guardar cambios' : 'Guardar compra'))),
-          ],
-        ),
-      );
+  Widget _footer() => Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 9), child: Row(children: [
+        if (_editing) OutlinedButton(onPressed: _saving ? null : _cancel, child: const Text('Cancelar', style: TextStyle(fontSize: 11))),
+        const SizedBox(width: 12),
+        _stat('Unidades recibidas', '$_received'), const SizedBox(width: 12), _stat('Bonificaciones', '$_bonuses', color: AppColors.successGreen),
+        const Spacer(),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [const Text('TOTAL PAGADO', style: TextStyle(fontSize: 8, color: AppColors.textMuted, fontWeight: FontWeight.w700)), Text(_money(_total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primary))]),
+        const SizedBox(width: 12),
+        FilledButton.icon(onPressed: _saving || _items.isEmpty ? null : _save, icon: _saving ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(_editing ? Icons.save_outlined : Icons.check, size: 17), label: Text(_saving ? 'Guardando...' : (_editing ? 'Guardar cambios' : 'Guardar compra'), style: const TextStyle(fontSize: 11))),
+      ]));
 
-  Widget _stat(String label, String value, {Color? color}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 8, color: AppColors.textMuted)), const SizedBox(height: 2), Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color))]);
+  Widget _stat(String label, String value, {Color? color}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 8, color: AppColors.textMuted)), Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color))]);
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(context: context, firstDate: DateTime(2020), lastDate: DateTime(2100), initialDate: _date);
@@ -329,7 +294,6 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
       if (item.unitsPerPresentation <= 0) { _error('El contenido por presentación debe ser mayor que cero en ${item.product.name}.'); return; }
       if (item.discountedUnitCost <= 0) { _error('Ingresa el precio con descuento en ${item.product.name}.'); return; }
       if (item.originalUnitCost == null && item.discountPercent <= 0) { _error('Ingresa el precio sin descuento o un descuento mayor que cero en ${item.product.name}.'); return; }
-      if (item.discountPercent > 0 && item.originalUnitCost == null) { _error('No se pudo calcular el precio sin descuento en ${item.product.name}.'); return; }
     }
 
     setState(() => _saving = true);
@@ -408,17 +372,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           if (current == null) continue;
           productProvider.updateProduct(current.copyWith(stock: current.stock + item.received, price: item.purchasedQuantity > 0 ? item.salePrice : current.price));
         }
-        context.read<PurchasesProvider>().addPurchase(PurchaseRecord(
-          id: IdGenerator.newId(),
-          invoiceNumber: _invoiceController.text.trim(),
-          distributorName: _distributor!.trim(),
-          arrivalAt: DateTime(_date.year, _date.month, _date.day, DateTime.now().hour, DateTime.now().minute, DateTime.now().second),
-          paymentMethod: 'Contado',
-          items: records,
-          subtotal: _items.fold(0.0, (sum, item) => sum + item.netSubtotal),
-          discount: records.fold(0.0, (sum, item) => sum + item.discount),
-          total: _total,
-        ));
+        context.read<PurchasesProvider>().addPurchase(PurchaseRecord(id: IdGenerator.newId(), invoiceNumber: _invoiceController.text.trim(), distributorName: _distributor!.trim(), arrivalAt: DateTime(_date.year, _date.month, _date.day, DateTime.now().hour, DateTime.now().minute, DateTime.now().second), paymentMethod: 'Contado', items: records, subtotal: _items.fold(0.0, (sum, item) => sum + item.netSubtotal), discount: records.fold(0.0, (sum, item) => sum + item.discount), total: _total));
       }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
@@ -447,38 +401,18 @@ class _DraftPurchaseItem {
   final double? iva;
   final double salePrice;
 
-  const _DraftPurchaseItem({
-    required this.product,
-    required this.purchasedQuantity,
-    required this.bonusQuantity,
-    required this.unitsPerPresentation,
-    required this.originalUnitCost,
-    required this.discountedUnitCost,
-    required this.discountPercent,
-    required this.iva,
-    required this.salePrice,
-  });
+  const _DraftPurchaseItem({required this.product, required this.purchasedQuantity, required this.bonusQuantity, required this.unitsPerPresentation, required this.originalUnitCost, required this.discountedUnitCost, required this.discountPercent, required this.iva, required this.salePrice});
 
-  int get received => (purchasedQuantity + bonusQuantity) * unitsPerPresentation;
+  int get received => purchasedQuantity * unitsPerPresentation + bonusQuantity;
   double get discountAmountPerPresentation => originalUnitCost == null ? 0 : (originalUnitCost! - discountedUnitCost).clamp(0, double.infinity).toDouble();
   double get discountAmount => discountAmountPerPresentation * purchasedQuantity;
   double get netSubtotal => purchasedQuantity * discountedUnitCost;
   double get totalCost => (netSubtotal + (iva ?? 0) * purchasedQuantity).clamp(0, double.infinity).toDouble();
   double get vatRate => iva == null || discountedUnitCost <= 0 ? 0 : iva! / discountedUnitCost;
-  double get originalGrossPresentation => originalUnitCost == null ? 0 : iva == null ? originalUnitCost! : originalUnitCost! * (1 + vatRate);
+  double get originalGrossPresentation => originalUnitCost == null ? 0 : originalUnitCost! * (iva == null ? 1 : 1 + vatRate);
   double get inventoryUnitCost => unitsPerPresentation <= 0 ? 0 : originalGrossPresentation / unitsPerPresentation;
 
-  _DraftPurchaseItem copyWith({int? purchasedQuantity, int? bonusQuantity, int? unitsPerPresentation, double? originalUnitCost, bool clearOriginal = false, double? discountedUnitCost, double? discountPercent, double? iva, bool clearIva = false, double? salePrice}) => _DraftPurchaseItem(
-    product: product,
-    purchasedQuantity: purchasedQuantity ?? this.purchasedQuantity,
-    bonusQuantity: bonusQuantity ?? this.bonusQuantity,
-    unitsPerPresentation: unitsPerPresentation ?? this.unitsPerPresentation,
-    originalUnitCost: clearOriginal ? null : (originalUnitCost ?? this.originalUnitCost),
-    discountedUnitCost: discountedUnitCost ?? this.discountedUnitCost,
-    discountPercent: discountPercent ?? this.discountPercent,
-    iva: clearIva ? null : (iva ?? this.iva),
-    salePrice: salePrice ?? this.salePrice,
-  );
+  _DraftPurchaseItem copyWith({int? purchasedQuantity, int? bonusQuantity, int? unitsPerPresentation, double? originalUnitCost, bool clearOriginal = false, double? discountedUnitCost, double? discountPercent, double? iva, bool clearIva = false, double? salePrice}) => _DraftPurchaseItem(product: product, purchasedQuantity: purchasedQuantity ?? this.purchasedQuantity, bonusQuantity: bonusQuantity ?? this.bonusQuantity, unitsPerPresentation: unitsPerPresentation ?? this.unitsPerPresentation, originalUnitCost: clearOriginal ? null : (originalUnitCost ?? this.originalUnitCost), discountedUnitCost: discountedUnitCost ?? this.discountedUnitCost, discountPercent: discountPercent ?? this.discountPercent, iva: clearIva ? null : (iva ?? this.iva), salePrice: salePrice ?? this.salePrice);
 }
 
 class _PurchaseItemCard extends StatefulWidget {
@@ -487,11 +421,8 @@ class _PurchaseItemCard extends StatefulWidget {
   final int baseStock;
   final ValueChanged<_DraftPurchaseItem> onChanged;
   final VoidCallback onDelete;
-
   const _PurchaseItemCard({super.key, required this.item, required this.money, required this.baseStock, required this.onChanged, required this.onDelete});
-
-  @override
-  State<_PurchaseItemCard> createState() => _PurchaseItemCardState();
+  @override State<_PurchaseItemCard> createState() => _PurchaseItemCardState();
 }
 
 class _PurchaseItemCardState extends State<_PurchaseItemCard> {
@@ -506,7 +437,6 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   bool _updating = false;
   bool _originalAuto = false;
   bool _discountedAuto = false;
-  bool _unitCostAuto = true;
 
   @override
   void initState() {
@@ -561,16 +491,14 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
           _discountedAuto = false;
         }
       }
+    } else if (fromOriginal) {
+      _replace(_discountedController, source.toStringAsFixed(2));
+      _discountedAuto = true;
+      _originalAuto = false;
     } else {
-      if (fromOriginal) {
-        _replace(_discountedController, source.toStringAsFixed(2));
-        _discountedAuto = true;
-        _originalAuto = false;
-      } else {
-        _replace(_originalController, source.toStringAsFixed(2));
-        _originalAuto = true;
-        _discountedAuto = false;
-      }
+      _replace(_originalController, source.toStringAsFixed(2));
+      _originalAuto = true;
+      _discountedAuto = false;
     }
     _updating = false;
     _emit();
@@ -587,14 +515,11 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _discountedAuto = true;
       _originalAuto = false;
       _updating = false;
-    } else if (discounted != null && discount > 0) {
+    } else if (discounted != null && discount > 0 && discount < 100) {
       _updating = true;
-      final divisor = 1 - discount / 100;
-      if (divisor > 0) {
-        _replace(_originalController, (discounted / divisor).toStringAsFixed(2));
-        _originalAuto = true;
-        _discountedAuto = false;
-      }
+      _replace(_originalController, (discounted / (1 - discount / 100)).toStringAsFixed(2));
+      _originalAuto = true;
+      _discountedAuto = false;
       _updating = false;
     }
     _emit();
@@ -638,107 +563,54 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   Widget build(BuildContext context) {
     final item = widget.item;
     return Container(
-      padding: const EdgeInsets.fromLTRB(11, 10, 9, 11),
-      decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          _image(item.product.imageData),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 5),
-            _currentPrices(item.product),
-            const SizedBox(height: 6),
-            Row(children: [
-              _stockPreview(item),
-              const SizedBox(width: 8),
-              Text('Costo unidad ${widget.money(item.inventoryUnitCost)}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: _unitCostAuto ? AppColors.primary : AppColors.textSecondary)),
-              if (_unitCostAuto) const Padding(padding: EdgeInsets.only(left: 3), child: Icon(Icons.auto_awesome_outlined, size: 11, color: AppColors.primary)),
-            ]),
-          ])),
-          IconButton(tooltip: 'Eliminar', onPressed: widget.onDelete, icon: const Icon(Icons.delete_outline, size: 20)),
-        ]),
-        const SizedBox(height: 9),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
-          child: Column(children: [
-            Row(children: [
-              Expanded(child: _quantityField(_purchasedController, 'Compradas', Icons.shopping_cart_outlined)), const SizedBox(width: 6),
-              Expanded(child: _quantityField(_bonusController, 'Bonificadas', Icons.card_giftcard_outlined)), const SizedBox(width: 6),
-              Expanded(child: _quantityField(_presentationController, 'Unid. por presentación', Icons.inventory_2_outlined)), const SizedBox(width: 6),
-              Expanded(child: _readonly('Recibidas', '${item.received}', Icons.check_box_outlined)),
-            ]),
-            const SizedBox(height: 7),
-            Row(children: [
-              Expanded(child: _priceField(_originalController, 'Precio sin descuento', Icons.sell_outlined, auto: _originalAuto, onChanged: () => _syncPrice(fromOriginal: true))), const SizedBox(width: 6),
-              Expanded(child: _numberField(_discountController, 'Descuento (%)', Icons.discount_outlined, onChanged: _discountChanged, hint: 'Opcional')), const SizedBox(width: 6),
-              Expanded(child: _priceField(_discountedController, 'Precio con descuento', Icons.local_offer_outlined, auto: _discountedAuto, onChanged: () => _syncPrice(fromOriginal: false))),
-            ]),
-            const SizedBox(height: 7),
-            Row(children: [
-              Expanded(child: _numberField(_ivaController, 'IVA (\$)', Icons.receipt_long_outlined, onChanged: _emit, hint: 'Opcional')), const SizedBox(width: 6),
-              Expanded(child: _readonly('Total pagado', widget.money(item.totalCost), Icons.calculate_outlined, color: AppColors.primary)), const SizedBox(width: 6),
-              Expanded(child: _numberField(_saleController, 'Nuevo precio', Icons.edit_outlined, onChanged: _emit)),
-            ]),
-            const SizedBox(height: 7),
-            Row(children: [
-              Expanded(child: Text(item.iva == null ? 'IVA: incluido en el precio' : 'IVA separado: ${widget.money(item.iva!)}', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary))),
-              Text('Costo unidad calculado: ${widget.money(item.inventoryUnitCost)}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.primary)),
-            ]),
-          ]),
-        ),
+      padding: const EdgeInsets.fromLTRB(8, 7, 7, 7),
+      decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.border)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        _image(item.product.imageData),
+        const SizedBox(width: 8),
+        SizedBox(width: 155, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(item.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 3),
+          _currentPrices(item.product),
+          const SizedBox(height: 3),
+          Text('Stock ${widget.baseStock} → ${widget.baseStock + item.received}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.successGreen)),
+        ])),
+        const SizedBox(width: 8),
+        Expanded(child: Row(children: [
+          Expanded(child: _quantityField(_purchasedController, 'Compradas', Icons.shopping_cart_outlined)), const SizedBox(width: 4),
+          Expanded(child: _quantityField(_bonusController, 'Bonificadas', Icons.card_giftcard_outlined)), const SizedBox(width: 4),
+          Expanded(child: _quantityField(_presentationController, 'Unid./present.', Icons.inventory_2_outlined)), const SizedBox(width: 4),
+          Expanded(child: _readonly('Recibidas', '${item.received}', Icons.check_box_outlined)), const SizedBox(width: 4),
+          Expanded(child: _priceField(_originalController, 'Sin descuento', Icons.sell_outlined, auto: _originalAuto, onChanged: () => _syncPrice(fromOriginal: true))), const SizedBox(width: 4),
+          Expanded(child: _numberField(_discountController, 'Desc. %', Icons.discount_outlined, onChanged: _discountChanged)), const SizedBox(width: 4),
+          Expanded(child: _priceField(_discountedController, 'Con descuento', Icons.local_offer_outlined, auto: _discountedAuto, onChanged: () => _syncPrice(fromOriginal: false))), const SizedBox(width: 4),
+          Expanded(child: _numberField(_ivaController, 'IVA \$', Icons.receipt_long_outlined, onChanged: _emit, hint: '—')), const SizedBox(width: 4),
+          Expanded(child: _readonly('Total pagado', widget.money(item.totalCost), Icons.calculate_outlined, color: AppColors.primary)), const SizedBox(width: 4),
+          Expanded(child: _numberField(_saleController, 'Nuevo precio', Icons.edit_outlined, onChanged: _emit)),
+        ])),
+        const SizedBox(width: 2),
+        IconButton(tooltip: 'Eliminar', onPressed: widget.onDelete, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, icon: const Icon(Icons.delete_outline, size: 18)),
       ]),
     );
   }
 
-  Widget _priceField(TextEditingController controller, String label, IconData icon, {required bool auto, required VoidCallback onChanged}) => Container(
-        height: 53,
-        padding: const EdgeInsets.fromLTRB(7, 5, 7, 4),
-        decoration: BoxDecoration(color: auto ? AppColors.primary.withAlpha(14) : AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: auto ? AppColors.primary.withAlpha(100) : AppColors.border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 8, color: auto ? AppColors.primary : AppColors.textSecondary, fontWeight: FontWeight.w600))), if (auto) const Icon(Icons.auto_awesome_outlined, size: 11, color: AppColors.primary)]),
-          const SizedBox(height: 2),
-          Expanded(child: Row(children: [Icon(icon, size: 15, color: auto ? AppColors.primary : AppColors.textSecondary), const SizedBox(width: 4), Expanded(child: TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: auto ? AppColors.primary : null), decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), onChanged: (_) => onChanged()))])),
-        ]),
-      );
+  Widget _fieldBox(String label, IconData icon, Widget child, {Color? color}) => Container(height: 48, padding: const EdgeInsets.fromLTRB(5, 4, 5, 3), decoration: BoxDecoration(color: color ?? AppColors.inputBackground, borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7, color: AppColors.textSecondary, fontWeight: FontWeight.w700)), const SizedBox(height: 1), Expanded(child: Row(children: [Icon(icon, size: 12, color: AppColors.textSecondary), const SizedBox(width: 2), Expanded(child: child)]))]));
 
-  Widget _numberField(TextEditingController controller, String label, IconData icon, {required VoidCallback onChanged, String? hint}) => Container(
-        height: 53,
-        padding: const EdgeInsets.fromLTRB(7, 5, 7, 4),
-        decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Expanded(child: Row(children: [Icon(icon, size: 15, color: AppColors.textSecondary), const SizedBox(width: 4), Expanded(child: TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700), decoration: InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero, hintText: hint), onChanged: (_) => onChanged()))])),
-        ]),
-      );
+  Widget _priceField(TextEditingController controller, String label, IconData icon, {required bool auto, required VoidCallback onChanged}) => _fieldBox(label, icon, TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: auto ? AppColors.primary : null), decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), onChanged: (_) => onChanged()), color: auto ? AppColors.primary.withAlpha(12) : null);
 
-  Widget _quantityField(TextEditingController controller, String label, IconData icon) => Container(
-        height: 53,
-        padding: const EdgeInsets.fromLTRB(7, 5, 5, 4),
-        decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Expanded(child: Row(children: [Icon(icon, size: 15, color: AppColors.textSecondary), const SizedBox(width: 3), Expanded(child: TextField(controller: controller, keyboardType: TextInputType.number, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800), decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), onChanged: (_) => _emit())), _stepButton(Icons.remove, 'Disminuir', () => _step(controller, -1)), const SizedBox(width: 2), _stepButton(Icons.add, 'Aumentar', () => _step(controller, 1))])),
-        ]),
-      );
+  Widget _numberField(TextEditingController controller, String label, IconData icon, {required VoidCallback onChanged, String? hint}) => _fieldBox(label, icon, TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700), decoration: InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero, hintText: hint), onChanged: (_) => onChanged()));
 
-  Widget _stepButton(IconData icon, String tooltip, VoidCallback onPressed) => SizedBox(width: 21, height: 27, child: IconButton(tooltip: tooltip, onPressed: onPressed, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, iconSize: 14, icon: Icon(icon)));
+  Widget _quantityField(TextEditingController controller, String label, IconData icon) => _fieldBox(label, icon, Row(children: [Expanded(child: TextField(controller: controller, keyboardType: TextInputType.number, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800), decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), onChanged: (_) => _emit())), _stepButton(Icons.remove, 'Disminuir', () => _step(controller, -1)), _stepButton(Icons.add, 'Aumentar', () => _step(controller, 1))]));
 
-  Widget _stockPreview(_DraftPurchaseItem item) => Tooltip(
-        message: 'Stock antes de esta compra: ${widget.baseStock}\nStock después de la compra: ${widget.baseStock + item.received}',
-        child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: AppColors.successGreen.withAlpha(18), borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.successGreen.withAlpha(105))), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.inventory_2_outlined, size: 15, color: AppColors.successGreen), const SizedBox(width: 5), Text('Stock ${widget.baseStock} → ${widget.baseStock + item.received}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.successGreen))])),
-      );
+  Widget _stepButton(IconData icon, String tooltip, VoidCallback onPressed) => SizedBox(width: 16, height: 22, child: IconButton(tooltip: tooltip, onPressed: onPressed, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, iconSize: 11, icon: Icon(icon)));
 
-  Widget _currentPrices(Product product) => Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.border)), child: Row(mainAxisSize: MainAxisSize.min, children: [Text('Costo ${widget.money(product.cost)}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)), const SizedBox(width: 12), Text('Venta ${widget.money(product.price)}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700))]));
+  Widget _readonly(String label, String value, IconData icon, {Color? color}) => _fieldBox(label, icon, Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)));
 
-  Widget _image(String data) { final bytes = _decode(data); return Container(width: 48, height: 48, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: bytes == null ? const Icon(Icons.image_outlined, size: 21, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain)); }
+  Widget _currentPrices(Product product) => Row(children: [Text('C ${widget.money(product.cost)}', style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w700)), const SizedBox(width: 7), Text('V ${widget.money(product.price)}', style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w700))]);
+
+  Widget _image(String data) { final bytes = _decode(data); return Container(width: 42, height: 42, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.border)), child: bytes == null ? const Icon(Icons.image_outlined, size: 18, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain)); }
 
   Uint8List? _decode(String value) { if (value.trim().isEmpty) return null; try { return base64Decode(value.contains(',') ? value.split(',').last : value); } catch (_) { return null; } }
-
-  Widget _readonly(String label, String value, IconData icon, {Color? color}) => Container(height: 53, padding: const EdgeInsets.fromLTRB(7, 5, 7, 4), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: AppColors.textSecondary, fontWeight: FontWeight.w600)), const SizedBox(height: 2), Expanded(child: Row(children: [Icon(icon, size: 15, color: AppColors.textSecondary), const SizedBox(width: 5), Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)))]))]));
 }
 
 class _CostChange {
@@ -781,34 +653,29 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 620, maxHeight: 600),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(padding: const EdgeInsets.fromLTRB(18, 14, 10, 10), child: Row(children: [const Icon(Icons.price_change_outlined, color: AppColors.primary, size: 22), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Actualizar costos', style: AppTextStyles.sectionTitle), const SizedBox(height: 2), Text('Estos ${widget.changes.length} productos tienen un costo diferente al registrado.', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary))])), IconButton(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20))])),
-              const Divider(height: 1),
-              Expanded(child: ListView.separated(padding: const EdgeInsets.fromLTRB(12, 10, 12, 6), itemCount: widget.changes.length, separatorBuilder: (_, __) => const SizedBox(height: 8), itemBuilder: (_, index) => _costCard(widget.changes[index]))),
-              Padding(padding: const EdgeInsets.fromLTRB(14, 2, 14, 10), child: Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: _skipAll, icon: const Icon(Icons.skip_next_outlined, size: 17), label: const Text('Saltar todos')))),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 8, 8), child: Row(children: [const Icon(Icons.price_change_outlined, color: AppColors.primary, size: 20), const SizedBox(width: 7), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Actualizar costos', style: AppTextStyles.sectionTitle), Text('${widget.changes.length} productos tienen un costo diferente al registrado.', style: const TextStyle(fontSize: 9, color: AppColors.textSecondary))])), IconButton(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact, onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 18))])),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(padding: const EdgeInsets.all(10), itemCount: widget.changes.length, separatorBuilder: (_, __) => const SizedBox(height: 6), itemBuilder: (_, index) => _costCard(widget.changes[index]))),
+            Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 8), child: Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: _skipAll, icon: const Icon(Icons.skip_next_outlined, size: 16), label: const Text('Saltar todos', style: TextStyle(fontSize: 10)))))
+          ]),
         ),
       );
 
   Widget _costCard(_CostChange change) {
     final done = _resolved.contains(change.product.id);
-    final bytes = _decode(change.product.imageData);
-    return Opacity(opacity: done ? 0.5 : 1, child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [Container(width: 40, height: 40, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.border)), child: bytes == null ? const Icon(Icons.image_outlined, size: 18, color: AppColors.textMuted) : Image.memory(bytes, fit: BoxFit.contain)), const SizedBox(width: 9), Expanded(child: Text(change.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))), if (done) const Icon(Icons.check_circle_outline, color: AppColors.successGreen, size: 19)]),
-      const SizedBox(height: 7),
-      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(8)), child: Row(children: [Expanded(child: _price('Actual', change.product.cost)), const Icon(Icons.arrow_forward_outlined, size: 17, color: AppColors.textMuted), Expanded(child: _price('Nuevo', change.newCost, color: AppColors.successGreen))])),
-      const SizedBox(height: 6),
-      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.primary.withAlpha(70))), child: const Text('El nuevo costo reemplazará al anterior.', style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600))),
-      const SizedBox(height: 6),
-      Row(children: [Expanded(child: OutlinedButton.icon(onPressed: done ? null : () => _resolve(change, true), icon: const Icon(Icons.check, size: 15), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 8)), label: FittedBox(fit: BoxFit.scaleDown, child: Text('Registrar ${change.newCost.toStringAsFixed(2)} como costo')))), const SizedBox(width: 7), SizedBox(width: 102, child: OutlinedButton.icon(onPressed: done ? null : () => _resolve(change, false), icon: const Icon(Icons.close, size: 15), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 34), padding: const EdgeInsets.symmetric(horizontal: 8)), label: const Text('Saltar', maxLines: 1)))]),
-      const SizedBox(height: 2),
-      Row(children: [SizedBox(width: 30, height: 30, child: Checkbox(value: _skipFuture[change.product.id] ?? false, onChanged: done ? null : (value) => setState(() => _skipFuture[change.product.id] = value ?? false))), const SizedBox(width: 4), const Expanded(child: Text('No volver a preguntarme para este producto', style: TextStyle(fontSize: 9))), const SizedBox(width: 5), const Text('Solo esta compra', style: TextStyle(fontSize: 8, color: AppColors.textMuted))]),
+    return Opacity(opacity: done ? 0.5 : 1, child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)), child: Column(children: [
+      Row(children: [Expanded(child: Text(change.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800))), if (done) const Icon(Icons.check_circle_outline, color: AppColors.successGreen, size: 17)]),
+      const SizedBox(height: 5),
+      Row(children: [Expanded(child: _price('Actual', change.product.cost)), const Icon(Icons.arrow_forward_outlined, size: 15, color: AppColors.textMuted), Expanded(child: _price('Nuevo', change.newCost, color: AppColors.successGreen))]),
+      const SizedBox(height: 5),
+      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), borderRadius: BorderRadius.circular(6)), child: const Text('El nuevo costo reemplazará al anterior.', style: TextStyle(fontSize: 9, color: AppColors.primary, fontWeight: FontWeight.w600))),
+      const SizedBox(height: 5),
+      Row(children: [Expanded(child: OutlinedButton.icon(onPressed: done ? null : () => _resolve(change, true), icon: const Icon(Icons.check, size: 14), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 31), padding: const EdgeInsets.symmetric(horizontal: 6)), label: FittedBox(fit: BoxFit.scaleDown, child: Text('Registrar ${change.newCost.toStringAsFixed(2)} como costo')))), const SizedBox(width: 6), SizedBox(width: 88, child: OutlinedButton.icon(onPressed: done ? null : () => _resolve(change, false), icon: const Icon(Icons.close, size: 14), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 31), padding: const EdgeInsets.symmetric(horizontal: 5)), label: const Text('Saltar', style: TextStyle(fontSize: 10))))]),
+      const SizedBox(height: 1),
+      Row(children: [SizedBox(width: 26, height: 26, child: Checkbox(value: _skipFuture[change.product.id] ?? false, onChanged: done ? null : (value) => setState(() => _skipFuture[change.product.id] = value ?? false))), const SizedBox(width: 3), const Expanded(child: Text('No volver a preguntarme para este producto', style: TextStyle(fontSize: 8))), const Text('Solo esta compra', style: TextStyle(fontSize: 7, color: AppColors.textMuted))])
     ])));
   }
 
-  Widget _price(String label, double value, {Color? color}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 8, color: AppColors.textMuted)), const SizedBox(height: 1), Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: color))]);
-  Uint8List? _decode(String value) { if (value.trim().isEmpty) return null; try { return base64Decode(value.contains(',') ? value.split(',').last : value); } catch (_) { return null; } }
+  Widget _price(String label, double value, {Color? color}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 7, color: AppColors.textMuted)), Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: color))]);
 }
