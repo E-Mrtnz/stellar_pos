@@ -1,0 +1,60 @@
+name: Cleanup finalization
+
+on:
+  push:
+    branches: [feature/finalization]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ !contains(github.event.head_commit.message, 'fix: finalize inventory and purchase workflow') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/finalization
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+          cache: false
+
+      - name: Fix purchase presentation persistence
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('lib/presentation/purchases/purchase_creation_dialog.dart')
+          s = p.read_text()
+
+          old = """        final old = oldItems[item.product.id];\n        final unitCost = item.unitCost;\n        if (item.unitsPerPresentation > 0 &&\n            current.purchaseUnitsPerPresentation != item.unitsPerPresentation) {\n          productProvider.updateProduct(\n            current.copyWith(\n              purchaseUnitsPerPresentation: item.unitsPerPresentation,\n            ),\n          );\n        }\n"""
+          if old in s:
+              s = s.replace(old, """        final old = oldItems[item.product.id];\n        final unitCost = item.unitCost;\n""", 1)
+
+          old = """        if (!ok) throw StateError('La compra ya no existe.');\n      } else {\n        for (final item in _items) {\n          final current = productProvider.findById(item.product.id);\n          if (current == null) continue;\n          productProvider.updateProduct(\n            current.copyWith(\n              stock: current.stock + item.received,\n              price: item.purchasedQuantity > 0\n                  ? item.salePrice\n                  : current.price,\n            ),\n          );\n"""
+          new = """        if (!ok) throw StateError('La compra ya no existe.');\n        for (final item in _items) {\n          if (item.purchasedQuantity <= 0 || item.unitsPerPresentation <= 0) continue;\n          final current = productProvider.findById(item.product.id);\n          if (current == null || current.purchaseUnitsPerPresentation == item.unitsPerPresentation) continue;\n          productProvider.updateProduct(\n            current.copyWith(purchaseUnitsPerPresentation: item.unitsPerPresentation),\n          );\n        }\n      } else {\n        for (final item in _items) {\n          final current = productProvider.findById(item.product.id);\n          if (current == null) continue;\n          productProvider.updateProduct(\n            current.copyWith(\n              stock: current.stock + item.received,\n              price: item.purchasedQuantity > 0\n                  ? item.salePrice\n                  : current.price,\n              purchaseUnitsPerPresentation: item.unitsPerPresentation > 0\n                  ? item.unitsPerPresentation\n                  : current.purchaseUnitsPerPresentation,\n            ),\n          );\n"""
+          if old not in s:
+              raise SystemExit('Purchase save branch target not found.')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Validate final branch
+        run: |
+          dart format lib/core/models/product.dart lib/core/domain/services/inventory_stock_service.dart lib/core/providers/product_provider.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/purchases/purchase_creation_dialog.dart test/core/services/domain/inventory_stock_service_test.dart
+          flutter test test/core/services/domain/inventory_stock_service_test.dart
+          flutter analyze --no-fatal-infos lib/core/models/product.dart lib/core/domain/services/inventory_stock_service.dart lib/core/providers/product_provider.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/purchases/purchase_creation_dialog.dart
+
+      - name: Commit and remove temporary workflows
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/cleanup_finalization.yml .github/workflows/finalize_inventory_purchase_changes.yml .github/workflows/retry_inventory_purchase_improvements.yml .github/workflows/finalize_payment_dialog.yml
+          git add lib/core/models/product.dart lib/core/domain/services/inventory_stock_service.dart lib/core/providers/product_provider.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/purchases/purchase_creation_dialog.dart test/core/services/domain/inventory_stock_service_test.dart
+          git commit -m "fix: finalize inventory and purchase workflow"
+          git push origin HEAD:feature/finalization
