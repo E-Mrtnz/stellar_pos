@@ -1,0 +1,51 @@
+name: Retry inventory purchase improvements
+
+on:
+  push:
+    branches: [feature/finalization]
+
+permissions:
+  contents: write
+
+jobs:
+  retry:
+    if: ${{ !contains(github.event.head_commit.message, 'apply inventory purchase improvements') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/finalization
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+          cache: false
+
+      - name: Re-run implementation script
+        shell: bash
+        run: |
+          awk '
+            /^          python3 <<\x27PY\x27$/ {capture=1}
+            capture {sub(/^          /, ""); print}
+            /^          PY$/ && capture {exit}
+          ' .github/workflows/implement_inventory_purchase_improvements.yml > /tmp/apply.sh
+          sed -i 's/nonlocal s/global s/' /tmp/apply.sh
+          bash /tmp/apply.sh
+
+      - name: Validate
+        run: |
+          dart format lib/core/models/product.dart lib/core/domain/services/inventory_stock_service.dart lib/core/providers/product_provider.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/purchases/purchase_creation_dialog.dart test/core/services/domain/inventory_stock_service_test.dart
+          flutter test test/core/services/domain/inventory_stock_service_test.dart
+          flutter analyze lib/core/models/product.dart lib/core/domain/services/inventory_stock_service.dart lib/core/providers/product_provider.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/purchases/purchase_creation_dialog.dart
+
+      - name: Commit and clean temporary workflows
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/implement_inventory_purchase_improvements.yml .github/workflows/retry_inventory_purchase_improvements.yml
+          git add lib/core/models/product.dart lib/core/domain/services/inventory_stock_service.dart lib/core/providers/product_provider.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/purchases/purchase_creation_dialog.dart test/core/services/domain/inventory_stock_service_test.dart
+          git commit -m "fix: apply inventory purchase improvements"
+          git push origin HEAD:feature/finalization
