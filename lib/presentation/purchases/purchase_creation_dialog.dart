@@ -977,7 +977,7 @@ class _PurchaseCreationDialogState
             paymentMethod: 'Contado',
             items: records,
             subtotal: _items.fold(
-              0,
+              0.0,
               (sum, item) => sum + item.netSubtotal,
             ),
 
