@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   finalize:
-    if: ${{ !contains(github.event.head_commit.message, 'finalize inventory purchase changes') }}
+    if: ${{ !contains(github.event.head_commit.message, 'fix: finalize inventory and purchase workflow') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
