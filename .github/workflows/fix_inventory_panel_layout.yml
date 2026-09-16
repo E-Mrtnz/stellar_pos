@@ -1,0 +1,56 @@
+name: Fix inventory panel layout
+
+on:
+  push:
+    branches:
+      - feature/finalization
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/finalization
+          fetch-depth: 0
+
+      - name: Patch layout
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/presentation/Inventory/widgets/create_product_dialog.dart')
+          text = path.read_text()
+
+          old = """              Padding(\n                padding: EdgeInsets.only(right: _stockExpanded ? 155 : 34),\n                child: Column("""
+          new = """              Column("""
+          if old not in text:
+              raise SystemExit('Padding dinámico no encontrado')
+          text = text.replace(old, new, 1)
+
+          old = """                    ),\n                  ],\n                ),\n              ),\n              AnimatedPositioned(\n                duration: const Duration(milliseconds: 180),\n                curve: Curves.easeOut,\n                top: 0,\n                bottom: 0,\n                right: 0,\n                width: _stockExpanded ? 155 : 34,"""
+          new = """                    ),\n                  ],\n                ),\n              ),\n              AnimatedPositioned(\n                duration: const Duration(milliseconds: 180),\n                curve: Curves.easeOut,\n                top: 0,\n                bottom: 0,\n                right: _stockExpanded ? -155 : -34,\n                width: _stockExpanded ? 155 : 34,"""
+          if old not in text:
+              raise SystemExit('AnimatedPositioned original no encontrado')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Format and analyze
+        run: |
+          dart format lib/presentation/Inventory/widgets/create_product_dialog.dart
+          flutter analyze --no-fatal-infos lib/presentation/Inventory/widgets/create_product_dialog.dart
+
+      - name: Commit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/presentation/Inventory/widgets/create_product_dialog.dart .github/workflows/fix_inventory_panel_layout.yml
+          git commit -m "fix: keep inventory card fixed while panel expands" || exit 0
+          git rm .github/workflows/fix_inventory_panel_layout.yml
+          git commit -m "chore: remove temporary inventory layout workflow"
+          git push origin HEAD:feature/finalization
