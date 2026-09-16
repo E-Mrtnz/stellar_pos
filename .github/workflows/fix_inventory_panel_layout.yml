@@ -37,6 +37,11 @@ jobs:
           if old in text:
               text = text.replace(old, new, 1)
 
+          old = """                    ),\n                  ],\n                ),\n              ),\n              AnimatedPositioned("""
+          new = """                    ),\n                  ],\n                ),\n              AnimatedPositioned("""
+          if old in text:
+              text = text.replace(old, new, 1)
+
           old = """              AnimatedPositioned(\n                duration: const Duration(milliseconds: 180),\n                curve: Curves.easeOut,\n                top: 0,\n                bottom: 0,\n                right: 0,\n                width: _stockExpanded ? 155 : 34,"""
           new = """              AnimatedPositioned(\n                duration: const Duration(milliseconds: 180),\n                curve: Curves.easeOut,\n                top: 0,\n                bottom: 0,\n                right: _stockExpanded ? -155 : -34,\n                width: _stockExpanded ? 155 : 34,"""
           if old in text:
