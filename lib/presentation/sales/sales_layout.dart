@@ -442,19 +442,19 @@ class _SalesLayoutState extends State<SalesLayout> {
       const SizedBox(width: 8),
       Expanded(
         child: _metric(
-          'Cobrado por ventas',
-          collected,
-          Icons.payments_outlined,
-          AppColors.successGreen,
+          'Fiado',
+          credit,
+          Icons.account_balance_wallet_outlined,
+          AppColors.dangerRed,
         ),
       ),
       const SizedBox(width: 8),
       Expanded(
         child: _metric(
-          'Fiado',
-          credit,
-          Icons.account_balance_wallet_outlined,
-          AppColors.dangerRed,
+          'Cobrado por ventas',
+          collected,
+          Icons.payments_outlined,
+          AppColors.successGreen,
         ),
       ),
       const SizedBox(width: 8),

@@ -414,12 +414,12 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     return Center(
       child: SingleChildScrollView(
         child: SizedBox(
-          width: 790,
+          width: 635,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Transform.translate(
-                offset: const Offset(155, 0),
+              SizedBox(
+                width: 480,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -618,7 +618,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                 curve: Curves.easeOut,
                 top: 0,
                 bottom: 0,
-                left: 635,
+                left: 480,
                 width: _stockExpanded ? 155 : 34,
                 child: Container(
                   decoration: const BoxDecoration(
@@ -629,7 +629,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                     ),
                   ),
                   padding: EdgeInsets.only(
-                    left: _stockExpanded ? 70 : 4,
+                    left: _stockExpanded ? 8 : 4,
                     right: 4,
                     top: 12,
                     bottom: 12,

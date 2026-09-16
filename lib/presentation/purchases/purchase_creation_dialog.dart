@@ -1401,7 +1401,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _quantityField(
                     _purchasedController,
-                    'Fardos',
+                    'Bultos',
                     Icons.shopping_cart_outlined,
                     hint: '0',
                     autoFilled: _purchasedAutofilled,
