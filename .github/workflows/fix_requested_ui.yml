@@ -1,0 +1,79 @@
+name: Apply requested UI refinements
+on:
+  push:
+    branches:
+      - feature/finalization
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.0
+          channel: stable
+          architecture: X64
+          cache: false
+      - name: Patch requested UI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Inventory dialog: fixed 480px card + 155px external inventory tab.
+          p = Path('lib/presentation/Inventory/widgets/create_product_dialog.dart')
+          s = p.read_text()
+          old = '''        child: SizedBox(\n          width: 790,\n          child: Stack(\n            clipBehavior: Clip.none,\n            children: [\n              Transform.translate(\n                offset: const Offset(155, 0),\n                child: Column('''
+          new = '''        child: SizedBox(\n          width: 635,\n          child: Stack(\n            clipBehavior: Clip.none,\n            children: [\n              SizedBox(\n                width: 480,\n                child: Column('''
+          if old not in s:
+              raise SystemExit('inventory layout anchor not found')
+          s = s.replace(old, new, 1)
+          if 'left: 635,' not in s:
+              raise SystemExit('inventory panel anchor not found')
+          s = s.replace('''                left: 635,\n                width: _stockExpanded ? 155 : 34,''', '''                left: 480,\n                width: _stockExpanded ? 155 : 34,''', 1)
+          s = s.replace('''                  padding: EdgeInsets.only(\n                    left: _stockExpanded ? 70 : 4,''', '''                  padding: EdgeInsets.only(\n                    left: _stockExpanded ? 8 : 4,''', 1)
+          p.write_text(s)
+
+          # Sales cards: Total vendido, Fiado, Cobrado por ventas, Abonos cobrados, En caja.
+          p = Path('lib/presentation/sales/sales_layout.dart')
+          s = p.read_text()
+          collected_block = '''      Expanded(\n        child: _metric(\n          'Cobrado por ventas',\n          collected,\n          Icons.payments_outlined,\n          AppColors.successGreen,\n        ),\n      ),\n      const SizedBox(width: 8),\n'''
+          credit_block = '''      Expanded(\n        child: _metric(\n          'Fiado',\n          credit,\n          Icons.account_balance_wallet_outlined,\n          AppColors.dangerRed,\n        ),\n      ),\n      const SizedBox(width: 8),\n'''
+          if collected_block not in s or credit_block not in s:
+              raise SystemExit('sales metric anchors not found')
+          # Only swap the first occurrence in _buildMetrics.
+          start = s.index('  Widget _buildMetrics(')
+          end = s.index('  Widget _metric(', start)
+          section = s[start:end]
+          if section.index(collected_block) > section.index(credit_block):
+              raise SystemExit('sales metrics already in requested order')
+          section = section.replace(collected_block + credit_block, credit_block + collected_block, 1)
+          s = s[:start] + section + s[end:]
+          p.write_text(s)
+
+          # Purchases: use neutral packaging terminology without changing the data field.
+          root = Path('lib')
+          for p in root.rglob('*.dart'):
+              text = p.read_text()
+              updated = re.sub(r"(['\"])Fardos(['\"])", r"\1Bultos\2", text)
+              updated = re.sub(r"(['\"])Fardo(['\"])", r"\1Bulto\2", updated)
+              if updated != text:
+                  p.write_text(updated)
+          PY
+      - name: Format and analyze
+        run: |
+          dart format lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/purchases
+          flutter analyze --no-fatal-infos lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/purchases
+      - name: Commit changes and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/sales/sales_layout.dart lib/presentation/purchases .github/workflows/fix_requested_ui.yml
+          git commit -m "fix: refine inventory tab sales cards and packaging label"
+          git rm .github/workflows/fix_requested_ui.yml
+          git commit -m "chore: remove temporary requested UI workflow"
+          git push origin feature/finalization
