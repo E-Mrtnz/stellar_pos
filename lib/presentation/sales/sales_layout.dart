@@ -273,6 +273,7 @@ class _SalesLayoutState extends State<SalesLayout> {
         debtProvider.movements,
         range,
       );
+      final cashIn = collected + laterPayments;
       final profit = sales.fold(0.0, (sum, sale) => sum + sale.effectiveProfit);
       final itemCount = sales.fold<int>(
         0,
@@ -295,6 +296,16 @@ class _SalesLayoutState extends State<SalesLayout> {
           _money(laterPayments),
           valueColor: AppColors.warningOrange,
         ),
+        PeriodSummaryMetric(
+          'Total cobrado',
+          _money(cashIn),
+          valueColor: AppColors.successGreen,
+        ),
+        PeriodSummaryMetric(
+          'Ganancia estimada',
+          _money(profit),
+          valueColor: AppColors.successGreen,
+        ),
         PeriodSummaryMetric('Cantidad de ventas', '${sales.length}'),
         PeriodSummaryMetric('Artículos vendidos', '$itemCount'),
         PeriodSummaryMetric('Clientes', '$clientCount'),
@@ -306,7 +317,7 @@ class _SalesLayoutState extends State<SalesLayout> {
           children: [
             _buildHeader(),
             const SizedBox(height: 10),
-            _buildMetrics(totalSold, collected, credit, laterPayments),
+            _buildMetrics(totalSold, collected, credit, laterPayments, cashIn),
             const SizedBox(height: 12),
             _buildFilters(),
             const SizedBox(height: 12),
@@ -326,25 +337,12 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
             ),
             const SizedBox(height: 7),
-            Row(
-              children: [
-                Text(
-                  '${sales.length} venta${sales.length == 1 ? '' : 's'} en ${_periodLabel()}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Ganancia estimada: ${_money(profit)}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.successGreen,
-                  ),
-                ),
-              ],
+            Text(
+              '${sales.length} venta${sales.length == 1 ? '' : 's'} en ${_periodLabel()}',
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -430,6 +428,7 @@ class _SalesLayoutState extends State<SalesLayout> {
     double collected,
     double credit,
     double laterPayments,
+    double cashIn,
   ) => Row(
     children: [
       Expanded(
@@ -452,7 +451,7 @@ class _SalesLayoutState extends State<SalesLayout> {
       const SizedBox(width: 8),
       Expanded(
         child: _metric(
-          'Fiado generado',
+          'Fiado',
           credit,
           Icons.account_balance_wallet_outlined,
           AppColors.dangerRed,
@@ -465,6 +464,15 @@ class _SalesLayoutState extends State<SalesLayout> {
           laterPayments,
           Icons.savings_outlined,
           AppColors.warningOrange,
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _metric(
+          'En caja',
+          cashIn,
+          Icons.account_balance_wallet_outlined,
+          AppColors.successGreen,
         ),
       ),
     ],
