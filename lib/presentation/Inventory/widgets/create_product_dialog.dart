@@ -418,111 +418,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                top: 0,
-                bottom: 0,
-                right: 0,
-                width: _stockExpanded ? 155 : 34,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF3B82F6),
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                  ),
-                  padding: EdgeInsets.only(
-                    left: _stockExpanded ? 70 : 4,
-                    right: 4,
-                    top: 12,
-                    bottom: 12,
-                  ),
-                  child: _stockExpanded
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _stockSummary(_registeredStock, _stock, adjustment),
-                            _counter(
-                              'stock físico',
-                              _stockController,
-                              _stockFocusNode,
-                              () => _updateStock(
-                                _currentValue(_stockController, _stock) + 1,
-                              ),
-                              () => _updateStock(
-                                _currentValue(_stockController, _stock) - 1,
-                              ),
-                              (value) {
-                                _stock = _readInt(value);
-                                _clearError('stock');
-                              },
-                              _invalid('stock'),
-                            ),
-                            _counter(
-                              'mín',
-                              _minStockController,
-                              _minStockFocusNode,
-                              () => _updateMinStock(
-                                _currentValue(_minStockController, _minStock) +
-                                    1,
-                              ),
-                              () => _updateMinStock(
-                                _currentValue(_minStockController, _minStock) -
-                                    1,
-                              ),
-                              (value) {
-                                _minStock = _readInt(value);
-                                _clearError('minStock');
-                              },
-                              _invalid('minStock'),
-                            ),
-                            _counter(
-                              'máx',
-                              _maxStockController,
-                              _maxStockFocusNode,
-                              () => _updateMaxStock(
-                                _currentValue(_maxStockController, _maxStock) +
-                                    1,
-                              ),
-                              () => _updateMaxStock(
-                                _currentValue(_maxStockController, _maxStock) -
-                                    1,
-                              ),
-                              (value) {
-                                _maxStock = _readInt(value);
-                                _clearError('maxStock');
-                              },
-                              _invalid('maxStock'),
-                            ),
-                            InkWell(
-                              onTap: () =>
-                                  setState(() => _stockExpanded = false),
-                              child: const Icon(
-                                Icons.keyboard_arrow_right_rounded,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: IconButton(
-                            tooltip: 'Mostrar inventario',
-                            onPressed: () =>
-                                setState(() => _stockExpanded = true),
-                            icon: const Icon(
-                              Icons.keyboard_arrow_left_rounded,
-                              color: Colors.white,
-                              size: 21,
-                            ),
-                          ),
-                        ),
-                ),
-              ),
               Padding(
-                padding: EdgeInsets.only(right: _stockExpanded ? 85 : 0),
+                padding: EdgeInsets.only(right: _stockExpanded ? 155 : 34),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -716,6 +613,109 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                   ],
                 ),
               ),
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: _stockExpanded ? 155 : 34,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  padding: EdgeInsets.only(
+                    left: _stockExpanded ? 70 : 4,
+                    right: 4,
+                    top: 12,
+                    bottom: 12,
+                  ),
+                  child: _stockExpanded
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _stockSummary(_registeredStock, _stock, adjustment),
+                            _counter(
+                              'Stock físico',
+                              _stockController,
+                              _stockFocusNode,
+                              () => _updateStock(
+                                _currentValue(_stockController, _stock) + 1,
+                              ),
+                              () => _updateStock(
+                                _currentValue(_stockController, _stock) - 1,
+                              ),
+                              (value) {
+                                _stock = _readInt(value);
+                                _clearError('stock');
+                              },
+                              _invalid('stock'),
+                            ),
+                            _counter(
+                              'Mínimo',
+                              _minStockController,
+                              _minStockFocusNode,
+                              () => _updateMinStock(
+                                _currentValue(_minStockController, _minStock) +
+                                    1,
+                              ),
+                              () => _updateMinStock(
+                                _currentValue(_minStockController, _minStock) -
+                                    1,
+                              ),
+                              (value) {
+                                _minStock = _readInt(value);
+                                _clearError('minStock');
+                              },
+                              _invalid('minStock'),
+                            ),
+                            _counter(
+                              'Máximo',
+                              _maxStockController,
+                              _maxStockFocusNode,
+                              () => _updateMaxStock(
+                                _currentValue(_maxStockController, _maxStock) +
+                                    1,
+                              ),
+                              () => _updateMaxStock(
+                                _currentValue(_maxStockController, _maxStock) -
+                                    1,
+                              ),
+                              (value) {
+                                _maxStock = _readInt(value);
+                                _clearError('maxStock');
+                              },
+                              _invalid('maxStock'),
+                            ),
+                            InkWell(
+                              onTap: () =>
+                                  setState(() => _stockExpanded = false),
+                              child: const Icon(
+                                Icons.keyboard_arrow_right_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Center(
+                          child: IconButton(
+                            tooltip: 'Mostrar inventario',
+                            onPressed: () =>
+                                setState(() => _stockExpanded = true),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_left_rounded,
+                              color: Colors.white,
+                              size: 21,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
             ],
           ),
         ),
@@ -852,11 +852,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Registrado: $registered',
+              'Stock registrado: $registered',
               style: const TextStyle(color: Colors.white70, fontSize: 9),
             ),
             Text(
-              'Físico: $physical',
+              'Stock físico: $physical',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10,
