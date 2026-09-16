@@ -418,207 +418,204 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Padding(
-                padding: EdgeInsets.only(right: _stockExpanded ? 155 : 34),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: const BoxDecoration(
-                        color: AppColors.cardBackground,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                        border: Border.fromBorderSide(
-                          BorderSide(color: AppColors.border),
-                        ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: const BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
                       ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _isEditing
-                                      ? 'Editar Producto'
-                                      : 'Nuevo Producto',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                    color: AppColors.textPrimary,
-                                  ),
+                      border: Border.fromBorderSide(
+                        BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _isEditing
+                                    ? 'Editar Producto'
+                                    : 'Nuevo Producto',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 17,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
-                              if (_isEditing)
-                                IconButton(
-                                  onPressed: _delete,
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: AppColors.dangerRed,
-                                    size: 21,
-                                  ),
-                                ),
-                              InkWell(
-                                onTap: () => Navigator.of(context).pop(),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(4),
-                                  child: Icon(
-                                    Icons.close,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _imagePicker(),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: _field(
-                                  _nameController,
-                                  AppStrings.productNameHint,
-                                  invalid: _invalid('name'),
-                                  changed: (_) => _clearError('name'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _field(
-                                  _unitController,
-                                  'Cant.',
-                                  invalid: _invalid('unit'),
-                                  changed: (_) => _clearError('unit'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _field(
-                                  _buyPriceController,
-                                  AppStrings.purchasePriceHint,
-                                  prefix: '\$ ',
-                                  type: const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                                  formatter: const DecimalInputFormatter(
-                                    decimalDigits: 4,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _field(
-                                  _sellPriceController,
-                                  AppStrings.salePriceHint,
-                                  prefix: '\$ ',
-                                  invalid: _invalid('salePrice'),
-                                  changed: (_) => _clearError('salePrice'),
-                                  type: const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                                  formatter: const DecimalInputFormatter(
-                                    decimalDigits: 2,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          _field(
-                            _barcodeController,
-                            AppStrings.barcodeHint,
-                            suffix: const Icon(
-                              Icons.qr_code_scanner,
-                              color: AppColors.textSecondary,
-                              size: 20,
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _dropdown(
-                                  hint: AppStrings.selectTagHint,
-                                  value: _selectedTag,
-                                  items: _tags,
-                                  createLabel: 'Crear categoría',
-                                  createValue: _createCategoryOption,
-                                  onCreate: _createCategory,
-                                  onChanged: (v) =>
-                                      setState(() => _selectedTag = v),
+                            if (_isEditing)
+                              IconButton(
+                                onPressed: _delete,
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: AppColors.dangerRed,
+                                  size: 21,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _dropdown(
-                                  hint: 'Marca',
-                                  value: _selectedBrand,
-                                  items: _brands,
-                                  createLabel: 'Crear marca',
-                                  createValue: _createBrandOption,
-                                  onCreate: _createBrand,
-                                  onChanged: (v) =>
-                                      setState(() => _selectedBrand = v),
+                            InkWell(
+                              onTap: () => Navigator.of(context).pop(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.close,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          _dropdown(
-                            hint: AppStrings.selectDeptHint,
-                            value: _selectedDistributor,
-                            items: _distributors,
-                            createLabel: 'Crear distribuidora',
-                            createValue: _createDistributorOption,
-                            onCreate: _createDistributor,
-                            onChanged: (v) =>
-                                setState(() => _selectedDistributor = v),
-                          ),
-                          const SizedBox(height: 10),
-                          _groupPricingSection(),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: _save,
-                      child: Container(
-                        width: double.infinity,
-                        height: 52,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.only(
-                            bottomLeft: Radius.circular(20),
-                            bottomRight: Radius.circular(20),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _imagePicker(),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: _field(
+                                _nameController,
+                                AppStrings.productNameHint,
+                                invalid: _invalid('name'),
+                                changed: (_) => _clearError('name'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _field(
+                                _unitController,
+                                'Cant.',
+                                invalid: _invalid('unit'),
+                                changed: (_) => _clearError('unit'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _field(
+                                _buyPriceController,
+                                AppStrings.purchasePriceHint,
+                                prefix: '\$ ',
+                                type: const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                formatter: const DecimalInputFormatter(
+                                  decimalDigits: 4,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _field(
+                                _sellPriceController,
+                                AppStrings.salePriceHint,
+                                prefix: '\$ ',
+                                invalid: _invalid('salePrice'),
+                                changed: (_) => _clearError('salePrice'),
+                                type: const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                formatter: const DecimalInputFormatter(
+                                  decimalDigits: 2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _field(
+                          _barcodeController,
+                          AppStrings.barcodeHint,
+                          suffix: const Icon(
+                            Icons.qr_code_scanner,
+                            color: AppColors.textSecondary,
+                            size: 20,
                           ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          _isEditing ? 'Actualizar' : AppStrings.saveButton,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dropdown(
+                                hint: AppStrings.selectTagHint,
+                                value: _selectedTag,
+                                items: _tags,
+                                createLabel: 'Crear categoría',
+                                createValue: _createCategoryOption,
+                                onCreate: _createCategory,
+                                onChanged: (v) =>
+                                    setState(() => _selectedTag = v),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _dropdown(
+                                hint: 'Marca',
+                                value: _selectedBrand,
+                                items: _brands,
+                                createLabel: 'Crear marca',
+                                createValue: _createBrandOption,
+                                onCreate: _createBrand,
+                                onChanged: (v) =>
+                                    setState(() => _selectedBrand = v),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _dropdown(
+                          hint: AppStrings.selectDeptHint,
+                          value: _selectedDistributor,
+                          items: _distributors,
+                          createLabel: 'Crear distribuidora',
+                          createValue: _createDistributorOption,
+                          onCreate: _createDistributor,
+                          onChanged: (v) =>
+                              setState(() => _selectedDistributor = v),
+                        ),
+                        const SizedBox(height: 10),
+                        _groupPricingSection(),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _save,
+                    child: Container(
+                      width: double.infinity,
+                      height: 52,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _isEditing ? 'Actualizar' : AppStrings.saveButton,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
                 top: 0,
                 bottom: 0,
-                right: 0,
+                right: _stockExpanded ? -155 : -34,
                 width: _stockExpanded ? 155 : 34,
                 child: Container(
                   decoration: const BoxDecoration(
