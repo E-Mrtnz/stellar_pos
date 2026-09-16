@@ -1,0 +1,106 @@
+name: Fix inventory panel
+
+on:
+  push:
+    branches: [feature/finalization]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message != 'fix: expose inventory panel in product dialog'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/finalization
+          fetch-depth: 0
+
+      - name: Patch product dialog
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('lib/presentation/Inventory/widgets/create_product_dialog.dart')
+          text = path.read_text()
+
+          # The inventory tab was built first in the Stack, so the main card
+          # painted over it. Move it above the card and reserve its width.
+          marker = '              AnimatedPositioned(\n'
+          start = text.index(marker)
+          open_paren = text.index('(', start)
+          depth = 0
+          end_paren = None
+          for i in range(open_paren, len(text)):
+              ch = text[i]
+              if ch == '(':
+                  depth += 1
+              elif ch == ')':
+                  depth -= 1
+                  if depth == 0:
+                      end_paren = i
+                      break
+          if end_paren is None:
+              raise RuntimeError('No se pudo localizar AnimatedPositioned.')
+          block_end = end_paren + 2 if text[end_paren:end_paren + 2] == '),' else end_paren + 1
+          block = text[start:block_end]
+          text = text[:start] + text[block_end:]
+
+          old_padding = 'padding: EdgeInsets.only(right: _stockExpanded ? 85 : 0),'
+          new_padding = 'padding: EdgeInsets.only(right: _stockExpanded ? 155 : 34),'
+          if old_padding not in text:
+              raise RuntimeError('No se encontró el padding de la card.')
+          text = text.replace(old_padding, new_padding, 1)
+
+          padding_start = text.index('              Padding(\n')
+          padding_open = text.index('(', padding_start)
+          depth = 0
+          padding_end_paren = None
+          for i in range(padding_open, len(text)):
+              ch = text[i]
+              if ch == '(':
+                  depth += 1
+              elif ch == ')':
+                  depth -= 1
+                  if depth == 0:
+                      padding_end_paren = i
+                      break
+          if padding_end_paren is None:
+              raise RuntimeError('No se pudo localizar el cierre del Padding principal.')
+          padding_end = padding_end_paren + 2 if text[padding_end_paren:padding_end_paren + 2] == '),' else padding_end_paren + 1
+
+          text = text[:padding_end] + '\n' + block + text[padding_end:]
+
+          # Use the complete labels requested for the inventory summary/counters.
+          text = text.replace("              'stock físico',", "              'Stock físico',", 1)
+          text = text.replace("              'mín',", "              'Mínimo',", 1)
+          text = text.replace("              'máx',", "              'Máximo',", 1)
+          text = text.replace("'Registrado: $registered'", "'Stock registrado: $registered'", 1)
+          text = text.replace("'Físico: $physical'", "'Stock físico: $physical'", 1)
+
+          path.write_text(text)
+
+          # Structural assertions: the tab must now be painted after the card,
+          # and the collapsed state must still reserve its visible 34px tab.
+          if text.count('AnimatedPositioned(') != 1:
+              raise RuntimeError('Cantidad inesperada de AnimatedPositioned.')
+          if new_padding not in text:
+              raise RuntimeError('No se aplicó el padding reservado para la solapa.')
+
+      - name: Format and analyze
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+      - run: dart format lib/presentation/Inventory/widgets/create_product_dialog.dart
+      - run: flutter analyze lib/presentation/Inventory/widgets/create_product_dialog.dart
+
+      - name: Commit changes and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/presentation/Inventory/widgets/create_product_dialog.dart
+          git rm .github/workflows/fix_inventory_panel.yml
+          git commit -m 'fix: expose inventory panel in product dialog'
+          git push origin feature/finalization
