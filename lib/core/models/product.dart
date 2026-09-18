@@ -19,6 +19,8 @@ class Product implements SyncableEntity {
   final int groupQuantity;
   final double groupPrice;
   final int purchaseUnitsPerPresentation;
+  final bool allowPreparedSale;
+  final double preparationExtra;
   @override
   final SyncMetadata metadata;
 
@@ -40,6 +42,8 @@ class Product implements SyncableEntity {
     this.groupQuantity = 0,
     this.groupPrice = 0,
     this.purchaseUnitsPerPresentation = 0,
+    this.allowPreparedSale = false,
+    this.preparationExtra = 0,
     SyncMetadata? metadata,
   }) : metadata = metadata ?? SyncMetadata.initial();
 
@@ -61,6 +65,8 @@ class Product implements SyncableEntity {
     int? groupQuantity,
     double? groupPrice,
     int? purchaseUnitsPerPresentation,
+    bool? allowPreparedSale,
+    double? preparationExtra,
     SyncMetadata? metadata,
     bool touchMetadata = true,
   }) {
@@ -83,6 +89,8 @@ class Product implements SyncableEntity {
       groupPrice: groupPrice ?? this.groupPrice,
       purchaseUnitsPerPresentation:
           purchaseUnitsPerPresentation ?? this.purchaseUnitsPerPresentation,
+      allowPreparedSale: allowPreparedSale ?? this.allowPreparedSale,
+      preparationExtra: preparationExtra ?? this.preparationExtra,
       metadata:
           metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata),
     );
@@ -116,6 +124,8 @@ class Product implements SyncableEntity {
     'groupQuantity': groupQuantity,
     'groupPrice': groupPrice,
     'purchaseUnitsPerPresentation': purchaseUnitsPerPresentation,
+    'allowPreparedSale': allowPreparedSale,
+    'preparationExtra': preparationExtra,
     'metadata': metadata.toMap(),
   };
 
@@ -137,6 +147,8 @@ class Product implements SyncableEntity {
     groupQuantity: _int(map['groupQuantity']),
     groupPrice: _double(map['groupPrice']),
     purchaseUnitsPerPresentation: _int(map['purchaseUnitsPerPresentation']),
+    allowPreparedSale: _bool(map['allowPreparedSale']),
+    preparationExtra: _double(map['preparationExtra']),
     metadata: map['metadata'] is Map
         ? SyncMetadata.fromMap(Map<String, dynamic>.from(map['metadata']))
         : SyncMetadata.initial(),
