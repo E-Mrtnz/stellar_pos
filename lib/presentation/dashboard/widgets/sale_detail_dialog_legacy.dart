@@ -581,11 +581,27 @@ class SaleDetailDialog extends StatelessWidget {
                 _thumbnail(item.imageData),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    item.productName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.productName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      if (item.isPrepared && item.preparationExtra > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Preparada \\${_money(item.preparationExtra)}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 SizedBox(
