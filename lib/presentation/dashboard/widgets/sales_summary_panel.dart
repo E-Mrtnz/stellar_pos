@@ -689,6 +689,20 @@ class SalesSummaryPanel extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  unit.trim().isEmpty
+                      ? product['brand']?.toString() ?? ''
+                      : product['brand']?.toString().trim().isEmpty ?? true
+                          ? unit
+                          : unit + ' | ' + product['brand'].toString(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
