@@ -31,6 +31,22 @@ void main() {
     expect(service.lineSubtotal(product(groups: false), 5), closeTo(0.50, 0.000001));
   });
 
+  test('adds the preparation charge and ignores group pricing when prepared', () {
+    final prepared = product().copyWith(
+      allowPreparedSale: true,
+      preparationExtra: 0.25,
+    );
+
+    expect(
+      service.lineSubtotal(prepared, 1, prepared: true),
+      closeTo(0.35, 0.000001),
+    );
+    expect(
+      service.lineSubtotal(prepared, 5, prepared: true),
+      closeTo(1.75, 0.000001),
+    );
+  });
+
   test('returns zero for invalid quantity', () {
     expect(service.lineSubtotal(product(), 0), 0);
   });
