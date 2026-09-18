@@ -126,6 +126,15 @@ class PurchasesProvider extends ChangeNotifier {
     return true;
   }
 
+  Future<bool> replacePurchase(PurchaseRecord purchase) async {
+    final index = _purchases.indexWhere((entry) => entry.id == purchase.id);
+    if (index < 0) return false;
+    _purchases[index] = purchase;
+    notifyListeners();
+    await _repository?.save(purchase);
+    return true;
+  }
+
   void removePurchase(String id) {
     final before = _purchases.length;
     _purchases.removeWhere((purchase) => purchase.id == id);
