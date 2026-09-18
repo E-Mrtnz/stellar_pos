@@ -5,8 +5,11 @@ class ProductPricingService {
 
   bool canPrice(Product product, int quantity) => quantity > 0;
 
-  double lineSubtotal(Product product, int quantity) {
+  double lineSubtotal(Product product, int quantity, {bool prepared = false}) {
     if (quantity <= 0) return 0;
+    if (prepared && product.allowPreparedSale) {
+      return (product.price + product.preparationExtra) * quantity;
+    }
     if (!product.hasGroupPricing || product.groupQuantity <= 0) {
       return product.price * quantity;
     }
