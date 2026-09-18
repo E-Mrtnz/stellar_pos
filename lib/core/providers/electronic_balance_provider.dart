@@ -208,6 +208,46 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     notifyListeners();
     _persistAccount(_accounts[accountIndex]);
     _persistTransaction(updatedTransaction);
+    final purchase = _purchasesProvider?.purchases
+        .where((entry) => entry.id == purchaseId)
+        .firstOrNull;
+    if (purchase != null) {
+      final updatedItems = purchase.items.map((item) {
+        if (item.productId != 'electronic-balance:' + transaction.accountId) {
+          return item;
+        }
+        return PurchaseItemRecord(
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          unit: nextCategory,
+          barcode: item.barcode,
+          imageData: item.imageData,
+          unitCost: amount,
+          quantity: 1,
+          bonusQuantity: 0,
+          unitsPerPresentation: 1,
+          totalQuantity: 0,
+          salePrice: item.salePrice,
+          previousCost: item.previousCost,
+          previousSalePrice: item.previousSalePrice,
+          discount: item.discount,
+          discountPercent: item.discountPercent,
+          iva: item.iva,
+          total: amount,
+          effectiveUnitCost: amount,
+          metadata: item.metadata.touch(),
+        );
+      }).toList();
+      _purchasesProvider?.replacePurchase(
+        purchase.copyWith(
+          electronicBalanceCategory: nextCategory,
+          items: updatedItems,
+          subtotal: amount,
+          total: amount,
+        ),
+      );
+    }
     return true;
   }
 
