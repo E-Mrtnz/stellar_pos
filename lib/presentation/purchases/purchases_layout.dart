@@ -617,13 +617,11 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
     final balanceProvider = context.read<ElectronicBalanceProvider>();
-    final purchasesProvider = context.read<PurchasesProvider>();
     final deletedFromBalance = balanceProvider.deletePurchase(purchase.id);
     if (!deletedFromBalance) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo eliminar la compra de saldo.')));
       return;
     }
-    purchasesProvider.removePurchase(purchase.id);
     if (!context.mounted) return;
     Navigator.pop(context);
   }
@@ -733,22 +731,16 @@ class _ElectronicBalancePurchaseEditDialogState extends State<_ElectronicBalance
       return;
     }
     final balanceProvider = context.read<ElectronicBalanceProvider>();
-    final purchasesProvider = context.read<PurchasesProvider>();
-    final updated = balanceProvider.updatePurchase(purchaseId: widget.purchase.id, amount: amount);
+    final updated = balanceProvider.updatePurchase(
+      purchaseId: widget.purchase.id,
+      amount: amount,
+    );
     if (!updated) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo modificar la compra de saldo.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo modificar la compra de saldo.')),
+      );
       return;
     }
-    await purchasesProvider.replacePurchase(widget.purchase.copyWith(
-      subtotal: amount,
-      total: amount,
-      items: widget.purchase.items.map((item) => PurchaseItemRecord(
-        id: item.id, productId: item.productId, productName: item.productName, unit: item.unit, barcode: item.barcode, imageData: item.imageData,
-        unitCost: amount, quantity: 1, bonusQuantity: 0, unitsPerPresentation: 1, totalQuantity: 0, salePrice: item.salePrice,
-        previousCost: item.previousCost, previousSalePrice: item.previousSalePrice, discount: item.discount, discountPercent: item.discountPercent,
-        iva: item.iva, total: amount, effectiveUnitCost: amount, metadata: item.metadata.touch(),
-      )).toList(),
-    ));
     if (!mounted) return;
     Navigator.pop(context, true);
   }
