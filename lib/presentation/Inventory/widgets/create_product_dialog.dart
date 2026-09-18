@@ -209,7 +209,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
   bool _invalid(String field) => _invalidFields.contains(field);
   void _updateStock(int value) {
-    if (value < 0) return;
     setState(() {
       _stock = value;
       _stockController.text = '$_stock';
@@ -914,9 +913,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                   value: _allowPreparedSale,
                   onChanged: (value) => setState(() {
                     _allowPreparedSale = value;
-                    if (value &&
-                        _preparationExtraController.text.trim().isEmpty) {
-                      _preparationExtraController.text = '0.00';
+                    if (!value) {
+                      _preparationExtraController.clear();
                     }
                   }),
                 ),
