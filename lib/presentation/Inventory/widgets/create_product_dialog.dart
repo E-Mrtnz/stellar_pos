@@ -50,6 +50,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   bool _hasGroupPricing = false;
   bool _groupExpanded = false;
   bool _stockExpanded = false;
+  bool _allowPreparedSale = false;
+  bool _preparedExpanded = false;
   int _registeredStock = 0;
   final _nameController = TextEditingController();
   final _unitController = TextEditingController();
@@ -58,6 +60,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   final _barcodeController = TextEditingController();
   final _groupQuantityController = TextEditingController();
   final _groupPriceController = TextEditingController();
+  final _preparationExtraController = TextEditingController();
   late final TextEditingController _stockController;
   late final TextEditingController _minStockController;
   late final TextEditingController _maxStockController;
@@ -107,6 +110,13 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         : '';
     _groupPriceController.text = _hasGroupPricing
         ? _readDouble(p?['groupPrice']).toString()
+        : '';
+    _allowPreparedSale =
+        p?['allowPreparedSale'] == true ||
+        p?['allowPreparedSale']?.toString().toLowerCase() == 'true';
+    _preparedExpanded = _allowPreparedSale;
+    _preparationExtraController.text = _allowPreparedSale
+        ? _readDouble(p?['preparationExtra']).toStringAsFixed(2)
         : '';
     _setupFocus(_stockFocusNode, _stockController);
     _setupFocus(_minStockFocusNode, _minStockController);
@@ -162,6 +172,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       if (groupQuantity <= 0) invalid.add('groupQuantity');
       if (_groupPriceController.text.trim().isEmpty || groupPrice < 0)
         invalid.add('groupPrice');
+    }
+    if (_allowPreparedSale) {
+      final preparationExtra = _price(_preparationExtraController.text);
+      if (_preparationExtraController.text.trim().isEmpty || preparationExtra < 0)
+        invalid.add('preparationExtra');
     }
     setState(() {
       _invalidFields
@@ -276,6 +291,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           ? _readInt(_groupQuantityController.text)
           : 0,
       groupPrice: _hasGroupPricing ? _price(_groupPriceController.text) : 0,
+      allowPreparedSale: _allowPreparedSale,
+      preparationExtra: _allowPreparedSale
+          ? _price(_preparationExtraController.text)
+          : 0,
     );
     final provider = context.read<ProductProvider>();
     final duplicateMessage = _duplicateMessage(product, provider);
@@ -396,6 +415,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       _barcodeController,
       _groupQuantityController,
       _groupPriceController,
+      _preparationExtraController,
       _stockController,
       _minStockController,
       _maxStockController,
@@ -584,6 +604,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           ),
                           const SizedBox(height: 10),
                           _groupPricingSection(),
+                          const SizedBox(height: 8),
+                          _preparedSaleSection(),
                         ],
                       ),
                     ),
@@ -821,6 +843,95 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                       ),
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _preparedSaleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _preparedExpanded = !_preparedExpanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Vender producto preparado',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Icon(
+                  _preparedExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.textSecondary,
+                  size: 19,
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 180),
+          crossFadeState: _preparedExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Container(
+            margin: const EdgeInsets.only(top: 5),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            decoration: BoxDecoration(
+              color: AppColors.inputBackground,
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Activar venta preparada',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _allowPreparedSale,
+                  onChanged: (value) => setState(() {
+                    _allowPreparedSale = value;
+                    if (value &&
+                        _preparationExtraController.text.trim().isEmpty) {
+                      _preparationExtraController.text = '0.00';
+                    }
+                  }),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  flex: 2,
+                  child: _field(
+                    _preparationExtraController,
+                    'Costo adicional por preparación',
+                    prefix: '\$ ',
+                    invalid: _invalid('preparationExtra'),
+                    changed: (_) => _clearError('preparationExtra'),
+                    type: const TextInputType.numberWithOptions(decimal: true),
+                    formatter: const DecimalInputFormatter(decimalDigits: 2),
+                  ),
                 ),
               ],
             ),
