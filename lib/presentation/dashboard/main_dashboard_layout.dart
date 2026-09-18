@@ -40,6 +40,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   String _searchQuery = '';
   bool _isSidebarExpanded = true;
   final Map<String, int> _cartQuantities = {};
+  final Set<String> _preparedProductIds = {};
   List<ElectronicBalanceCartItem> _electronicBalanceSelection = [];
   String _barcodeBuffer = '';
   DateTime? _lastBarcodeInputAt;
@@ -161,6 +162,18 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     );
   }
 
+  void _togglePrepared(String productId, bool prepared) {
+    final product = context.read<ProductProvider>().findById(productId);
+    if (product == null || !product.allowPreparedSale) return;
+    setState(() {
+      if (prepared) {
+        _preparedProductIds.add(productId);
+      } else {
+        _preparedProductIds.remove(productId);
+      }
+    });
+  }
+
   void _setCartQuantity(String productId, int quantity) {
     if (_isElectronicBalanceKey(productId)) {
       _setElectronicQuantity(productId, quantity);
@@ -188,8 +201,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       if (quantity == null) return;
       if (quantity > 1)
         _cartQuantities[productId] = quantity - 1;
-      else
+      else {
         _cartQuantities.remove(productId);
+        _preparedProductIds.remove(productId);
+      }
     });
   }
 
@@ -198,12 +213,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _removeElectronicItem(productId);
       return;
     }
-    setState(() => _cartQuantities.remove(productId));
+    setState(() {
+      _cartQuantities.remove(productId);
+      _preparedProductIds.remove(productId);
+    });
   }
 
   void _clearCart() {
     setState(() {
       _cartQuantities.clear();
+      _preparedProductIds.clear();
       _electronicBalanceSelection = [];
       _discountAmountController.clear();
       _discountPercentController.clear();
@@ -265,7 +284,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     double total = 0;
     for (final entry in _cartQuantities.entries) {
       final product = provider.findById(entry.key);
-      if (product != null) total += product.priceForQuantity(entry.value);
+      if (product == null) continue;
+      total += _preparedProductIds.contains(entry.key)
+          ? (product.price + product.preparationExtra) * entry.value
+          : product.priceForQuantity(entry.value);
     }
     for (final item in _electronicBalanceSelection)
       total += item.amount * item.quantity;
@@ -337,6 +359,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _startEditingSale(SaleRecord sale) {
     final catalog = context.read<CatalogProvider>();
     final physical = <String, int>{};
+    final prepared = <String>{};
     final electronic = <ElectronicBalanceCartItem>[];
     for (final item in sale.items) {
       if (item.isElectronicBalance) {
@@ -355,9 +378,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             quantity: item.quantity,
           ),
         );
-      } else
+      } else {
         physical[item.productId] =
             (physical[item.productId] ?? 0) + item.quantity;
+        if (item.isPrepared) prepared.add(item.productId);
+      }
     }
     setState(() {
       _editingSale = sale;
@@ -368,6 +393,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _cartQuantities
         ..clear()
         ..addAll(physical);
+      _preparedProductIds
+        ..clear()
+        ..addAll(prepared);
       _electronicBalanceSelection = electronic;
       _selectedPaymentMethod = _paymentMethodIndex(sale.paymentMethod);
       _selectedDebtor = sale.clientId == null
@@ -410,10 +438,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return;
     }
     final physical = <String, int>{};
+    final prepared = <String>{};
     for (final item in sale.items) {
       if (item.isElectronicBalance) continue;
       physical[item.productId] =
           (physical[item.productId] ?? 0) + item.quantity;
+      if (item.isPrepared) prepared.add(item.productId);
     }
     if (physical.isEmpty) {
       AppAlert.show(
@@ -433,6 +463,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _cartQuantities
         ..clear()
         ..addAll(physical);
+      _preparedProductIds
+        ..clear()
+        ..addAll(prepared);
       _electronicBalanceSelection = [];
       _discountAmountController.clear();
       _discountPercentController.clear();
@@ -498,7 +531,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     for (final entry in _operationAddedQuantities().entries) {
       final product = context.read<ProductProvider>().findById(entry.key);
-      if (product != null) value += product.priceForQuantity(1) * entry.value;
+      if (product != null) {
+        value += (_preparedProductIds.contains(entry.key)
+                ? product.price + product.preparationExtra
+                : product.price) *
+            entry.value;
+      }
     }
     return value;
   }
@@ -674,12 +712,22 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               brand: product.brand,
               barcode: product.barcode,
               cost: product.cost,
-              unitPrice: product.price,
+              unitPrice: _preparedProductIds.contains(entry.key)
+                  ? product.price + product.preparationExtra
+                  : product.price,
               quantity: entry.value,
-              lineSubtotal: product.priceForQuantity(entry.value),
+              lineSubtotal: _preparedProductIds.contains(entry.key)
+                  ? (product.price + product.preparationExtra) * entry.value
+                  : product.priceForQuantity(entry.value),
               discount: 0,
-              lineTotal: product.priceForQuantity(entry.value),
+              lineTotal: _preparedProductIds.contains(entry.key)
+                  ? (product.price + product.preparationExtra) * entry.value
+                  : product.priceForQuantity(entry.value),
               imageData: product.imageData,
+              isPrepared: _preparedProductIds.contains(entry.key),
+              preparationExtra: _preparedProductIds.contains(entry.key)
+                  ? product.preparationExtra
+                  : 0,
             );
           }),
           ..._electronicBalanceSelection.map(
@@ -871,6 +919,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             ? received
             : initialCreditPayment,
         change: _selectedPaymentMethod == AppPaymentMethods.cash ? _change : 0,
+        preparedProductIds: _preparedProductIds,
         electronicSales: electronicSales,
         electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
@@ -983,6 +1032,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             child: CentralProductGrid(
               products: products,
               cartQuantities: combinedCart,
+              preparedProductIds: _preparedProductIds,
               tags: _tags,
               selectedTagIndex: _selectedTagIndex,
               onTagSelected: _onTagChanged,
@@ -990,6 +1040,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               onFilterChanged: _onFilterChanged,
               onAddToCart: _addToCart,
               onRemoveFromCart: _removeFromCart,
+              onPreparedChanged: _togglePrepared,
               onElectronicBalanceTap: _openElectronicBalanceSelector,
               onElectronicBalanceManage: _openElectronicBalanceManagement,
               electronicBalanceSelection: _electronicBalanceSelection,
@@ -1005,6 +1056,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               children: [
                 SalesSummaryWithKeypad(
                   cartQuantities: combinedCart,
+                  preparedProductIds: _preparedProductIds,
                   products: salesCatalog,
                   selectedPaymentMethod: _selectedPaymentMethod,
                   onPaymentMethodChanged: (method) =>
