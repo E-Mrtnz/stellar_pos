@@ -208,9 +208,16 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     notifyListeners();
     _persistAccount(_accounts[accountIndex]);
     _persistTransaction(updatedTransaction);
-    final purchase = _purchasesProvider?.purchases
-        .where((entry) => entry.id == purchaseId)
-        .firstOrNull;
+    PurchaseRecord? purchase;
+    final purchasesProvider = _purchasesProvider;
+    if (purchasesProvider != null) {
+      for (final entry in purchasesProvider.purchases) {
+        if (entry.id == purchaseId) {
+          purchase = entry;
+          break;
+        }
+      }
+    }
     if (purchase != null) {
       final updatedItems = purchase.items.map((item) {
         if (item.productId != 'electronic-balance:' + transaction.accountId) {
@@ -262,6 +269,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     notifyListeners();
     _persistAccount(_accounts[accountIndex]);
     _persistDeleteTransaction(transaction.id);
+    _purchasesProvider?.removePurchase(purchaseId);
     return true;
   }
 
