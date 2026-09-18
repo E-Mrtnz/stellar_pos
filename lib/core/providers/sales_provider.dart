@@ -539,6 +539,7 @@ class SalesProvider extends ChangeNotifier {
     required String sourceProductId,
     required int quantity,
     required String replacementProductId,
+    bool prepared = false,
     required ProductProvider productProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
@@ -560,7 +561,11 @@ class SalesProvider extends ChangeNotifier {
     if (replacement == null)
       throw StateError('El producto nuevo ya no existe.');
     final outgoing = _withQuantity(available, quantity);
-    final incoming = _lines.physicalItem(replacement, quantity);
+    final incoming = _lines.physicalItem(
+      replacement,
+      quantity,
+      prepared: prepared,
+    );
     final amountDelta = incoming.lineSubtotal - outgoing.lineTotal;
     final oldProduct = productProvider.findById(sourceProductId);
     if (oldProduct != null)
