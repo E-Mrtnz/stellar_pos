@@ -104,7 +104,7 @@ class ProductProvider extends ChangeNotifier {
 
   bool updateStockToPhysical(String id, int physicalStock) {
     final index = _products.indexWhere((item) => item.id == id);
-    if (index < 0 || physicalStock < 0) return false;
+    if (index < 0) return false;
     final current = _products[index];
     final updated = _inventoryStockService.adjustToPhysical(
       current,
