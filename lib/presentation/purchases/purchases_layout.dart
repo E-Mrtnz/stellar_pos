@@ -456,9 +456,11 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    purchase.invoiceNumber.isEmpty
-                        ? 'Sin número de factura'
-                        : 'Factura ${purchase.invoiceNumber}',
+                    purchase.isElectronicBalancePurchase
+                        ? 'Compra de saldo'
+                        : purchase.invoiceNumber.isEmpty
+                            ? 'Sin número de factura'
+                            : 'Factura ${purchase.invoiceNumber}',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.textMuted,
