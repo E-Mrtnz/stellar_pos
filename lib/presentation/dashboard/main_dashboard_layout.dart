@@ -956,7 +956,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return;
     }
     _clearCart();
-    setState(() => _selectedPaymentMethod = AppPaymentMethods.cash);
+    setState(() {
+      _selectedPaymentMethod = AppPaymentMethods.cash;
+      _searchQuery = '';
+    });
     if (!mounted) return;
     await SaleSuccessDialog.show(
       context,
