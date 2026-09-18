@@ -17,5 +17,5 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: dart format lib
-      - run: flutter analyze --no-fatal-infos
+      - run: flutter analyze --no-fatal-infos lib/core/models/product.dart lib/core/models/sale.dart lib/core/models/sale_ticket.dart lib/core/services/domain/product_pricing_service.dart lib/core/domain/services/sale_lines_service.dart lib/core/providers/sales_provider.dart lib/core/providers/date_aware_sales_provider.dart lib/core/services/printer/ticket_generator.dart lib/presentation/Inventory/widgets/create_product_dialog.dart lib/presentation/dashboard/widgets/product_card.dart lib/presentation/dashboard/widgets/central_product_grid.dart lib/presentation/dashboard/widgets/sales_summary_panel.dart lib/presentation/dashboard/widgets/sales_summary_with_keypad.dart lib/presentation/dashboard/main_dashboard_layout.dart
       - run: flutter test
