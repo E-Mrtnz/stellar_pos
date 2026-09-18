@@ -9,6 +9,8 @@ class ProductCard extends StatelessWidget {
   final int quantityInCart;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
+  final bool preparedSelected;
+  final ValueChanged<bool> onPreparedChanged;
 
   const ProductCard({
     super.key,
@@ -16,6 +18,8 @@ class ProductCard extends StatelessWidget {
     required this.quantityInCart,
     required this.onAdd,
     required this.onRemove,
+    this.preparedSelected = false,
+    required this.onPreparedChanged,
   });
 
   @override
@@ -112,7 +116,9 @@ class ProductCard extends StatelessWidget {
     final name = ProductUtils.cleanName(product);
     final unit = ProductUtils.unit(product);
     final brand = ProductUtils.brand(product);
-    final price = ProductUtils.price(product);
+    final price = preparedSelected
+        ? ProductUtils.price(product) + ProductUtils.asDouble(product['preparationExtra'])
+        : ProductUtils.price(product);
     final metadata = brand.isEmpty ? unit : '$unit | $brand';
 
     return Column(
@@ -133,6 +139,10 @@ class ProductCard extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         _buildStockBadge(stock: stock, color: stockColor),
+        if (ProductUtils.asBool(product['allowPreparedSale'])) ...[
+          const SizedBox(height: 5),
+          _buildPreparedToggle(),
+        ],
         const SizedBox(height: 7),
         _buildPriceRow(price),
       ],
@@ -166,8 +176,44 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  Widget _buildPreparedToggle() {
+    return InkWell(
+      onTap: () => onPreparedChanged(!preparedSelected),
+      borderRadius: BorderRadius.circular(6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: preparedSelected,
+              onChanged: (value) {
+                if (value != null) onPreparedChanged(value);
+              },
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Preparada',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: preparedSelected
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPriceRow(double price) {
     final hasGroupPricing =
+        !preparedSelected &&
         ProductUtils.asBool(product['hasGroupPricing']) &&
         ProductUtils.asInt(product['groupQuantity']) > 0;
     final groupQuantity = ProductUtils.asInt(product['groupQuantity']);
