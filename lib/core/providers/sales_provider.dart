@@ -73,6 +73,7 @@ class SalesProvider extends ChangeNotifier {
     required double total,
     required double received,
     required double change,
+    Set<String> preparedProductIds = const <String>{},
     List<ElectronicBalanceCartSale> electronicSales = const [],
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
@@ -90,7 +91,11 @@ class SalesProvider extends ChangeNotifier {
       final quantity = entry.value;
       if (!_pricing.canPrice(product, quantity))
         throw StateError('La cantidad de un producto debe ser mayor que cero.');
-      final item = _lines.physicalItem(product, quantity);
+      final item = _lines.physicalItem(
+        product,
+        quantity,
+        prepared: preparedProductIds.contains(product.id),
+      );
       final lineDiscount = _totals.proportionalDiscount(
         lineSubtotal: item.lineSubtotal,
         subtotal: subtotal,
@@ -272,7 +277,11 @@ class SalesProvider extends ChangeNotifier {
       return sum +
           (product == null
               ? item.unitPrice * item.quantity
-              : _pricing.lineSubtotal(product, item.quantity));
+              : _pricing.lineSubtotal(
+                  product,
+                  item.quantity,
+                  prepared: item.isPrepared,
+                ));
     });
     final oldDiscountRate = oldSale.subtotal <= 0
         ? 0.0
@@ -327,6 +336,7 @@ class SalesProvider extends ChangeNotifier {
       final hasGroupPricing =
           !isElectronic &&
           product != null &&
+          !item.isPrepared &&
           product.hasGroupPricing &&
           product.groupQuantity > 0;
       finalItems.add(
@@ -338,7 +348,11 @@ class SalesProvider extends ChangeNotifier {
           brand: product?.brand ?? item.brand,
           barcode: product?.barcode ?? item.barcode,
           cost: cost,
-          unitPrice: product?.price ?? item.unitPrice,
+          unitPrice: product == null
+              ? item.unitPrice
+              : item.isPrepared
+              ? product.price + product.preparationExtra
+              : product.price,
           quantity: item.quantity,
           lineSubtotal: lineSubtotal,
           discount: lineDiscount,
@@ -346,6 +360,10 @@ class SalesProvider extends ChangeNotifier {
           imageData: product?.imageData ?? item.imageData,
           isElectronicBalance: isElectronic,
           hasGroupPricing: hasGroupPricing,
+          isPrepared: item.isPrepared,
+          preparationExtra: item.isPrepared
+              ? product?.preparationExtra ?? item.preparationExtra
+              : 0,
           electronicBalanceAccountId: item.electronicBalanceAccountId,
           electronicBalanceCategory: item.electronicBalanceCategory,
           metadata: item.metadata,
@@ -633,6 +651,8 @@ class SalesProvider extends ChangeNotifier {
       imageData: item.imageData,
       isElectronicBalance: item.isElectronicBalance,
       hasGroupPricing: item.hasGroupPricing,
+      isPrepared: item.isPrepared,
+      preparationExtra: item.preparationExtra,
       electronicBalanceAccountId: item.electronicBalanceAccountId,
       electronicBalanceCategory: item.electronicBalanceCategory,
       metadata: item.metadata,
