@@ -925,7 +925,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                   flex: 2,
                   child: _field(
                     _preparationExtraController,
-                    'Costo adicional por preparación',
+                    'Extra por preparación',
                     prefix: '\$ ',
                     invalid: _invalid('preparationExtra'),
                     changed: (_) => _clearError('preparationExtra'),
