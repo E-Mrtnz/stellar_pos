@@ -689,20 +689,6 @@ class SalesSummaryPanel extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  prepared
-                      ? '$unit | C/U \${(unitPrice + preparationExtra).toStringAsFixed(2)}'
-                      : hasGroupPricing
-                      ? '$unit | C/U \${unitPrice.toStringAsFixed(2)} · $groupQuantity X \${groupPrice.toStringAsFixed(2)}'
-                      : '$unit | C/U \${unitPrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ],
             ),
           ),
