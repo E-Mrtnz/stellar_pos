@@ -28,7 +28,7 @@ class TicketGenerator {
       if (item.preparationExtra > 0.005) {
         bytes.addAll(generator.row([
           _left('Preparada', 8),
-          _right(_money(item.preparationExtra), 4),
+          _right(_money(item.preparationExtra * item.quantity), 4),
         ]));
       }
     }
