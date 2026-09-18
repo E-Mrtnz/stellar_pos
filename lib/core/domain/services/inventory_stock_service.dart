@@ -23,13 +23,6 @@ class InventoryStockService {
   }
 
   int adjustmentToPhysical(Product product, int physicalStock) {
-    if (physicalStock < 0) {
-      throw ArgumentError.value(
-        physicalStock,
-        'physicalStock',
-        'No puede ser negativo.',
-      );
-    }
     return physicalStock - product.stock;
   }
 
@@ -42,9 +35,7 @@ class InventoryStockService {
     );
   }
 
-  bool canSell(Product product, int quantity) {
-    return quantity > 0 && product.stock >= quantity;
-  }
+  bool canSell(Product product, int quantity) => quantity > 0;
 
   bool isLowStock(Product product) => product.stock <= product.minStock;
 
