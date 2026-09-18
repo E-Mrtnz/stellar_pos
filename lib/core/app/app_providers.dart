@@ -71,9 +71,10 @@ class AppProviders extends StatelessWidget {
           create: (_) => PurchasesProvider(repository: PurchaseRepository())..load(),
         ),
         ChangeNotifierProvider(
-          create: (_) => ElectronicBalanceProvider(
+          create: (context) => ElectronicBalanceProvider(
             accountRepository: ElectronicBalanceAccountRepository(),
             transactionRepository: ElectronicBalanceTransactionRepository(),
+            purchasesProvider: context.read<PurchasesProvider>(),
           )..load(),
         ),
         ChangeNotifierProvider(create: (_) => PrinterProvider()),
