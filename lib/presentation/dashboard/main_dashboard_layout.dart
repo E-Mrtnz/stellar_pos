@@ -615,6 +615,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           sourceProductId: out.key,
           quantity: quantity,
           replacementProductId: input.key,
+          prepared: _preparedProductIds.contains(input.key),
           productProvider: context.read<ProductProvider>(),
         );
         if (out.value > quantity)
@@ -775,6 +776,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               lineTotal: lineSubtotal - lineDiscount,
               imageData: item.imageData,
               isElectronicBalance: item.isElectronicBalance,
+              hasGroupPricing: item.hasGroupPricing,
+              isPrepared: item.isPrepared,
+              preparationExtra: item.preparationExtra,
               electronicBalanceAccountId: item.electronicBalanceAccountId,
               electronicBalanceCategory: item.electronicBalanceCategory,
             );
