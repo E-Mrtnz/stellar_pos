@@ -77,15 +77,16 @@ class ElectronicBalanceTransaction implements SyncableEntity {
   final String description;
   final DateTime createdAt;
   final String? saleId;
+  final String? purchaseId;
   @override final SyncMetadata metadata;
 
-  ElectronicBalanceTransaction({required this.id, required this.accountId, required this.type, required this.amount, required this.providerCost, required this.profit, required this.category, required this.description, required this.createdAt, this.saleId, SyncMetadata? metadata})
+  ElectronicBalanceTransaction({required this.id, required this.accountId, required this.type, required this.amount, required this.providerCost, required this.profit, required this.category, required this.description, required this.createdAt, this.saleId, this.purchaseId, SyncMetadata? metadata})
       : metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
 
-  Map<String, dynamic> toMap() => {'id': id, 'accountId': accountId, 'type': type.name, 'amount': amount, 'providerCost': providerCost, 'profit': profit, 'category': category, 'description': description, 'createdAt': createdAt.toIso8601String(), 'saleId': saleId, 'metadata': metadata.toMap()};
+  Map<String, dynamic> toMap() => {'id': id, 'accountId': accountId, 'type': type.name, 'amount': amount, 'providerCost': providerCost, 'profit': profit, 'category': category, 'description': description, 'createdAt': createdAt.toIso8601String(), 'saleId': saleId, 'purchaseId': purchaseId, 'metadata': metadata.toMap()};
 
   factory ElectronicBalanceTransaction.fromMap(Map<String, dynamic> map) => ElectronicBalanceTransaction(
-    id: map['id']?.toString() ?? '', accountId: map['accountId']?.toString() ?? '', type: _type(map['type']), amount: _double(map['amount']), providerCost: _double(map['providerCost']), profit: _double(map['profit']), category: map['category']?.toString() ?? '', description: map['description']?.toString() ?? '', createdAt: _date(map['createdAt']), saleId: map['saleId']?.toString(), metadata: _metadata(map['metadata']));
+    id: map['id']?.toString() ?? '', accountId: map['accountId']?.toString() ?? '', type: _type(map['type']), amount: _double(map['amount']), providerCost: _double(map['providerCost']), profit: _double(map['profit']), category: map['category']?.toString() ?? '', description: map['description']?.toString() ?? '', createdAt: _date(map['createdAt']), saleId: map['saleId']?.toString(), purchaseId: map['purchaseId']?.toString(), metadata: _metadata(map['metadata']));
 
   static ElectronicBalanceTransactionType _type(dynamic value) => ElectronicBalanceTransactionType.values.firstWhere((item) => item.name == value?.toString(), orElse: () => ElectronicBalanceTransactionType.sale);
   static DateTime _date(dynamic value) => value is DateTime ? value.toUtc() : DateTime.tryParse(value?.toString() ?? '')?.toUtc() ?? DateTime.now().toUtc();
