@@ -11,6 +11,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.d
 
 class SalesSummaryWithKeypad extends StatefulWidget {
   final Map<String, int> cartQuantities;
+  final Set<String> preparedProductIds;
   final List<Map<String, dynamic>> products;
   final int selectedPaymentMethod;
   final ValueChanged<int> onPaymentMethodChanged;
@@ -43,6 +44,7 @@ class SalesSummaryWithKeypad extends StatefulWidget {
   const SalesSummaryWithKeypad({
     super.key,
     required this.cartQuantities,
+    this.preparedProductIds = const <String>{},
     required this.products,
     required this.selectedPaymentMethod,
     required this.onPaymentMethodChanged,
@@ -251,6 +253,7 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
         key: _panelKey,
         child: SalesSummaryPanel(
           cartQuantities: widget.cartQuantities,
+          preparedProductIds: widget.preparedProductIds,
           products: widget.products,
           selectedPaymentMethod: widget.selectedPaymentMethod,
           onPaymentMethodChanged: (value) {
