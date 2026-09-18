@@ -590,7 +590,7 @@ class SaleDetailDialog extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 11),
                       ),
-                      if (item.isPrepared && item.preparationExtra > 0) ...[
+                      if (item.isPrepared) ...[
                         const SizedBox(height: 2),
                         Text(
                           'Preparada \\${_money(item.preparationExtra)}',
