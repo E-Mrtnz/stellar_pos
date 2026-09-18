@@ -22,6 +22,11 @@ void main() {
     expect(service.adjustmentToPhysical(p, 5), 8);
     expect(service.adjustToPhysical(p, 5).stock, 5);
   });
+  test('allows a negative physical count when explicitly entered', () {
+    final p = product(-3);
+    expect(service.adjustmentToPhysical(p, -1), 2);
+    expect(service.adjustToPhysical(p, -1).stock, -1);
+  });
   test('reconciles a lower physical count', () {
     final p = product(10);
     expect(service.adjustmentToPhysical(p, 7), -3);
