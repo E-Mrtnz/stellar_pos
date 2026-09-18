@@ -5,6 +5,8 @@ import 'package:stellar_pos/core/data/repositories/electronic_balance_account_re
 import 'package:stellar_pos/core/data/repositories/electronic_balance_transaction_repository.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
+import 'package:stellar_pos/core/models/purchase.dart';
+import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
 import 'package:stellar_pos/core/models/electronic_balance.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
@@ -17,6 +19,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   final List<ElectronicBalanceTransaction> _transactions = [];
   final Repository<ElectronicBalanceAccount>? _accountRepository;
   final Repository<ElectronicBalanceTransaction>? _transactionRepository;
+  final PurchasesProvider? _purchasesProvider;
   bool _loaded = false;
   Future<void>? _loadFuture;
 
@@ -24,9 +27,11 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     ElectronicBalanceService? service,
     Repository<ElectronicBalanceAccount>? accountRepository,
     Repository<ElectronicBalanceTransaction>? transactionRepository,
+    PurchasesProvider? purchasesProvider,
   })  : _service = service ?? AppDependencies.electronicBalance,
         _accountRepository = accountRepository ?? ElectronicBalanceAccountRepository(),
-        _transactionRepository = transactionRepository ?? ElectronicBalanceTransactionRepository();
+        _transactionRepository = transactionRepository ?? ElectronicBalanceTransactionRepository(),
+        _purchasesProvider = purchasesProvider;
 
   List<ElectronicBalanceAccount> get accounts {
     final result = List<ElectronicBalanceAccount>.from(_accounts)
@@ -119,18 +124,104 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     return true;
   }
 
-  bool registerPurchase({required String accountId, required double amount}) {
+  bool registerPurchase({required String accountId, required double amount, String category = 'Saldo'}) {
     if (amount <= 0) return false;
     final index = _accounts.indexWhere((a) => a.id == accountId);
     if (index < 0) return false;
     final account = _accounts[index];
-    final transaction = ElectronicBalanceTransaction(id: IdGenerator.newId(), accountId: accountId, type: ElectronicBalanceTransactionType.purchase, amount: amount, providerCost: _service.providerCost(amount: amount, commissionRate: account.commissionRate), profit: _service.profit(amount: amount, commissionRate: account.commissionRate), category: 'Compra de saldo', description: 'Recarga de saldo', createdAt: DateTime.now());
+    final purchaseId = IdGenerator.newId();
+    final transactionId = IdGenerator.newId();
+    final now = DateTime.now();
+    final normalizedCategory = category.trim().isEmpty ? 'Saldo' : category.trim();
+    final transaction = ElectronicBalanceTransaction(
+      id: transactionId,
+      accountId: accountId,
+      type: ElectronicBalanceTransactionType.purchase,
+      amount: amount,
+      providerCost: _service.providerCost(amount: amount, commissionRate: account.commissionRate),
+      profit: _service.profit(amount: amount, commissionRate: account.commissionRate),
+      category: normalizedCategory,
+      description: 'Compra de saldo',
+      createdAt: now,
+      purchaseId: purchaseId,
+    );
+    final purchase = PurchaseRecord(
+      id: purchaseId,
+      invoiceNumber: '',
+      distributorName: account.companyName,
+      arrivalAt: now,
+      paymentMethod: 'Contado',
+      purchaseType: 'electronic_balance',
+      electronicBalanceAccountId: account.id,
+      electronicBalanceTransactionId: transaction.id,
+      electronicBalanceCategory: normalizedCategory,
+      items: [
+        PurchaseItemRecord(
+          productId: 'electronic-balance:' + account.id,
+          productName: 'Saldo electrónico',
+          unit: normalizedCategory,
+          barcode: '',
+          unitCost: amount,
+          quantity: 1,
+          totalQuantity: 0,
+          total: amount,
+        ),
+      ],
+      subtotal: amount,
+      total: amount,
+    );
     final updatedAccount = account.copyWith(balance: account.balance + amount);
     _accounts[index] = updatedAccount;
     _transactions.add(transaction);
     notifyListeners();
     _persistAccount(updatedAccount);
     _persistTransaction(transaction);
+    _purchasesProvider?.addPurchase(purchase);
+    return true;
+  }
+
+  bool updatePurchase({required String purchaseId, required double amount, String? category}) {
+    if (amount <= 0) return false;
+    final transactionIndex = _transactions.indexWhere((t) => t.purchaseId == purchaseId && t.type == ElectronicBalanceTransactionType.purchase);
+    if (transactionIndex < 0) return false;
+    final transaction = _transactions[transactionIndex];
+    final accountIndex = _accounts.indexWhere((a) => a.id == transaction.accountId);
+    if (accountIndex < 0) return false;
+    final account = _accounts[accountIndex];
+    final nextCategory = category?.trim().isNotEmpty == true ? category!.trim() : transaction.category;
+    final updatedTransaction = ElectronicBalanceTransaction(
+      id: transaction.id,
+      accountId: transaction.accountId,
+      type: transaction.type,
+      amount: amount,
+      providerCost: _service.providerCost(amount: amount, commissionRate: account.commissionRate),
+      profit: _service.profit(amount: amount, commissionRate: account.commissionRate),
+      category: nextCategory,
+      description: transaction.description,
+      createdAt: transaction.createdAt,
+      saleId: transaction.saleId,
+      purchaseId: transaction.purchaseId,
+      metadata: transaction.metadata.touch(),
+    );
+    _transactions[transactionIndex] = updatedTransaction;
+    _accounts[accountIndex] = account.copyWith(balance: account.balance - transaction.amount + amount);
+    notifyListeners();
+    _persistAccount(_accounts[accountIndex]);
+    _persistTransaction(updatedTransaction);
+    return true;
+  }
+
+  bool deletePurchase(String purchaseId) {
+    final index = _transactions.indexWhere((t) => t.purchaseId == purchaseId && t.type == ElectronicBalanceTransactionType.purchase);
+    if (index < 0) return false;
+    final transaction = _transactions[index];
+    final accountIndex = _accounts.indexWhere((a) => a.id == transaction.accountId);
+    if (accountIndex < 0) return false;
+    _accounts[accountIndex] = _accounts[accountIndex].copyWith(balance: _accounts[accountIndex].balance - transaction.amount);
+    _transactions.removeAt(index);
+    notifyListeners();
+    _persistAccount(_accounts[accountIndex]);
+    _persistDeleteTransaction(transaction.id);
     return true;
   }
 
