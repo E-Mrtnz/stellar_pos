@@ -36,6 +36,7 @@ class DateAwareSalesProvider extends SalesProvider {
     required double total,
     required double received,
     required double change,
+    Set<String> preparedProductIds = const <String>{},
     List<ElectronicBalanceCartSale> electronicSales = const [],
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
@@ -54,6 +55,7 @@ class DateAwareSalesProvider extends SalesProvider {
         total: total,
         received: received,
         change: change,
+        preparedProductIds: preparedProductIds,
         electronicSales: electronicSales,
         electronicBalanceProvider: electronicBalanceProvider,
       );
