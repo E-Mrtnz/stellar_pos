@@ -39,6 +39,7 @@ class CentralProductGrid extends StatefulWidget {
     required this.onFilterChanged,
     required this.onAddToCart,
     required this.onRemoveFromCart,
+    this.onPreparedChanged,
     this.electronicBalanceSelection = const [],
     this.onElectronicBalanceTap,
     this.onElectronicBalanceManage,
