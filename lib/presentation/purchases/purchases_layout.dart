@@ -490,17 +490,10 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
                 ),
               ),
             ),
-            SizedBox(width: 90, child: _payment(purchase.paymentMethod)),
             SizedBox(
-              width: 95, + purchase.total.toStringAsFixed(2) + ' de saldo'
-                    : purchase.itemCount.toString() + ' unidades',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              width: 90,
+              child: _payment(purchase.paymentMethod),
             ),
-            SizedBox(width: 90, child: _payment(purchase.paymentMethod)),
             SizedBox(
               width: 95,
               child: Text(
