@@ -12,6 +12,7 @@ import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 class CentralProductGrid extends StatefulWidget {
   final List<Map<String, dynamic>> products;
   final Map<String, int> cartQuantities;
+  final Set<String> preparedProductIds;
   final List<String> tags;
   final int selectedTagIndex;
   final ValueChanged<int> onTagSelected;
@@ -19,6 +20,7 @@ class CentralProductGrid extends StatefulWidget {
   final ValueChanged<String?> onFilterChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onRemoveFromCart;
+  final void Function(String productId, bool prepared)? onPreparedChanged;
   final List<ElectronicBalanceCartItem> electronicBalanceSelection;
   final VoidCallback? onElectronicBalanceTap;
   final VoidCallback? onElectronicBalanceManage;
@@ -29,6 +31,7 @@ class CentralProductGrid extends StatefulWidget {
     super.key,
     required this.products,
     required this.cartQuantities,
+    this.preparedProductIds = const <String>{},
     required this.tags,
     required this.selectedTagIndex,
     required this.onTagSelected,
@@ -231,8 +234,11 @@ class _CentralProductGridState extends State<CentralProductGrid> {
         return ProductCard(
           product: product,
           quantityInCart: widget.cartQuantities[productId] ?? 0,
+          preparedSelected: widget.preparedProductIds.contains(productId),
           onAdd: () => widget.onAddToCart(productId),
           onRemove: () => widget.onRemoveFromCart(productId),
+          onPreparedChanged: (value) =>
+              widget.onPreparedChanged?.call(productId, value),
         );
       },
     );
