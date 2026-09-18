@@ -6,6 +6,7 @@ import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class SalesSummaryPanel extends StatelessWidget {
   final Map<String, int> cartQuantities;
+  final Set<String> preparedProductIds;
   final List<Map<String, dynamic>> products;
   final int selectedPaymentMethod;
   final ValueChanged<int> onPaymentMethodChanged;
@@ -42,6 +43,7 @@ class SalesSummaryPanel extends StatelessWidget {
   const SalesSummaryPanel({
     super.key,
     required this.cartQuantities,
+    this.preparedProductIds = const <String>{},
     required this.products,
     required this.selectedPaymentMethod,
     required this.onPaymentMethodChanged,
@@ -172,6 +174,7 @@ class SalesSummaryPanel extends StatelessWidget {
                                     product['imageData']?.toString() ?? '',
                                 quantity: entry.value,
                                 product: product,
+                                prepared: preparedProductIds.contains(product['id']),
                               );
                             }).toList(),
                           ),
@@ -635,8 +638,12 @@ class SalesSummaryPanel extends StatelessWidget {
     required String imageData,
     required int quantity,
     required Map<String, dynamic> product,
+    required bool prepared,
   }) {
-    final subtotalItem = ProductUtils.priceForQuantity(product, quantity);
+    final preparationExtra = ProductUtils.asDouble(product['preparationExtra']);
+    final subtotalItem = prepared
+        ? (ProductUtils.price(product) + preparationExtra) * quantity
+        : ProductUtils.priceForQuantity(product, quantity);
     final hasGroupPricing =
         ProductUtils.asBool(product['hasGroupPricing']) &&
         ProductUtils.asInt(product['groupQuantity']) > 0;
@@ -684,9 +691,11 @@ class SalesSummaryPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  hasGroupPricing
-                      ? '$unit | C/U \$${unitPrice.toStringAsFixed(2)} · $groupQuantity X \$${groupPrice.toStringAsFixed(2)}'
-                      : '$unit | C/U \$${unitPrice.toStringAsFixed(2)}',
+                  prepared
+                      ? '$unit | C/U \${(unitPrice + preparationExtra).toStringAsFixed(2)}'
+                      : hasGroupPricing
+                      ? '$unit | C/U \${unitPrice.toStringAsFixed(2)} · $groupQuantity X \${groupPrice.toStringAsFixed(2)}'
+                      : '$unit | C/U \${unitPrice.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
