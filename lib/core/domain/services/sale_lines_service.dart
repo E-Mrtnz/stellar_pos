@@ -12,12 +12,22 @@ class SaleLinesService {
 
   final ProductPricingService pricing;
 
-  SaleItemRecord physicalItem(Product product, int quantity) {
+  SaleItemRecord physicalItem(
+    Product product,
+    int quantity, {
+    bool prepared = false,
+  }) {
     if (!pricing.canPrice(product, quantity)) {
       throw ArgumentError('La cantidad del producto debe ser mayor que cero.');
     }
 
-    final lineSubtotal = pricing.lineSubtotal(product, quantity);
+    final isPrepared = prepared && product.allowPreparedSale;
+    final preparationExtra = isPrepared ? product.preparationExtra : 0.0;
+    final lineSubtotal = pricing.lineSubtotal(
+      product,
+      quantity,
+      prepared: isPrepared,
+    );
     return SaleItemRecord(
       productId: product.id,
       productName: product.name,
@@ -25,15 +35,17 @@ class SaleLinesService {
       brand: product.brand,
       barcode: product.barcode,
       cost: product.cost,
-      // Keep the real product unit price fixed. Group pricing belongs to the
-      // line subtotal, never to the product's stored unit price.
-      unitPrice: product.price,
+      // Prepared sales use the normal price plus the configured preparation
+      // charge. Group pricing is intentionally ignored for prepared sales.
+      unitPrice: product.price + preparationExtra,
       quantity: quantity,
       lineSubtotal: lineSubtotal,
       discount: 0,
       lineTotal: lineSubtotal,
       imageData: product.imageData,
-      hasGroupPricing: product.hasGroupPricing && product.groupQuantity > 0,
+      hasGroupPricing: !isPrepared && product.hasGroupPricing && product.groupQuantity > 0,
+      isPrepared: isPrepared,
+      preparationExtra: preparationExtra,
     );
   }
 
@@ -55,6 +67,8 @@ class SaleLinesService {
       imageData: item.imageData,
       isElectronicBalance: item.isElectronicBalance,
       hasGroupPricing: item.hasGroupPricing,
+      isPrepared: item.isPrepared,
+      preparationExtra: item.preparationExtra,
       electronicBalanceAccountId: item.electronicBalanceAccountId,
       electronicBalanceCategory: item.electronicBalanceCategory,
       metadata: item.metadata,
