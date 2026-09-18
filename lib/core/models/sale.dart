@@ -85,6 +85,8 @@ class SaleItemRecord implements SyncableEntity {
   final String imageData;
   final bool isElectronicBalance;
   final bool hasGroupPricing;
+  final bool isPrepared;
+  final double preparationExtra;
   final String? electronicBalanceAccountId;
   final String? electronicBalanceCategory;
   @override
@@ -106,6 +108,8 @@ class SaleItemRecord implements SyncableEntity {
     this.imageData = '',
     bool isElectronicBalance = false,
     this.hasGroupPricing = false,
+    this.isPrepared = false,
+    this.preparationExtra = 0,
     String? electronicBalanceAccountId,
     String? electronicBalanceCategory,
     SyncMetadata? metadata,
@@ -124,9 +128,9 @@ class SaleItemRecord implements SyncableEntity {
     return '$name · $type';
   }
 
-  Map<String, dynamic> toMap() => {'id': id, 'productId': productId, 'productName': productName, 'unit': unit, 'brand': brand, 'barcode': barcode, 'cost': cost, 'unitPrice': unitPrice, 'quantity': quantity, 'lineSubtotal': lineSubtotal, 'discount': discount, 'lineTotal': lineTotal, 'imageData': imageData, 'isElectronicBalance': isElectronicBalance, 'hasGroupPricing': hasGroupPricing, 'electronicBalanceAccountId': electronicBalanceAccountId, 'electronicBalanceCategory': electronicBalanceCategory, 'metadata': metadata.toMap()};
+  Map<String, dynamic> toMap() => {'id': id, 'productId': productId, 'productName': productName, 'unit': unit, 'brand': brand, 'barcode': barcode, 'cost': cost, 'unitPrice': unitPrice, 'quantity': quantity, 'lineSubtotal': lineSubtotal, 'discount': discount, 'lineTotal': lineTotal, 'imageData': imageData, 'isElectronicBalance': isElectronicBalance, 'hasGroupPricing': hasGroupPricing, 'isPrepared': isPrepared, 'preparationExtra': preparationExtra, 'electronicBalanceAccountId': electronicBalanceAccountId, 'electronicBalanceCategory': electronicBalanceCategory, 'metadata': metadata.toMap()};
 
-  factory SaleItemRecord.fromMap(Map<String, dynamic> map) => SaleItemRecord(id: map['id']?.toString(), productId: map['productId']?.toString() ?? '', productName: map['productName']?.toString() ?? '', unit: map['unit']?.toString() ?? '', brand: map['brand']?.toString() ?? '', barcode: map['barcode']?.toString() ?? '', cost: _double(map['cost']), unitPrice: _double(map['unitPrice']), quantity: _int(map['quantity']), lineSubtotal: _double(map['lineSubtotal']), discount: _double(map['discount']), lineTotal: _double(map['lineTotal']), imageData: map['imageData']?.toString() ?? '', isElectronicBalance: _bool(map['isElectronicBalance']), hasGroupPricing: _bool(map['hasGroupPricing']), electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(), electronicBalanceCategory: map['electronicBalanceCategory']?.toString(), metadata: _metadata(map['metadata']));
+  factory SaleItemRecord.fromMap(Map<String, dynamic> map) => SaleItemRecord(id: map['id']?.toString(), productId: map['productId']?.toString() ?? '', productName: map['productName']?.toString() ?? '', unit: map['unit']?.toString() ?? '', brand: map['brand']?.toString() ?? '', barcode: map['barcode']?.toString() ?? '', cost: _double(map['cost']), unitPrice: _double(map['unitPrice']), quantity: _int(map['quantity']), lineSubtotal: _double(map['lineSubtotal']), discount: _double(map['discount']), lineTotal: _double(map['lineTotal']), imageData: map['imageData']?.toString() ?? '', isElectronicBalance: _bool(map['isElectronicBalance']), hasGroupPricing: _bool(map['hasGroupPricing']), isPrepared: _bool(map['isPrepared']), preparationExtra: _double(map['preparationExtra']), electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(), electronicBalanceCategory: map['electronicBalanceCategory']?.toString(), metadata: _metadata(map['metadata']));
 
   static double _double(dynamic v) => v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
   static int _int(dynamic v) => v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
@@ -209,7 +213,7 @@ class SaleRecord implements SyncableEntity {
     final hour = createdAt.hour % 12 == 0 ? 12 : createdAt.hour % 12;
     final period = createdAt.hour >= 12 ? 'PM' : 'AM';
     final time = '${hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} $period';
-    return SaleTicketData(ticketNumber: ticketNumber, date: date, time: time, client: clientName, status: isAnnulled ? 'ANULADA' : 'COMPLETADA', operations: operations.map((operation) => SaleTicketOperation(label: operation.label, amountDelta: operation.amountDelta, details: _ticketOperationDetails(operation))).toList(growable: false), items: items.map((item) => SaleTicketItem(quantity: item.quantity, description: item.productName, brand: item.brand, unit: item.isElectronicBalance ? '' : item.unit, unitPrice: item.hasGroupPricing ? item.lineTotal : item.unitPrice, discount: item.discount, total: item.lineTotal)).toList(growable: false), subtotal: subtotal, discount: discountAmount, cardFee: cardFeeAmount, total: effectiveTotal, paymentMethod: paymentMethod, received: effectiveCollected, change: change);
+    return SaleTicketData(ticketNumber: ticketNumber, date: date, time: time, client: clientName, status: isAnnulled ? 'ANULADA' : 'COMPLETADA', operations: operations.map((operation) => SaleTicketOperation(label: operation.label, amountDelta: operation.amountDelta, details: _ticketOperationDetails(operation))).toList(growable: false), items: items.map((item) => SaleTicketItem(quantity: item.quantity, description: item.productName, brand: item.brand, unit: item.isElectronicBalance ? '' : item.unit, unitPrice: item.hasGroupPricing ? item.lineTotal : item.unitPrice, discount: item.discount, preparationExtra: item.preparationExtra, total: item.lineTotal)).toList(growable: false), subtotal: subtotal, discount: discountAmount, cardFee: cardFeeAmount, total: effectiveTotal, paymentMethod: paymentMethod, received: effectiveCollected, change: change);
   }
 
   static String _ticketOperationDetails(SaleOperationRecord operation) {
