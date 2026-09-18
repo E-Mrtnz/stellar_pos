@@ -23,6 +23,8 @@ void main() {
         hasGroupPricing: true,
         groupQuantity: 3,
         groupPrice: 2.00,
+        allowPreparedSale: true,
+        preparationExtra: 0.25,
       );
 
       final restored = Product.fromMap(product.toMap());
@@ -36,6 +38,8 @@ void main() {
       expect(restored.hasGroupPricing, isTrue);
       expect(restored.groupQuantity, 3);
       expect(restored.groupPrice, 2.00);
+      expect(restored.allowPreparedSale, isTrue);
+      expect(restored.preparationExtra, 0.25);
       expect(restored.metadata.version, product.metadata.version);
     });
 
