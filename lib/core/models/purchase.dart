@@ -139,6 +139,11 @@ class PurchaseRecord implements SyncableEntity {
   final String distributorName;
   final DateTime arrivalAt;
   final String paymentMethod;
+  /// Identifies purchases that originate outside physical inventory.
+  final String purchaseType;
+  final String? electronicBalanceAccountId;
+  final String? electronicBalanceTransactionId;
+  final String? electronicBalanceCategory;
   final List<PurchaseItemRecord> items;
   final double subtotal;
   final double discount;
@@ -152,6 +157,10 @@ class PurchaseRecord implements SyncableEntity {
     required this.distributorName,
     required this.arrivalAt,
     required this.paymentMethod,
+    this.purchaseType = 'product',
+    this.electronicBalanceAccountId,
+    this.electronicBalanceTransactionId,
+    this.electronicBalanceCategory,
     required List<PurchaseItemRecord> items,
     required this.subtotal,
     this.discount = 0,
@@ -163,7 +172,40 @@ class PurchaseRecord implements SyncableEntity {
          updatedAt: arrivalAt.toUtc(),
        );
 
-  int get itemCount => items.fold(0, (sum, item) => sum + item.totalQuantity);
+  bool get isElectronicBalancePurchase => purchaseType == 'electronic_balance';
+  int get itemCount => isElectronicBalancePurchase ? 0 : items.fold(0, (sum, item) => sum + item.totalQuantity);
+
+  PurchaseRecord copyWith({
+    String? id,
+    String? invoiceNumber,
+    String? distributorName,
+    DateTime? arrivalAt,
+    String? paymentMethod,
+    String? purchaseType,
+    String? electronicBalanceAccountId,
+    String? electronicBalanceTransactionId,
+    String? electronicBalanceCategory,
+    List<PurchaseItemRecord>? items,
+    double? subtotal,
+    double? discount,
+    double? total,
+    SyncMetadata? metadata,
+  }) => PurchaseRecord(
+    id: id ?? this.id,
+    invoiceNumber: invoiceNumber ?? this.invoiceNumber,
+    distributorName: distributorName ?? this.distributorName,
+    arrivalAt: arrivalAt ?? this.arrivalAt,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    purchaseType: purchaseType ?? this.purchaseType,
+    electronicBalanceAccountId: electronicBalanceAccountId ?? this.electronicBalanceAccountId,
+    electronicBalanceTransactionId: electronicBalanceTransactionId ?? this.electronicBalanceTransactionId,
+    electronicBalanceCategory: electronicBalanceCategory ?? this.electronicBalanceCategory,
+    items: items ?? this.items,
+    subtotal: subtotal ?? this.subtotal,
+    discount: discount ?? this.discount,
+    total: total ?? this.total,
+    metadata: metadata ?? this.metadata.touch(),
+  );
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -171,6 +213,10 @@ class PurchaseRecord implements SyncableEntity {
     'distributorName': distributorName,
     'arrivalAt': arrivalAt.toIso8601String(),
     'paymentMethod': paymentMethod,
+    'purchaseType': purchaseType,
+    'electronicBalanceAccountId': electronicBalanceAccountId,
+    'electronicBalanceTransactionId': electronicBalanceTransactionId,
+    'electronicBalanceCategory': electronicBalanceCategory,
     'items': items.map((item) => item.toMap()).toList(),
     'subtotal': subtotal,
     'discount': discount,
@@ -184,6 +230,10 @@ class PurchaseRecord implements SyncableEntity {
     distributorName: map['distributorName']?.toString() ?? '',
     arrivalAt: _date(map['arrivalAt']),
     paymentMethod: map['paymentMethod']?.toString() ?? 'Contado',
+    purchaseType: map['purchaseType']?.toString() ?? 'product',
+    electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(),
+    electronicBalanceTransactionId: map['electronicBalanceTransactionId']?.toString(),
+    electronicBalanceCategory: map['electronicBalanceCategory']?.toString(),
     items: _items(map['items']),
     subtotal: _double(map['subtotal']),
     discount: _double(map['discount']),
