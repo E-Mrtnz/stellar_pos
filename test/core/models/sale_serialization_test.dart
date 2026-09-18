@@ -52,6 +52,50 @@ void main() {
     expect(restored.metadata.version, sale.metadata.version);
   });
 
+  test('prepared sale preserves preparation data and ticket uses base price plus extra', () {
+    final sale = SaleRecord(
+      id: 'sale-prepared',
+      ticketNumber: '#0003',
+      createdAt: DateTime.utc(2026, 9, 8, 20),
+      clientId: null,
+      clientName: 'Consumidor final',
+      paymentMethod: 'Efectivo',
+      items: [
+        SaleItemRecord(
+          id: 'line-prepared',
+          productId: 'p3',
+          productName: 'Sopa instantánea',
+          unit: '64 g',
+          barcode: '789',
+          cost: 0.50,
+          unitPrice: 1.50,
+          quantity: 2,
+          lineSubtotal: 3.00,
+          discount: 0,
+          lineTotal: 3.00,
+          isPrepared: true,
+          preparationExtra: 0.25,
+        ),
+      ],
+      subtotal: 3.00,
+      discountPercent: 0,
+      discountAmount: 0,
+      cardFeeAmount: 0,
+      total: 3.00,
+      received: 3.00,
+      change: 0,
+    );
+
+    final restored = SaleRecord.fromMap(sale.toMap());
+    final ticket = restored.toTicketData();
+
+    expect(restored.items.single.isPrepared, isTrue);
+    expect(restored.items.single.preparationExtra, 0.25);
+    expect(ticket.items.single.unitPrice, 1.25);
+    expect(ticket.items.single.preparationExtra, 0.25);
+    expect(ticket.items.single.total, 3.00);
+  });
+
   test('SaleRecord ticket data uses product unit and keeps grouped line total as displayed price', () {
     final sale = SaleRecord(
       id: 'sale-2',
