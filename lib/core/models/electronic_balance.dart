@@ -60,26 +60,9 @@ class ElectronicBalanceAccount implements SyncableEntity {
 
   Map<String, dynamic> toMap() => {'id': id, 'companyName': companyName, 'commissionRate': commissionRate, 'balance': balance, 'saleOptions': saleOptions.map((option) => option.toMap()).toList(), 'metadata': metadata.toMap()};
 
-  factory ElectronicBalanceAccount.fromMap(Map<String, dynamic> map) {
-    final companyName = map['companyName']?.toString() ?? '';
-    var balance = _double(map['balance']);
-
-    // One-time correction for the known TIGO data-entry discrepancy.
-    // The persisted value is $25.52, while the real balance is $25.40.
-    if (companyName.trim().toLowerCase() == 'tigo' &&
-        (balance - 25.52).abs() < 0.000001) {
-      balance = 25.40;
-    }
-
-    return ElectronicBalanceAccount(
-      id: map['id']?.toString() ?? '',
-      companyName: companyName,
-      commissionRate: _double(map['commissionRate']),
-      balance: balance,
-      saleOptions: _options(map['saleOptions']),
-      metadata: _metadata(map['metadata']),
-    );
-  }
+  factory ElectronicBalanceAccount.fromMap(Map<String, dynamic> map) => ElectronicBalanceAccount(
+    id: map['id']?.toString() ?? '', companyName: map['companyName']?.toString() ?? '', commissionRate: _double(map['commissionRate']), balance: _double(map['balance']),
+    saleOptions: _options(map['saleOptions']), metadata: _metadata(map['metadata']));
 
   static List<ElectronicBalanceSaleOption> _options(dynamic value) => value is Iterable ? value.whereType<Map>().map((item) => ElectronicBalanceSaleOption.fromMap(Map<String, dynamic>.from(item))).toList() : const [];
   static double _double(dynamic value) => value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '') ?? 0;
