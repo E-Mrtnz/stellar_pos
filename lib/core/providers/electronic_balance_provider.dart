@@ -308,7 +308,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
             account: account,
             category: category,
             amount: sale.amount,
-          ),
+          ) * sale.quantity,
           profit: _service.profitForSale(
             account: account,
             category: category,
