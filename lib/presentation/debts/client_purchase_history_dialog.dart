@@ -9,7 +9,6 @@ import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
-import 'package:stellar_pos/presentation/debts/edit_credit_sale_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class ClientPurchaseHistoryDialog extends StatelessWidget {
@@ -136,35 +135,6 @@ class _SaleHistoryCard extends StatefulWidget {
 
 class _SaleHistoryCardState extends State<_SaleHistoryCard> {
   bool _expanded = false;
-
-  Future<void> _edit() async {
-    final updatedItems = await EditCreditSaleDialog.show(
-      context,
-      sale: widget.sale,
-    );
-    if (updatedItems == null || !mounted) return;
-    try {
-      context.read<SalesProvider>().updateSale(
-        saleId: widget.sale.id,
-        updatedItems: updatedItems,
-        productProvider: context.read<ProductProvider>(),
-        electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
-      );
-      AppAlert.show(
-        context,
-        'La venta fue actualizada correctamente.',
-        title: 'Venta actualizada',
-        type: AppAlertType.success,
-      );
-    } catch (error) {
-      AppAlert.show(
-        context,
-        error is StateError ? error.message : 'No se pudo actualizar la venta.',
-        title: 'Error al actualizar',
-        type: AppAlertType.error,
-      );
-    }
-  }
 
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
@@ -304,12 +274,6 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
                         ? AppColors.successGreen
                         : AppColors.dangerRed,
                   ),
-                ),
-                IconButton(
-                  tooltip: isPaid ? 'Venta pagada' : 'Editar venta',
-                  onPressed: isPaid ? null : _edit,
-                  icon: const Icon(Icons.edit_outlined, size: 17),
-                  visualDensity: VisualDensity.compact,
                 ),
                 IconButton(
                   tooltip: 'Eliminar venta',
