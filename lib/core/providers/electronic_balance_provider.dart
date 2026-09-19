@@ -95,9 +95,20 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final seen = <String>{};
     for (final option in options) {
       final category = option.category.trim();
+      final commission = option.commissionRate;
       if (option.amount <= 0 || !_service.isValidCategory(category)) continue;
+      if (commission != null && (commission < 0 || commission > 100)) continue;
+      final isStandard = validCategories.contains(category);
+      final normalizedCommission = isStandard ? null : commission;
+      if (!isStandard && normalizedCommission == null) continue;
       if (seen.add('$category|${option.amount.toStringAsFixed(4)}')) {
-        normalized.add(ElectronicBalanceSaleOption(category: category, amount: option.amount));
+        normalized.add(
+          ElectronicBalanceSaleOption(
+            category: category,
+            amount: option.amount,
+            commissionRate: normalizedCommission,
+          ),
+        );
       }
     }
 
@@ -194,8 +205,8 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       accountId: transaction.accountId,
       type: transaction.type,
       amount: amount,
-      providerCost: _service.providerCost(amount: amount, commissionRate: account.commissionRate),
-      profit: _service.profit(amount: amount, commissionRate: account.commissionRate),
+      providerCost: amount,
+      profit: 0,
       category: nextCategory,
       description: transaction.description,
       createdAt: transaction.createdAt,
@@ -287,8 +298,28 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       final category = sale.category.trim();
       if (sale.amount <= 0 || sale.quantity <= 0 || !_service.isValidCategory(category)) return false;
       final amount = sale.amount * sale.quantity;
-      pending.add(ElectronicBalanceTransaction(id: IdGenerator.newId(), accountId: accountId, type: ElectronicBalanceTransactionType.sale, amount: amount, providerCost: _service.providerCost(amount: amount, commissionRate: account.commissionRate), profit: _service.profit(amount: amount, commissionRate: account.commissionRate), category: category, description: sale.description.trim(), createdAt: now, saleId: saleId));
-      totalAmount += amount;
+      pending.add(
+        ElectronicBalanceTransaction(
+          id: IdGenerator.newId(),
+          accountId: accountId,
+          type: ElectronicBalanceTransactionType.sale,
+          amount: amount,
+          providerCost: _service.providerCostForSale(
+            account: account,
+            category: category,
+            amount: sale.amount,
+          ),
+          profit: _service.profitForSale(
+            account: account,
+            category: category,
+            amount: sale.amount,
+          ) * sale.quantity,
+          category: category,
+          description: sale.description.trim(),
+          createdAt: now,
+          saleId: saleId,
+        ),
+      );
     }
     final updatedAccount = account.copyWith(balance: account.balance - totalAmount);
     _accounts[index] = updatedAccount;
