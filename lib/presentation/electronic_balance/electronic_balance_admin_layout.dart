@@ -112,7 +112,7 @@ class _AccountCard extends StatelessWidget {
             ),
             const SizedBox(height: 1),
             Text(
-              '\$\{account.balance.toStringAsFixed(2)}',
+              '\${account.balance.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
             ),
           ],
