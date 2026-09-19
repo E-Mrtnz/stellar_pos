@@ -601,18 +601,6 @@ class SaleDetailDialog extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (item.isElectronicBalance) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Comisión por paquete: \\${_money((item.unitPrice - item.cost).clamp(0, double.infinity).toDouble())} '
-                          '· \\${item.unitPrice <= 0 ? '0.00' : ((item.unitPrice - item.cost).clamp(0, double.infinity).toDouble() / item.unitPrice * 100).toStringAsFixed(2)}%',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: AppColors.successGreen,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
