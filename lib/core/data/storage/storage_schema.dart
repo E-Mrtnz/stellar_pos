@@ -11,7 +11,7 @@ import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 class StorageSchema {
   const StorageSchema._();
 
-  static const int currentVersion = 4;
+  static const int currentVersion = 1;
   static const String _versionKey = 'schemaVersion';
 
   static Future<void> initialize() async {
@@ -19,10 +19,7 @@ class StorageSchema {
     final storedVersion = _readVersion(box);
 
     if (storedVersion == null) {
-      // The schema marker was introduced after existing installations already
-      // had persistent data. Treat an unmarked installation as version 1 so
-      // pending migrations are still applied instead of being skipped.
-      await _migrate(box, 1, currentVersion);
+      await box.put(_versionKey, currentVersion);
       return;
     }
 
@@ -59,50 +56,12 @@ class StorageSchema {
     }
   }
 
-  static Future<void> _correctTigoBalance() async {
-    final accountsBox = await LocalStorage.openBox(
-      StorageBoxes.electronicBalanceAccounts,
-    );
-
-    for (final key in accountsBox.keys) {
-      final raw = accountsBox.get(key);
-      if (raw is! Map) continue;
-
-      final map = Map<String, dynamic>.from(raw);
-      final companyName = map['companyName']?.toString().trim().toLowerCase();
-      if (companyName != 'tigo') continue;
-
-      final balance = map['balance'];
-      final currentBalance = balance is num
-          ? balance.toDouble()
-          : double.tryParse(balance?.toString() ?? '');
-
-      // One-time correction for the known $0.12 data-entry discrepancy:
-      // $25.52 was recorded instead of the actual $25.40.
-      if (currentBalance != null &&
-          (currentBalance - 25.52).abs() < 0.000001) {
-        map['balance'] = 25.40;
-        await accountsBox.put(key, map);
-      }
-    }
-  }
-
   static Future<void> _runMigration(int fromVersion, int toVersion) async {
+    // Version 1 is the initial serialized format. The 0 -> 1 step is a
+    // deliberate no-op for installations that may already have a legacy
+    // schema marker. Future structural changes must add their own explicit
+    // version-to-version migration here.
     if (fromVersion == 0 && toVersion == 1) return;
-
-    if (fromVersion == 1 && toVersion == 2) {
-      await _correctTigoBalance();
-      return;
-    }
-
-    if (fromVersion == 2 && toVersion == 3) return;
-
-    // Final one-time correction for installations that already passed the
-    // previous migration without changing the persisted TIGO balance.
-    if (fromVersion == 3 && toVersion == 4) {
-      await _correctTigoBalance();
-      return;
-    }
 
     throw StateError(
       'No existe una migración de almacenamiento definida de $fromVersion a $toVersion.',
