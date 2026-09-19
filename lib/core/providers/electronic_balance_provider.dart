@@ -294,6 +294,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final now = DateTime.now();
     final pending = <ElectronicBalanceTransaction>[];
     var totalAmount = 0.0;
+    var totalProviderCost = 0.0;
     for (final sale in sales) {
       final category = sale.category.trim();
       if (sale.amount <= 0 || sale.quantity <= 0 || !_service.isValidCategory(category)) return false;
@@ -320,8 +321,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
           saleId: saleId,
         ),
       );
+      totalProviderCost += pending.last.providerCost;
     }
-    final updatedAccount = account.copyWith(balance: account.balance - totalAmount);
+    final updatedAccount = account.copyWith(balance: account.balance - totalProviderCost);
     _accounts[index] = updatedAccount;
     _transactions.addAll(pending);
     notifyListeners();
@@ -334,7 +336,10 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final matching = _transactions.where((t) => t.saleId == saleId && t.type == ElectronicBalanceTransactionType.sale).toList();
     if (matching.isEmpty) return false;
     final byAccount = <String, double>{};
-    for (final transaction in matching) byAccount[transaction.accountId] = (byAccount[transaction.accountId] ?? 0) + transaction.amount;
+    for (final transaction in matching) {
+      byAccount[transaction.accountId] =
+          (byAccount[transaction.accountId] ?? 0) + transaction.providerCost;
+    }
     for (final entry in byAccount.entries) {
       final index = _accounts.indexWhere((a) => a.id == entry.key);
       if (index < 0) return false;
