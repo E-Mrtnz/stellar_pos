@@ -19,7 +19,10 @@ class StorageSchema {
     final storedVersion = _readVersion(box);
 
     if (storedVersion == null) {
-      await box.put(_versionKey, currentVersion);
+      // The schema marker was introduced after existing installations already
+      // had persistent data. Treat an unmarked installation as version 1 so
+      // pending migrations are still applied instead of being skipped.
+      await _migrate(box, 1, currentVersion);
       return;
     }
 
