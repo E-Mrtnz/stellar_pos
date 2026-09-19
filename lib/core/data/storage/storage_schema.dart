@@ -11,7 +11,7 @@ import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 class StorageSchema {
   const StorageSchema._();
 
-  static const int currentVersion = 2;
+  static const int currentVersion = 3;
   static const String _versionKey = 'schemaVersion';
 
   static Future<void> initialize() async {
@@ -59,35 +59,47 @@ class StorageSchema {
     }
   }
 
+  static Future<void> _correctTigoBalance() async {
+    final accountsBox = await LocalStorage.openBox(
+      StorageBoxes.electronicBalanceAccounts,
+    );
+
+    for (final key in accountsBox.keys) {
+      final raw = accountsBox.get(key);
+      if (raw is! Map) continue;
+
+      final map = Map<String, dynamic>.from(raw);
+      final companyName = map['companyName']?.toString().trim().toLowerCase();
+      if (companyName != 'tigo') continue;
+
+      final balance = map['balance'];
+      final currentBalance = balance is num
+          ? balance.toDouble()
+          : double.tryParse(balance?.toString() ?? '');
+
+      // One-time correction for the known $0.12 data-entry discrepancy:
+      // $25.52 was recorded instead of the actual $25.40.
+      if (currentBalance != null &&
+          (currentBalance - 25.52).abs() < 0.000001) {
+        map['balance'] = 25.40;
+        await accountsBox.put(key, map);
+      }
+    }
+  }
+
   static Future<void> _runMigration(int fromVersion, int toVersion) async {
     if (fromVersion == 0 && toVersion == 1) return;
 
     if (fromVersion == 1 && toVersion == 2) {
-      final accountsBox = await LocalStorage.openBox(
-        StorageBoxes.electronicBalanceAccounts,
-      );
+      await _correctTigoBalance();
+      return;
+    }
 
-      for (final key in accountsBox.keys) {
-        final raw = accountsBox.get(key);
-        if (raw is! Map) continue;
-
-        final map = Map<String, dynamic>.from(raw);
-        final companyName = map['companyName']?.toString().trim().toLowerCase();
-        final balance = map['balance'];
-
-        if (companyName != 'tigo') continue;
-
-        final currentBalance = balance is num
-            ? balance.toDouble()
-            : double.tryParse(balance?.toString() ?? '');
-
-        // One-time correction for the known $0.12 data-entry discrepancy:
-        // $25.52 was recorded instead of the actual $25.40.
-        if (currentBalance != null && (currentBalance - 25.52).abs() < 0.000001) {
-          map['balance'] = 25.40;
-          await accountsBox.put(key, map);
-        }
-      }
+    // Version 2 may already have been written by the first correction attempt
+    // on an installation that had no schema marker. Keep the correction in a
+    // new migration so that those installations are repaired as well.
+    if (fromVersion == 2 && toVersion == 3) {
+      await _correctTigoBalance();
       return;
     }
 
