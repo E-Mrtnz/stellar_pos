@@ -135,6 +135,18 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     return true;
   }
 
+  bool updateBalance({required String accountId, required double balance}) {
+    if (balance < 0) return false;
+    final index = _accounts.indexWhere((a) => a.id == accountId);
+    if (index < 0) return false;
+
+    final updatedAccount = _accounts[index].copyWith(balance: balance);
+    _accounts[index] = updatedAccount;
+    notifyListeners();
+    _persistAccount(updatedAccount);
+    return true;
+  }
+
   bool registerPurchase({required String accountId, required double amount, String category = 'Saldo'}) {
     if (amount <= 0) return false;
     final index = _accounts.indexWhere((a) => a.id == accountId);
@@ -362,21 +374,6 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final transactions = await _transactionRepository?.getAll() ?? const <ElectronicBalanceTransaction>[];
     _accounts..clear()..addAll(accounts);
     _transactions..clear()..addAll(transactions);
-
-    // One-time correction for the known TIGO data-entry discrepancy.
-    // The UI reads the persisted account balance directly, so correct the
-    // account at the point where it is loaded instead of relying on a schema
-    // migration that may already have been marked as completed.
-    for (var i = 0; i < _accounts.length; i++) {
-      final account = _accounts[i];
-      if (account.companyName.trim().toLowerCase() == 'tigo' &&
-          (account.balance - 25.52).abs() < 0.000001) {
-        final corrected = account.copyWith(balance: 25.40);
-        _accounts[i] = corrected;
-        _persistAccount(corrected);
-      }
-    }
-
     _loaded = true;
     if (_accounts.isNotEmpty || _transactions.isNotEmpty) notifyListeners();
   }
