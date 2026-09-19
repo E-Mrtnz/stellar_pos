@@ -293,7 +293,6 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final account = _accounts[index];
     final now = DateTime.now();
     final pending = <ElectronicBalanceTransaction>[];
-    var totalAmount = 0.0;
     var totalProviderCost = 0.0;
     for (final sale in sales) {
       final category = sale.category.trim();
