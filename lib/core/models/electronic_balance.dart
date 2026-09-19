@@ -10,16 +10,19 @@ class ElectronicBalanceSaleOption implements SyncableEntity {
   final String id;
   final String category;
   final double amount;
+  /// Commission percentage specific to this sale category.
+  /// Null means the account's main commission applies (standard categories and legacy data).
+  final double? commissionRate;
   @override
   final SyncMetadata metadata;
 
-  ElectronicBalanceSaleOption({String? id, required this.category, required this.amount, SyncMetadata? metadata})
+  ElectronicBalanceSaleOption({String? id, required this.category, required this.amount, this.commissionRate, SyncMetadata? metadata})
       : id = id ?? IdGenerator.newId(), metadata = metadata ?? SyncMetadata.initial();
 
-  Map<String, dynamic> toMap() => {'id': id, 'category': category, 'amount': amount, 'metadata': metadata.toMap()};
+  Map<String, dynamic> toMap() => {'id': id, 'category': category, 'amount': amount, 'commissionRate': commissionRate, 'metadata': metadata.toMap()};
 
   factory ElectronicBalanceSaleOption.fromMap(Map<String, dynamic> map) => ElectronicBalanceSaleOption(
-    id: map['id']?.toString(), category: map['category']?.toString() ?? '', amount: _double(map['amount']), metadata: _metadata(map['metadata']));
+    id: map['id']?.toString(), category: map['category']?.toString() ?? '', amount: _double(map['amount']), commissionRate: map['commissionRate'] == null ? null : _double(map['commissionRate']), metadata: _metadata(map['metadata']));
 
   static double _double(dynamic value) => value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '') ?? 0;
   static SyncMetadata _metadata(dynamic value) => value is Map ? SyncMetadata.fromMap(Map<String, dynamic>.from(value)) : SyncMetadata.initial();
