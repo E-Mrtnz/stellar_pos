@@ -52,20 +52,40 @@ class _Metric extends StatelessWidget {
 }
 
 class _CustomField {
-  final TextEditingController name; final TextEditingController amounts;
-  _CustomField({String category = '', String values = ''}) : name = TextEditingController(text: category), amounts = TextEditingController(text: values);
-  void dispose() { name.dispose(); amounts.dispose(); }
+  final TextEditingController name;
+  final TextEditingController commission;
+  final TextEditingController amounts;
+
+  _CustomField({
+    String category = '',
+    String commissionRate = '',
+    String values = '',
+  })  : name = TextEditingController(text: category),
+        commission = TextEditingController(text: commissionRate),
+        amounts = TextEditingController(text: values);
+
+  void dispose() {
+    name.dispose();
+    commission.dispose();
+    amounts.dispose();
+  }
 }
 
 class _AccountDialog extends StatefulWidget {
   final ElectronicBalanceAccount? account;
   const _AccountDialog({required this.account});
-  @override State<_AccountDialog> createState() => _AccountDialogState();
+
+  @override
+  State<_AccountDialog> createState() => _AccountDialogState();
 }
 
 class _AccountDialogState extends State<_AccountDialog> {
   static const _standard = ['Saldo', 'Internet', 'Llamada'];
-  late final TextEditingController _name, _rate, _saldo, _internet, _llamada;
+  late final TextEditingController _name;
+  late final TextEditingController _rate;
+  late final TextEditingController _saldo;
+  late final TextEditingController _internet;
+  late final TextEditingController _llamada;
   final List<_CustomField> _custom = [];
 
   @override
@@ -73,88 +93,391 @@ class _AccountDialogState extends State<_AccountDialog> {
     super.initState();
     final a = widget.account;
     _name = TextEditingController(text: a?.companyName ?? '');
-    _rate = TextEditingController(text: a == null ? '' : _fmt(a.commissionRate));
-    _saldo = TextEditingController(text: _amounts(a?.amountsForCategory('Saldo') ?? const []));
-    _internet = TextEditingController(text: _amounts(a?.amountsForCategory('Internet') ?? const []));
-    _llamada = TextEditingController(text: _amounts(a?.amountsForCategory('Llamada') ?? const []));
+    _rate = TextEditingController(
+      text: a == null ? '' : _fmt(a.commissionRate),
+    );
+    _saldo = TextEditingController(
+      text: _amounts(a?.amountsForCategory('Saldo') ?? const []),
+    );
+    _internet = TextEditingController(
+      text: _amounts(a?.amountsForCategory('Internet') ?? const []),
+    );
+    _llamada = TextEditingController(
+      text: _amounts(a?.amountsForCategory('Llamada') ?? const []),
+    );
+
     if (a != null) {
       final names = <String>[];
       for (final option in a.saleOptions) {
         final name = option.category.trim();
-        if (name.isEmpty || _standard.contains(name) || names.contains(name)) continue;
+        if (name.isEmpty ||
+            _standard.contains(name) ||
+            names.any((value) => value.toLowerCase() == name.toLowerCase())) {
+          continue;
+        }
         names.add(name);
+        final commission = option.commissionRate ?? a.commissionRate;
+        _custom.add(
+          _CustomField(
+            category: name,
+            commissionRate: _fmt(commission),
+            values: _amounts(a.amountsForCategory(name)),
+          ),
+        );
       }
-      for (final name in names) _custom.add(_CustomField(category: name, values: _amounts(a.amountsForCategory(name))));
     }
   }
 
   @override
-  void dispose() { _name.dispose(); _rate.dispose(); _saldo.dispose(); _internet.dispose(); _llamada.dispose(); for (final f in _custom) f.dispose(); super.dispose(); }
+  void dispose() {
+    _name.dispose();
+    _rate.dispose();
+    _saldo.dispose();
+    _internet.dispose();
+    _llamada.dispose();
+    for (final field in _custom) {
+      field.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.account == null ? 'Agregar compañía' : 'Editar compañía'),
-    content: SizedBox(width: 520, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      TextField(controller: _name, decoration: const InputDecoration(labelText: 'Compañía', hintText: 'Ej. Tigo', prefixIcon: Icon(Icons.business_outlined))),
-      const SizedBox(height: 12),
-      TextField(controller: _rate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Comisión (%)', suffixText: '%', prefixIcon: Icon(Icons.percent_outlined))),
-      const SizedBox(height: 18),
-      const Align(alignment: Alignment.centerLeft, child: Text('Montos de venta', style: TextStyle(fontWeight: FontWeight.bold))),
-      const SizedBox(height: 6),
-      const Align(alignment: Alignment.centerLeft, child: Text('Los montos se separan por comas. Las categorías personalizadas aparecen después de Saldo, Internet y Llamada.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
-      const SizedBox(height: 12),
-      _AmountsField(_saldo, 'Saldo'), const SizedBox(height: 10),
-      _AmountsField(_internet, 'Internet'), const SizedBox(height: 10),
-      _AmountsField(_llamada, 'Llamada'), const SizedBox(height: 14),
-      ..._custom.asMap().entries.map((entry) => Padding(padding: const EdgeInsets.only(bottom: 10), child: _CustomFieldView(index: entry.key, field: entry.value, onRemove: () => setState(() { final f = _custom.removeAt(entry.key); f.dispose(); })))),
-      Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: () => setState(() => _custom.add(_CustomField())), icon: const Icon(Icons.add, size: 18), label: const Text('Agregar otra categoría'))),
-    ]))),
-    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: _save, child: Text(widget.account == null ? 'Agregar' : 'Guardar'))],
-  );
+        title: Text(
+          widget.account == null ? 'Agregar compañía' : 'Editar compañía',
+        ),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _name,
+                  decoration: const InputDecoration(
+                    labelText: 'Compañía',
+                    hintText: 'Ej. Tigo',
+                    prefixIcon: Icon(Icons.business_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _rate,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Comisión general (%)',
+                    helperText:
+                        'Se utiliza para Saldo, Internet y Llamada.',
+                    suffixText: '%',
+                    prefixIcon: Icon(Icons.percent_outlined),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Montos de venta',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Las categorías especiales tienen su propia comisión independiente de la comisión general.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _AmountsField(_saldo, 'Saldo'),
+                const SizedBox(height: 10),
+                _AmountsField(_internet, 'Internet'),
+                const SizedBox(height: 10),
+                _AmountsField(_llamada, 'Llamada'),
+                const SizedBox(height: 14),
+                ..._custom.asMap().entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _CustomFieldView(
+                      field: entry.value,
+                      onRemove: () => setState(() {
+                        final field = _custom.removeAt(entry.key);
+                        field.dispose();
+                      }),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => setState(
+                      () => _custom.add(
+                        _CustomField(
+                          commissionRate: _rate.text.trim(),
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Agregar otra categoría con comisión'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: Text(widget.account == null ? 'Agregar' : 'Guardar'),
+          ),
+        ],
+      );
 
   void _save() {
     final name = _name.text.trim();
     final rate = double.tryParse(_rate.text.replaceAll(',', '.'));
-    if (name.isEmpty || rate == null || rate < 0 || rate > 100) { _error('Ingresa una compañía y una comisión válida entre 0% y 100%.'); return; }
-    final options = <ElectronicBalanceSaleOption>[..._parse('Saldo', _saldo.text), ..._parse('Internet', _internet.text), ..._parse('Llamada', _llamada.text)];
+    if (name.isEmpty || rate == null || rate < 0 || rate > 100) {
+      _error(
+        'Ingresa una compañía y una comisión general válida entre 0% y 100%.',
+      );
+      return;
+    }
+
+    final options = <ElectronicBalanceSaleOption>[
+      ..._parseStandard('Saldo', _saldo.text),
+      ..._parseStandard('Internet', _internet.text),
+      ..._parseStandard('Llamada', _llamada.text),
+    ];
+
     final names = <String>{};
     for (final field in _custom) {
       final category = field.name.text.trim();
-      if (category.isEmpty || _standard.any((s) => s.toLowerCase() == category.toLowerCase())) { _error('Revisa los nombres de las categorías personalizadas.'); return; }
-      if (!names.add(category.toLowerCase())) { _error('No puedes repetir una categoría personalizada.'); return; }
-      final parsed = _parse(category, field.amounts.text);
-      if (parsed.isEmpty) { _error('Agrega al menos un monto para "$category".'); return; }
+      final commission = double.tryParse(
+        field.commission.text.replaceAll(',', '.'),
+      );
+      if (category.isEmpty ||
+          _standard.any(
+            (standard) => standard.toLowerCase() == category.toLowerCase(),
+          )) {
+        _error('Revisa los nombres de las categorías especiales.');
+        return;
+      }
+      if (!names.add(category.toLowerCase())) {
+        _error('No puedes repetir una categoría especial.');
+        return;
+      }
+      if (commission == null || commission < 0 || commission > 100) {
+        _error(
+          'La comisión de "$category" debe estar entre 0% y 100%.',
+        );
+        return;
+      }
+      final parsed = _parseCustom(category, field.amounts.text, commission);
+      if (parsed.isEmpty) {
+        _error('Agrega al menos un monto para "$category".');
+        return;
+      }
       options.addAll(parsed);
     }
+
     final provider = context.read<ElectronicBalanceProvider>();
     if (widget.account == null) {
-      if (!provider.addAccount(companyName: name, commissionRate: rate)) { _error('No se pudo agregar la compañía.'); return; }
-      final created = provider.accounts.firstWhere((a) => a.companyName.toLowerCase() == name.toLowerCase());
+      if (!provider.addAccount(
+        companyName: name,
+        commissionRate: rate,
+      )) {
+        _error('No se pudo agregar la compañía.');
+        return;
+      }
+      final created = provider.accounts.firstWhere(
+        (a) => a.companyName.toLowerCase() == name.toLowerCase(),
+      );
       provider.setSaleOptions(accountId: created.id, options: options);
     } else {
-      if (!provider.updateAccount(id: widget.account!.id, companyName: name, commissionRate: rate)) { _error('No se pudo actualizar la compañía.'); return; }
-      provider.setSaleOptions(accountId: widget.account!.id, options: options);
+      if (!provider.updateAccount(
+        id: widget.account!.id,
+        companyName: name,
+        commissionRate: rate,
+      )) {
+        _error('No se pudo actualizar la compañía.');
+        return;
+      }
+      provider.setSaleOptions(
+        accountId: widget.account!.id,
+        options: options,
+      );
     }
     Navigator.pop(context);
   }
 
-  void _error(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  static List<ElectronicBalanceSaleOption> _parse(String category, String text) => text.split(RegExp(r'[,;\n]+')).map((v) => double.tryParse(v.trim().replaceAll(',', '.'))).whereType<double>().where((v) => v > 0).map((v) => ElectronicBalanceSaleOption(category: category, amount: v)).toList();
-  static String _amounts(List<double> values) => values.map(_fmt).join(', ');
-  static String _fmt(double value) => value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
+  void _error(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  static List<ElectronicBalanceSaleOption> _parseStandard(
+    String category,
+    String text,
+  ) =>
+      text
+          .split(RegExp(r'[,;\n]+'))
+          .map(
+            (v) => double.tryParse(v.trim().replaceAll(',', '.')),
+          )
+          .whereType<double>()
+          .where((v) => v > 0)
+          .map(
+            (v) => ElectronicBalanceSaleOption(
+              category: category,
+              amount: v,
+            ),
+          )
+          .toList();
+
+  static List<ElectronicBalanceSaleOption> _parseCustom(
+    String category,
+    String text,
+    double commissionRate,
+  ) =>
+      text
+          .split(RegExp(r'[,;\n]+'))
+          .map(
+            (v) => double.tryParse(v.trim().replaceAll(',', '.')),
+          )
+          .whereType<double>()
+          .where((v) => v > 0)
+          .map(
+            (v) => ElectronicBalanceSaleOption(
+              category: category,
+              amount: v,
+              commissionRate: commissionRate,
+            ),
+          )
+          .toList();
+
+  static String _amounts(List<double> values) =>
+      values.map(_fmt).join(', ');
+
+  static String _fmt(double value) =>
+      value == value.roundToDouble()
+          ? value.toStringAsFixed(0)
+          : value.toStringAsFixed(2);
 }
 
 class _AmountsField extends StatelessWidget {
-  final TextEditingController controller; final String label;
+  final TextEditingController controller;
+  final String label;
+
   const _AmountsField(this.controller, this.label);
-  @override Widget build(BuildContext context) => TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label, hintText: 'Ej. 1.50, 2.50, 5, 10'));
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: 'Ej. 1.50, 2.50, 5, 10',
+        ),
+      );
 }
 
 class _CustomFieldView extends StatelessWidget {
-  final int index; final _CustomField field; final VoidCallback onRemove;
-  const _CustomFieldView({required this.index, required this.field, required this.onRemove});
-  @override Widget build(BuildContext context) => Row(children: [Expanded(child: TextField(controller: field.name, decoration: const InputDecoration(labelText: 'Categoría personalizada'))), const SizedBox(width: 8), Expanded(child: TextField(controller: field.amounts, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Montos separados por comas'))), IconButton(tooltip: 'Eliminar categoría', onPressed: onRemove, icon: const Icon(Icons.delete_outline, color: AppColors.dangerRed))]);
-}
+  final _CustomField field;
+  final VoidCallback onRemove;
+
+  const _CustomFieldView({
+    required this.field,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.inputBackground,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.tune_outlined,
+                  size: 17,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 7),
+                const Expanded(
+                  child: Text(
+                    'Categoría especial',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Eliminar categoría',
+                  onPressed: onRemove,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.dangerRed,
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: field.name,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre de la categoría',
+                      hintText: 'Ej. Promos',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 150,
+                  child: TextField(
+                    controller: field.commission,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Comisión',
+                      suffixText: '%',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: field.amounts,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Montos de venta',
+                hintText: 'Ej. 3, 5, 10',
+              ),
+            ),
+          ],
+        ),
+      );
 
 class _PurchaseDialog extends StatefulWidget {
   final ElectronicBalanceAccount account;
