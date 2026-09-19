@@ -134,9 +134,10 @@ class SalesProvider extends ChangeNotifier {
         subtotal: subtotal,
         discountAmount: discountAmount,
       );
-      final providerCost = _electronicBalance.providerCost(
+      final providerCost = _electronicBalance.providerCostForSale(
+        account: account,
+        category: electronicSale.category,
         amount: electronicSale.amount,
-        commissionRate: account.commissionRate,
       );
       items.add(
         SaleItemRecord(
@@ -326,9 +327,10 @@ class SalesProvider extends ChangeNotifier {
           product?.cost ??
           (account == null
               ? item.cost
-              : _electronicBalance.providerCost(
+              : _electronicBalance.providerCostForSale(
+                  account: account,
+                  category: item.electronicBalanceCategory ?? item.unit,
                   amount: item.unitPrice,
-                  commissionRate: account.commissionRate,
                 ));
       final name = isElectronic && account != null
           ? '${account.companyName} · ${item.electronicBalanceCategory ?? item.unit}'
