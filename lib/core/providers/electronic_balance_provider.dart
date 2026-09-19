@@ -362,6 +362,21 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final transactions = await _transactionRepository?.getAll() ?? const <ElectronicBalanceTransaction>[];
     _accounts..clear()..addAll(accounts);
     _transactions..clear()..addAll(transactions);
+
+    // One-time correction for the known TIGO data-entry discrepancy.
+    // The UI reads the persisted account balance directly, so correct the
+    // account at the point where it is loaded instead of relying on a schema
+    // migration that may already have been marked as completed.
+    for (var i = 0; i < _accounts.length; i++) {
+      final account = _accounts[i];
+      if (account.companyName.trim().toLowerCase() == 'tigo' &&
+          (account.balance - 25.52).abs() < 0.000001) {
+        final corrected = account.copyWith(balance: 25.40);
+        _accounts[i] = corrected;
+        _persistAccount(corrected);
+      }
+    }
+
     _loaded = true;
     if (_accounts.isNotEmpty || _transactions.isNotEmpty) notifyListeners();
   }
