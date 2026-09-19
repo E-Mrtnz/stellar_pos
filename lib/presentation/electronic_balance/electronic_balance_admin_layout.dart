@@ -19,9 +19,61 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
       Expanded(child: provider.accounts.isEmpty ? Center(child: OutlinedButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add), label: const Text('Agregar compañía'))) : ListView.separated(
         itemCount: provider.accounts.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, index) { final account = provider.accounts[index]; return _AccountCard(account: account, sold: provider.totalSold(account.id), profit: provider.totalProfit(account.id), onPurchase: () => _purchase(context, account), onHistory: () => _history(context, account), onEdit: () => _edit(context, account), onDelete: () => _delete(context, account)); },
+        itemBuilder: (_, index) { final account = provider.accounts[index]; return _AccountCard(account: account, sold: provider.totalSold(account.id), profit: provider.totalProfit(account.id), onPurchase: () => _purchase(context, account), onHistory: () => _history(context, account), onEdit: () => _edit(context, account), onEditBalance: () => _editBalance(context, account), onDelete: () => _delete(context, account)); },
       )),
     ]));
+  }
+
+  Future<void> _editBalance(BuildContext context, ElectronicBalanceAccount account) async {
+    final controller = TextEditingController(
+      text: account.balance.toStringAsFixed(2),
+    );
+
+    final value = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Editar saldo disponible · ${account.companyName}'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Saldo disponible',
+            prefixText: r'$ ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = double.tryParse(
+                controller.text.trim().replaceAll(',', '.'),
+              );
+              if (parsed == null || parsed < 0) return;
+              Navigator.pop(dialogContext, parsed);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (value == null || !context.mounted) return;
+
+    final updated = context.read<ElectronicBalanceProvider>().updateBalance(
+          accountId: account.id,
+          balance: value,
+        );
+
+    if (!updated && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar el saldo.')),
+      );
+    }
   }
 
   Future<void> _purchase(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(context: context, builder: (_) => _PurchaseDialog(account: account));
@@ -36,11 +88,39 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  final ElectronicBalanceAccount account; final double sold; final double profit; final VoidCallback onPurchase, onHistory, onEdit, onDelete;
-  const _AccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onHistory, required this.onEdit, required this.onDelete});
+  final ElectronicBalanceAccount account; final double sold; final double profit; final VoidCallback onPurchase, onHistory, onEdit, onEditBalance, onDelete;
+  const _AccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onHistory, required this.onEdit, required this.onEditBalance, required this.onDelete});
   @override Widget build(BuildContext context) => Card(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius), side: const BorderSide(color: AppColors.border)), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
     Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle), child: const Icon(Icons.sim_card_outlined, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)), Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), if (account.saleCategories.length > 3) Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)), IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)), IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline))]),
-    const Divider(height: 24), Row(children: [_Metric('Disponible', account.balance, true), _Metric('Vendido', sold, false), _Metric('Ganancia', profit, false)]),
+    const Divider(height: 24), Row(children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('Disponible', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                IconButton(
+                  tooltip: 'Editar saldo disponible',
+                  onPressed: onEditBalance,
+                  icon: const Icon(Icons.edit_outlined, size: 15),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                ),
+              ],
+            ),
+            const SizedBox(height: 1),
+            Text(
+              '\$\{account.balance.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+      _Metric('Vendido', sold, false),
+      _Metric('Ganancia', profit, false),
+    ]),
     const SizedBox(height: 14), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
   ])));
 }
