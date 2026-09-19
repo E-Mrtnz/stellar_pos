@@ -478,6 +478,7 @@ class _CustomFieldView extends StatelessWidget {
           ],
         ),
       );
+}
 
 class _PurchaseDialog extends StatefulWidget {
   final ElectronicBalanceAccount account;
