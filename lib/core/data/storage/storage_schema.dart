@@ -11,7 +11,7 @@ import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 class StorageSchema {
   const StorageSchema._();
 
-  static const int currentVersion = 3;
+  static const int currentVersion = 4;
   static const String _versionKey = 'schemaVersion';
 
   static Future<void> initialize() async {
@@ -95,10 +95,11 @@ class StorageSchema {
       return;
     }
 
-    // Version 2 may already have been written by the first correction attempt
-    // on an installation that had no schema marker. Keep the correction in a
-    // new migration so that those installations are repaired as well.
-    if (fromVersion == 2 && toVersion == 3) {
+    if (fromVersion == 2 && toVersion == 3) return;
+
+    // Final one-time correction for installations that already passed the
+    // previous migration without changing the persisted TIGO balance.
+    if (fromVersion == 3 && toVersion == 4) {
       await _correctTigoBalance();
       return;
     }
