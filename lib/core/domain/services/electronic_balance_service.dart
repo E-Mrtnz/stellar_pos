@@ -45,6 +45,54 @@ class ElectronicBalanceService {
         );
   }
 
+  double commissionRateFor({
+    required ElectronicBalanceAccount account,
+    required String category,
+    required double amount,
+  }) {
+    final option = account.saleOptions.where((item) {
+      return item.category == category &&
+          (item.amount - amount).abs() <= 0.000001;
+    }).firstWhere(
+      (item) => true,
+      orElse: () => ElectronicBalanceSaleOption(
+        category: category,
+        amount: amount,
+      ),
+    );
+    return option.commissionRate ?? account.commissionRate;
+  }
+
+  double providerCostForSale({
+    required ElectronicBalanceAccount account,
+    required String category,
+    required double amount,
+  }) {
+    return providerCost(
+      amount: amount,
+      commissionRate: commissionRateFor(
+        account: account,
+        category: category,
+        amount: amount,
+      ),
+    );
+  }
+
+  double profitForSale({
+    required ElectronicBalanceAccount account,
+    required String category,
+    required double amount,
+  }) {
+    return profit(
+      amount: amount,
+      commissionRate: commissionRateFor(
+        account: account,
+        category: category,
+        amount: amount,
+      ),
+    );
+  }
+
   void _validate(double amount, double commissionRate) {
     if (amount < 0 || commissionRate < 0 || commissionRate > 100) {
       throw ArgumentError('Monto o comisión inválidos.');
