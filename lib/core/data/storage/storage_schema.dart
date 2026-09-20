@@ -11,7 +11,7 @@ import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 class StorageSchema {
   const StorageSchema._();
 
-  static const int currentVersion = 1;
+  static const int currentVersion = 4;
   static const String _versionKey = 'schemaVersion';
 
   static Future<void> initialize() async {
@@ -57,11 +57,15 @@ class StorageSchema {
   }
 
   static Future<void> _runMigration(int fromVersion, int toVersion) async {
-    // Version 1 is the initial serialized format. The 0 -> 1 step is a
-    // deliberate no-op for installations that may already have a legacy
-    // schema marker. Future structural changes must add their own explicit
-    // version-to-version migration here.
-    if (fromVersion == 0 && toVersion == 1) return;
+    // Versions 2, 3 and 4 were used only by the temporary TIGO balance
+    // correction attempts. Those corrections were intentionally reverted, so
+    // upgrading between these historical markers is now a data-preserving
+    // no-op. No existing application data is modified.
+    if (fromVersion >= 1 &&
+        fromVersion <= 3 &&
+        toVersion == fromVersion + 1) {
+      return;
+    }
 
     throw StateError(
       'No existe una migración de almacenamiento definida de $fromVersion a $toVersion.',
