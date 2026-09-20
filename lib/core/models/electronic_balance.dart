@@ -3,7 +3,7 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 
 export 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 
-enum ElectronicBalanceTransactionType { purchase, sale }
+enum ElectronicBalanceTransactionType { purchase, sale, adjustment }
 
 class ElectronicBalanceSaleOption implements SyncableEntity {
   @override
