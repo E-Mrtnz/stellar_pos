@@ -294,6 +294,41 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     return true;
   }
 
+  bool setAvailableBalance({required String accountId, required double balance}) {
+    if (balance < 0) return false;
+    final index = _accounts.indexWhere((a) => a.id == accountId);
+    if (index < 0) return false;
+
+    final account = _accounts[index];
+    final currentCents = _toCents(account.balance);
+    final nextCents = _toCents(balance);
+    final differenceCents = nextCents - currentCents;
+    if (differenceCents == 0) return true;
+
+    final now = DateTime.now();
+    final adjustment = ElectronicBalanceTransaction(
+      id: IdGenerator.newId(),
+      accountId: accountId,
+      type: ElectronicBalanceTransactionType.adjustment,
+      amount: _fromCents(differenceCents),
+      providerCost: 0,
+      profit: 0,
+      category: 'Ajuste de saldo',
+      description: 'Ajuste manual del saldo disponible',
+      createdAt: now,
+    );
+
+    final updatedAccount = account.copyWith(
+      balance: _fromCents(nextCents),
+    );
+    _accounts[index] = updatedAccount;
+    _transactions.add(adjustment);
+    notifyListeners();
+    _persistAccount(updatedAccount);
+    _persistTransaction(adjustment);
+    return true;
+  }
+
   bool registerSale({required String accountId, required double amount, required String category, String description = ''}) => registerSales(accountId: accountId, sales: [ElectronicBalanceSale(amount: amount, quantity: 1, category: category, description: description)]);
 
   bool registerSales({required String accountId, required List<ElectronicBalanceSale> sales, String? saleId}) {
@@ -395,8 +430,10 @@ class ElectronicBalanceProvider extends ChangeNotifier {
         final amountCents = _toCents(transaction.amount);
         if (transaction.type == ElectronicBalanceTransactionType.purchase) {
           balanceCents += amountCents;
-        } else {
+        } else if (transaction.type == ElectronicBalanceTransactionType.sale) {
           balanceCents -= amountCents;
+        } else {
+          balanceCents += amountCents;
         }
       }
 
