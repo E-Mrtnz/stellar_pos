@@ -181,7 +181,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       subtotal: amount,
       total: amount,
     );
-    final updatedAccount = account.copyWith(balance: account.balance + amount);
+    final updatedAccount = account.copyWith(
+      balance: _fromCents(_toCents(account.balance) + _toCents(amount)),
+    );
     _accounts[index] = updatedAccount;
     _transactions.add(transaction);
     notifyListeners();
@@ -215,7 +217,11 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       metadata: transaction.metadata.touch(),
     );
     _transactions[transactionIndex] = updatedTransaction;
-    _accounts[accountIndex] = account.copyWith(balance: account.balance - transaction.amount + amount);
+    _accounts[accountIndex] = account.copyWith(
+      balance: _fromCents(
+        _toCents(account.balance) - _toCents(transaction.amount) + _toCents(amount),
+      ),
+    );
     notifyListeners();
     _persistAccount(_accounts[accountIndex]);
     _persistTransaction(updatedTransaction);
@@ -275,7 +281,11 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final transaction = _transactions[index];
     final accountIndex = _accounts.indexWhere((a) => a.id == transaction.accountId);
     if (accountIndex < 0) return false;
-    _accounts[accountIndex] = _accounts[accountIndex].copyWith(balance: _accounts[accountIndex].balance - transaction.amount);
+    _accounts[accountIndex] = _accounts[accountIndex].copyWith(
+      balance: _fromCents(
+        _toCents(_accounts[accountIndex].balance) - _toCents(transaction.amount),
+      ),
+    );
     _transactions.removeAt(index);
     notifyListeners();
     _persistAccount(_accounts[accountIndex]);
