@@ -285,8 +285,16 @@ class _AccountDialogState extends State<_AccountDialog> {
     setState(() => _isPickingImage = true);
     try {
       List<int>? bytes;
-      if (kIsWeb) {
-        final result = await FilePicker.pickFiles(type: FileType.image, allowMultiple: false, withData: true);
+      final isDesktop = !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.macOS ||
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux);
+      if (kIsWeb || isDesktop) {
+        final result = await FilePicker.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+          withData: true,
+        );
         if (result == null || result.files.isEmpty) return;
         bytes = result.files.single.bytes;
       } else {
