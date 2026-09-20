@@ -207,7 +207,11 @@ class _CompanyChoice extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _CompanyChoice({required this.account, required this.selected, required this.onTap});
+  const _CompanyChoice({
+    required this.account,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -221,20 +225,41 @@ class _CompanyChoice extends StatelessWidget {
         height: 78,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground,
+          color: selected
+              ? AppColors.primary.withAlpha(15)
+              : AppColors.inputBackground,
           borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: Row(
           children: [
             Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(18),
+                shape: BoxShape.circle,
+              ),
               clipBehavior: Clip.antiAlias,
               child: hasImage
-                  ? Image.memory(base64Decode(account.imageData), fit: BoxFit.contain, gaplessPlayback: true, errorBuilder: (_, __, ___) => const Icon(Icons.sim_card_outlined, color: AppColors.primary, size: 21))
-                  : const Icon(Icons.sim_card_outlined, color: AppColors.primary, size: 21),
+                  ? Image.memory(
+                      base64Decode(account.imageData),
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.sim_card_outlined,
+                        color: AppColors.primary,
+                        size: 21,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.sim_card_outlined,
+                      color: AppColors.primary,
+                      size: 21,
+                    ),
             ),
             const SizedBox(width: 9),
             Expanded(
@@ -242,31 +267,30 @@ class _CompanyChoice extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(account.companyName, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w800 : FontWeight.w700, color: selected ? AppColors.primary : AppColors.textPrimary)),
+                  Text(
+                    account.companyName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  Text('Disponible: 
-  final String label; final IconData? icon; final bool selected; final VoidCallback onTap;
-  const _ChoiceChip({required this.label, this.icon, required this.selected, required this.onTap});
-  @override Widget build(BuildContext context) => InkWell(
-    onTap: onTap, borderRadius: BorderRadius.circular(10),
-    child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.4 : 1)), child: Row(mainAxisSize: MainAxisSize.min, children: [if (icon != null) ...[Icon(icon, size: 16, color: selected ? AppColors.primary : AppColors.textSecondary), const SizedBox(width: 7)], Text(label, style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: selected ? AppColors.primary : AppColors.textPrimary))])),
-  );
-}
-
-class _AmountTile extends StatelessWidget {
-  final double width; final double amount; final int quantity; final VoidCallback onTap; final VoidCallback? onLongPress;
-  const _AmountTile({required this.width, required this.amount, required this.quantity, required this.onTap, required this.onLongPress});
-  @override Widget build(BuildContext context) {
-    final selected = quantity > 0;
-    return GestureDetector(onTap: onTap, onLongPress: onLongPress, child: AnimatedContainer(duration: const Duration(milliseconds: 160), width: width, height: 68, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7), decoration: BoxDecoration(color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text('\$${amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2)}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: selected ? AppColors.primary : AppColors.textPrimary)), const SizedBox(height: 4), Text(selected ? '×$quantity' : 'Tocar para agregar', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, fontWeight: selected ? FontWeight.w800 : FontWeight.w500, color: selected ? AppColors.primary : AppColors.textMuted))])));
-  }
-}
-
-class _EmptyBalanceCompanies extends StatelessWidget {
-  const _EmptyBalanceCompanies();
-  @override Widget build(BuildContext context) => const Center(child: Padding(padding: EdgeInsets.all(40), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.sim_card_outlined, size: 42, color: AppColors.textMuted), SizedBox(height: 10), Text('No hay compañías de saldo configuradas.', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary)), SizedBox(height: 4), Text('Créala desde la administración de saldo electrónico.', style: TextStyle(fontSize: 11, color: AppColors.textMuted))])));
-}
- + account.balance.toStringAsFixed(2), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                  Text(
+                    'Disponible: $${account.balance.toStringAsFixed(2)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
