@@ -293,7 +293,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     final account = _accounts[index];
     final now = DateTime.now();
     final pending = <ElectronicBalanceTransaction>[];
-    var totalProviderCost = 0.0;
+    var totalBalanceDeductionCents = 0;
     for (final sale in sales) {
       final category = sale.category.trim();
       if (sale.amount <= 0 || sale.quantity <= 0 || !_service.isValidCategory(category)) return false;
@@ -320,9 +320,13 @@ class ElectronicBalanceProvider extends ChangeNotifier {
           saleId: saleId,
         ),
       );
-      totalProviderCost += pending.last.providerCost;
+      // The provider commission is profit; the electronic balance is
+      // consumed by the full face value of the recharge.
+      totalBalanceDeductionCents += _toCents(amount);
     }
-    final updatedAccount = account.copyWith(balance: account.balance - totalProviderCost);
+    final updatedAccount = account.copyWith(
+      balance: _fromCents(_toCents(account.balance) - totalBalanceDeductionCents),
+    );
     _accounts[index] = updatedAccount;
     _transactions.addAll(pending);
     notifyListeners();
@@ -334,15 +338,17 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   bool reverseSale(String saleId) {
     final matching = _transactions.where((t) => t.saleId == saleId && t.type == ElectronicBalanceTransactionType.sale).toList();
     if (matching.isEmpty) return false;
-    final byAccount = <String, double>{};
+    final byAccountCents = <String, int>{};
     for (final transaction in matching) {
-      byAccount[transaction.accountId] =
-          (byAccount[transaction.accountId] ?? 0) + transaction.providerCost;
+      byAccountCents[transaction.accountId] =
+          (byAccountCents[transaction.accountId] ?? 0) + _toCents(transaction.amount);
     }
-    for (final entry in byAccount.entries) {
+    for (final entry in byAccountCents.entries) {
       final index = _accounts.indexWhere((a) => a.id == entry.key);
       if (index < 0) return false;
-      final account = _accounts[index].copyWith(balance: _accounts[index].balance + entry.value);
+      final account = _accounts[index].copyWith(
+        balance: _fromCents(_toCents(_accounts[index].balance) + entry.value),
+      );
       _accounts[index] = account;
       _persistAccount(account);
     }
@@ -363,15 +369,33 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     _accounts..clear()..addAll(accounts);
     _transactions..clear()..addAll(transactions);
 
-    // One-time correction for the known TIGO data-entry discrepancy.
-    // The UI reads the persisted account balance directly, so correct the
-    // account at the point where it is loaded instead of relying on a schema
-    // migration that may already have been marked as completed.
+    // Rebuild each balance from the transaction ledger. A sale consumes
+    // its full face value; the commission is tracked separately as profit.
+    // This also repairs balances produced by the previous implementation,
+    // which deducted providerCost (amount minus commission).
     for (var i = 0; i < _accounts.length; i++) {
       final account = _accounts[i];
-      if (account.companyName.trim().toLowerCase() == 'tigo' &&
-          (account.balance - 25.52).abs() < 0.000001) {
-        final corrected = account.copyWith(balance: 25.40);
+      final accountTransactions = _transactions.where(
+        (transaction) => transaction.accountId == account.id,
+      );
+      if (accountTransactions.isEmpty) continue;
+
+      var balanceCents = 0;
+      for (final transaction in accountTransactions) {
+        final amountCents = _toCents(transaction.amount);
+        if (transaction.type == ElectronicBalanceTransactionType.purchase) {
+          balanceCents += amountCents;
+        } else {
+          balanceCents -= amountCents;
+        }
+      }
+
+      final expectedBalance = _fromCents(balanceCents);
+      if ((account.balance - expectedBalance).abs() > 0.000001) {
+        final corrected = account.copyWith(
+          balance: expectedBalance,
+          touchMetadata: false,
+        );
         _accounts[i] = corrected;
         _persistAccount(corrected);
       }
@@ -380,6 +404,10 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     _loaded = true;
     if (_accounts.isNotEmpty || _transactions.isNotEmpty) notifyListeners();
   }
+
+  static int _toCents(double amount) => (amount * 100).round();
+
+  static double _fromCents(int cents) => cents / 100.0;
 
   void _persistAccount(ElectronicBalanceAccount account) { _accountRepository?.save(account).catchError((_) {}); }
   void _persistTransaction(ElectronicBalanceTransaction transaction) { _transactionRepository?.save(transaction).catchError((_) {}); }
