@@ -1,4 +1,9 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -19,7 +24,19 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
       Expanded(child: provider.accounts.isEmpty ? Center(child: OutlinedButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add), label: const Text('Agregar compañía'))) : ListView.separated(
         itemCount: provider.accounts.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, index) { final account = provider.accounts[index]; return _AccountCard(account: account, sold: provider.totalSold(account.id), profit: provider.totalProfit(account.id), onPurchase: () => _purchase(context, account), onAdjustBalance: () => _adjustBalance(context, account), onHistory: () => _history(context, account), onEdit: () => _edit(context, account), onDelete: () => _delete(context, account)); },
+        itemBuilder: (_, index) {
+          final account = provider.accounts[index];
+          return _AccountCard(
+            account: account,
+            sold: provider.totalSold(account.id),
+            profit: provider.totalProfit(account.id),
+            onPurchase: () => _purchase(context, account),
+            onAdjustBalance: () => _adjustBalance(context, account),
+            onHistory: () => _history(context, account),
+            onEdit: () => _edit(context, account),
+            onDelete: () => _delete(context, account),
+          );
+        },
       )),
     ]));
   }
@@ -41,13 +58,140 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  final ElectronicBalanceAccount account; final double sold; final double profit; final VoidCallback onPurchase, onAdjustBalance, onHistory, onEdit, onDelete;
-  const _AccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onAdjustBalance, required this.onHistory, required this.onEdit, required this.onDelete});
-  @override Widget build(BuildContext context) => Card(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius), side: const BorderSide(color: AppColors.border)), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
-    Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle), child: const Icon(Icons.sim_card_outlined, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)), Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), if (account.saleCategories.length > 3) Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), IconButton(tooltip: 'Editar saldo disponible', onPressed: onAdjustBalance, icon: const Icon(Icons.account_balance_wallet_outlined)), IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)), IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)), IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline))]),
-    const Divider(height: 24), Row(children: [_Metric('Disponible', account.balance, true), _Metric('Vendido', sold, false), _Metric('Ganancia', profit, false)]),
-    const SizedBox(height: 14), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
-  ])));
+  final ElectronicBalanceAccount account;
+  final double sold;
+  final double profit;
+  final VoidCallback onPurchase;
+  final VoidCallback onAdjustBalance;
+  final VoidCallback onHistory;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _AccountCard({
+    required this.account,
+    required this.sold,
+    required this.profit,
+    required this.onPurchase,
+    required this.onAdjustBalance,
+    required this.onHistory,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  _CompanyLogo(imageData: account.imageData, onTap: onEdit, size: 42),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        if (account.saleCategories.length > 3)
+                          Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  IconButton(tooltip: 'Editar saldo disponible', onPressed: onAdjustBalance, icon: const Icon(Icons.account_balance_wallet_outlined)),
+                  IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)),
+                  IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+                  IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline)),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(children: [_Metric('Disponible', account.balance, true), _Metric('Vendido', sold, false), _Metric('Ganancia', profit, false)]),
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
+            ],
+          ),
+        ),
+      );
+}
+
+class _CompanyLogo extends StatelessWidget {
+  final String imageData;
+  final VoidCallback? onTap;
+  final double size;
+  const _CompanyLogo({required this.imageData, required this.onTap, required this.size});
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageData.trim().isNotEmpty;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(size / 2),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle),
+        clipBehavior: Clip.antiAlias,
+        child: hasImage
+            ? Image.memory(base64Decode(imageData), fit: BoxFit.contain, gaplessPlayback: true, errorBuilder: (_, __, ___) => const Icon(Icons.sim_card_outlined, color: AppColors.primary, size: 21))
+            : const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 20),
+      ),
+    );
+  }
+}
+
+class _CompanyImagePicker extends StatelessWidget {
+  final String? imageData;
+  final bool isPicking;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+  const _CompanyImagePicker({required this.imageData, required this.isPicking, required this.onPick, required this.onRemove});
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageData?.trim().isNotEmpty == true;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isPicking ? null : onPick,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 96,
+          width: double.infinity,
+          decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!hasImage)
+                const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_outlined, color: AppColors.textMuted, size: 28),
+                    SizedBox(height: 4),
+                    Text('Logo de la compañía', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  ],
+                )
+              else
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(base64Decode(imageData!), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, color: AppColors.textMuted))),
+                ),
+              if (isPicking) const Center(child: CircularProgressIndicator()),
+              if (hasImage && !isPicking)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: IconButton(tooltip: 'Quitar logo', onPressed: onRemove, icon: const Icon(Icons.close, color: AppColors.dangerRed)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Metric extends StatelessWidget {
@@ -91,6 +235,8 @@ class _AccountDialogState extends State<_AccountDialog> {
   late final TextEditingController _saldo;
   late final TextEditingController _internet;
   late final TextEditingController _llamada;
+  String? _imageData;
+  bool _isPickingImage = false;
   final List<_CustomField> _custom = [];
 
   @override
@@ -110,6 +256,7 @@ class _AccountDialogState extends State<_AccountDialog> {
     _llamada = TextEditingController(
       text: _amounts(a?.amountsForCategory('Llamada') ?? const []),
     );
+    _imageData = a?.imageData.trim().isEmpty == true ? null : a?.imageData;
 
     if (a != null) {
       final names = <String>[];
@@ -132,6 +279,29 @@ class _AccountDialogState extends State<_AccountDialog> {
       }
     }
   }
+
+  Future<void> _pickImage() async {
+    if (_isPickingImage) return;
+    setState(() => _isPickingImage = true);
+    try {
+      List<int>? bytes;
+      if (kIsWeb) {
+        final result = await FilePicker.pickFiles(type: FileType.image, allowMultiple: false, withData: true);
+        if (result == null || result.files.isEmpty) return;
+        bytes = result.files.single.bytes;
+      } else {
+        final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, requestFullMetadata: false);
+        if (image == null) return;
+        bytes = await image.readAsBytes();
+      }
+      if (bytes == null || bytes.isEmpty || !mounted) return;
+      setState(() => _imageData = base64Encode(bytes!));
+    } finally {
+      if (mounted) setState(() => _isPickingImage = false);
+    }
+  }
+
+  void _removeImage() => setState(() => _imageData = null);
 
   @override
   void dispose() {
@@ -165,6 +335,8 @@ class _AccountDialogState extends State<_AccountDialog> {
                     prefixIcon: Icon(Icons.business_outlined),
                   ),
                 ),
+                const SizedBox(height: 10),
+                _CompanyImagePicker(imageData: _imageData, isPicking: _isPickingImage, onPick: _pickImage, onRemove: _removeImage),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _rate,
@@ -299,6 +471,7 @@ class _AccountDialogState extends State<_AccountDialog> {
       if (!provider.addAccount(
         companyName: name,
         commissionRate: rate,
+        imageData: _imageData ?? '',
       )) {
         _error('No se pudo agregar la compañía.');
         return;
@@ -312,6 +485,7 @@ class _AccountDialogState extends State<_AccountDialog> {
         id: widget.account!.id,
         companyName: name,
         commissionRate: rate,
+        imageData: _imageData ?? '',
       )) {
         _error('No se pudo actualizar la compañía.');
         return;
