@@ -55,23 +55,42 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     return null;
   }
 
-  bool addAccount({required String companyName, required double commissionRate}) {
+  bool addAccount({
+    required String companyName,
+    required double commissionRate,
+    String imageData = '',
+  }) {
     final name = companyName.trim();
     if (name.isEmpty || commissionRate < 0 || commissionRate > 100) return false;
     if (_accounts.any((a) => a.companyName.toLowerCase() == name.toLowerCase())) return false;
-    final account = ElectronicBalanceAccount(id: IdGenerator.newId(), companyName: name, commissionRate: commissionRate, balance: 0);
+    final account = ElectronicBalanceAccount(
+      id: IdGenerator.newId(),
+      companyName: name,
+      commissionRate: commissionRate,
+      balance: 0,
+      imageData: imageData,
+    );
     _accounts.add(account);
     notifyListeners();
     _persistAccount(account);
     return true;
   }
 
-  bool updateAccount({required String id, required String companyName, required double commissionRate}) {
+  bool updateAccount({
+    required String id,
+    required String companyName,
+    required double commissionRate,
+    String? imageData,
+  }) {
     final index = _accounts.indexWhere((a) => a.id == id);
     final name = companyName.trim();
     if (index < 0 || name.isEmpty || commissionRate < 0 || commissionRate > 100) return false;
     if (_accounts.asMap().entries.any((e) => e.key != index && e.value.companyName.toLowerCase() == name.toLowerCase())) return false;
-    final account = _accounts[index].copyWith(companyName: name, commissionRate: commissionRate);
+    final account = _accounts[index].copyWith(
+      companyName: name,
+      commissionRate: commissionRate,
+      imageData: imageData,
+    );
     _accounts[index] = account;
     notifyListeners();
     _persistAccount(account);
