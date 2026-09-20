@@ -274,7 +274,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         'name': '${item.companyName} · ${item.category}',
         'unit': 'Recarga',
         'price': item.amount,
-        'imageData': '',
+        'imageData': item.imageData,
       });
     return products;
   }
@@ -376,6 +376,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             category: item.electronicBalanceCategory ?? item.unit,
             amount: item.unitPrice,
             quantity: item.quantity,
+            imageData: item.imageData.isNotEmpty
+                ? item.imageData
+                : account.imageData,
           ),
         );
       } else {
@@ -744,6 +747,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               lineSubtotal: item.amount * item.quantity,
               discount: 0,
               lineTotal: item.amount * item.quantity,
+              imageData: item.imageData,
               isElectronicBalance: true,
               electronicBalanceAccountId: item.accountId,
               electronicBalanceCategory: item.category,
