@@ -33,10 +33,11 @@ class ElectronicBalanceAccount implements SyncableEntity {
   final String companyName;
   final double commissionRate;
   final double balance;
+  final String imageData;
   final List<ElectronicBalanceSaleOption> saleOptions;
   @override final SyncMetadata metadata;
 
-  ElectronicBalanceAccount({required this.id, required this.companyName, required this.commissionRate, required this.balance, List<ElectronicBalanceSaleOption> saleOptions = const [], SyncMetadata? metadata})
+  ElectronicBalanceAccount({required this.id, required this.companyName, required this.commissionRate, required this.balance, this.imageData = '', List<ElectronicBalanceSaleOption> saleOptions = const [], SyncMetadata? metadata})
       : saleOptions = List.unmodifiable(saleOptions),
         metadata = metadata ?? SyncMetadata.initial();
 
@@ -54,14 +55,14 @@ class ElectronicBalanceAccount implements SyncableEntity {
     return List.unmodifiable(result);
   }
 
-  ElectronicBalanceAccount copyWith({String? id, String? companyName, double? commissionRate, double? balance, List<ElectronicBalanceSaleOption>? saleOptions, SyncMetadata? metadata, bool touchMetadata = true}) => ElectronicBalanceAccount(
-    id: id ?? this.id, companyName: companyName ?? this.companyName, commissionRate: commissionRate ?? this.commissionRate, balance: balance ?? this.balance, saleOptions: saleOptions ?? this.saleOptions,
+  ElectronicBalanceAccount copyWith({String? id, String? companyName, double? commissionRate, double? balance, String? imageData, List<ElectronicBalanceSaleOption>? saleOptions, SyncMetadata? metadata, bool touchMetadata = true}) => ElectronicBalanceAccount(
+    id: id ?? this.id, companyName: companyName ?? this.companyName, commissionRate: commissionRate ?? this.commissionRate, balance: balance ?? this.balance, imageData: imageData ?? this.imageData, saleOptions: saleOptions ?? this.saleOptions,
     metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
 
-  Map<String, dynamic> toMap() => {'id': id, 'companyName': companyName, 'commissionRate': commissionRate, 'balance': balance, 'saleOptions': saleOptions.map((option) => option.toMap()).toList(), 'metadata': metadata.toMap()};
+  Map<String, dynamic> toMap() => {'id': id, 'companyName': companyName, 'commissionRate': commissionRate, 'balance': balance, 'imageData': imageData, 'saleOptions': saleOptions.map((option) => option.toMap()).toList(), 'metadata': metadata.toMap()};
 
   factory ElectronicBalanceAccount.fromMap(Map<String, dynamic> map) => ElectronicBalanceAccount(
-    id: map['id']?.toString() ?? '', companyName: map['companyName']?.toString() ?? '', commissionRate: _double(map['commissionRate']), balance: _double(map['balance']),
+    id: map['id']?.toString() ?? '', companyName: map['companyName']?.toString() ?? '', commissionRate: _double(map['commissionRate']), balance: _double(map['balance']), imageData: map['imageData']?.toString() ?? '',
     saleOptions: _options(map['saleOptions']), metadata: _metadata(map['metadata']));
 
   static List<ElectronicBalanceSaleOption> _options(dynamic value) => value is Iterable ? value.whereType<Map>().map((item) => ElectronicBalanceSaleOption.fromMap(Map<String, dynamic>.from(item))).toList() : const [];
