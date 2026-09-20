@@ -19,12 +19,17 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
       Expanded(child: provider.accounts.isEmpty ? Center(child: OutlinedButton.icon(onPressed: () => _edit(context), icon: const Icon(Icons.add), label: const Text('Agregar compañía'))) : ListView.separated(
         itemCount: provider.accounts.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, index) { final account = provider.accounts[index]; return _AccountCard(account: account, sold: provider.totalSold(account.id), profit: provider.totalProfit(account.id), onPurchase: () => _purchase(context, account), onHistory: () => _history(context, account), onEdit: () => _edit(context, account), onDelete: () => _delete(context, account)); },
+        itemBuilder: (_, index) { final account = provider.accounts[index]; return _AccountCard(account: account, sold: provider.totalSold(account.id), profit: provider.totalProfit(account.id), onPurchase: () => _purchase(context, account), onAdjustBalance: () => _adjustBalance(context, account), onHistory: () => _history(context, account), onEdit: () => _edit(context, account), onDelete: () => _delete(context, account)); },
       )),
     ]));
   }
 
   Future<void> _purchase(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(context: context, builder: (_) => _PurchaseDialog(account: account));
+
+  Future<void> _adjustBalance(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(
+        context: context,
+        builder: (_) => _BalanceDialog(account: account),
+      );
   Future<void> _history(BuildContext context, ElectronicBalanceAccount account) => showDialog<void>(context: context, builder: (_) => _HistoryDialog(account: account));
 
   Future<void> _delete(BuildContext context, ElectronicBalanceAccount account) async {
@@ -36,10 +41,10 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  final ElectronicBalanceAccount account; final double sold; final double profit; final VoidCallback onPurchase, onHistory, onEdit, onDelete;
-  const _AccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onHistory, required this.onEdit, required this.onDelete});
+  final ElectronicBalanceAccount account; final double sold; final double profit; final VoidCallback onPurchase, onAdjustBalance, onHistory, onEdit, onDelete;
+  const _AccountCard({required this.account, required this.sold, required this.profit, required this.onPurchase, required this.onAdjustBalance, required this.onHistory, required this.onEdit, required this.onDelete});
   @override Widget build(BuildContext context) => Card(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius), side: const BorderSide(color: AppColors.border)), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
-    Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle), child: const Icon(Icons.sim_card_outlined, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)), Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), if (account.saleCategories.length > 3) Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)), IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)), IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline))]),
+    Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle), child: const Icon(Icons.sim_card_outlined, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(account.companyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)), Text('Comisión: ${account.commissionRate.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)), if (account.saleCategories.length > 3) Text('Opciones: ${account.saleCategories.skip(3).join(', ')}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), IconButton(tooltip: 'Editar saldo disponible', onPressed: onAdjustBalance, icon: const Icon(Icons.account_balance_wallet_outlined)), IconButton(tooltip: 'Historial de ventas', onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined)), IconButton(tooltip: 'Editar compañía', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)), IconButton(tooltip: 'Eliminar compañía', onPressed: onDelete, icon: const Icon(Icons.delete_outline))]),
     const Divider(height: 24), Row(children: [_Metric('Disponible', account.balance, true), _Metric('Vendido', sold, false), _Metric('Ganancia', profit, false)]),
     const SizedBox(height: 14), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: onPurchase, icon: const Icon(Icons.add_card_outlined, size: 18), label: const Text('Comprar saldo'))),
   ])));
@@ -491,6 +496,85 @@ class _PurchaseDialogState extends State<_PurchaseDialog> {
   @override void dispose() { _controller.dispose(); super.dispose(); }
   void _save() { final amount = double.tryParse(_controller.text.replaceAll(',', '.')); if (amount == null || amount <= 0) return; if (context.read<ElectronicBalanceProvider>().registerPurchase(accountId: widget.account.id, amount: amount)) Navigator.pop(context); }
   @override Widget build(BuildContext context) => AlertDialog(title: Text('Comprar saldo · ${widget.account.companyName}'), content: TextField(controller: _controller, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Monto', prefixText: '\$')), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: _save, child: const Text('Comprar'))]);
+}
+
+class _BalanceDialog extends StatefulWidget {
+  final ElectronicBalanceAccount account;
+
+  const _BalanceDialog({required this.account});
+
+  @override
+  State<_BalanceDialog> createState() => _BalanceDialogState();
+}
+
+class _BalanceDialogState extends State<_BalanceDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.account.balance.toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final balance = double.tryParse(_controller.text.trim().replaceAll(',', '.'));
+    if (balance == null || balance < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un saldo válido igual o mayor a $0.00.')),
+      );
+      return;
+    }
+
+    final saved = context.read<ElectronicBalanceProvider>().setAvailableBalance(
+          accountId: widget.account.id,
+          balance: balance,
+        );
+    if (!saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar el saldo disponible.')),
+      );
+      return;
+    }
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text('Editar saldo · ${widget.account.companyName}'),
+        content: TextField(
+          controller: _controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Saldo disponible',
+            prefixText: '
+  final ElectronicBalanceAccount account;
+  const _HistoryDialog({required this.account});
+  @override Widget build(BuildContext context) { final transactions = context.watch<ElectronicBalanceProvider>().transactionsFor(account.id); return AlertDialog(title: Text('Historial · ${account.companyName}'), content: SizedBox(width: 520, height: 360, child: transactions.isEmpty ? const Center(child: Text('No hay movimientos registrados.')) : ListView.separated(itemCount: transactions.length, separatorBuilder: (_, __) => const Divider(height: 1), itemBuilder: (_, index) { final t = transactions[index]; return ListTile(dense: true, title: Text('${t.category} · \$${t.amount.toStringAsFixed(2)}'), subtitle: Text('${t.createdAt.day.toString().padLeft(2, '0')}/${t.createdAt.month.toString().padLeft(2, '0')}/${t.createdAt.year} · Ganancia \$${t.profit.toStringAsFixed(2)}')); })), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))]); }
+}
+,
+            helperText: 'Este valor reemplazará el saldo disponible actual.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: const Text('Guardar'),
+          ),
+        ],
+      );
 }
 
 class _HistoryDialog extends StatelessWidget {
