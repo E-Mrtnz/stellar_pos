@@ -152,6 +152,7 @@ class SalesProvider extends ChangeNotifier {
           lineSubtotal: lineSubtotal,
           discount: lineDiscount,
           lineTotal: lineSubtotal - lineDiscount,
+          imageData: account.imageData,
           isElectronicBalance: true,
           electronicBalanceAccountId: electronicSale.accountId,
           electronicBalanceCategory: electronicSale.category,
@@ -359,7 +360,9 @@ class SalesProvider extends ChangeNotifier {
           lineSubtotal: lineSubtotal,
           discount: lineDiscount,
           lineTotal: lineSubtotal - lineDiscount,
-          imageData: product?.imageData ?? item.imageData,
+          imageData: isElectronic && account != null
+              ? account.imageData
+              : (product?.imageData ?? item.imageData),
           isElectronicBalance: isElectronic,
           hasGroupPricing: hasGroupPricing,
           isPrepared: item.isPrepared,
