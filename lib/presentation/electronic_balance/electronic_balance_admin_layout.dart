@@ -525,24 +525,32 @@ class _BalanceDialogState extends State<_BalanceDialog> {
   }
 
   void _save() {
-    final balance = double.tryParse(_controller.text.trim().replaceAll(',', '.'));
+    final balance = double.tryParse(
+      _controller.text.trim().replaceAll(',', '.'),
+    );
     if (balance == null || balance < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un saldo válido igual o mayor a $0.00.')),
+        const SnackBar(
+          content: Text('Ingresa un saldo válido igual o mayor a \$0.00.'),
+        ),
       );
       return;
     }
 
-    final saved = context.read<ElectronicBalanceProvider>().setAvailableBalance(
-          accountId: widget.account.id,
-          balance: balance,
-        );
+    final saved =
+        context.read<ElectronicBalanceProvider>().setAvailableBalance(
+              accountId: widget.account.id,
+              balance: balance,
+            );
     if (!saved) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo actualizar el saldo disponible.')),
+        const SnackBar(
+          content: Text('No se pudo actualizar el saldo disponible.'),
+        ),
       );
       return;
     }
+
     Navigator.pop(context);
   }
 
@@ -555,12 +563,7 @@ class _BalanceDialogState extends State<_BalanceDialog> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(
             labelText: 'Saldo disponible',
-            prefixText: '
-  final ElectronicBalanceAccount account;
-  const _HistoryDialog({required this.account});
-  @override Widget build(BuildContext context) { final transactions = context.watch<ElectronicBalanceProvider>().transactionsFor(account.id); return AlertDialog(title: Text('Historial · ${account.companyName}'), content: SizedBox(width: 520, height: 360, child: transactions.isEmpty ? const Center(child: Text('No hay movimientos registrados.')) : ListView.separated(itemCount: transactions.length, separatorBuilder: (_, __) => const Divider(height: 1), itemBuilder: (_, index) { final t = transactions[index]; return ListTile(dense: true, title: Text('${t.category} · \$${t.amount.toStringAsFixed(2)}'), subtitle: Text('${t.createdAt.day.toString().padLeft(2, '0')}/${t.createdAt.month.toString().padLeft(2, '0')}/${t.createdAt.year} · Ganancia \$${t.profit.toStringAsFixed(2)}')); })), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))]); }
-}
-,
+            prefixText: '\$',
             helperText: 'Este valor reemplazará el saldo disponible actual.',
           ),
         ),
