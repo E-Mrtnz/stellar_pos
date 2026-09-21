@@ -8,6 +8,7 @@ import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_detail_dialog.dart';
+import 'package:stellar_pos/presentation/debts/debt_payment_actions.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/history_table_panel.dart';
 import 'package:stellar_pos/presentation/widgets/period_summary_panel.dart';
@@ -21,7 +22,7 @@ class SalesLayout extends StatefulWidget {
 
 enum _SalesPeriod { daily, weekly, monthly, yearly, custom }
 
-enum _SalesPaymentFilter { all, cash, card, transfer, credit }
+enum _SalesPaymentFilter { all, cash, card, transfer, credit, payment }
 
 enum _SalesTypeFilter { all, products, electronic }
 
@@ -122,6 +123,24 @@ class _SalesLayoutState extends State<SalesLayout> {
     }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
+  List<DebtMovement> _filterPayments(List<DebtMovement> movements) {
+    final range = _range();
+    final query = _searchController.text.trim().toLowerCase();
+    return movements.where((movement) {
+      if (movement.type != DebtMovementType.payment ||
+          movement.isInitialPayment)
+        return false;
+      if (movement.createdAt.isBefore(range.start) ||
+          !movement.createdAt.isBefore(range.end))
+        return false;
+      if (_paymentFilter != _SalesPaymentFilter.all &&
+          _paymentFilter != _SalesPaymentFilter.payment)
+        return false;
+      if (query.isEmpty) return true;
+      return movement.clientName.toLowerCase().contains(query);
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
   bool _paymentMatches(SaleRecord sale) {
     switch (_paymentFilter) {
       case _SalesPaymentFilter.all:
@@ -134,6 +153,8 @@ class _SalesLayoutState extends State<SalesLayout> {
         return sale.paymentMethod == AppStrings.transferPayment;
       case _SalesPaymentFilter.credit:
         return sale.paymentMethod == AppStrings.creditPayment;
+      case _SalesPaymentFilter.payment:
+        return false;
     }
   }
 
@@ -248,6 +269,7 @@ class _SalesLayoutState extends State<SalesLayout> {
   Widget build(BuildContext context) => Consumer2<SalesProvider, DebtProvider>(
     builder: (context, salesProvider, debtProvider, _) {
       final sales = _filterSales(salesProvider.sales);
+      final payments = _filterPayments(debtProvider.movements);
       final paidBySale = _paidBySale(
         salesProvider.sales,
         debtProvider.movements,
@@ -324,7 +346,10 @@ class _SalesLayoutState extends State<SalesLayout> {
             Expanded(
               child: Row(
                 children: [
-                  Expanded(flex: 3, child: _buildList(sales, paidBySale)),
+                  Expanded(
+                    flex: 3,
+                    child: _buildList(sales, paidBySale, payments),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: PeriodSummaryPanel(
@@ -338,7 +363,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             ),
             const SizedBox(height: 7),
             Text(
-              '${sales.length} venta${sales.length == 1 ? '' : 's'} en ${_periodLabel()}',
+              '${sales.length} venta${sales.length == 1 ? '' : 's'} · ${payments.length} abono${payments.length == 1 ? '' : 's'} en ${_periodLabel()}',
               style: const TextStyle(
                 fontSize: 10,
                 color: AppColors.textSecondary,
@@ -567,6 +592,10 @@ class _SalesLayoutState extends State<SalesLayout> {
             value: _SalesPaymentFilter.credit,
             child: Text('Fiado'),
           ),
+          PopupMenuItem(
+            value: _SalesPaymentFilter.payment,
+            child: Text('Abonos'),
+          ),
         ],
         child: _menuSurface(Icons.filter_alt_outlined, _paymentLabel()),
       ),
@@ -595,6 +624,8 @@ class _SalesLayoutState extends State<SalesLayout> {
         return 'Transferencia';
       case _SalesPaymentFilter.credit:
         return 'Fiado';
+      case _SalesPaymentFilter.payment:
+        return 'Abonos';
     }
   }
 
@@ -629,11 +660,15 @@ class _SalesLayoutState extends State<SalesLayout> {
       ],
     ),
   );
-  Widget _buildList(List<SaleRecord> sales, Map<String, double> paidBySale) =>
+  Widget _buildList(
+    List<SaleRecord> sales,
+    Map<String, double> paidBySale,
+    List<DebtMovement> payments,
+  ) =>
       HistoryTablePanel(
         title: 'Historial de ventas',
         icon: Icons.receipt_long_outlined,
-        itemCount: sales.length,
+        itemCount: sales.length + payments.length,
         header: _buildListHeader(),
         emptyState: const Center(
           child: Column(
@@ -646,16 +681,22 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
               SizedBox(height: 10),
               Text(
-                'No hay ventas en este período.',
+                'No hay ventas ni abonos en este período.',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
             ],
           ),
         ),
-        itemBuilder: (_, index) => _saleRow(
-          sales[index],
-          paidBySale[sales[index].id] ?? sales[index].effectiveCollected,
-        ),
+        itemBuilder: (_, index) {
+          if (index < sales.length) {
+            final sale = sales[index];
+            return _saleRow(
+              sale,
+              paidBySale[sale.id] ?? sale.effectiveCollected,
+            );
+          }
+          return _paymentRow(payments[index - sales.length]);
+        },
       );
   Widget _buildListHeader() => Container(
     padding: const EdgeInsets.fromLTRB(14, 10, 14, 9),
@@ -788,6 +829,109 @@ class _SalesLayoutState extends State<SalesLayout> {
               Icons.chevron_right,
               size: 18,
               color: AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentRow(DebtMovement movement) {
+    final time =
+        '${movement.createdAt.hour.toString().padLeft(2, '0')}:${movement.createdAt.minute.toString().padLeft(2, '0')}';
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.successGreen.withAlpha(8),
+        border: const Border(
+          bottom: BorderSide(color: AppColors.border),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 78,
+              child: Text(
+                '—',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ),
+            SizedBox(
+              width: 105,
+              child: Text(
+                '${_date(movement.createdAt)}\\n$time',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                movement.clientName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Expanded(
+              child: Text(
+                'Abono',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.successGreen,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 100,
+              child: _paymentBadge('Abono'),
+            ),
+            const SizedBox(
+              width: 185,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'COBRADO',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.successGreen,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 100,
+              child: Text(
+                _money(movement.amount),
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.successGreen,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Editar abono',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => DebtPaymentActions.edit(context, movement),
+              icon: const Icon(Icons.edit_outlined, size: 17),
+              color: AppColors.textSecondary,
+            ),
+            IconButton(
+              tooltip: 'Eliminar abono',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => DebtPaymentActions.delete(context, movement),
+              icon: const Icon(Icons.delete_outline, size: 17),
+              color: AppColors.dangerRed,
             ),
           ],
         ),
