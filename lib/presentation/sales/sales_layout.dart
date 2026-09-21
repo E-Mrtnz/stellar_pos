@@ -722,43 +722,46 @@ class _SalesLayoutState extends State<SalesLayout> {
         },
       );
   Widget _buildListHeader() => Container(
-    padding: const EdgeInsets.fromLTRB(14, 10, 14, 9),
+    padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
     decoration: const BoxDecoration(
       color: AppColors.inputBackground,
       border: Border(bottom: BorderSide(color: AppColors.border)),
     ),
     child: const Row(
       children: [
-        SizedBox(
-          width: 78,
+        Expanded(
+          flex: 10,
           child: Text('Ticket', style: AppTextStyles.ticketLabel),
         ),
-        SizedBox(
-          width: 105,
+        Expanded(
+          flex: 12,
           child: Text('Fecha / hora', style: AppTextStyles.ticketLabel),
         ),
         Expanded(
-          flex: 2,
+          flex: 18,
           child: Text('Cliente', style: AppTextStyles.ticketLabel),
         ),
-        Expanded(child: Text('Artículos', style: AppTextStyles.ticketLabel)),
-        SizedBox(
-          width: 100,
+        Expanded(
+          flex: 10,
+          child: Text('Artículos', style: AppTextStyles.ticketLabel),
+        ),
+        Expanded(
+          flex: 10,
           child: Text('Pago', style: AppTextStyles.ticketLabel),
         ),
-        SizedBox(
-          width: 185,
+        Expanded(
+          flex: 18,
           child: Text('Estado / operación', style: AppTextStyles.ticketLabel),
         ),
-        SizedBox(
-          width: 100,
+        Expanded(
+          flex: 10,
           child: Text(
             'Total',
             textAlign: TextAlign.right,
             style: AppTextStyles.ticketLabel,
           ),
         ),
-        SizedBox(width: 26),
+        SizedBox(width: 66),
       ],
     ),
   );
@@ -773,61 +776,75 @@ class _SalesLayoutState extends State<SalesLayout> {
     return InkWell(
       onTap: () => _showDetails(sale, paid),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: Row(
           children: [
-            SizedBox(
-              width: 78,
+            Expanded(
+              flex: 10,
               child: Text(
                 '#${sale.ticketNumber}',
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),
               ),
             ),
-            SizedBox(
-              width: 105,
+            Expanded(
+              flex: 12,
               child: Text(
                 '${_date(sale.createdAt)}\n$time',
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
+                  height: 1.25,
                   color: AppColors.textSecondary,
                 ),
               ),
             ),
             Expanded(
-              flex: 2,
+              flex: 18,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  sale.clientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 10,
               child: Text(
-                sale.clientName,
+                '$items art.',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                '$items artículo${items == 1 ? '' : 's'}',
-                style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   color: AppColors.textSecondary,
                 ),
               ),
             ),
-            SizedBox(width: 100, child: _paymentBadge(sale.paymentMethod)),
-            SizedBox(width: 185, child: _statusOperationBadges(sale)),
-            SizedBox(
-              width: 100,
+            Expanded(
+              flex: 10,
+              child: _paymentBadge(sale.paymentMethod),
+            ),
+            Expanded(
+              flex: 18,
+              child: _statusOperationBadges(sale),
+            ),
+            Expanded(
+              flex: 10,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     _money(sale.effectiveTotal),
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -835,9 +852,11 @@ class _SalesLayoutState extends State<SalesLayout> {
                     Text(
                       pending <= .005
                           ? 'Pagada'
-                          : 'Pendiente ${_money(pending)}',
+                          : 'Pend. ${_money(pending)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 8,
                         fontWeight: FontWeight.w600,
                         color: pending <= .005
                             ? AppColors.successGreen
@@ -847,11 +866,16 @@ class _SalesLayoutState extends State<SalesLayout> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AppColors.textMuted,
+            SizedBox(
+              width: 66,
+              child: const Align(
+                alignment: Alignment.centerRight,
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ),
             ),
           ],
         ),
@@ -864,59 +888,64 @@ class _SalesLayoutState extends State<SalesLayout> {
         '${movement.createdAt.hour.toString().padLeft(2, '0')}:${movement.createdAt.minute.toString().padLeft(2, '0')}';
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.successGreen.withAlpha(8),
+        color: AppColors.successGreen.withAlpha(7),
         border: const Border(
           bottom: BorderSide(color: AppColors.border),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: Row(
           children: [
-            const SizedBox(
-              width: 78,
+            const Expanded(
+              flex: 10,
               child: Text(
                 '—',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ),
-            SizedBox(
-              width: 105,
+            Expanded(
+              flex: 12,
               child: Text(
                 '${_date(movement.createdAt)}\n$time',
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
+                  height: 1.25,
                   color: AppColors.textSecondary,
                 ),
               ),
             ),
             Expanded(
-              flex: 2,
-              child: Text(
-                movement.clientName,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              flex: 18,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  movement.clientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
             const Expanded(
+              flex: 10,
               child: Text(
-                'Abono',
+                '—',
                 style: TextStyle(
                   fontSize: 10,
-                  color: AppColors.successGreen,
-                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
                 ),
               ),
             ),
-            SizedBox(
-              width: 100,
+            Expanded(
+              flex: 10,
               child: _paymentBadge('Abono'),
             ),
-            const SizedBox(
-              width: 185,
+            const Expanded(
+              flex: 18,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -929,32 +958,51 @@ class _SalesLayoutState extends State<SalesLayout> {
                 ),
               ),
             ),
-            SizedBox(
-              width: 100,
+            Expanded(
+              flex: 10,
               child: Text(
                 _money(movement.amount),
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.successGreen,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Editar abono',
-              visualDensity: VisualDensity.compact,
-              onPressed: () => DebtPaymentActions.edit(context, movement),
-              icon: const Icon(Icons.edit_outlined, size: 17),
-              color: AppColors.textSecondary,
-            ),
-            IconButton(
-              tooltip: 'Eliminar abono',
-              visualDensity: VisualDensity.compact,
-              onPressed: () => DebtPaymentActions.delete(context, movement),
-              icon: const Icon(Icons.delete_outline, size: 17),
-              color: AppColors.dangerRed,
+            SizedBox(
+              width: 66,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    tooltip: 'Editar abono',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    onPressed: () =>
+                        DebtPaymentActions.edit(context, movement),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    color: AppColors.textSecondary,
+                  ),
+                  IconButton(
+                    tooltip: 'Eliminar abono',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    onPressed: () =>
+                        DebtPaymentActions.delete(context, movement),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    color: AppColors.dangerRed,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
