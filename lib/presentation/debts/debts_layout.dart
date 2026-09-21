@@ -533,7 +533,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                             ),
                           ),
                           Text(
-                            '\\$' + widget.debt.toStringAsFixed(2),
+                            '\u0024' + widget.debt.toStringAsFixed(2),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -628,7 +628,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                                     ),
                                   ),
                                   Text(
-                                    '\\$' + _change.toStringAsFixed(2),
+                                    '\u0024' + _change.toStringAsFixed(2),
                                     style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
