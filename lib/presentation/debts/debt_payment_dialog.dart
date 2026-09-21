@@ -140,9 +140,9 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                           ),
                         ),
                         const SizedBox(width: 9),
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Registrar abono',
+                            widget.editing ? 'Editar abono' : 'Registrar abono',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
