@@ -68,7 +68,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       while (offset < items.length) {
         if (rows == maxRowsPerPage) flush();
         final available = maxRowsPerPage - rows;
-        final take = (items.length - offset).clamp(0, available);
+        final take = (items.length - offset).clamp(0, available).toInt();
         current.add(_StatementGroup(date: date, items: items.sublist(offset, offset + take)));
         rows += take;
         offset += take;
