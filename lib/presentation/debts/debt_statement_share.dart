@@ -204,16 +204,18 @@ class _DebtStatementImage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Tienda El Edén', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 5),
-              const Text('ESTADO DE CUENTA', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Colors.black54)),
-              const SizedBox(height: 24),
-              const Divider(color: Color(0xFFE2E2E2)),
-              const SizedBox(height: 18),
-              _infoRow('Contacto', clientName),
-              _infoRow('Fecha de emisión', _date(DateTime.now())),
-              _infoRow('Método de pago', 'Fiado'),
-              const SizedBox(height: 22),
+              if (pageNumber == 1) ...[
+                const Text('Tienda El Edén', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 5),
+                const Text('ESTADO DE CUENTA', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Colors.black54)),
+                const SizedBox(height: 24),
+                const Divider(color: Color(0xFFE2E2E2)),
+                const SizedBox(height: 18),
+                _infoRow('Contacto', clientName),
+                _infoRow('Fecha de emisión', _date(DateTime.now())),
+                _infoRow('Método de pago', 'Fiado'),
+                const SizedBox(height: 22),
+              ],
               for (final group in groups) ...[
                 _dateHeader(group.date),
                 const SizedBox(height: 8),
@@ -221,6 +223,7 @@ class _DebtStatementImage extends StatelessWidget {
                 for (final item in group.items) _itemRow(item),
                 const SizedBox(height: 24),
               ],
+              const Expanded(child: SizedBox()),
               if (last) ...[
                 const Divider(color: Color(0xFFD6D6D6)),
                 const SizedBox(height: 20),
