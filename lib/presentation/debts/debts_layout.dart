@@ -384,6 +384,12 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
 
+  double get _enteredAmount =>
+      double.tryParse(_controller.text.replaceAll(',', '.')) ?? 0;
+
+  double get _change =>
+      (_enteredAmount - widget.debt).clamp(0, double.infinity).toDouble();
+
   @override
   void initState() {
     super.initState();
@@ -433,13 +439,15 @@ class _PaymentDialogState extends State<_PaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final hasChange = _enteredAmount > widget.debt + 0.005;
+
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.dialogRadius),
       ),
       child: Container(
-        width: 390,
+        width: 540,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
@@ -584,7 +592,58 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 7),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 140),
+                      child: hasChange
+                          ? Container(
+                              key: const ValueKey('change'),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.warningOrange.withAlpha(12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.warningOrange.withAlpha(40),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.currency_exchange_rounded,
+                                    size: 15,
+                                    color: AppColors.warningOrange,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  const Expanded(
+                                    child: Text(
+                                      'Cambio a entregar',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '\${_change.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.warningOrange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox(
+                              key: ValueKey('no-change'),
+                              height: 1,
+                            ),
+                    ),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
