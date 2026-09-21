@@ -12,14 +12,12 @@ class DebtPaymentActions {
   static Future<bool> edit(BuildContext context, DebtMovement movement) async {
     final debtProvider = context.read<DebtProvider>();
     final account = debtProvider.accountFor(movement.clientId);
-    final editableDebt = account == null
-        ? movement.amount
-        : account.remaining + movement.amount;
+    final currentDebt = account?.remaining ?? movement.amount;
 
     final amount = await DebtPaymentDialog.show(
       context,
       clientName: movement.clientName,
-      debt: editableDebt,
+      debt: currentDebt,
       initialAmount: movement.amount,
       editing: true,
     );
