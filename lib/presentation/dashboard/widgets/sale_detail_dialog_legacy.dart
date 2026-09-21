@@ -19,12 +19,14 @@ class SaleDetailDialog extends StatelessWidget {
   final SaleRecord sale;
   final Future<void> Function() onPrint;
   final double? paidAmount;
+  final VoidCallback? onDateTap;
 
   const SaleDetailDialog({
     super.key,
     required this.sale,
     required this.onPrint,
     this.paidAmount,
+    this.onDateTap,
   });
 
   static Future<void> show(
@@ -32,6 +34,7 @@ class SaleDetailDialog extends StatelessWidget {
     required SaleRecord sale,
     required Future<void> Function() onPrint,
     double? paidAmount,
+    VoidCallback? onDateTap,
   }) {
     return showDialog(
       context: context,
@@ -43,6 +46,7 @@ class SaleDetailDialog extends StatelessWidget {
           sale: sale,
           onPrint: onPrint,
           paidAmount: paidAmount,
+          onDateTap: onDateTap,
         ),
       ),
     );
@@ -507,11 +511,53 @@ class SaleDetailDialog extends StatelessWidget {
       const SizedBox(height: 9),
       _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
       _infoRow('Estado', sale.isAnnulled ? 'ANULADA' : 'COMPLETADA'),
-      _infoRow('Fecha', _formatDate(sale.createdAt)),
+      _dateInfoRow(context),
+
       _infoRow('Hora', _formatTime(sale.createdAt)),
       _infoRow('Cliente', sale.clientName),
     ],
   );
+
+  Widget _dateInfoRow(BuildContext context) {
+    final value = _formatDate(sale.createdAt);
+    final dateWidget = Text(
+      value,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: onDateTap == null ? FontWeight.w600 : FontWeight.w600,
+        decoration:
+            onDateTap == null ? TextDecoration.none : TextDecoration.underline,
+        decorationThickness: 1.2,
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 105,
+            child: Text('Fecha', style: AppTextStyles.ticketLabel),
+          ),
+          Expanded(
+            child: onDateTap == null
+                ? dateWidget
+                : InkWell(
+                    onTap: onDateTap,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 2,
+                      ),
+                      child: dateWidget,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildItemsTable() => Container(
     decoration: BoxDecoration(
