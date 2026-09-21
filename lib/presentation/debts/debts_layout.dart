@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -13,7 +12,6 @@ import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_group_dialog.dart';
-import 'package:stellar_pos/presentation/dashboard/widgets/numeric_keypad.dart';
 import 'package:stellar_pos/presentation/debts/client_purchase_history_dialog.dart';
 import 'package:stellar_pos/presentation/debts/debt_payment_actions.dart';
 import 'package:stellar_pos/presentation/debts/debt_payment_dialog.dart';
