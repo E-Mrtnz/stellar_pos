@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -15,6 +16,7 @@ import 'package:stellar_pos/presentation/Inventory/widgets/create_client_group_d
 import 'package:stellar_pos/presentation/debts/client_purchase_history_dialog.dart';
 import 'package:stellar_pos/presentation/debts/debt_payment_actions.dart';
 import 'package:stellar_pos/presentation/debts/debt_payment_dialog.dart';
+import 'package:stellar_pos/presentation/debts/debt_statement_share.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
@@ -208,7 +210,23 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   Widget _clientCard(Client client, DebtProvider debts, SalesProvider sales, {bool compact = false}) {
     final account = debts.accountFor(client.id) ?? DebtAccount(clientId: client.id, clientName: client.name, totalDebt: 0, totalPaid: 0);
     final purchases = sales.sales.where((s) => s.clientId == client.id && s.paymentMethod.toLowerCase() == 'fiado').toList(growable: false);
-    return _ClientCard(client: client, account: account, purchaseCount: purchases.length, compact: compact, onEdit: () => _editClient(client), onHistory: () => _history(client, purchases), onPayment: account.remaining > .005 ? () => _addPayment(client, account) : null);
+    return _ClientCard(
+      client: client,
+      account: account,
+      purchaseCount: purchases.length,
+      compact: compact,
+      onEdit: () => _editClient(client),
+      onHistory: () => _history(client, purchases),
+      onPayment: account.remaining > .005 ? () => _addPayment(client, account) : null,
+      onReminder: purchases.isNotEmpty && account.remaining > .005
+          ? () => DebtStatementShare.show(
+                context,
+                clientName: client.name,
+                sales: purchases,
+                account: account,
+              )
+          : null,
+    );
   }
 
   Widget _historyPanel(DebtProvider p) => _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -266,11 +284,114 @@ class _AmountBox extends StatelessWidget {
 }
 
 class _ClientCard extends StatelessWidget {
-  final Client client; final DebtAccount account; final int purchaseCount; final bool compact; final VoidCallback onEdit, onHistory; final VoidCallback? onPayment;
-  const _ClientCard({required this.client, required this.account, required this.purchaseCount, required this.compact, required this.onEdit, required this.onHistory, required this.onPayment});
-  @override Widget build(BuildContext context) => Container(padding: EdgeInsets.fromLTRB(compact ? 9 : 12, compact ? 8 : 11, 10, compact ? 8 : 10), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.border)), child: Column(children: [Row(children: [Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), shape: BoxShape.circle), child: const Icon(Icons.person_outline, size: 19, color: AppColors.primary)), const SizedBox(width: 9), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(client.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)), if (client.phone.isNotEmpty) Text(client.phone, style: const TextStyle(fontSize: 10, color: AppColors.textMuted))])), if (purchaseCount > 0) TextButton.icon(onPressed: onHistory, icon: const Icon(Icons.receipt_long_outlined, size: 15), label: Text('$purchaseCount compras'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 10))), IconButton(tooltip: 'Editar', onPressed: onEdit, icon: const Icon(Icons.edit_outlined, size: 17), color: AppColors.textSecondary, visualDensity: VisualDensity.compact)]), const SizedBox(height: 9), Row(children: [Expanded(child: _AmountBox('Deuda', '\$${account.totalDebt.toStringAsFixed(2)}', AppColors.dangerRed)), const SizedBox(width: 7), Expanded(child: _AmountBox('Abonado', '\$${account.totalPaid.toStringAsFixed(2)}', AppColors.successGreen)), const SizedBox(width: 7), Expanded(child: _AmountBox('Restante', '\$${account.remaining.toStringAsFixed(2)}', account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen))]), if (onPayment != null) Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: onPayment, icon: const Icon(Icons.payments_outlined, size: 15), label: const Text('Registrar abono'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact)))]));
-}
+  final Client client;
+  final DebtAccount account;
+  final int purchaseCount;
+  final bool compact;
+  final VoidCallback onEdit, onHistory;
+  final VoidCallback? onPayment;
+  final VoidCallback? onReminder;
 
+  const _ClientCard({
+    required this.client,
+    required this.account,
+    required this.purchaseCount,
+    required this.compact,
+    required this.onEdit,
+    required this.onHistory,
+    required this.onPayment,
+    required this.onReminder,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: EdgeInsets.fromLTRB(
+          compact ? 9 : 12, compact ? 8 : 11, 10, compact ? 8 : 10,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.inputBackground,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_outline, size: 19, color: AppColors.primary),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(client.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      if (client.phone.isNotEmpty)
+                        Text(client.phone, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+                if (purchaseCount > 0)
+                  TextButton.icon(
+                    onPressed: onHistory,
+                    icon: const Icon(Icons.receipt_long_outlined, size: 15),
+                    label: Text(purchaseCount.toString() + ' compras'),
+                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 10)),
+                  ),
+                IconButton(
+                  tooltip: 'Editar',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 17),
+                  color: AppColors.textSecondary,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Expanded(child: _AmountBox('Deuda', '\$' + account.totalDebt.toStringAsFixed(2), AppColors.dangerRed)),
+                const SizedBox(width: 7),
+                Expanded(child: _AmountBox('Abonado', '\$' + account.totalPaid.toStringAsFixed(2), AppColors.successGreen)),
+                const SizedBox(width: 7),
+                Expanded(child: _AmountBox('Restante', '\$' + account.remaining.toStringAsFixed(2), account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
+              ],
+            ),
+            if (onPayment != null || onReminder != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onReminder != null)
+                      TextButton.icon(
+                        onPressed: onReminder,
+                        icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 15),
+                        label: const Text('Enviar recordatorio'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF25D366),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    if (onPayment != null)
+                      TextButton.icon(
+                        onPressed: onPayment,
+                        icon: const Icon(Icons.payments_outlined, size: 15),
+                        label: const Text('Registrar abono'),
+                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+}
 class _MovementTile extends StatelessWidget {
   final DebtMovement movement;
   const _MovementTile(this.movement);
