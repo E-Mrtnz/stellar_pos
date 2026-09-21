@@ -129,6 +129,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420, maxHeight: 250),
