@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/debt.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class DebtStatementShare {
   static Future<void> show(
@@ -93,6 +94,12 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
 
       if (!mounted) return;
       Navigator.of(context).pop();
+      AppAlert.show(
+        context,
+        'La imagen del estado de cuenta se generó correctamente.',
+        title: 'Estado de cuenta generado',
+        type: AppAlertType.success,
+      );
 
       await SharePlus.instance.share(
         ShareParams(
