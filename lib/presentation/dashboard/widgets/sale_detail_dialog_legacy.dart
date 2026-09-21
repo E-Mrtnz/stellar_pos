@@ -511,14 +511,14 @@ class SaleDetailDialog extends StatelessWidget {
       const SizedBox(height: 9),
       _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
       _infoRow('Estado', sale.isAnnulled ? 'ANULADA' : 'COMPLETADA'),
-      _dateInfoRow(context),
+      _dateInfoRow(),
 
       _infoRow('Hora', _formatTime(sale.createdAt)),
       _infoRow('Cliente', sale.clientName),
     ],
   );
 
-  Widget _dateInfoRow(BuildContext context) {
+  Widget _dateInfoRow() {
     final value = _formatDate(sale.createdAt);
     final dateWidget = Text(
       value,
