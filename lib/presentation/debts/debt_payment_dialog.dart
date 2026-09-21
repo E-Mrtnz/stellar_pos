@@ -254,7 +254,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                       ),
                     ),
                     const SizedBox(height: 7),
-                    if (!widget.editing) AnimatedSwitcher(
+                    AnimatedSwitcher(
                       duration: const Duration(milliseconds: 140),
                       child: hasChange
                           ? Container(
