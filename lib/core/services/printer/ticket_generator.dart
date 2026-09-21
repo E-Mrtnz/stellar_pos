@@ -7,7 +7,7 @@ class TicketGenerator {
   Future<List<int>> generate(SaleTicketData ticket, {bool openCashDrawer = false}) async {
     final profile = await CapabilityProfile.load(); final generator = Generator(PaperSize.mm80, profile, spaceBetweenRows: 4); final bytes = <int>[];
     bytes.addAll(generator.reset());
-    bytes.addAll(generator.text('STELLAR POS', styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2, width: PosTextSize.size2, codeTable: 'CP1252')));
+    bytes.addAll(generator.text('Tienda El Edén', styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2, width: PosTextSize.size2, codeTable: 'CP1252')));
     bytes.addAll(generator.text('MI TIENDA', styles: const PosStyles(align: PosAlign.center, bold: true, codeTable: 'CP1252')));
     bytes.addAll(generator.text('Direccion de la tienda', styles: const PosStyles(align: PosAlign.center, codeTable: 'CP1252')));
     bytes.addAll(generator.text('Tel: 0000-0000', styles: const PosStyles(align: PosAlign.center, codeTable: 'CP1252')));
