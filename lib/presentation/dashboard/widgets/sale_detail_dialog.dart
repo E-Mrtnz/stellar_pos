@@ -88,41 +88,11 @@ class SaleDetailDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        legacy.SaleDetailDialog(
-          sale: sale,
-          onPrint: onPrint,
-          paidAmount: paidAmount,
-        ),
-        Positioned(
-          top: 142,
-          left: 125,
-          right: 20,
-          height: 24,
-          child: Container(
-            color: AppColors.cardBackground,
-            alignment: Alignment.centerLeft,
-            child: InkWell(
-              onTap: () => _selectDate(context),
-              borderRadius: BorderRadius.circular(4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                child: Text(
-                  _formatDate(sale.createdAt),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                    decorationThickness: 1.2,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return legacy.SaleDetailDialog(
+      sale: sale,
+      onPrint: onPrint,
+      paidAmount: paidAmount,
+      onDateTap: () => _selectDate(context),
     );
   }
 }
