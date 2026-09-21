@@ -90,7 +90,7 @@ class DebtPaymentActions {
               movement.amount.toStringAsFixed(2) +
               ' de ' +
               movement.clientName +
-              '?\\n\\nEsta acción eliminará el registro y el monto dejará de aplicarse a la deuda.',
+              '?\n\nEsta acción eliminará el registro y el monto dejará de aplicarse a la deuda.',
         ),
         actions: [
           TextButton(
