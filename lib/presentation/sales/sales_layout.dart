@@ -26,6 +26,24 @@ enum _SalesPaymentFilter { all, cash, card, transfer, credit, payment }
 
 enum _SalesTypeFilter { all, products, electronic }
 
+class _SalesHistoryEntry {
+  final SaleRecord? sale;
+  final DebtMovement? payment;
+  final DateTime createdAt;
+
+  const _SalesHistoryEntry._({
+    this.sale,
+    this.payment,
+    required this.createdAt,
+  });
+
+  factory _SalesHistoryEntry.sale(SaleRecord sale) =>
+      _SalesHistoryEntry._(sale: sale, createdAt: sale.createdAt);
+
+  factory _SalesHistoryEntry.payment(DebtMovement payment) =>
+      _SalesHistoryEntry._(payment: payment, createdAt: payment.createdAt);
+}
+
 class _SalesLayoutState extends State<SalesLayout> {
   final TextEditingController _searchController = TextEditingController();
   _SalesPeriod _period = _SalesPeriod.daily;
@@ -133,6 +151,7 @@ class _SalesLayoutState extends State<SalesLayout> {
       if (movement.createdAt.isBefore(range.start) ||
           !movement.createdAt.isBefore(range.end))
         return false;
+      if (_typeFilter != _SalesTypeFilter.all) return false;
       if (_paymentFilter != _SalesPaymentFilter.all &&
           _paymentFilter != _SalesPaymentFilter.payment)
         return false;
@@ -270,6 +289,10 @@ class _SalesLayoutState extends State<SalesLayout> {
     builder: (context, salesProvider, debtProvider, _) {
       final sales = _filterSales(salesProvider.sales);
       final payments = _filterPayments(debtProvider.movements);
+      final history = <_SalesHistoryEntry>[
+        ...sales.map(_SalesHistoryEntry.sale),
+        ...payments.map(_SalesHistoryEntry.payment),
+      ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final paidBySale = _paidBySale(
         salesProvider.sales,
         debtProvider.movements,
@@ -348,7 +371,7 @@ class _SalesLayoutState extends State<SalesLayout> {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: _buildList(sales, paidBySale, payments),
+                    child: _buildList(history, paidBySale),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -661,14 +684,13 @@ class _SalesLayoutState extends State<SalesLayout> {
     ),
   );
   Widget _buildList(
-    List<SaleRecord> sales,
+    List<_SalesHistoryEntry> entries,
     Map<String, double> paidBySale,
-    List<DebtMovement> payments,
   ) =>
       HistoryTablePanel(
         title: 'Historial de ventas',
         icon: Icons.receipt_long_outlined,
-        itemCount: sales.length + payments.length,
+        itemCount: entries.length,
         header: _buildListHeader(),
         emptyState: const Center(
           child: Column(
@@ -688,14 +710,15 @@ class _SalesLayoutState extends State<SalesLayout> {
           ),
         ),
         itemBuilder: (_, index) {
-          if (index < sales.length) {
-            final sale = sales[index];
-            return _saleRow(
-              sale,
-              paidBySale[sale.id] ?? sale.effectiveCollected,
-            );
+          final entry = entries[index];
+          if (entry.payment != null) {
+            return _paymentRow(entry.payment!);
           }
-          return _paymentRow(payments[index - sales.length]);
+          final sale = entry.sale!;
+          return _saleRow(
+            sale,
+            paidBySale[sale.id] ?? sale.effectiveCollected,
+          );
         },
       );
   Widget _buildListHeader() => Container(
@@ -860,7 +883,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             SizedBox(
               width: 105,
               child: Text(
-                '${_date(movement.createdAt)}\\n$time',
+                '${_date(movement.createdAt)}\n$time',
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
