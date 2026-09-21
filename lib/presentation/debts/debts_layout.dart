@@ -318,6 +318,17 @@ class _MovementTile extends StatelessWidget {
                     color: AppColors.textMuted,
                   ),
                 ),
+                Text(
+                  '\${movement.createdAt.day.toString().padLeft(2, '0')}/'
+                  '\${movement.createdAt.month.toString().padLeft(2, '0')}/'
+                  '\${movement.createdAt.year} · '
+                  '\${movement.createdAt.hour.toString().padLeft(2, '0')}:'
+                  '\${movement.createdAt.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                    fontSize: 8,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ],
             ),
           ),
