@@ -188,7 +188,7 @@ class _DebtStatementImage extends StatelessWidget {
   final int pageCount;
   const _DebtStatementImage({required this.clientName, required this.sales, required this.account, required this.groups, required this.pageNumber, required this.pageCount});
 
-  String _money(double value) => '$' + value.toStringAsFixed(2);
+  String _money(double value) => '\u0024' + value.toStringAsFixed(2);
   String _date(DateTime value) => value.day.toString().padLeft(2, '0') + '/' + value.month.toString().padLeft(2, '0') + '/' + value.year.toString();
 
   @override Widget build(BuildContext context) {
