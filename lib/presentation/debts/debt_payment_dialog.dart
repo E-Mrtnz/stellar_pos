@@ -21,6 +21,8 @@ class DebtPaymentDialog extends StatefulWidget {
     BuildContext context, {
     required String clientName,
     required double debt,
+    double? initialAmount,
+    bool editing = false,
   }) =>
       showDialog<double>(
         context: context,
