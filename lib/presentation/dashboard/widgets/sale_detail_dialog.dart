@@ -55,9 +55,6 @@ class SaleDetailDialog extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
-
   Future<void> _selectDate(BuildContext context) async {
     final salesProvider = context.read<SalesProvider>();
     final dateAware = salesProvider as DateAwareSalesProvider;
