@@ -236,7 +236,7 @@ class _DebtStatementImage extends StatelessWidget {
               const SizedBox(height: 24),
               const Divider(color: Color(0xFFE2E2E2)),
               const SizedBox(height: 10),
-              Center(child: Text(pageNumber.toString() + 'D ' + pageCount.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54))),
+              Center(child: Text(pageNumber.toString() + '/' + pageCount.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54))),
             ],
           ),
         ),
@@ -276,7 +276,25 @@ class _DebtStatementImage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA)))),
       child: Row(children: [
-        Expanded(flex: 40, child: Text(item.productName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12))),
+        Expanded(
+          flex: 40,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.productName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+              if (!item.isElectronicBalance && item.unit.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    item.unit.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, color: Colors.black54, fontWeight: FontWeight.w600),
+                  ),
+                ),
+            ],
+          ),
+        ),
         Expanded(flex: 11, child: Text(item.quantity.toString(), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
         Expanded(flex: 15, child: Text(_money(displayUnitPrice), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
         Expanded(flex: 13, child: Text(_money(item.discount), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
