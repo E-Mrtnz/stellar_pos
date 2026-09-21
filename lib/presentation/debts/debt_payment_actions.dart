@@ -4,77 +4,42 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/debt.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
+import 'package:stellar_pos/presentation/debts/debt_payment_dialog.dart';
 
 class DebtPaymentActions {
   const DebtPaymentActions._();
 
   static Future<bool> edit(BuildContext context, DebtMovement movement) async {
-    final controller = TextEditingController(
-      text: movement.amount.toStringAsFixed(2),
+    final debtProvider = context.read<DebtProvider>();
+    final account = debtProvider.accountFor(movement.clientId);
+    final editableDebt = account == null
+        ? movement.amount
+        : account.remaining + movement.amount;
+
+    final amount = await DebtPaymentDialog.show(
+      context,
+      clientName: movement.clientName,
+      debt: editableDebt,
+      initialAmount: movement.amount,
+      editing: true,
     );
-    try {
-      final saved = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Editar abono'),
-          content: SizedBox(
-            width: 360,
-            child: TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Monto del abono',
-                prefixText: '\$ ',
-                helperText: 'Modifica únicamente el valor del abono.',
-              ),
-            ),
+    if (amount == null || !context.mounted) return false;
+
+    final updated = debtProvider.updatePayment(
+      paymentId: movement.id,
+      amount: amount,
+    );
+    if (!updated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudo actualizar el abono. El monto no puede superar la deuda disponible.',
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final amount = double.tryParse(
-                  controller.text.trim().replaceAll(',', '.'),
-                );
-                if (amount == null || amount <= 0) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ingresa un monto válido mayor que \$0.00.'),
-                    ),
-                  );
-                  return;
-                }
-                final updated = context.read<DebtProvider>().updatePayment(
-                  paymentId: movement.id,
-                  amount: amount,
-                );
-                if (!updated) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'No se pudo actualizar el abono. El monto no puede superar la deuda disponible.',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
         ),
       );
-      return saved ?? false;
-    } finally {
-      controller.dispose();
+      return false;
     }
+    return true;
   }
 
   static Future<bool> delete(
