@@ -130,6 +130,61 @@ class DebtProvider extends ChangeNotifier {
     return true;
   }
 
+  bool updatePayment({
+    required String paymentId,
+    required double amount,
+  }) {
+    if (amount <= 0) return false;
+    final index = _payments.indexWhere((payment) => payment.id == paymentId);
+    if (index < 0) return false;
+
+    final current = _payments[index];
+    if (current.type != DebtMovementType.payment ||
+        current.isInitialPayment) {
+      return false;
+    }
+
+    final account = accountFor(current.clientId);
+    final remainingWithoutCurrent = account == null
+        ? 0.0
+        : (account.remaining + current.amount)
+              .clamp(0, double.infinity)
+              .toDouble();
+    if (amount > remainingWithoutCurrent + 0.005) return false;
+
+    final updated = DebtMovement(
+      id: current.id,
+      clientId: current.clientId,
+      clientName: current.clientName,
+      type: current.type,
+      amount: amount,
+      createdAt: current.createdAt,
+      reference: current.reference,
+      isInitialPayment: current.isInitialPayment,
+      metadata: current.metadata.touch(),
+    );
+    _payments[index] = updated;
+    unawaited(_movementRepository?.save(updated));
+    notifyListeners();
+    return true;
+  }
+
+  bool deletePayment(String paymentId) {
+    final index = _payments.indexWhere((payment) => payment.id == paymentId);
+    if (index < 0) return false;
+
+    final payment = _payments[index];
+    if (payment.type != DebtMovementType.payment ||
+        payment.isInitialPayment) {
+      return false;
+    }
+
+    _payments.removeAt(index);
+    unawaited(_movementRepository?.delete(payment.id));
+    notifyListeners();
+    return true;
+  }
+
   void syncInitialPayment({
     required String saleId,
     required String clientId,
