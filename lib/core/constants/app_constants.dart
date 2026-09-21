@@ -72,7 +72,7 @@ class AppTextStyles {
 }
 
 class AppStrings {
-  static const String appName = 'Stellar POS';
+  static const String appName = 'Tienda El Edén';
   static const String navHome = 'Punto de venta';
   static const String navSales = 'Ventas';
   static const String navInventory = 'Inventario';
