@@ -15,6 +15,7 @@ import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_group_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/numeric_keypad.dart';
 import 'package:stellar_pos/presentation/debts/client_purchase_history_dialog.dart';
+import 'package:stellar_pos/presentation/debts/debt_payment_actions.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
@@ -274,7 +275,77 @@ class _ClientCard extends StatelessWidget {
 class _MovementTile extends StatelessWidget {
   final DebtMovement movement;
   const _MovementTile(this.movement);
-  @override Widget build(BuildContext context) { final isPayment = movement.type == DebtMovementType.payment; return Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: AppColors.inputBackground, borderRadius: BorderRadius.circular(9), border: Border.all(color: AppColors.border)), child: Row(children: [Icon(isPayment ? Icons.payments_outlined : Icons.receipt_long_outlined, size: 17, color: isPayment ? AppColors.successGreen : AppColors.dangerRed), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(movement.clientName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text(isPayment ? 'Abono' : 'Fiado', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])), Text('${isPayment ? '+' : ''}\$${movement.amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isPayment ? AppColors.successGreen : AppColors.dangerRed))])); }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPayment = movement.type == DebtMovementType.payment;
+    final canEdit = isPayment && !movement.isInitialPayment;
+
+    return Container(
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isPayment ? Icons.payments_outlined : Icons.receipt_long_outlined,
+            size: 17,
+            color: isPayment
+                ? AppColors.successGreen
+                : AppColors.dangerRed,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  movement.clientName,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  isPayment ? 'Abono' : 'Fiado',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            (isPayment ? '+' : '') +
+                '\$' +
+                movement.amount.toStringAsFixed(2),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isPayment
+                  ? AppColors.successGreen
+                  : AppColors.dangerRed,
+            ),
+          ),
+          if (canEdit) ...[
+            const SizedBox(width: 2),
+            IconButton(
+              tooltip: 'Editar abono',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => DebtPaymentActions.edit(context, movement),
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _EmptyState extends StatelessWidget {
