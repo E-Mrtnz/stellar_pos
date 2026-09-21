@@ -198,6 +198,7 @@ class _DebtStatementImage extends StatelessWidget {
       color: Colors.white,
       child: SizedBox(
         width: 900,
+        height: 1800,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(56, 48, 56, 42),
           child: Column(
