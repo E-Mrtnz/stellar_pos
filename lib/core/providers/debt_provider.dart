@@ -271,10 +271,13 @@ class DebtProvider extends ChangeNotifier {
   }) {
     if (amount <= 0 || clientId.trim().isEmpty) return false;
 
-    final sale = _salesProvider.sales.cast<SaleRecord?>().firstWhere(
-          (item) => item?.id == saleId,
-          orElse: () => null,
-        );
+    SaleRecord? sale;
+    for (final candidate in _salesProvider.sales) {
+      if (candidate.id == saleId) {
+        sale = candidate;
+        break;
+      }
+    }
     if (sale == null ||
         sale.paymentMethod != 'Fiado' ||
         sale.clientId != clientId ||
