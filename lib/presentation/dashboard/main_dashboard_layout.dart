@@ -933,7 +933,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       );
       if (_selectedPaymentMethod == AppPaymentMethods.credit &&
           initialCreditPayment > 0) {
-        final saved = context.read<DebtProvider>().recordPayment(
+        final saved = context.read<DebtProvider>().recordInitialPayment(
+          saleId: sale.id,
           clientId: clientId!,
           clientName: _selectedDebtor!,
           amount: initialCreditPayment,
