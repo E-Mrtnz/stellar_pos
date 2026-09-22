@@ -210,6 +210,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   Widget _clientCard(Client client, DebtProvider debts, SalesProvider sales, {bool compact = false}) {
     final account = debts.accountFor(client.id) ?? DebtAccount(clientId: client.id, clientName: client.name, totalDebt: 0, totalPaid: 0);
     final purchases = sales.sales.where((s) => s.clientId == client.id && s.paymentMethod.toLowerCase() == 'fiado').toList(growable: false);
+    final statement = debts.statementForClient(client.id);
     return _ClientCard(
       client: client,
       account: account,
@@ -218,12 +219,12 @@ class _DebtsLayoutState extends State<DebtsLayout> {
       onEdit: () => _editClient(client),
       onHistory: () => _history(client, purchases),
       onPayment: account.remaining > .005 ? () => _addPayment(client, account) : null,
-      onReminder: purchases.isNotEmpty && account.remaining > .005
+      onReminder: statement.sales.isNotEmpty && statement.account.remaining > .005
           ? () => DebtStatementShare.show(
                 context,
                 clientName: client.name,
-                sales: purchases,
-                account: account,
+                sales: statement.sales,
+                account: statement.account,
               )
           : null,
     );
