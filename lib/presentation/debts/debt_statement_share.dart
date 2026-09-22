@@ -52,7 +52,9 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       grouped.putIfAbsent(day, () => []).addAll(sale.items);
     }
     final dates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-    const maxRowsPerPage = 12;
+    // Reserve enough vertical space for the fixed footer and final totals.
+    // Ten product rows keeps the last page within the fixed 1800px canvas.
+    const maxRowsPerPage = 10;
     final pages = <_StatementPage>[];
     var current = <_StatementGroup>[];
     var rows = 0;
