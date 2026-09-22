@@ -283,10 +283,11 @@ class DebtProvider extends ChangeNotifier {
       return false;
     }
 
-    final paidBySale = _allocatedPaidBySale(
-      <SaleRecord>[sale],
-      clientId,
-    );
+    final creditSales = _service
+        .creditSales(_salesProvider.sales)
+        .where((item) => item.clientId == clientId)
+        .toList(growable: false);
+    final paidBySale = _allocatedPaidBySale(creditSales, clientId);
     final alreadyApplied = paidBySale[sale.id] ?? 0;
     final remaining = (sale.effectiveTotal - alreadyApplied)
         .clamp(0, double.infinity)
