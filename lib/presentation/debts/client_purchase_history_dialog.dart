@@ -35,18 +35,8 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
   );
 
   Map<String, double> _paidBySale(DebtProvider provider) {
-    final oldestFirst = [...sales]
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    var paymentPool = provider.paidForClient(
-      oldestFirst.isEmpty ? '' : oldestFirst.first.clientId ?? '',
-    );
-    final result = <String, double>{};
-    for (final sale in oldestFirst) {
-      final paid = paymentPool.clamp(0, sale.total).toDouble();
-      result[sale.id] = paid;
-      paymentPool = (paymentPool - paid).clamp(0, double.infinity).toDouble();
-    }
-    return result;
+    final clientId = sales.isEmpty ? '' : sales.first.clientId ?? '';
+    return provider.paidBySaleForClient(clientId);
   }
 
   @override
@@ -175,7 +165,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
   @override
   Widget build(BuildContext context) {
     final sale = widget.sale;
-    final remaining = (sale.total - widget.paidAmount)
+    final remaining = (sale.effectiveTotal - widget.paidAmount)
         .clamp(0, double.infinity)
         .toDouble();
     final isPaid = remaining <= 0.005;
@@ -266,7 +256,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
                   ),
                 ),
                 Text(
-                  '\$${sale.total.toStringAsFixed(2)}',
+                  '\$${sale.effectiveTotal.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
