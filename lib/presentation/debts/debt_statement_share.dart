@@ -277,35 +277,87 @@ class _DebtStatementImage extends StatelessWidget {
   );
 
   Widget _itemRow(SaleItemRecord item) {
-    final displayUnitPrice = item.hasGroupPricing ? item.lineTotal : item.unitPrice;
+    final displayUnitPrice = item.quantity > 0
+        ? item.lineSubtotal / item.quantity
+        : item.unitPrice;
+    final calculatedDiscount = (item.lineSubtotal - item.lineTotal)
+        .clamp(0, double.infinity)
+        .toDouble();
+    final displayDiscount = item.discount > calculatedDiscount
+        ? item.discount
+        : calculatedDiscount;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA)))),
-      child: Row(children: [
-        Expanded(
-          flex: 40,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.productName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-              if (!item.isElectronicBalance && item.unit.trim().isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    item.unit.trim(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10, color: Colors.black54, fontWeight: FontWeight.w600),
-                  ),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 40,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
                 ),
-            ],
+                if (!item.isElectronicBalance && item.unit.trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      item.unit.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-        Expanded(flex: 11, child: Text(item.quantity.toString(), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
-        Expanded(flex: 15, child: Text(_money(displayUnitPrice), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
-        Expanded(flex: 13, child: Text(_money(item.discount), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
-        Expanded(flex: 15, child: Text(_money(item.lineTotal), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
-      ]),
+          Expanded(
+            flex: 11,
+            child: Text(
+              item.quantity.toString(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          Expanded(
+            flex: 15,
+            child: Text(
+              _money(displayUnitPrice),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          Expanded(
+            flex: 13,
+            child: Text(
+              _money(displayDiscount),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          Expanded(
+            flex: 15,
+            child: Text(
+              _money(item.lineTotal),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
