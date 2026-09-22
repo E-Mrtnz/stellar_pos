@@ -61,6 +61,58 @@ class DebtProvider extends ChangeNotifier {
   double paidForClient(String clientId) =>
       _service.paidForClient(clientId, _validPayments);
 
+  ({List<SaleRecord> sales, DebtAccount account}) statementForClient(
+    String clientId,
+  ) {
+    final creditSales = _service
+        .creditSales(_salesProvider.sales)
+        .where((sale) => sale.clientId == clientId && sale.effectiveTotal > 0.005)
+        .toList(growable: false);
+    if (creditSales.isEmpty) {
+      return (
+        sales: const <SaleRecord>[],
+        account: DebtAccount(
+          clientId: clientId,
+          clientName: '',
+          totalDebt: 0,
+          totalPaid: 0,
+        ),
+      );
+    }
+
+    final paidBySale = _allocatedPaidBySale(creditSales, clientId);
+    final pendingSales = creditSales
+        .where(
+          (sale) =>
+              (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
+                  .clamp(0, double.infinity)
+                  .toDouble() >
+              0.005,
+        )
+        .toList(growable: false);
+
+    final totalDebt = pendingSales.fold<double>(
+      0,
+      (sum, sale) => sum + sale.effectiveTotal,
+    );
+    final totalPaid = pendingSales.fold<double>(
+      0,
+      (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
+    );
+
+    return (
+      sales: pendingSales,
+      account: DebtAccount(
+        clientId: clientId,
+        clientName: pendingSales.isEmpty
+            ? creditSales.last.clientName
+            : pendingSales.last.clientName,
+        totalDebt: totalDebt,
+        totalPaid: totalPaid,
+      ),
+    );
+  }
+
   Future<void> load() {
     if (_loaded) return Future.value();
     final existing = _loadFuture;
