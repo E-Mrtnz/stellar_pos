@@ -28,9 +28,37 @@ class DebtProvider extends ChangeNotifier {
     _salesProvider.addListener(_onSalesChanged);
   }
 
-  List<DebtAccount> get accounts => List.unmodifiable(
-    _service.accounts(_salesProvider.sales, _validPayments),
-  );
+  List<DebtAccount> get accounts {
+    final grouped = <String, List<SaleRecord>>{};
+    for (final sale in _service.creditSales(_salesProvider.sales)) {
+      final clientId = sale.clientId;
+      if (clientId == null) continue;
+      grouped.putIfAbsent(clientId, () => []).add(sale);
+    }
+
+    final result = <DebtAccount>[];
+    for (final entry in grouped.entries) {
+      final sales = entry.value;
+      final paidBySale = _allocatedPaidBySale(sales, entry.key);
+      final totalDebt = sales.fold<double>(
+        0,
+        (sum, sale) => sum + sale.effectiveTotal,
+      );
+      final totalPaid = sales.fold<double>(
+        0,
+        (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
+      );
+      result.add(
+        DebtAccount(
+          clientId: entry.key,
+          clientName: sales.last.clientName,
+          totalDebt: totalDebt,
+          totalPaid: totalPaid,
+        ),
+      );
+    }
+    return List.unmodifiable(result);
+  }
   List<DebtMovement> get movements {
     final result = <DebtMovement>[
       ..._service
@@ -255,15 +283,6 @@ class DebtProvider extends ChangeNotifier {
       return false;
     }
 
-    final existing = _payments
-        .where(
-          (payment) =>
-              payment.type == DebtMovementType.payment &&
-              payment.isInitialPayment &&
-              payment.reference == saleId,
-        )
-        .fold<double>(0, (sum, payment) => sum + payment.amount);
-
     final paidBySale = _allocatedPaidBySale(
       <SaleRecord>[sale],
       clientId,
@@ -272,9 +291,7 @@ class DebtProvider extends ChangeNotifier {
     final remaining = (sale.effectiveTotal - alreadyApplied)
         .clamp(0, double.infinity)
         .toDouble();
-    final available = (remaining - existing)
-        .clamp(0, double.infinity)
-        .toDouble();
+    final available = remaining;
     if (available <= 0.005) return false;
 
     final applied = amount > available ? available : amount;
