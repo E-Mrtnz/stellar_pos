@@ -242,7 +242,7 @@ class _DebtStatementImage extends StatelessWidget {
               const SizedBox(height: 24),
               const Divider(color: Color(0xFFE2E2E2)),
               const SizedBox(height: 10),
-              Center(child: Text(pageNumber.toString() + '/' + pageCount.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54))),
+              Center(child: Text(pageNumber.toString() + 'D ' + pageCount.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54))),
             ],
           ),
         ),
