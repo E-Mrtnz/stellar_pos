@@ -289,7 +289,9 @@ class _DebtStatementImage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA)),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFEAEAEA)),
+        ),
       ),
       child: Row(
         children: [
