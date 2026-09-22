@@ -342,18 +342,61 @@ class DebtProvider extends ChangeNotifier {
     List<SaleRecord> sales,
     String clientId,
   ) {
-    final paid = <String, double>{for (final sale in sales) sale.id: 0};
+    // A Fiado sale can already contain an amount received at the moment the
+    // sale was created. Older data may not have a corresponding initial
+    // DebtMovement, so the statement must account for both representations.
+    final initialPaymentsBySale = <String, double>{};
+    for (final payment in _validPayments.where(
+      (payment) =>
+          payment.clientId == clientId &&
+          payment.isInitialPayment &&
+          payment.reference != null,
+    )) {
+      final reference = payment.reference!;
+      initialPaymentsBySale[reference] =
+          (initialPaymentsBySale[reference] ?? 0) + payment.amount;
+    }
+
+    final paid = <String, double>{};
+    for (final sale in sales) {
+      final recordedInitialPayment =
+          initialPaymentsBySale[sale.id] ?? 0.0;
+      final saleInitialPayment = sale.effectiveCollected;
+      final initialPaid = recordedInitialPayment > 0.005
+          ? recordedInitialPayment
+          : saleInitialPayment;
+      paid[sale.id] = initialPaid
+          .clamp(0, sale.effectiveTotal)
+          .toDouble();
+    }
+
+    // Manual abonos are applied after the amount already received on each
+    // sale. Referenced payments go to their exact sale; legacy payments
+    // without a reference are allocated FIFO across the client's debt.
     final payments =
-        _validPayments.where((payment) => payment.clientId == clientId).toList()
+        _validPayments
+            .where(
+              (payment) =>
+                  payment.clientId == clientId &&
+                  !payment.isInitialPayment,
+            )
+            .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     for (final payment in payments) {
       var remaining = payment.amount;
       final reference = payment.reference;
       if (reference != null && paid.containsKey(reference)) {
-        paid[reference] = (paid[reference] ?? 0) + remaining;
+        final sale = sales.firstWhere((item) => item.id == reference);
+        final outstanding = (sale.effectiveTotal - (paid[reference] ?? 0))
+            .clamp(0, double.infinity)
+            .toDouble();
+        final allocation =
+            remaining > outstanding ? outstanding : remaining;
+        paid[reference] = (paid[reference] ?? 0) + allocation;
         continue;
       }
+
       for (final sale in sales) {
         if (remaining <= 0.005) break;
         final outstanding = (sale.effectiveTotal - (paid[sale.id] ?? 0))
