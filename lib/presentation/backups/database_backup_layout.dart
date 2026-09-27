@@ -470,9 +470,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                       ),
                       const SizedBox(height: 9),
                       Text(
-                        kIsWeb
-                            ? 'Preparando los datos y descargando el archivo...'
-                            : 'Comprimiendo la base de datos en segundo plano...',
+                        'Preparando los datos y generando el archivo universal...',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -558,9 +556,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                         const SizedBox(width: 9),
                         Expanded(
                           child: Text(
-                            kIsWeb
-                                ? 'El backup universal no contiene archivos .hive ni depende de IndexedDB, rutas del sistema operativo o del tipo de dispositivo.'
-                                : 'Guarda las copias fuera del repositorio principal de STELLAR POS. Más adelante configuraremos el almacenamiento externo privado de estos backups.',
+                            'El backup universal no contiene archivos .hive ni depende de IndexedDB, rutas del sistema operativo o del tipo de dispositivo.',
                             style: const TextStyle(
                               fontSize: 12,
                               height: 1.45,
