@@ -495,7 +495,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                               child: Text(
                                 kIsWeb
                                     ? 'Backup descargado como:\n$_lastBackupPath'
-                                    : 'Backup guardado en:$n$$_lastBackupPath',
+                                    : 'Backup guardado en:\n$_lastBackupPath',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   height: 1.45,
