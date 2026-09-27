@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
+import 'package:stellar_pos/presentation/backups/database_backup_layout.dart';
 import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
 
@@ -36,7 +37,11 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                   boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))],
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: _selectedIndex == 0 ? const _GeneralSettingsContent() : const _PrinterContent(),
+                child: _selectedIndex == 0
+                      ? const _GeneralSettingsContent()
+                      : _selectedIndex == 1
+                      ? const _PrinterContent()
+                      : const DatabaseBackupLayout(),
               ),
             ),
           ],
@@ -61,6 +66,7 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
         const SizedBox(height: 8),
         _menuItem(0, Icons.tune_outlined, 'General'),
         _menuItem(1, Icons.print_outlined, 'Impresoras'),
+        _menuItem(2, Icons.backup_outlined, 'Copias de seguridad'),
       ]),
     );
   }
