@@ -1,6 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class ProductCard extends StatelessWidget {
@@ -98,6 +99,173 @@ class ProductCard extends StatelessWidget {
         topRight: Radius.circular(15),
       ),
       placeholderIcon: Icons.inventory_2_outlined,
+    );
+  }
+
+  Widget _buildProductInfo({required int stock, required Color stockColor}) {
+    final name = ProductUtils.cleanName(product);
+    final unit = ProductUtils.unit(product);
+    final brand = ProductUtils.brand(product);
+    final price = preparedSelected
+        ? ProductUtils.price(product) + ProductUtils.asDouble(product['preparationExtra'])
+        : ProductUtils.price(product);
+    final metadata = brand.isEmpty ? unit : '$unit | $brand';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.productName,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          metadata,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.productMetadata,
+        ),
+        const SizedBox(height: 7),
+        _buildStockBadge(stock: stock, color: stockColor),
+        if (ProductUtils.asBool(product['allowPreparedSale'])) ...[
+          const SizedBox(height: 5),
+          _buildPreparedToggle(),
+        ],
+        const SizedBox(height: 7),
+        _buildPriceRow(price),
+      ],
+    );
+  }
+
+  Widget _buildStockBadge({required int stock, required Color color}) {
+    return Container(
+      height: AppDimensions.stockBadgeHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withAlpha(22),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: color.withAlpha(100)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inventory_2_outlined, color: color, size: AppSizes.iconSmall),
+          const SizedBox(width: 5),
+          Text(
+            '$stock',
+            style: TextStyle(
+              color: color,
+              fontSize: AppSizes.textMedium,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreparedToggle() {
+    return InkWell(
+      onTap: () => onPreparedChanged(!preparedSelected),
+      borderRadius: BorderRadius.circular(6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: preparedSelected,
+              onChanged: (value) {
+                if (value != null) onPreparedChanged(value);
+              },
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Preparada',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: preparedSelected
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceRow(double price) {
+    final hasGroupPricing =
+        !preparedSelected &&
+        ProductUtils.asBool(product['hasGroupPricing']) &&
+        ProductUtils.asInt(product['groupQuantity']) > 0;
+    final groupQuantity = ProductUtils.asInt(product['groupQuantity']);
+    final groupPrice = ProductUtils.asDouble(product['groupPrice']);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            ProductUtils.money(price),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.productPrice,
+          ),
+        ),
+        if (hasGroupPricing) ...[
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              '${ProductUtils.money(groupPrice)} x ${groupQuantity}U',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: AppTextStyles.productPrice.copyWith(
+                fontSize: AppSizes.textSmall,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(width: 6),
+        _buildCartCounter(),
+      ],
+    );
+  }
+
+  Widget _buildCartCounter() {
+    final hasItemsInCart = quantityInCart > 0;
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: hasItemsInCart
+            ? AppColors.primary
+            : AppColors.border.withAlpha(120),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: hasItemsInCart
+            ? Text(
+                '$quantityInCart',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: AppSizes.textMedium,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : const Icon(
+                Icons.add,
+                color: AppColors.textSecondary,
+                size: AppSizes.iconSmall,
+              ),
+      ),
     );
   }
 
