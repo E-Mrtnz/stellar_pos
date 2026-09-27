@@ -12,6 +12,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
+import 'package:stellar_pos/core/utils/product_image_cache.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class PurchaseCreationDialog extends StatefulWidget {
@@ -208,7 +209,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final products = _visibleProducts(context.watch<ProductProvider>());
+    final productProvider = context.watch<ProductProvider>();
+    final products = _visibleProducts(productProvider);
     final distributors = context.watch<ProvidersProvider>().distributors;
     return Dialog(
       insetPadding: const EdgeInsets.all(18),
@@ -424,7 +426,25 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: products.isEmpty
+          child: productProvider.isLoading && products.isEmpty
+              ? const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Cargando productos...',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                )
+              : products.isEmpty
               ? const Center(
                   child: Text(
                     'No hay productos registrados.',
@@ -448,7 +468,10 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   );
 
   Widget _productCard(Product product) {
-    final bytes = _decode(product.imageData);
+    final bytes = ProductImageCache.getBytes(
+      productId: product.id,
+      imageData: product.imageData,
+    );
     return InkWell(
       onTap: _saving ? null : () => _addProduct(product),
       borderRadius: BorderRadius.circular(8),
