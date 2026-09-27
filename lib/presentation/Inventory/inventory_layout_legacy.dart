@@ -13,6 +13,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/services/inventory_file_service.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
+import 'package:stellar_pos/core/utils/product_image_cache.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
@@ -552,23 +553,27 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         scrollDirection: Axis.horizontal,
         child: SizedBox(
           width: _tableWidth,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTableHeader(),
-                const Divider(height: 1, color: AppColors.border),
-                if (products.isEmpty)
-                  const SizedBox(
-                    height: 180,
-                    child: Center(child: Text(AppStrings.inventoryEmptyMessage, style: TextStyle(color: AppColors.textSecondary))),
-                  )
-                else
-                  ...products.map(_buildInventoryRow),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTableHeader(),
+              const Divider(height: 1, color: AppColors.border),
+              Expanded(
+                child: products.isEmpty
+                    ? const Center(
+                        child: Text(
+                          AppStrings.inventoryEmptyMessage,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: products.length,
+                        itemBuilder: (context, index) =>
+                            _buildInventoryRow(products[index]),
+                      ),
+              ),
+            ],
           ),
         ),
       ),
@@ -742,18 +747,21 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Widget _buildInventoryImage(String imageData) {
-    if (imageData.isNotEmpty) {
-      try {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            base64Decode(imageData),
-            width: AppDimensions.inventoryImageSize,
-            height: AppDimensions.inventoryImageSize,
-            fit: BoxFit.cover,
-          ),
-        );
-      } catch (_) {}
+    final productId = ProductUtils.asString(product['id']);
+    final imageBytes = ProductImageCache.getBytes(
+      productId: productId,
+      imageData: imageData,
+    );
+    if (imageBytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          imageBytes,
+          width: AppDimensions.inventoryImageSize,
+          height: AppDimensions.inventoryImageSize,
+          fit: BoxFit.cover,
+        ),
+      );
     }
     return Container(
       width: AppDimensions.inventoryImageSize,
