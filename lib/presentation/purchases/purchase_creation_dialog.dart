@@ -701,7 +701,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
         ),
       ],
       ),
-    );
+    ),
+  );
 
   Widget _stat(String label, String value, {Color? color}) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
