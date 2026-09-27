@@ -239,8 +239,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                       const SizedBox(height: 18),
                       Text(
                         kIsWeb
-                            ? 'Los datos locales actuales serán reemplazados por los contenidos de esta copia. La restauración se ejecutará directamente sobre el almacenamiento local del navegador.'
-                            : 'Los archivos .hive actuales serán reemplazados por los contenidos de esta copia. Antes de aplicar el cambio, STELLAR POS creará una copia temporal de seguridad para poder revertir el proceso si ocurre un error.',
+                            ? 'Los datos locales actuales serán reemplazados por los contenidos de esta copia. La restauración se ejecutará directamente sobre el almacenamiento local de esta plataforma.'
+                            : 'Los datos locales actuales serán reemplazados por los contenidos de esta copia. Antes de aplicar el cambio, STELLAR POS creará un punto de recuperación para poder revertir el proceso si ocurre un error.',
                         style: const TextStyle(
                           fontSize: 14,
                           height: 1.55,
@@ -260,7 +260,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                           Expanded(
                             child: Text(
                               kIsWeb
-                                  ? 'La restauración se realizará directamente sobre el almacenamiento local del navegador; no se utilizarán rutas de archivos del sistema.'
+                                  ? 'El backup es independiente de la plataforma: los datos se restaurarán en el almacenamiento local de esta instalación de STELLAR POS.'
                                   : 'La aplicación se reiniciará al finalizar para cargar la información restaurada.',
                               style: const TextStyle(
                                 fontSize: 12,
@@ -359,8 +359,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
               const SizedBox(height: 8),
               Text(
                 kIsWeb
-                    ? 'Protege los datos locales del navegador con una copia descargable.'
-                    : 'Crea una copia comprimida de la base de datos local de STELLAR POS.',
+                    ? 'Protege los datos locales de STELLAR POS con una copia universal que puede restaurarse en cualquier plataforma compatible.'
+                    : 'Crea una copia universal de los datos de STELLAR POS, independiente de la plataforma donde se genere o restaure.',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -416,8 +416,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                     const SizedBox(height: 14),
                     Text(
                       kIsWeb
-                          ? 'En Web, STELLAR POS exportará las cajas de Hive CE desde el almacenamiento del navegador y generará un archivo ZIP descargable.'
-                          : 'En escritorio, STELLAR POS incluirá únicamente los archivos .hive de Hive CE. Los archivos .lock no forman parte del respaldo.',
+                          ? 'STELLAR POS exportará los datos lógicos de sus cajas de almacenamiento a un formato universal JSON dentro de un archivo ZIP.'
+                          : 'El backup universal no contiene archivos internos de Hive ni depende de rutas del sistema operativo; puede restaurarse en Web, macOS, Windows, Android, iOS o iPadOS.',
                       style: const TextStyle(
                         fontSize: 13,
                         height: 1.55,
@@ -558,7 +558,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                         Expanded(
                           child: Text(
                             kIsWeb
-                                ? 'El backup Web se genera desde IndexedDB y no depende de rutas del sistema operativo.'
+                                ? 'El backup universal no contiene archivos .hive ni depende de IndexedDB, rutas del sistema operativo o del tipo de dispositivo.'
                                 : 'Guarda las copias fuera del repositorio principal de STELLAR POS. Más adelante configuraremos el almacenamiento externo privado de estos backups.',
                             style: const TextStyle(
                               fontSize: 12,
