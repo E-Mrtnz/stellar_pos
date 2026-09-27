@@ -20,14 +20,14 @@ class ProductImageCache {
     if (normalized.isEmpty) return null;
 
     final cached = _cache[productId];
-    if (cached != null && cached.fingerprint == _fingerprint(normalized)) {
+    if (cached != null && cached.source == normalized) {
       return cached.bytes;
     }
 
     try {
       final bytes = base64Decode(normalized);
       _cache[productId] = _CachedImage(
-        fingerprint: _fingerprint(normalized),
+        source: normalized,
         bytes: bytes,
       );
       _trim();
@@ -45,9 +45,6 @@ class ProductImageCache {
     _cache.clear();
   }
 
-  static int _fingerprint(String value) =>
-      Object.hash(value.length, value.hashCode);
-
   static void _trim() {
     while (_cache.length > _maxEntries) {
       _cache.remove(_cache.keys.first);
@@ -56,11 +53,11 @@ class ProductImageCache {
 }
 
 class _CachedImage {
-  final int fingerprint;
+  final String source;
   final Uint8List bytes;
 
   const _CachedImage({
-    required this.fingerprint,
+    required this.source,
     required this.bytes,
   });
 }
