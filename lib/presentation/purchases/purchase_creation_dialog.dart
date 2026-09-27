@@ -229,7 +229,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
                 child: Column(
                   children: [
-                    _productPicker(products),
+                    _productPicker(products, isLoading: productProvider.isLoading),
                     const SizedBox(height: 10),
                     _purchaseItems(),
                   ],
@@ -377,7 +377,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     ],
   );
 
-  Widget _productPicker(List<Product> products) => Container(
+  Widget _productPicker(List<Product> products, {required bool isLoading}) => Container(
     width: double.infinity,
     constraints: const BoxConstraints(minHeight: 205, maxHeight: 275),
     decoration: BoxDecoration(
@@ -426,7 +426,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: productProvider.isLoading && products.isEmpty
+          child: isLoading && products.isEmpty
               ? const Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
