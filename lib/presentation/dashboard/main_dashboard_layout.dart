@@ -259,10 +259,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   List<Map<String, dynamic>> get _salesCatalog {
-    final products = List<Map<String, dynamic>>.from(
-      context.read<ProductProvider>().productMaps,
-    );
-    for (final item in _electronicBalanceSelection)
+    final baseProducts = context.read<ProductProvider>().productMaps;
+    if (_electronicBalanceSelection.isEmpty) return baseProducts;
+
+    final products = List<Map<String, dynamic>>.from(baseProducts);
+    for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
         'name': '${item.companyName} · ${item.category}',
@@ -270,6 +271,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         'price': item.amount,
         'imageData': item.imageData,
       });
+    }
     return products;
   }
 
