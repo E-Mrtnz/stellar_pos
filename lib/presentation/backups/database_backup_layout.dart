@@ -17,6 +17,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
   double _progress = 0;
   String? _lastBackupPath;
   bool _isRestoring = false;
+  String _restoreStatus = 'Preparando la restauración...';
 
   Future<void> _createBackup() async {
     if (_isCreating || _isRestoring) return;
@@ -87,12 +88,26 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
 
     setState(() {
       _isRestoring = true;
+      _progress = 0.01;
+      _restoreStatus = 'Preparando la restauración...';
       _lastBackupPath = null;
     });
+
+    // Give Flutter a frame to render the progress state before starting
+    // CPU-heavy Web validation/decompression.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
 
     try {
       final result = await DatabaseBackupService.restoreBackup(
         backupFile: backupFile,
+        onProgress: (value, status) {
+          if (!mounted) return;
+          setState(() {
+            _progress = value.clamp(0, 1).toDouble();
+            _restoreStatus = status;
+          });
+        },
       );
 
       if (!mounted) return;
@@ -113,7 +128,11 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
       );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _isRestoring = false);
+      setState(() {
+        _isRestoring = false;
+        _progress = 0;
+        _restoreStatus = 'Preparando la restauración...';
+      });
       _showMessage(
         error.toString().replaceFirst('Bad state: ', ''),
         success: false,
@@ -461,16 +480,33 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                     ],
                     if (_isRestoring) ...[
                       const SizedBox(height: 20),
-                      const LinearProgressIndicator(minHeight: 6),
+                      LinearProgressIndicator(
+                        value: _progress == 0 ? null : _progress,
+                        minHeight: 6,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
                       const SizedBox(height: 9),
-                      Text(
-                        kIsWeb
-                            ? 'Validando la copia y restaurando el almacenamiento del navegador...'
-                            : 'Restaurando la base de datos de forma segura...',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _restoreStatus,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${(_progress * 100).round()}%',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                     if (_lastBackupPath != null) ...[
