@@ -277,7 +277,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                         children: [
                           TextButton(
                             onPressed: () =>
-                                Navigator.of(dialogContext).pop(false),
+                                Navigator.of(dialogContext, rootNavigator: true).pop(false),
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
@@ -289,7 +289,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                           const SizedBox(width: 10),
                           FilledButton.icon(
                             onPressed: () =>
-                                Navigator.of(dialogContext).pop(true),
+                                Navigator.of(dialogContext, rootNavigator: true).pop(true),
                             icon: const Icon(Icons.restore_rounded, size: 18),
                             label: const Text('Restaurar'),
                             style: FilledButton.styleFrom(
