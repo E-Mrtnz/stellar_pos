@@ -1164,7 +1164,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   void _commit(_DraftPurchaseItem updated) {
     if (!mounted) return;
     setState(() => _item = updated);
-    _commit(updated);
+    widget.onChanged(updated);
   }
 
   void _replace(TextEditingController controller, String value) {
