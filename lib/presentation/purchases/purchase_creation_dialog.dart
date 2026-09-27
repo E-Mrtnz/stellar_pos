@@ -34,6 +34,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   final _invoiceController = TextEditingController();
   final _searchController = TextEditingController();
   final _items = <_DraftPurchaseItem>[];
+  final ValueNotifier<int> _draftRevision = ValueNotifier<int>(0);
   String _scannerBuffer = '';
   DateTime? _lastScannerKey;
   DateTime _date = DateTime.now();
@@ -131,6 +132,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     FocusManager.instance.removeEarlyKeyEventHandler(_barcodeKeyHandler);
     _invoiceController.dispose();
     _searchController.dispose();
+    _draftRevision.dispose();
     super.dispose();
   }
 
@@ -537,14 +539,16 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     });
   }
 
-  Widget _purchaseItems() => Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: AppColors.border),
-    ),
-    child: Column(
+  Widget _purchaseItems() => ValueListenableBuilder<int>(
+    valueListenable: _draftRevision,
+    builder: (context, _, __) => Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 7),
@@ -589,7 +593,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 separatorBuilder: (_, __) => const SizedBox(height: 6),
                 itemBuilder: (_, index) => _item(index),
               ),
-      ],
+        ],
+      ),
     ),
   );
 
@@ -601,10 +606,11 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
       money: _money,
       baseStock: _baseStock(item.product),
       useDefaultHints: !_editing,
-      onChanged: (updated) => setState(() {
+      onChanged: (updated) {
         _items[index] = updated;
         _dirty = true;
-      }),
+        _draftRevision.value++;
+      },
       onDelete: () => setState(() {
         _items.removeAt(index);
         _dirty = true;
@@ -612,7 +618,9 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     );
   }
 
-  Widget _footer() => Padding(
+  Widget _footer() => ValueListenableBuilder<int>(
+    valueListenable: _draftRevision,
+    builder: (context, _, __) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
     child: Row(
       children: [
@@ -668,8 +676,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           ),
         ),
       ],
-    ),
-  );
+      ),
+    );
 
   Widget _stat(String label, String value, {Color? color}) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
