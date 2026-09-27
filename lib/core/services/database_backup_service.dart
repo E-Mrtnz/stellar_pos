@@ -626,7 +626,7 @@ class DatabaseBackupService {
       'stellar_pos_legacy_restore_',
     );
 
-    BackupResult? safetyBackup;
+    late BackupResult safetyBackup;
     var databaseClosed = false;
 
     try {
