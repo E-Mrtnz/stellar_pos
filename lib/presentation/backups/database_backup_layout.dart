@@ -93,9 +93,9 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
       _lastBackupPath = null;
     });
 
-    // Give Flutter a frame to render the progress state before starting
-    // CPU-heavy Web validation/decompression.
-    await Future<void>.delayed(Duration.zero);
+    // Wait for the progress state to actually reach a rendered frame before
+    // starting CPU-heavy Web validation/decompression.
+    await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
 
     try {
