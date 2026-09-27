@@ -96,8 +96,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
       _lastBackupPath = null;
     });
 
-    // Wait for the progress state to actually reach a rendered frame before
-    // starting CPU-heavy Web validation/decompression.
+    // Wait for the progress state to reach a rendered frame before starting
+    // the validation/decompression work.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
 
@@ -115,9 +115,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
 
       if (!mounted) return;
       _showMessage(
-        kIsWeb
-            ? 'Restauración completada. Se recuperaron ${result.fileCount} registros.'
-            : 'Restauración completada. Se recuperaron ${result.fileCount} archivos de base de datos. La aplicación se reiniciará.',
+        'Restauración completada. Se recuperaron ${result.fileCount} registros. La aplicación se reiniciará.',
         success: true,
       );
 
@@ -360,10 +358,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                kIsWeb
-                    ? 'Protege los datos locales de STELLAR POS con una copia universal que puede restaurarse en cualquier plataforma compatible.'
-                    : 'Crea una copia universal de los datos de STELLAR POS, independiente de la plataforma donde se genere o restaure.',
+              const Text(
+                'Protege los datos locales de STELLAR POS con una copia universal que puede restaurarse en cualquier plataforma compatible.',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -417,10 +413,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Text(
-                      kIsWeb
-                          ? 'STELLAR POS exportará los datos lógicos de sus cajas de almacenamiento a un formato universal JSON dentro de un archivo ZIP.'
-                          : 'El backup universal no contiene archivos internos de Hive ni depende de rutas del sistema operativo; puede restaurarse en Web, macOS, Windows, Android, iOS o iPadOS.',
+                    const Text(
+                      'STELLAR POS exportará los datos lógicos de sus cajas de almacenamiento a un formato universal JSON dentro de un archivo ZIP. El mismo formato puede restaurarse en Web, macOS, Windows, Android, iOS o iPadOS.',
                       style: const TextStyle(
                         fontSize: 13,
                         height: 1.55,
