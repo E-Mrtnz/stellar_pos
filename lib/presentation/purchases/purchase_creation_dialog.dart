@@ -1449,7 +1449,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _purchasedAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _quantityField(
                     _bonusController,
@@ -1458,7 +1458,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     hint: '0',
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _quantityField(
                     _presentationController,
@@ -1468,7 +1468,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _presentationAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _readonly(
                     'Recibidas',
@@ -1476,7 +1476,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     Icons.check_box_outlined,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _editablePrice(
                     _originalController,
@@ -1487,7 +1487,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _originalAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _numberField(
                     _discountController,
@@ -1497,7 +1497,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     hint: '0',
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _editablePrice(
                     _discountedController,
@@ -1508,7 +1508,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _discountedAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _numberField(
                     _ivaController,
@@ -1518,7 +1518,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     hint: '—',
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _readonly(
                     'Costo unitario',
@@ -1528,7 +1528,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     filled: true,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _numberField(
                     _saleController,
