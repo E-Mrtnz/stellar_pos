@@ -1049,6 +1049,7 @@ class _PurchaseItemCard extends StatefulWidget {
 }
 
 class _PurchaseItemCardState extends State<_PurchaseItemCard> {
+  late _DraftPurchaseItem _item;
   late final TextEditingController _purchasedController;
   late final TextEditingController _bonusController;
   late final TextEditingController _presentationController;
@@ -1066,7 +1067,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   @override
   void initState() {
     super.initState();
-    final item = widget.item;
+    _item = widget.item;
+    final item = _item;
     final rememberedPresentation =
         item.product.purchaseUnitsPerPresentation > 0;
     _purchasedAutofilled = widget.useDefaultHints && rememberedPresentation;
@@ -1113,7 +1115,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   void didUpdateWidget(covariant _PurchaseItemCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     final old = oldWidget.item;
-    final current = widget.item;
+    final current = _item;
+    _item = current;
     if (old.purchasedQuantity != current.purchasedQuantity &&
         _shouldSync(_purchasedController, current.purchasedQuantity))
       _replace(_purchasedController, '${current.purchasedQuantity}');
@@ -1156,6 +1159,12 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     if ((old.salePrice - current.salePrice).abs() > 0.0001 &&
         _shouldSync(_saleController, current.salePrice))
       _replace(_saleController, current.salePrice.toStringAsFixed(2));
+  }
+
+  void _commit(_DraftPurchaseItem updated) {
+    if (!mounted) return;
+    setState(() => _item = updated);
+    widget.onChanged(updated);
   }
 
   void _replace(TextEditingController controller, String value) {
@@ -1205,8 +1214,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       discount > 0 ? discount.toStringAsFixed(2) : '',
     );
     _updating = false;
-    widget.onChanged(
-      widget.item.copyWith(
+    _commit(
+      _item.copyWith(
         originalPresentationPrice: original,
         discountedPresentationPrice: discounted,
         discountPercent: discount,
@@ -1231,8 +1240,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _replace(_discountedController, calculatedDiscounted.toStringAsFixed(2));
       _discountedAutofilled = true;
       _updating = false;
-      widget.onChanged(
-        widget.item.copyWith(
+      _commit(
+        _item.copyWith(
           originalPresentationPrice: original,
           discountedPresentationPrice: calculatedDiscounted,
           discountPercent: discount,
@@ -1247,7 +1256,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _originalAutofilled = true;
       _updating = false;
       widget.onChanged(
-        widget.item.copyWith(
+        _item.copyWith(
           originalPresentationPrice: calculatedOriginal,
           discountedPresentationPrice: discounted,
           discountPercent: discount,
@@ -1273,7 +1282,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _originalAutofilled = true;
       _updating = false;
       widget.onChanged(
-        widget.item.copyWith(
+        _item.copyWith(
           originalPresentationPrice: calculatedOriginal,
           discountedPresentationPrice: enteredDiscounted,
           discountPercent: discount,
@@ -1296,7 +1305,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     );
     _updating = false;
     widget.onChanged(
-      widget.item.copyWith(
+      _item.copyWith(
         originalPresentationPrice: original,
         discountedPresentationPrice: discounted,
         discountPercent: calculatedDiscount,
@@ -1310,9 +1319,9 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     final discount = _number(_discountController).clamp(0, 100).toDouble();
     final discounted = recalculateDiscount
         ? original * (1 - discount / 100)
-        : widget.item.discountedPresentationPrice;
+        : _item.discountedPresentationPrice;
     widget.onChanged(
-      widget.item.copyWith(
+      _item.copyWith(
         purchasedQuantity: _integer(
           _purchasedController,
         ).clamp(0, 1 << 30).toInt(),
@@ -1361,7 +1370,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
 
   @override
   Widget build(BuildContext context) {
-    final item = widget.item;
+    final item = _item;
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 7, 7, 7),
       decoration: BoxDecoration(
