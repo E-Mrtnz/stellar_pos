@@ -12,7 +12,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/services/inventory_file_service.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
-import 'package:stellar_pos/core/utils/product_image_cache.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
@@ -805,26 +805,28 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     String imageData, {
     required String productId,
   }) {
-    final imageBytes = ProductImageCache.getBytes(
-      productId: productId,
-      imageData: imageData,
-    );
-    if (imageBytes != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.memory(
-          imageBytes,
-          width: AppDimensions.inventoryImageSize,
-          height: AppDimensions.inventoryImageSize,
-          fit: BoxFit.cover,
+    if (imageData.trim().isEmpty) {
+      return Container(
+        width: AppDimensions.inventoryImageSize,
+        height: AppDimensions.inventoryImageSize,
+        decoration: BoxDecoration(
+          color: AppColors.chipBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          Icons.image_outlined,
+          color: AppColors.textMuted,
         ),
       );
     }
-    return Container(
+
+    return ProductImage(
+      productId: productId,
+      imageData: imageData,
       width: AppDimensions.inventoryImageSize,
       height: AppDimensions.inventoryImageSize,
-      decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)),
-      child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+      fit: BoxFit.cover,
+      borderRadius: BorderRadius.circular(8),
     );
   }
 
