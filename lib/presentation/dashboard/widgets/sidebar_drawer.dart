@@ -48,7 +48,6 @@ class SidebarDrawer extends StatelessWidget {
               ),
               const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
               _buildSidebarItem(AppNavigation.settings, Icons.settings_outlined, AppStrings.navSettings),
-              _buildSidebarItem(AppNavigation.backups, Icons.backup_outlined, AppStrings.navBackups),
               const SizedBox(height: 16),
             ],
           ),
