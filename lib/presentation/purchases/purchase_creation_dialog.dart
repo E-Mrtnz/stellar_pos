@@ -1115,7 +1115,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   void didUpdateWidget(covariant _PurchaseItemCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     final old = oldWidget.item;
-    final current = _item;
+    final current = widget.item;
     _item = current;
     if (old.purchasedQuantity != current.purchasedQuantity &&
         _shouldSync(_purchasedController, current.purchasedQuantity))
@@ -1164,7 +1164,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   void _commit(_DraftPurchaseItem updated) {
     if (!mounted) return;
     setState(() => _item = updated);
-    widget.onChanged(updated);
+    _commit(updated);
   }
 
   void _replace(TextEditingController controller, String value) {
@@ -1255,7 +1255,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _replace(_originalController, calculatedOriginal.toStringAsFixed(2));
       _originalAutofilled = true;
       _updating = false;
-      widget.onChanged(
+      _commit(
         _item.copyWith(
           originalPresentationPrice: calculatedOriginal,
           discountedPresentationPrice: discounted,
@@ -1281,7 +1281,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _replace(_originalController, calculatedOriginal.toStringAsFixed(2));
       _originalAutofilled = true;
       _updating = false;
-      widget.onChanged(
+      _commit(
         _item.copyWith(
           originalPresentationPrice: calculatedOriginal,
           discountedPresentationPrice: enteredDiscounted,
@@ -1304,7 +1304,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       calculatedDiscount > 0 ? calculatedDiscount.toStringAsFixed(2) : '',
     );
     _updating = false;
-    widget.onChanged(
+    _commit(
       _item.copyWith(
         originalPresentationPrice: original,
         discountedPresentationPrice: discounted,
@@ -1320,7 +1320,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     final discounted = recalculateDiscount
         ? original * (1 - discount / 100)
         : _item.discountedPresentationPrice;
-    widget.onChanged(
+    _commit(
       _item.copyWith(
         purchasedQuantity: _integer(
           _purchasedController,
