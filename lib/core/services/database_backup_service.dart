@@ -303,6 +303,7 @@ class DatabaseBackupService {
       'version': 1,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'boxes': _webBackupBoxNames,
+      'compression': 'none',
     };
     final manifestBytes = utf8.encode(jsonEncode(manifest));
     archive.addFile(
@@ -310,7 +311,7 @@ class DatabaseBackupService {
         'manifest.json',
         manifestBytes.length,
         manifestBytes,
-      ),
+      )..compress = false,
     );
 
     var totalEntries = 0;
@@ -337,7 +338,7 @@ class DatabaseBackupService {
           '$boxName.json',
           payloadBytes.length,
           payloadBytes,
-        ),
+        )..compress = false,
       );
 
       onProgress?.call(0.1 + ((index + 1) / _webBackupBoxNames.length) * 0.65);
