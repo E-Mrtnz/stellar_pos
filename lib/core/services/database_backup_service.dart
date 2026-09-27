@@ -466,7 +466,12 @@ class DatabaseBackupService {
           0.55 + (index / _webBackupBoxNames.length) * 0.05,
           'Preparando ${boxName}...',
         );
-        await box.clear();
+        await box.clear().timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw StateError(
+            'La limpieza de la caja $boxName está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
+          ),
+        );
 
         final data = restoredData[boxName]!;
         if (data.isNotEmpty) {
@@ -477,7 +482,12 @@ class DatabaseBackupService {
               for (final entry in entries.sublist(start, end))
                 entry.key: entry.value,
             };
-            await box.putAll(batch);
+            await box.putAll(batch).timeout(
+              const Duration(seconds: 60),
+              onTimeout: () => throw StateError(
+                'La escritura de la caja $boxName está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
+              ),
+            );
 
             final fraction = entries.isEmpty
                 ? 1.0
