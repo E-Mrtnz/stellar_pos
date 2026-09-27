@@ -12,7 +12,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
-import 'package:stellar_pos/core/utils/product_image_cache.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class PurchaseCreationDialog extends StatefulWidget {
@@ -468,10 +468,6 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   );
 
   Widget _productCard(Product product) {
-    final bytes = ProductImageCache.getBytes(
-      productId: product.id,
-      imageData: product.imageData,
-    );
     return InkWell(
       onTap: _saving ? null : () => _addProduct(product),
       borderRadius: BorderRadius.circular(8),
@@ -492,13 +488,16 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: bytes == null
-                  ? const Icon(
-                      Icons.inventory_2_outlined,
-                      size: 21,
-                      color: AppColors.textMuted,
-                    )
-                  : Image.memory(bytes, fit: BoxFit.contain),
+              child: ProductImage(
+                productId: product.id,
+                imageData: product.imageData,
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
+                borderRadius: BorderRadius.circular(6),
+                placeholderIcon: Icons.inventory_2_outlined,
+                placeholderIconSize: 21,
+              ),
             ),
             const SizedBox(width: 7),
             Expanded(
@@ -1406,7 +1405,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _image(item.product.imageData),
+          _image(item.product.imageData, productId: item.product.id),
           const SizedBox(width: 8),
           SizedBox(
             width: 155,
@@ -1764,35 +1763,36 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     ],
   );
 
-  Widget _image(String data) {
-    final bytes = _decode(data);
-    return Container(
+  Widget _image(String data, {String? productId}) {
+    if (data.trim().isEmpty) {
+      return Container(
+        width: 42,
+        height: 42,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Icon(
+          Icons.image_outlined,
+          size: 18,
+          color: AppColors.textMuted,
+        ),
+      );
+    }
+
+    return ProductImage(
+      productId: productId ?? data.hashCode.toString(),
+      imageData: data,
       width: 42,
       height: 42,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: bytes == null
-          ? const Icon(
-              Icons.image_outlined,
-              size: 18,
-              color: AppColors.textMuted,
-            )
-          : Image.memory(bytes, fit: BoxFit.contain),
+      fit: BoxFit.contain,
+      borderRadius: BorderRadius.circular(7),
+      showBorder: true,
     );
   }
 
-  Uint8List? _decode(String value) {
-    if (value.trim().isEmpty) return null;
-    try {
-      return base64Decode(value.contains(',') ? value.split(',').last : value);
-    } catch (_) {
-      return null;
-    }
-  }
 }
 
 class _CostChange {
