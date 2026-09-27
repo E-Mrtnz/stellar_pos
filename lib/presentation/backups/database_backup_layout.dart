@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:stellar_pos/app.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/services/database_backup_service.dart';
 
@@ -14,6 +15,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
   bool _isCreating = false;
   double _progress = 0;
   String? _lastBackupPath;
+  bool _isRestoring = false;
 
   Future<void> _createBackup() async {
     if (_isCreating) return;
@@ -50,6 +52,74 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isCreating = false);
+      _showMessage(
+        error.toString().replaceFirst('Bad state: ', ''),
+        success: false,
+      );
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    if (_isCreating || _isRestoring) return;
+
+    final backupPath = await DatabaseBackupService.selectBackupFile();
+    if (!mounted || backupPath == null || backupPath.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.warningOrange),
+            SizedBox(width: 10),
+            Expanded(child: Text('Restaurar copia de seguridad')),
+          ],
+        ),
+        content: const Text(
+          'Esta operación reemplazará la base de datos actual por la información contenida en el backup seleccionado. Antes de hacerlo, STELLAR POS creará automáticamente una copia de seguridad de la información actual por si fuera necesario revertir el proceso. La aplicación se reiniciará al finalizar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Restaurar'),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirmed || !mounted) return;
+
+    setState(() {
+      _isRestoring = true;
+      _lastBackupPath = null;
+    });
+
+    try {
+      final result = await DatabaseBackupService.restoreBackup(
+        backupFilePath: backupPath,
+      );
+
+      if (!mounted) return;
+      _showMessage(
+        'Restauración completada. Se recuperaron ${result.fileCount} archivos de base de datos. La aplicación se reiniciará.',
+        success: true,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      runApp(
+        AppProviders(
+          key: UniqueKey(),
+          child: const StellarPosApp(),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isRestoring = false);
       _showMessage(
         error.toString().replaceFirst('Bad state: ', ''),
         success: false,
@@ -159,12 +229,25 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                     SizedBox(
                       height: 46,
                       child: FilledButton.icon(
-                        onPressed: _isCreating ? null : _createBackup,
+                        onPressed: (_isCreating || _isRestoring) ? null : _createBackup,
                         icon: const Icon(Icons.folder_open_rounded),
                         label: Text(
                           _isCreating
                               ? 'Creando copia...'
                               : 'Seleccionar ubicación y crear backup',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        onPressed: (_isCreating || _isRestoring) ? null : _restoreBackup,
+                        icon: const Icon(Icons.restore_rounded),
+                        label: Text(
+                          _isRestoring
+                              ? 'Restaurando copia...'
+                              : 'Seleccionar backup y restaurar',
                         ),
                       ),
                     ),
@@ -180,7 +263,19 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                         ),
                       ),
                     ],
-                    if (_lastBackupPath != null) ...[
+                    if (_isRestoring) ...[
+                      const SizedBox(height: 20),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Restaurando la base de datos de forma segura...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    if (_lastBackupPath != null) ...
                       const SizedBox(height: 20),
                       Container(
                         width: double.infinity,
