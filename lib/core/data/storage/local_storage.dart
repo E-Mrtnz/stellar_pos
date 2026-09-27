@@ -1,4 +1,5 @@
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Initializes and exposes the application's local Hive storage.
 ///
@@ -39,14 +40,8 @@ class LocalStorage {
 
   static Future<String> databaseDirectoryPath() async {
     await initialize();
-    final box = await Hive.openBox<dynamic>('__storage_metadata');
-    final path = box.path;
-    await box.close();
-    _openBoxNames.remove('__storage_metadata');
-    if (path == null || path.isEmpty) {
-      throw StateError('No se pudo determinar la ruta de almacenamiento de Hive.');
-    }
-    return path.substring(0, path.lastIndexOf('/'));
+    final directory = await getApplicationDocumentsDirectory();
+    return directory.path;
   }
 
   static Future<void> close() async {
