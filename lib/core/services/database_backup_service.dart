@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
 import 'package:stellar_pos/core/data/storage/storage_schema.dart';
@@ -32,29 +36,70 @@ class RestoreResult {
   });
 }
 
+class BackupFileSelection {
+  final String name;
+  final String? path;
+  final Uint8List? bytes;
+
+  const BackupFileSelection({
+    required this.name,
+    this.path,
+    this.bytes,
+  });
+}
+
 class DatabaseBackupService {
   const DatabaseBackupService._();
 
   static Future<String?> selectDestinationDirectory() {
+    if (kIsWeb) return Future<String?>.value(null);
     return FilePicker.getDirectoryPath(
       dialogTitle: 'Selecciona dónde guardar la copia de seguridad',
     );
   }
 
-  static Future<String?> selectBackupFile() async {
+  static Future<BackupFileSelection?> selectBackupFile() async {
     final result = await FilePicker.pickFiles(
       dialogTitle: 'Selecciona la copia de seguridad que deseas restaurar',
       type: FileType.custom,
       allowedExtensions: ['zip'],
       allowMultiple: false,
+      withData: kIsWeb,
     );
-    return result?.files.single.path;
+    final file = result?.files.single;
+    if (file == null) return null;
+
+    if (kIsWeb) {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError(
+          'No fue posible leer el backup seleccionado en el navegador.',
+        );
+      }
+      return BackupFileSelection(
+        name: file.name,
+        bytes: bytes,
+      );
+    }
+
+    final path = file.path;
+    if (path == null || path.isEmpty) {
+      throw StateError('No fue posible obtener la ruta del backup seleccionado.');
+    }
+    return BackupFileSelection(
+      name: file.name,
+      path: path,
+    );
   }
 
   static Future<BackupResult> createBackup({
     required String destinationDirectory,
     void Function(double progress)? onProgress,
   }) async {
+    if (kIsWeb) {
+      return _createWebBackup(onProgress: onProgress);
+    }
+
     await LocalStorage.flush();
 
     final sourceDirectory = Directory(
@@ -113,8 +158,25 @@ class DatabaseBackupService {
   }
 
   static Future<RestoreResult> restoreBackup({
-    required String backupFilePath,
+    required BackupFileSelection backupFile,
   }) async {
+    if (kIsWeb) {
+      final bytes = backupFile.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError(
+          'El backup seleccionado no contiene datos que puedan restaurarse en Web.',
+        );
+      }
+      return _restoreWebBackup(
+        backupFileName: backupFile.name,
+        bytes: bytes,
+      );
+    }
+
+    final backupFilePath = backupFile.path;
+    if (backupFilePath == null || backupFilePath.isEmpty) {
+      throw StateError('No se encontró la ruta del backup seleccionado.');
+    }
     final backupFile = File(backupFilePath);
     if (!await backupFile.exists()) {
       throw StateError('No se encontró el archivo de backup seleccionado.');
@@ -210,6 +272,219 @@ class DatabaseBackupService {
         await restoreDirectory.delete(recursive: true);
       } catch (_) {}
     }
+  }
+
+  static const List<String> _webBackupBoxNames = <String>[
+    StorageBoxes.products,
+    StorageBoxes.clients,
+    StorageBoxes.providerRoutes,
+    StorageBoxes.providerCatalog,
+    StorageBoxes.sales,
+    StorageBoxes.purchases,
+    StorageBoxes.debtAccounts,
+    StorageBoxes.debtMovements,
+    StorageBoxes.clientGroups,
+    StorageBoxes.electronicBalanceAccounts,
+    StorageBoxes.electronicBalanceTransactions,
+  ];
+
+  static Future<BackupResult> _createWebBackup({
+    void Function(double progress)? onProgress,
+  }) async {
+    await LocalStorage.flush();
+    onProgress?.call(0.05);
+
+    final archive = Archive();
+    final manifest = <String, dynamic>{
+      'format': 'stellar_pos_web_backup',
+      'version': 1,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'boxes': _webBackupBoxNames,
+    };
+    archive.addFile(
+      ArchiveFile.bytes(
+        'manifest.json',
+        utf8.encode(jsonEncode(manifest)),
+      ),
+    );
+
+    var totalEntries = 0;
+    for (var index = 0; index < _webBackupBoxNames.length; index++) {
+      final boxName = _webBackupBoxNames[index];
+      final box = await LocalStorage.openBox(boxName);
+      final entries = <Map<String, dynamic>>[];
+
+      for (final entry in box.toMap().entries) {
+        entries.add(<String, dynamic>{
+          'key': entry.key,
+          'value': entry.value,
+        });
+      }
+
+      totalEntries += entries.length;
+      final payload = <String, dynamic>{
+        'box': boxName,
+        'entries': entries,
+      };
+      archive.addFile(
+        ArchiveFile.bytes(
+          '$boxName.json',
+          utf8.encode(jsonEncode(payload)),
+        ),
+      );
+
+      onProgress?.call(0.1 + ((index + 1) / _webBackupBoxNames.length) * 0.65);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    final encoded = ZipEncoder().encode(archive);
+    if (encoded == null || encoded.isEmpty) {
+      throw StateError('No fue posible generar el archivo ZIP del backup Web.');
+    }
+
+    final bytes = Uint8List.fromList(encoded);
+    final stamp = _backupStamp();
+    final fileName = 'stellar_pos_web_backup_$stamp';
+
+    await FileSaver.instance.saveFile(
+      name: fileName,
+      bytes: bytes,
+      fileExtension: 'zip',
+      mimeType: MimeType.other,
+    );
+
+    onProgress?.call(1);
+    return BackupResult(
+      filePath: '$fileName.zip',
+      fileCount: totalEntries,
+      sizeBytes: bytes.length,
+    );
+  }
+
+  static Future<RestoreResult> _restoreWebBackup({
+    required String backupFileName,
+    required Uint8List bytes,
+  }) async {
+    final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    final manifestEntry = archive.firstWhere(
+      (entry) => entry.name == 'manifest.json' && entry.isFile,
+      orElse: () => throw StateError(
+        'El archivo seleccionado no es un backup Web válido de STELLAR POS.',
+      ),
+    );
+
+    final manifest = jsonDecode(utf8.decode(manifestEntry.content));
+    if (manifest is! Map ||
+        manifest['format'] != 'stellar_pos_web_backup' ||
+        manifest['version'] != 1) {
+      throw StateError(
+        'El backup seleccionado no tiene un formato compatible con la versión Web de STELLAR POS.',
+      );
+    }
+
+    final safetySnapshot = await _snapshotWebData();
+    final safetySize = utf8.encode(jsonEncode(safetySnapshot)).length;
+
+    try {
+      final restoredData = <String, Map<dynamic, dynamic>>{};
+      var restoredEntries = 0;
+
+      for (final boxName in _webBackupBoxNames) {
+        final entry = archive.firstWhere(
+          (item) => item.name == '$boxName.json' && item.isFile,
+          orElse: () => throw StateError(
+            'El backup está incompleto: falta la caja $boxName.',
+          ),
+        );
+
+        final payload = jsonDecode(utf8.decode(entry.content));
+        if (payload is! Map || payload['box'] != boxName) {
+          throw StateError(
+            'El backup contiene datos inválidos para la caja $boxName.',
+          );
+        }
+
+        final rawEntries = payload['entries'];
+        if (rawEntries is! List) {
+          throw StateError(
+            'El backup contiene una estructura inválida para la caja $boxName.',
+          );
+        }
+
+        final boxData = <dynamic, dynamic>{};
+        for (final rawEntry in rawEntries) {
+          if (rawEntry is! Map ||
+              !rawEntry.containsKey('key') ||
+              !rawEntry.containsKey('value')) {
+            throw StateError(
+              'El backup contiene un registro inválido en la caja $boxName.',
+            );
+          }
+          boxData[rawEntry['key']] = rawEntry['value'];
+        }
+
+        restoredData[boxName] = boxData;
+        restoredEntries += boxData.length;
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      for (final boxName in _webBackupBoxNames) {
+        final box = await LocalStorage.openBox(boxName);
+        await box.clear();
+        final data = restoredData[boxName]!;
+        if (data.isNotEmpty) {
+          await box.putAll(data);
+        }
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      return RestoreResult(
+        backupFilePath: backupFileName,
+        fileCount: restoredEntries,
+        safetyBackupSizeBytes: safetySize,
+      );
+    } catch (error) {
+      try {
+        await _restoreWebSnapshot(safetySnapshot);
+      } catch (rollbackError) {
+        throw StateError(
+          'No se pudo restaurar el backup Web y tampoco fue posible recuperar automáticamente los datos anteriores. Error de restauración: $error. Error de recuperación: $rollbackError',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, Map<dynamic, dynamic>>> _snapshotWebData() async {
+    final snapshot = <String, Map<dynamic, dynamic>>{};
+    for (final boxName in _webBackupBoxNames) {
+      final box = await LocalStorage.openBox(boxName);
+      snapshot[boxName] = Map<dynamic, dynamic>.from(box.toMap());
+    }
+    return snapshot;
+  }
+
+  static Future<void> _restoreWebSnapshot(
+    Map<String, Map<dynamic, dynamic>> snapshot,
+  ) async {
+    for (final boxName in _webBackupBoxNames) {
+      final box = await LocalStorage.openBox(boxName);
+      await box.clear();
+      final data = snapshot[boxName];
+      if (data != null && data.isNotEmpty) {
+        await box.putAll(data);
+      }
+    }
+  }
+
+  static String _backupStamp() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}_'
+        '${now.hour.toString().padLeft(2, '0')}'
+        '${now.minute.toString().padLeft(2, '0')}'
+        '${now.second.toString().padLeft(2, '0')}';
   }
 
   static Future<File> _nextBackupFile(Directory destination) async {
