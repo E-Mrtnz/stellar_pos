@@ -399,7 +399,11 @@ class DatabaseBackupService {
     }
 
     await report(0.22, 'Creando un punto de recuperación temporal...');
-    final safetySnapshot = await _snapshotWebData();
+    final safetySnapshot = await _snapshotWebData(
+      onProgress: (progress) {
+        onProgress?.call(0.22 + progress * 0.05, 'Guardando datos actuales...');
+      },
+    );
     final safetySize = safetySnapshot.values.fold<int>(
       0,
       (total, boxData) => total + boxData.length,
@@ -467,7 +471,7 @@ class DatabaseBackupService {
         if (data.isNotEmpty) {
           final entries = data.entries.toList(growable: false);
           for (var start = 0; start < entries.length; start += batchSize) {
-            final end = (start + batchSize).clamp(0, entries.length);
+            final end = (start + batchSize).clamp(0, entries.length).toInt();
             final batch = <dynamic, dynamic>{
               for (final entry in entries.sublist(start, end))
                 entry.key: entry.value,
@@ -511,11 +515,16 @@ class DatabaseBackupService {
     }
   }
 
-  static Future<Map<String, Map<dynamic, dynamic>>> _snapshotWebData() async {
+  static Future<Map<String, Map<dynamic, dynamic>>> _snapshotWebData({
+    void Function(double progress)? onProgress,
+  }) async {
     final snapshot = <String, Map<dynamic, dynamic>>{};
-    for (final boxName in _webBackupBoxNames) {
+    for (var index = 0; index < _webBackupBoxNames.length; index++) {
+      final boxName = _webBackupBoxNames[index];
       final box = await LocalStorage.openBox(boxName);
       snapshot[boxName] = Map<dynamic, dynamic>.from(box.toMap());
+      onProgress?.call((index + 1) / _webBackupBoxNames.length);
+      await Future<void>.delayed(Duration.zero);
     }
     return snapshot;
   }
