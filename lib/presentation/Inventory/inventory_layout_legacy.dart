@@ -678,7 +678,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  _buildInventoryImage(imageData),
+                  _buildInventoryImage(
+                    imageData,
+                    productId: ProductUtils.asString(product['id']),
+                  ),
                   const SizedBox(width: 12),
                   _buildProductNameCell(name, product, 245),
                   _textCell(unit, 125),
@@ -772,8 +775,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     return AppColors.successGreen;
   }
 
-  Widget _buildInventoryImage(String imageData) {
-    final productId = ProductUtils.asString(product['id']);
+  Widget _buildInventoryImage(
+    String imageData, {
+    required String productId,
+  }) {
     final imageBytes = ProductImageCache.getBytes(
       productId: productId,
       imageData: imageData,
