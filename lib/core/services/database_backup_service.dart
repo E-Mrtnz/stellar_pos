@@ -202,8 +202,12 @@ class DatabaseBackupService {
       if (databaseClosed) {
         await LocalStorage.initialize();
       }
-      await safetyDirectory.delete(recursive: true).catchError((_) {});
-      await restoreDirectory.delete(recursive: true).catchError((_) {});
+      try {
+        await safetyDirectory.delete(recursive: true);
+      } catch (_) {}
+      try {
+        await restoreDirectory.delete(recursive: true);
+      } catch (_) {}
     }
   }
 
