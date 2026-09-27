@@ -160,6 +160,7 @@ class DatabaseBackupService {
 
   static Future<RestoreResult> restoreBackup({
     required BackupFileSelection backupFile,
+    void Function(double progress, String status)? onProgress,
   }) async {
     if (kIsWeb) {
       final bytes = backupFile.bytes;
@@ -171,6 +172,7 @@ class DatabaseBackupService {
       return _restoreWebBackup(
         backupFileName: backupFile.name,
         bytes: bytes,
+        onProgress: onProgress,
       );
     }
 
@@ -369,8 +371,17 @@ class DatabaseBackupService {
   static Future<RestoreResult> _restoreWebBackup({
     required String backupFileName,
     required Uint8List bytes,
+    void Function(double progress, String status)? onProgress,
   }) async {
+    Future<void> report(double progress, String status) async {
+      onProgress?.call(progress, status);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    await report(0.02, 'Preparando la restauración...');
+    await report(0.08, 'Validando el archivo ZIP...');
     final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    await report(0.18, 'Archivo ZIP validado. Preparando los datos...');
     final manifestEntry = archive.firstWhere(
       (entry) => entry.name == 'manifest.json' && entry.isFile,
       orElse: () => throw StateError(
@@ -387,17 +398,20 @@ class DatabaseBackupService {
       );
     }
 
+    await report(0.22, 'Creando un punto de recuperación temporal...');
     final safetySnapshot = await _snapshotWebData();
     final safetySize = safetySnapshot.values.fold<int>(
       0,
       (total, boxData) => total + boxData.length,
     );
+    await report(0.28, 'Punto de recuperación listo. Validando datos...');
 
     try {
       final restoredData = <String, Map<dynamic, dynamic>>{};
       var restoredEntries = 0;
 
-      for (final boxName in _webBackupBoxNames) {
+      for (var index = 0; index < _webBackupBoxNames.length; index++) {
+        final boxName = _webBackupBoxNames[index];
         final entry = archive.firstWhere(
           (item) => item.name == '$boxName.json' && item.isFile,
           orElse: () => throw StateError(
@@ -433,19 +447,53 @@ class DatabaseBackupService {
 
         restoredData[boxName] = boxData;
         restoredEntries += boxData.length;
-        await Future<void>.delayed(Duration.zero);
+        await report(
+          0.28 + ((index + 1) / _webBackupBoxNames.length) * 0.27,
+          'Validando ${index + 1} de ${_webBackupBoxNames.length} secciones...',
+        );
       }
 
-      for (final boxName in _webBackupBoxNames) {
+      const batchSize = 250;
+      for (var index = 0; index < _webBackupBoxNames.length; index++) {
+        final boxName = _webBackupBoxNames[index];
         final box = await LocalStorage.openBox(boxName);
+        await report(
+          0.55 + (index / _webBackupBoxNames.length) * 0.05,
+          'Preparando ${boxName}...',
+        );
         await box.clear();
+
         final data = restoredData[boxName]!;
         if (data.isNotEmpty) {
-          await box.putAll(data);
+          final entries = data.entries.toList(growable: false);
+          for (var start = 0; start < entries.length; start += batchSize) {
+            final end = (start + batchSize).clamp(0, entries.length);
+            final batch = <dynamic, dynamic>{
+              for (final entry in entries.sublist(start, end))
+                entry.key: entry.value,
+            };
+            await box.putAll(batch);
+
+            final fraction = entries.isEmpty
+                ? 1.0
+                : end / entries.length;
+            await report(
+              0.60 +
+                  ((index + fraction) / _webBackupBoxNames.length) * 0.35,
+              'Restaurando ${boxName}: $end de ${entries.length} registros...',
+            );
+          }
+        } else {
+          await report(
+            0.60 + ((index + 1) / _webBackupBoxNames.length) * 0.35,
+            'Restaurando ${boxName}: sin registros.',
+          );
         }
-        await Future<void>.delayed(Duration.zero);
       }
 
+      await report(0.98, 'Verificando que la restauración haya terminado...');
+
+      await report(1, 'Restauración completada.');
       return RestoreResult(
         backupFilePath: backupFileName,
         fileCount: restoredEntries,
