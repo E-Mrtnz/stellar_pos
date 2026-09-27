@@ -441,7 +441,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final products = context.watch<ProductProvider>().productMaps;
+    final productProvider = context.watch<ProductProvider>();
+    final products = productProvider.productMaps;
     final filteredProducts = _filterProducts(products);
     final totalInvestment = products.fold<double>(
       0,
@@ -477,6 +478,31 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               ],
             ),
           ),
+          if (productProvider.isLoading && products.isEmpty)
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x66000000),
+                child: Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Cargando inventario...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           _buildFloatingActions(),
         ],
       ),
