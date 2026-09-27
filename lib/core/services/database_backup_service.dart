@@ -242,7 +242,7 @@ class DatabaseBackupService {
     return Isolate.run<int>(() {
       final input = InputFileStream(backupFilePath);
       try {
-        final archive = ZipDecoder().decodeStream(input, verify: true);
+        final archive = ZipDecoder().decodeBuffer(input, verify: true);
         var count = 0;
 
         for (final entry in archive) {
