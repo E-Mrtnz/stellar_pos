@@ -82,6 +82,7 @@ class AppStrings {
   static const String navProviders = 'Proveedores';
   static const String navDebts = 'Cuentas por cobrar';
   static const String navSettings = 'Ajustes';
+  static const String navBackups = 'Copias de seguridad';
   static const String searchPlaceholder = 'Buscar producto...';
   static const String salesSummaryTitle = 'Resumen Ventas';
   static const String ticketNumberLabel = 'Nº Factura:';
@@ -136,6 +137,7 @@ class AppNavigation {
   static const int providers = 5;
   static const int inventory = 6;
   static const int settings = 7;
+  static const int backups = 8;
 }
 
 class AppPaymentMethods {
