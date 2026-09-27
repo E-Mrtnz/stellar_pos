@@ -21,7 +21,7 @@ class DatabaseBackupService {
   const DatabaseBackupService._();
 
   static Future<String?> selectDestinationDirectory() {
-    return FilePicker.platform.getDirectoryPath(
+    return FilePicker.getDirectoryPath(
       dialogTitle: 'Selecciona dónde guardar la copia de seguridad',
     );
   }
@@ -79,10 +79,6 @@ class DatabaseBackupService {
       files: hiveFiles,
       zipFile: zipFile,
       includeBaseDirectory: false,
-      onZipping: (fileName, isDirectory, progress) {
-        onProgress?.call(progress / 100);
-        return ZipFileOperation.includeItem;
-      },
     );
 
     final size = await zipFile.length();
