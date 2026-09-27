@@ -562,16 +562,14 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     });
   }
 
-  Widget _purchaseItems() => ValueListenableBuilder<int>(
-    valueListenable: _draftRevision,
-    builder: (context, _, __) => Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
+  Widget _purchaseItems() => Container(
+    width: double.infinity,
+    decoration: BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 7),
@@ -583,14 +581,18 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                 ),
               ),
-              if (_items.isNotEmpty)
-                Text(
-                  '$_received recibidas · $_bonuses bonificadas',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
+              ValueListenableBuilder<int>(
+                valueListenable: _draftRevision,
+                builder: (context, _, __) => _items.isNotEmpty
+                    ? Text(
+                        '$_received recibidas · $_bonuses bonificadas',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
@@ -616,8 +618,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 separatorBuilder: (_, __) => const SizedBox(height: 6),
                 itemBuilder: (_, index) => _item(index),
               ),
-        ],
-      ),
+      ],
     ),
   );
 
