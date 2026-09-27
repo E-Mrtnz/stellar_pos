@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/utils/product_image_cache.dart';
-import 'package:stellar_pos/core/theme/app_colors.dart';
+import 'package:stellar_pos/core/constants/app_constants.dart';
 
 class ProductImage extends StatelessWidget {
   final String productId;
