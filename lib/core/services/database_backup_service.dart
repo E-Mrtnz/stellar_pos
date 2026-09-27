@@ -10,6 +10,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
+import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 import 'package:stellar_pos/core/data/storage/storage_schema.dart';
 
 class BackupResult {
@@ -177,8 +178,8 @@ class DatabaseBackupService {
     if (backupFilePath == null || backupFilePath.isEmpty) {
       throw StateError('No se encontró la ruta del backup seleccionado.');
     }
-    final backupFile = File(backupFilePath);
-    if (!await backupFile.exists()) {
+    final backupFileOnDisk = File(backupFilePath);
+    if (!await backupFileOnDisk.exists()) {
       throw StateError('No se encontró el archivo de backup seleccionado.');
     }
     if (!backupFilePath.toLowerCase().endsWith('.zip')) {
