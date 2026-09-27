@@ -23,7 +23,11 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
     if (_isCreating || _isRestoring) return;
 
     String? destination;
-    if (!kIsWeb) {
+    final usesDirectoryPicker =
+        !kIsWeb &&
+        defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.iOS;
+    if (usesDirectoryPicker) {
       destination =
           await DatabaseBackupService.selectDestinationDirectory();
       if (!mounted || destination == null || destination.isEmpty) return;
@@ -51,9 +55,8 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
         _lastBackupPath = result.filePath;
       });
 
-      final message = kIsWeb
-          ? 'Backup Web descargado correctamente. Se incluyeron ${result.fileCount} registros (${_formatBytes(result.sizeBytes)}).'
-          : 'Copia creada correctamente. Se incluyeron ${result.fileCount} archivos de base de datos (${_formatBytes(result.sizeBytes)}).';
+      final message =
+          'Backup universal creado correctamente. Se incluyeron ${result.fileCount} registros (${_formatBytes(result.sizeBytes)}).';
 
       _showMessage(message, success: true);
     } catch (error) {
@@ -434,9 +437,9 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                             label: Text(
                               _isCreating
                                   ? 'Generando backup...'
-                                  : kIsWeb
-                                      ? 'Crear y descargar backup'
-                                      : 'Seleccionar ubicación y crear backup',
+                                  : usesDirectoryPicker
+                                      ? 'Seleccionar ubicación y crear backup'
+                                      : 'Crear y guardar backup',
                             ),
                             style: FilledButton.styleFrom(
                               minimumSize: const Size.fromHeight(46),
