@@ -196,19 +196,33 @@ class DebtProvider extends ChangeNotifier {
       );
     }
 
-    final totalDebt = creditSales.fold<double>(
+    final paidBySale = _allocatedPaidBySale(creditSales, clientId);
+    final openSales = creditSales
+        .where(
+          (sale) =>
+              (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
+                  .clamp(0, double.infinity)
+                  .toDouble() >
+              0.005,
+        )
+        .toList(growable: false);
+
+    final totalDebt = openSales.fold<double>(
       0,
       (sum, sale) => sum + sale.effectiveTotal,
     );
-    final totalPaid = paidForClient(clientId);
+    final appliedFromPreviousPayments = openSales.fold<double>(
+      0,
+      (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
+    );
 
     return (
-      sales: creditSales,
+      sales: openSales,
       account: DebtAccount(
         clientId: clientId,
         clientName: creditSales.last.clientName,
         totalDebt: totalDebt,
-        totalPaid: totalPaid,
+        totalPaid: appliedFromPreviousPayments,
       ),
     );
   }
