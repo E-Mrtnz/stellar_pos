@@ -80,7 +80,9 @@ class DatabaseBackupService {
   static const int _backupFormatVersion = 2;
 
   static Future<String?> selectDestinationDirectory() {
-    if (kIsWeb) return Future<String?>.value(null);
+    if (kIsWeb || Platform.isAndroid || Platform.isIOS) {
+      return Future<String?>.value(null);
+    }
     return FilePicker.getDirectoryPath(
       dialogTitle: 'Selecciona dónde guardar la copia de seguridad',
     );
@@ -130,7 +132,7 @@ class DatabaseBackupService {
       onProgress: onProgress,
     );
 
-    if (kIsWeb) {
+    if (kIsWeb || Platform.isAndroid || Platform.isIOS) {
       final stamp = _backupStamp();
       final fileName = 'stellar_pos_backup_$stamp';
       await FileSaver.instance.saveFile(
