@@ -5,7 +5,7 @@ import 'dart:typed_data';
 ///
 /// Product cards can rebuild frequently because cart, search, or other POS
 /// state changes. Decoding the same base64 payload on every build is wasted
-/// CPU work, so the bytes are cached by product id and payload fingerprint.
+/// CPU work, so the decoded bytes are cached by product id and exact payload.
 class ProductImageCache {
   ProductImageCache._();
 
