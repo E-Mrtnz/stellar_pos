@@ -388,7 +388,10 @@ class DatabaseBackupService {
     }
 
     final safetySnapshot = await _snapshotWebData();
-    final safetySize = utf8.encode(jsonEncode(safetySnapshot)).length;
+    final safetySize = safetySnapshot.values.fold<int>(
+      0,
+      (total, boxData) => total + boxData.length,
+    );
 
     try {
       final restoredData = <String, Map<dynamic, dynamic>>{};
