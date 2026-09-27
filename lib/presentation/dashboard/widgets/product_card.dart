@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/utils/product_image_cache.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class ProductCard extends StatelessWidget {
@@ -76,22 +75,24 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildProductImage() {
     final imageData = product['imageData']?.toString().trim() ?? '';
-    if (imageData.isNotEmpty) {
-      try {
-        return ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(15),
-            topRight: Radius.circular(15),
-          ),
-          child: Image.memory(
-            base64Decode(imageData),
-            width: double.infinity,
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
-            gaplessPlayback: true,
-          ),
-        );
-      } catch (_) {}
+    final imageBytes = ProductImageCache.getBytes(
+      productId: product['id']?.toString() ?? '',
+      imageData: imageData,
+    );
+    if (imageBytes != null) {
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(15),
+          topRight: Radius.circular(15),
+        ),
+        child: Image.memory(
+          imageBytes,
+          width: double.infinity,
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
+          gaplessPlayback: true,
+        ),
+      );
     }
     return Container(
       width: double.infinity,
