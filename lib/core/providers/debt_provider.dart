@@ -135,11 +135,21 @@ class DebtProvider extends ChangeNotifier {
     if (matching.isEmpty) return null;
 
     final paidBySale = _allocatedPaidBySale(matching, clientId);
-    final totalDebt = matching.fold<double>(
+    final openSales = matching
+        .where(
+          (sale) =>
+              (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
+                  .clamp(0, double.infinity)
+                  .toDouble() >
+              0.005,
+        )
+        .toList(growable: false);
+
+    final totalDebt = openSales.fold<double>(
       0,
       (sum, sale) => sum + sale.effectiveTotal,
     );
-    final totalPaid = matching.fold<double>(
+    final totalPaid = openSales.fold<double>(
       0,
       (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
     );
