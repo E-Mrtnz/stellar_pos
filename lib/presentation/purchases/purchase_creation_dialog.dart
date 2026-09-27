@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -969,14 +967,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     type: AppAlertType.error,
   );
 
-  Uint8List? _decode(String value) {
-    if (value.trim().isEmpty) return null;
-    try {
-      return base64Decode(value.contains(',') ? value.split(',').last : value);
-    } catch (_) {
-      return null;
-    }
-  }
+
 }
 
 class _DraftPurchaseItem {
