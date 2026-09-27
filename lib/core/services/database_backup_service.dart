@@ -1,7 +1,8 @@
 import 'dart:io';
+import 'dart:isolate';
 
+import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_archive/flutter_archive.dart';
 
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
 
@@ -74,20 +75,32 @@ class DatabaseBackupService {
       suffix++;
     }
 
-    await ZipFile.createFromFiles(
-      sourceDir: sourceDirectory,
-      files: hiveFiles,
-      zipFile: zipFile,
-      includeBaseDirectory: false,
-    );
+    onProgress?.call(0.05);
 
-    final size = await zipFile.length();
+    final result = await Isolate.run<Map<String, dynamic>>(() async {
+      final encoder = ZipFileEncoder();
+      encoder.create(zipFile.path);
+
+      for (final filePath in hiveFiles.map((file) => file.path)) {
+        final file = File(filePath);
+        await encoder.addFile(file, file.uri.pathSegments.last);
+      }
+
+      await encoder.close();
+
+      return <String, dynamic>{
+        'filePath': zipFile.path,
+        'fileCount': hiveFiles.length,
+        'sizeBytes': await zipFile.length(),
+      };
+    }, debugName: 'stellar-pos-database-backup');
+
     onProgress?.call(1);
 
     return BackupResult(
-      filePath: zipFile.path,
-      fileCount: hiveFiles.length,
-      sizeBytes: size,
+      filePath: result['filePath'] as String,
+      fileCount: result['fileCount'] as int,
+      sizeBytes: result['sizeBytes'] as int,
     );
   }
 }
