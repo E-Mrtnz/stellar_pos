@@ -239,7 +239,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                       const SizedBox(height: 18),
                       Text(
                         kIsWeb
-                            ? 'Los datos locales actuales serán reemplazados por los contenidos de esta copia. Antes de aplicar el cambio, STELLAR POS guardará una copia temporal en el almacenamiento del navegador para poder revertir el proceso si ocurre un error.'
+                            ? 'Los datos locales actuales serán reemplazados por los contenidos de esta copia. La restauración se ejecutará directamente sobre el almacenamiento local del navegador.'
                             : 'Los archivos .hive actuales serán reemplazados por los contenidos de esta copia. Antes de aplicar el cambio, STELLAR POS creará una copia temporal de seguridad para poder revertir el proceso si ocurre un error.',
                         style: const TextStyle(
                           fontSize: 14,
