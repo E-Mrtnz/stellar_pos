@@ -399,17 +399,7 @@ class DatabaseBackupService {
       );
     }
 
-    await report(0.22, 'Creando un punto de recuperación temporal...');
-    final safetySnapshot = await _snapshotWebData(
-      onProgress: (progress) {
-        onProgress?.call(0.22 + progress * 0.05, 'Guardando datos actuales...');
-      },
-    );
-    final safetySize = safetySnapshot.values.fold<int>(
-      0,
-      (total, boxData) => total + boxData.length,
-    );
-    await report(0.28, 'Punto de recuperación listo. Validando datos...');
+    await report(0.18, 'Archivo ZIP validado. Preparando los datos...');
 
     try {
       final restoredData = <String, Map<dynamic, dynamic>>{};
@@ -453,7 +443,7 @@ class DatabaseBackupService {
         restoredData[boxName] = boxData;
         restoredEntries += boxData.length;
         await report(
-          0.28 + ((index + 1) / _webBackupBoxNames.length) * 0.27,
+          0.18 + ((index + 1) / _webBackupBoxNames.length) * 0.32,
           'Validando ${index + 1} de ${_webBackupBoxNames.length} secciones...',
         );
       }
@@ -463,7 +453,7 @@ class DatabaseBackupService {
         final boxName = _webBackupBoxNames[index];
         final box = await LocalStorage.openBox(boxName);
         await report(
-          0.55 + (index / _webBackupBoxNames.length) * 0.05,
+          0.50 + (index / _webBackupBoxNames.length) * 0.05,
           'Preparando ${boxName}...',
         );
         await box.clear().timeout(
@@ -493,14 +483,14 @@ class DatabaseBackupService {
                 ? 1.0
                 : end / entries.length;
             await report(
-              0.60 +
-                  ((index + fraction) / _webBackupBoxNames.length) * 0.35,
+              0.55 +
+                  ((index + fraction) / _webBackupBoxNames.length) * 0.43,
               'Restaurando ${boxName}: $end de ${entries.length} registros...',
             );
           }
         } else {
           await report(
-            0.60 + ((index + 1) / _webBackupBoxNames.length) * 0.35,
+            0.55 + ((index + 1) / _webBackupBoxNames.length) * 0.43,
             'Restaurando ${boxName}: sin registros.',
           );
         }
@@ -512,44 +502,12 @@ class DatabaseBackupService {
       return RestoreResult(
         backupFilePath: backupFileName,
         fileCount: restoredEntries,
-        safetyBackupSizeBytes: safetySize,
+        safetyBackupSizeBytes: 0,
       );
     } catch (error) {
-      try {
-        await _restoreWebSnapshot(safetySnapshot);
-      } catch (rollbackError) {
-        throw StateError(
-          'No se pudo restaurar el backup Web y tampoco fue posible recuperar automáticamente los datos anteriores. Error de restauración: $error. Error de recuperación: $rollbackError',
-        );
-      }
-      rethrow;
-    }
-  }
-
-  static Future<Map<String, Map<dynamic, dynamic>>> _snapshotWebData({
-    void Function(double progress)? onProgress,
-  }) async {
-    final snapshot = <String, Map<dynamic, dynamic>>{};
-    for (var index = 0; index < _webBackupBoxNames.length; index++) {
-      final boxName = _webBackupBoxNames[index];
-      final box = await LocalStorage.openBox(boxName);
-      snapshot[boxName] = Map<dynamic, dynamic>.from(box.toMap());
-      onProgress?.call((index + 1) / _webBackupBoxNames.length);
-      await Future<void>.delayed(Duration.zero);
-    }
-    return snapshot;
-  }
-
-  static Future<void> _restoreWebSnapshot(
-    Map<String, Map<dynamic, dynamic>> snapshot,
-  ) async {
-    for (final boxName in _webBackupBoxNames) {
-      final box = await LocalStorage.openBox(boxName);
-      await box.clear();
-      final data = snapshot[boxName];
-      if (data != null && data.isNotEmpty) {
-        await box.putAll(data);
-      }
+      throw StateError(
+        'No se pudo completar la restauración del backup Web. No se creó ninguna copia temporal del almacenamiento del navegador. Error: $error',
+      );
     }
   }
 
