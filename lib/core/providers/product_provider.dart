@@ -243,7 +243,7 @@ class ProductProvider extends ChangeNotifier {
       _catalogRegistrar?.registerDistributorValue(product.department);
     }
     _loaded = true;
-    if (stored.isNotEmpty) notifyListeners();
+    notifyListeners();
   }
 
   void _rebuildIndexes() {
