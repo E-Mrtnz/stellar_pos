@@ -26,6 +26,7 @@ class CentralProductGrid extends StatefulWidget {
   final VoidCallback? onElectronicBalanceManage;
   final ValueChanged<String>? onSearchChanged;
   final String searchQuery;
+  final bool isLoading;
 
   const CentralProductGrid({
     super.key,
@@ -45,6 +46,7 @@ class CentralProductGrid extends StatefulWidget {
     this.onElectronicBalanceManage,
     this.onSearchChanged,
     this.searchQuery = '',
+    this.isLoading = false,
   });
 
   @override
@@ -172,6 +174,15 @@ class _CentralProductGridState extends State<CentralProductGrid> {
     final sortedProducts = cacheValid
         ? _sortedProductsCache!
         : _buildSortedProducts(cacheKey, productsIdentity);
+
+    if (widget.isLoading && widget.products.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
