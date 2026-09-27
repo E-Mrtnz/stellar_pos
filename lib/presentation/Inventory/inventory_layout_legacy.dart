@@ -37,12 +37,36 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   bool _isExporting = false;
   String _sortColumn = 'product';
   bool _sortAscending = true;
+  List<Map<String, dynamic>>? _filteredProductsCache;
+  int? _productsIdentity;
+  String? _filterCacheKey;
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
   List<Map<String, dynamic>> _filterProducts(
     List<Map<String, dynamic>> products,
   ) {
+    final productsIdentity = identityHashCode(products);
+    final selectedTag = _selectedTagIndex >= 0 && _selectedTagIndex < _tags.length
+        ? _tags[_selectedTagIndex]
+        : '';
+    final cacheKey = _searchQuery +
+        '|' +
+        (_selectedFilter ?? '') +
+        '|' +
+        _selectedTagIndex.toString() +
+        '|' +
+        _sortColumn +
+        '|' +
+        _sortAscending.toString() +
+        '|' +
+        selectedTag;
+    if (_filteredProductsCache != null &&
+        _productsIdentity == productsIdentity &&
+        _filterCacheKey == cacheKey) {
+      return _filteredProductsCache!;
+    }
+
     final filtered = ProductFilterUtils.apply(
       products: products,
       searchQuery: _searchQuery,
@@ -50,8 +74,11 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       tags: _tags,
       selectedTagIndex: _selectedTagIndex,
     );
-    final sorted = List<Map<String, dynamic>>.from(filtered);
-    sorted.sort(_compareProducts);
+    final sorted = List<Map<String, dynamic>>.from(filtered)
+      ..sort(_compareProducts);
+    _productsIdentity = productsIdentity;
+    _filterCacheKey = cacheKey;
+    _filteredProductsCache = sorted;
     return sorted;
   }
 
