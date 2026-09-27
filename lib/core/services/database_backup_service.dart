@@ -77,11 +77,16 @@ class DatabaseBackupService {
 
     onProgress?.call(0.05);
 
+    final hiveFilePaths = hiveFiles
+        .map((file) => file.path)
+        .toList(growable: false);
+    final zipFilePath = zipFile.path;
+
     final result = await Isolate.run<Map<String, dynamic>>(() async {
       final encoder = ZipFileEncoder();
-      encoder.create(zipFile.path);
+      encoder.create(zipFilePath);
 
-      for (final filePath in hiveFiles.map((file) => file.path)) {
+      for (final filePath in hiveFilePaths) {
         final file = File(filePath);
         await encoder.addFile(file, file.uri.pathSegments.last);
       }
@@ -89,9 +94,9 @@ class DatabaseBackupService {
       await encoder.close();
 
       return <String, dynamic>{
-        'filePath': zipFile.path,
-        'fileCount': hiveFiles.length,
-        'sizeBytes': await zipFile.length(),
+        'filePath': zipFilePath,
+        'fileCount': hiveFilePaths.length,
+        'sizeBytes': await File(zipFilePath).length(),
       };
     }, debugName: 'stellar-pos-database-backup');
 
