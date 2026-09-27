@@ -11,7 +11,14 @@ import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class DebtStatementShare {
   static Future<void> show(BuildContext context, {required String clientName, required List<SaleRecord> sales, required DebtAccount account}) async {
-    final creditSales = sales.where((sale) => sale.paymentMethod.toLowerCase() == 'fiado' && !sale.isAnnulled && sale.effectiveTotal > 0.005).toList(growable: false);
+    final creditSales = sales
+        .where(
+          (sale) =>
+              sale.paymentMethod.toLowerCase() == 'fiado' &&
+              !sale.isAnnulled &&
+              sale.effectiveTotal > 0.005,
+        )
+        .toList(growable: false);
     if (creditSales.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay compras fiadas para compartir.')));
       return;
@@ -194,7 +201,10 @@ class _DebtStatementImage extends StatelessWidget {
   String _date(DateTime value) => value.day.toString().padLeft(2, '0') + '/' + value.month.toString().padLeft(2, '0') + '/' + value.year.toString();
 
   @override Widget build(BuildContext context) {
-    final subtotal = sales.fold<double>(0, (sum, sale) => sum + sale.effectiveTotal);
+    final subtotal = sales.fold<double>(
+      0,
+      (sum, sale) => sum + sale.effectiveTotal,
+    );
     final last = pageNumber == pageCount;
     return Material(
       color: Colors.white,
@@ -229,14 +239,37 @@ class _DebtStatementImage extends StatelessWidget {
               if (last) ...[
                 const Divider(color: Color(0xFFD6D6D6)),
                 const SizedBox(height: 20),
-                _totalRow('Subtotal', subtotal, strong: true, color: AppColors.primary),
+                _totalRow(
+                  'Deuda pendiente',
+                  subtotal,
+                  strong: true,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(height: 16),
-                _totalRow('Total abonado', account.totalPaid, color: AppColors.successGreen),
+                _totalRow(
+                  'Abonos anteriores aplicados',
+                  (subtotal - account.remaining).clamp(0, subtotal).toDouble(),
+                  color: AppColors.successGreen,
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'Parte de los abonos anteriores ya aplicada a estas compras.',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 10, color: Colors.black54),
+                ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.only(top: 18),
-                  decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFD6D6D6)))),
-                  child: _totalRow('Restante por pagar', account.remaining, strong: true, large: true, color: AppColors.dangerRed),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: Color(0xFFD6D6D6))),
+                  ),
+                  child: _totalRow(
+                    'Restante por pagar',
+                    account.remaining,
+                    strong: true,
+                    large: true,
+                    color: AppColors.dangerRed,
+                  ),
                 ),
               ],
               const SizedBox(height: 24),
