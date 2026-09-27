@@ -23,7 +23,7 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
- # Database backups / local Hive storage
+# Database backups / local Hive storage
 *.hive
 
 # Flutter/Dart/Pub related
