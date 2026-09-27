@@ -1030,7 +1030,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return const _EmptySectionPanel();
     return Builder(
       builder: (homeContext) {
-        final products = homeContext.watch<ProductProvider>().productMaps;
+        final productProvider = homeContext.watch<ProductProvider>();
+        final products = productProvider.productMaps;
         final catalog = homeContext.watch<CatalogProvider>();
         final tags = catalog.tags;
         final debtors = catalog.clients.map((client) => client.name).toList();
@@ -1044,6 +1045,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             flex: 3,
             child: CentralProductGrid(
               products: products,
+              isLoading: productProvider.isLoading,
               cartQuantities: combinedCart,
               preparedProductIds: _preparedProductIds,
               tags: tags,
