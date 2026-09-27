@@ -302,10 +302,12 @@ class DatabaseBackupService {
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'boxes': _webBackupBoxNames,
     };
+    final manifestBytes = utf8.encode(jsonEncode(manifest));
     archive.addFile(
-      ArchiveFile.bytes(
+      ArchiveFile(
         'manifest.json',
-        utf8.encode(jsonEncode(manifest)),
+        manifestBytes.length,
+        manifestBytes,
       ),
     );
 
@@ -327,10 +329,12 @@ class DatabaseBackupService {
         'box': boxName,
         'entries': entries,
       };
+      final payloadBytes = utf8.encode(jsonEncode(payload));
       archive.addFile(
-        ArchiveFile.bytes(
+        ArchiveFile(
           '$boxName.json',
-          utf8.encode(jsonEncode(payload)),
+          payloadBytes.length,
+          payloadBytes,
         ),
       );
 
