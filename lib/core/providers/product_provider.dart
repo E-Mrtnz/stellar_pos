@@ -15,6 +15,9 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 /// backed by Hive.
 class ProductProvider extends ChangeNotifier {
   final List<Product> _products = [];
+  final Map<String, Product> _productsById = <String, Product>{};
+  final Map<String, Product> _productsByBarcode = <String, Product>{};
+  List<Map<String, dynamic>>? _productMapsCache;
   final CatalogRegistrar? _catalogRegistrar;
   final Repository<Product>? _repository;
   static const _inventoryStockService = InventoryStockService();
@@ -31,14 +34,16 @@ class ProductProvider extends ChangeNotifier {
 
   /// Compatibility projection for legacy UI/import code.
   List<Map<String, dynamic>> get productMaps =>
-      _products.map((product) => product.toMap()).toList(growable: false);
+      _productMapsCache ??= _products
+          .map((product) => product.toMap())
+          .toList(growable: false);
 
-  Product? findById(String id) => _firstOrNull((product) => product.id == id);
+  Product? findById(String id) => _productsById[id];
 
   Product? findByBarcode(String barcode) {
     final normalized = barcode.trim();
     if (normalized.isEmpty) return null;
-    return _firstOrNull((product) => product.barcode.trim() == normalized);
+    return _productsByBarcode[normalized];
   }
 
   /// Returns a product only when its barcode is already used by another
@@ -75,6 +80,8 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerCategoryValue(normalized.category);
     _catalogRegistrar?.registerDistributorValue(normalized.department);
     _products.add(normalized);
+    _indexProduct(normalized);
+    _invalidateProductMaps();
     notifyListeners();
     _persist(() => _repository?.save(normalized));
     return true;
@@ -97,6 +104,9 @@ class ProductProvider extends ChangeNotifier {
     _catalogRegistrar?.registerCategoryValue(updated.category);
     _catalogRegistrar?.registerDistributorValue(updated.department);
     _products[index] = updated;
+    _deindexProduct(current);
+    _indexProduct(updated);
+    _invalidateProductMaps();
     notifyListeners();
     _persist(() => _repository?.save(updated));
     return true;
@@ -112,6 +122,9 @@ class ProductProvider extends ChangeNotifier {
     );
     if (identical(updated, current)) return true;
     _products[index] = updated;
+    _deindexProduct(current);
+    _indexProduct(updated);
+    _invalidateProductMaps();
     notifyListeners();
     _persist(() => _repository?.save(updated));
     return true;
@@ -161,11 +174,14 @@ class ProductProvider extends ChangeNotifier {
       if (_normalizeCatalogValue(read(product)) != oldNormalized) continue;
       final updated = write(product);
       _products[index] = updated;
+      _deindexProduct(product);
+      _indexProduct(updated);
       updatedProducts.add(updated);
       changed++;
     }
 
     if (changed == 0) return 0;
+    _invalidateProductMaps();
     notifyListeners();
     for (final product in updatedProducts) {
       _persist(() => _repository?.save(product));
@@ -175,8 +191,11 @@ class ProductProvider extends ChangeNotifier {
 
   bool deleteProduct(String id) {
     final before = _products.length;
+    final removed = _productsById[id];
     _products.removeWhere((product) => product.id == id);
     if (before == _products.length) return false;
+    if (removed != null) _deindexProduct(removed);
+    _invalidateProductMaps();
     notifyListeners();
     _persist(() => _repository?.delete(id));
     return true;
@@ -186,6 +205,9 @@ class ProductProvider extends ChangeNotifier {
     if (_products.isEmpty) return;
     final ids = _products.map((product) => product.id).toList(growable: false);
     _products.clear();
+    _productsById.clear();
+    _productsByBarcode.clear();
+    _invalidateProductMaps();
     notifyListeners();
     for (final id in ids) {
       _persist(() => _repository?.delete(id));
@@ -210,6 +232,8 @@ class ProductProvider extends ChangeNotifier {
     _products
       ..clear()
       ..addAll(byId.values);
+    _rebuildIndexes();
+    _invalidateProductMaps();
     for (final product in stored) {
       _catalogRegistrar?.registerBrandValue(product.brand);
       _catalogRegistrar?.registerCategoryValue(product.category);
@@ -217,6 +241,40 @@ class ProductProvider extends ChangeNotifier {
     }
     _loaded = true;
     if (stored.isNotEmpty) notifyListeners();
+  }
+
+  void _rebuildIndexes() {
+    _productsById.clear();
+    _productsByBarcode.clear();
+    for (final product in _products) {
+      _indexProduct(product);
+    }
+  }
+
+  void _indexProduct(Product product) {
+    if (product.id.isNotEmpty) {
+      _productsById[product.id] = product;
+    }
+    final barcode = product.barcode.trim();
+    if (barcode.isNotEmpty) {
+      _productsByBarcode[barcode] = product;
+    }
+  }
+
+  void _deindexProduct(Product product) {
+    if (product.id.isNotEmpty &&
+        identical(_productsById[product.id], product)) {
+      _productsById.remove(product.id);
+    }
+    final barcode = product.barcode.trim();
+    if (barcode.isNotEmpty &&
+        identical(_productsByBarcode[barcode], product)) {
+      _productsByBarcode.remove(barcode);
+    }
+  }
+
+  void _invalidateProductMaps() {
+    _productMapsCache = null;
   }
 
   void _persist(Future<void>? Function()? operation) {
