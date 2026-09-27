@@ -275,7 +275,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                         ),
                       ),
                     ],
-                    if (_lastBackupPath != null) ...
+                    if (_lastBackupPath != null) ...[
                       const SizedBox(height: 20),
                       Container(
                         width: double.infinity,
