@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class ProductCard extends StatelessWidget {
