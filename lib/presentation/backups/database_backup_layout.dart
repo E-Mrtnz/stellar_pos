@@ -437,7 +437,11 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                             label: Text(
                               _isCreating
                                   ? 'Generando backup...'
-                                  : usesDirectoryPicker
+                                  : !kIsWeb &&
+                                        defaultTargetPlatform !=
+                                            TargetPlatform.android &&
+                                        defaultTargetPlatform !=
+                                            TargetPlatform.iOS
                                       ? 'Seleccionar ubicación y crear backup'
                                       : 'Crear y guardar backup',
                             ),
