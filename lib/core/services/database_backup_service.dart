@@ -494,7 +494,12 @@ class DatabaseBackupService {
       await Future<void>.delayed(Duration.zero);
     }
 
-    const batchSize = 250;
+    // IndexedDB writes in Web are transactional. Keeping the Web batches
+    // small prevents a large sales box from holding one transaction open for
+    // too long. Native platforms can safely use larger batches.
+    final batchSize = kIsWeb ? 25 : 250;
+    final operationTimeout =
+        kIsWeb ? const Duration(seconds: 120) : const Duration(seconds: 60);
 
     for (var index = 0; index < _backupBoxNames.length; index++) {
       final boxName = _backupBoxNames[index];
@@ -506,9 +511,9 @@ class DatabaseBackupService {
       );
 
       await box.clear().timeout(
-        const Duration(seconds: 60),
+        operationTimeout,
         onTimeout: () => throw StateError(
-          'La limpieza de la caja $boxName está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
+          'La limpieza de la caja ${boxName} está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
         ),
       );
 
@@ -524,9 +529,9 @@ class DatabaseBackupService {
         };
 
         await box.putAll(batch).timeout(
-          const Duration(seconds: 60),
+          operationTimeout,
           onTimeout: () => throw StateError(
-            'La escritura de la caja $boxName está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
+            'La escritura de la caja ${boxName} está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
           ),
         );
 
