@@ -24,6 +24,8 @@ class ProductProvider extends ChangeNotifier {
   Future<void>? _loadFuture;
   bool _loaded = false;
 
+  bool get isLoading => !_loaded && _loadFuture != null;
+
   ProductProvider({
     CatalogRegistrar? catalogRegistrar,
     Repository<Product>? repository,
@@ -66,6 +68,7 @@ class ProductProvider extends ChangeNotifier {
 
     final future = _loadFromRepository();
     _loadFuture = future;
+    notifyListeners();
     return future;
   }
 
