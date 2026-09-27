@@ -19,6 +19,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.d
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/debts/debts_layout.dart';
+import 'package:stellar_pos/presentation/backups/database_backup_layout.dart';
 import 'package:stellar_pos/presentation/sales/sales_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
@@ -1031,6 +1032,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
     if (_selectedNavIndex == AppNavigation.settings)
       return const PrinterSettingsLayout();
+    if (_selectedNavIndex == AppNavigation.backups)
+      return const DatabaseBackupLayout();
     if (_selectedNavIndex != AppNavigation.home)
       return const _EmptySectionPanel();
     final salesCatalog = _salesCatalog;
