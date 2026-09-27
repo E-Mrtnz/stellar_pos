@@ -170,10 +170,10 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                     ),
                     if (_isCreating) ...[
                       const SizedBox(height: 20),
-                      LinearProgressIndicator(value: _progress),
+                      const LinearProgressIndicator(),
                       const SizedBox(height: 8),
-                      Text(
-                        'Comprimiendo base de datos... ${(_progress * 100).toStringAsFixed(0)}%',
+                      const Text(
+                        'Comprimiendo base de datos en segundo plano...',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
