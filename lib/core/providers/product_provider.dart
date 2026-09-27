@@ -54,9 +54,9 @@ class ProductProvider extends ChangeNotifier {
     final barcode = product.barcode.trim();
     if (barcode.isEmpty) return null;
 
-    return _firstOrNull(
-      (item) => item.id != excluded && item.barcode.trim() == barcode,
-    );
+    final existing = _productsByBarcode[barcode];
+    if (existing == null || existing.id == excluded) return null;
+    return existing;
   }
 
   Future<void> load() {
@@ -282,13 +282,6 @@ class ProductProvider extends ChangeNotifier {
     if (future != null) {
       unawaited(future.catchError((_) {}));
     }
-  }
-
-  Product? _firstOrNull(bool Function(Product) test) {
-    for (final product in _products) {
-      if (test(product)) return product;
-    }
-    return null;
   }
 
   String _normalizeCatalogValue(String value) =>
