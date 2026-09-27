@@ -103,7 +103,9 @@ class ProductImageCache {
     Uint8List? bytes;
     try {
       bytes = await compute(_decodeBase64, request.source);
-      _store(request.productId, request.source, bytes);
+      if (bytes != null) {
+        _store(request.productId, request.source, bytes);
+      }
       request.completer.complete(bytes);
     } catch (_) {
       request.completer.complete(null);
