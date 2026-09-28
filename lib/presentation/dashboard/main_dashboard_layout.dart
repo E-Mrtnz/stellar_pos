@@ -23,6 +23,7 @@ import 'package:stellar_pos/presentation/sales/sales_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
+import 'package:stellar_pos/presentation/statistics/statistics_layout.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 enum _SaleOperationMode { none, edit, returnItem, change }
@@ -1024,6 +1025,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex == AppNavigation.providers)
       return const ProvidersLayout();
     if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
+    if (_selectedNavIndex == AppNavigation.stats) return const StatisticsLayout();
     if (_selectedNavIndex == AppNavigation.settings)
       return const PrinterSettingsLayout();
     if (_selectedNavIndex != AppNavigation.home)
