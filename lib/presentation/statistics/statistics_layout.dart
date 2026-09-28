@@ -232,7 +232,7 @@ class _Kpis extends StatelessWidget {
 class _KpiCard extends StatelessWidget {
   final _Kpi k; const _KpiCard(this.k);
   @override Widget build(BuildContext c)=>Container(
-    constraints:const BoxConstraints(minHeight:112), padding:const EdgeInsets.all(14),
+    constraints:const BoxConstraints(minHeight:112, maxHeight:112), padding:const EdgeInsets.all(14),
     decoration:BoxDecoration(color:AppColors.cardBackground,borderRadius:BorderRadius.circular(AppDimensions.cardRadius),border:Border.all(color:AppColors.border),boxShadow:const[BoxShadow(color:AppColors.shadowColor,blurRadius:10,offset:Offset(0,3))]),
     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       Row(children:[Container(width:31,height:31,decoration:BoxDecoration(color:k.color.withAlpha(20),borderRadius:BorderRadius.circular(9)),child:Icon(k.icon,color:k.color,size:17)),const Spacer(),if(k.change!=null)_Change(k.change!)]),
