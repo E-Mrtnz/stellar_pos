@@ -69,14 +69,32 @@ class FirestoreDataSource<T extends SyncableEntity>
   @override
   Future<void> delete(String id) async {
     // Physical deletion is deliberately kept out of the synchronization
-    // protocol. Repositories should send a tombstone with deletedAt instead.
+    // protocol. A tombstone remains long enough for other devices to observe
+    // the deletion during incremental synchronization.
+    final now = DateTime.now().toUtc();
+    final existing = await _collection.doc(id).get();
+    final existingData = existing.data();
+    final existingMetadata = existingData?['metadata'] is Map
+        ? Map<String, dynamic>.from(existingData!['metadata'] as Map)
+        : <String, dynamic>{};
+    final version = existingMetadata['version'] is num
+        ? (existingMetadata['version'] as num).toInt() + 1
+        : 1;
+
     await _collection.doc(id).set(
       {
         'id': id,
         'metadata': {
+          'createdAt': existingMetadata['createdAt']?.toString() ??
+              now.toIso8601String(),
+          'updatedAt': now.toIso8601String(),
+          'version': version,
+          'schemaVersion': existingMetadata['schemaVersion'] ?? 1,
           'syncState': SyncState.deleted.name,
-          'deletedAt': DateTime.now().toUtc().toIso8601String(),
-          'updatedAt': DateTime.now().toUtc().toIso8601String(),
+          'deletedAt': now.toIso8601String(),
+          'lastSyncedAt': existingMetadata['lastSyncedAt'],
+          'deviceId': existingMetadata['deviceId'],
+          'storeId': existingMetadata['storeId'] ?? storeId,
         },
       },
       SetOptions(merge: true),
@@ -86,8 +104,10 @@ class FirestoreDataSource<T extends SyncableEntity>
   @override
   Future<void> markSynced(T entity) async {
     final synced = entity.metadata.markSynced();
+    final payload = Map<String, dynamic>.from(entity.toMap());
+    payload['metadata'] = synced.toMap();
     await _collection.doc(entity.id).set(
-      _cloudSafeMap(entity.toMap()..['metadata'] = synced.toMap()),
+      _cloudSafeMap(payload),
       SetOptions(merge: false),
     );
   }
