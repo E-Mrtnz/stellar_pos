@@ -230,16 +230,87 @@ class _Kpis extends StatelessWidget {
   }
 }
 class _KpiCard extends StatelessWidget {
-  final _Kpi k; const _KpiCard(this.k);
-  @override Widget build(BuildContext c)=>Container(
-    constraints:const BoxConstraints(minHeight:112, maxHeight:112), padding:const EdgeInsets.all(14),
-    decoration:BoxDecoration(color:AppColors.cardBackground,borderRadius:BorderRadius.circular(AppDimensions.cardRadius),border:Border.all(color:AppColors.border),boxShadow:const[BoxShadow(color:AppColors.shadowColor,blurRadius:10,offset:Offset(0,3))]),
-    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Row(children:[Container(width:31,height:31,decoration:BoxDecoration(color:k.color.withAlpha(20),borderRadius:BorderRadius.circular(9)),child:Icon(k.icon,color:k.color,size:17)),const Spacer(),if(k.change!=null)_Change(k.change!)]),
-      const Spacer(),Text(k.title,style:const TextStyle(fontSize:10,color:AppColors.textSecondary,fontWeight:FontWeight.w600)),
-      const SizedBox(height:3),Text(k.value,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w800,color:AppColors.textPrimary)),
-      Text(k.caption,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:9,color:AppColors.textMuted)),
-    ]));
+  final _Kpi k;
+  const _KpiCard(this.k);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 126),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: k.color.withAlpha(32)),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadowColor,
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(height: 5, color: k.color),
+            ),
+            Positioned(
+              right: -18,
+              bottom: -24,
+              child: Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: k.color.withAlpha(12),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: k.color.withAlpha(22),
+                        ),
+                        child: Icon(k.icon, color: k.color, size: 18),
+                      ),
+                      const Spacer(),
+                      if (k.change != null) _Change(k.change!),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(k.title, style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  )),
+                  const SizedBox(height: 2),
+                  Text(k.value, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 21, height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    )),
+                  const SizedBox(height: 3),
+                  Text(k.caption, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 class _Change extends StatelessWidget { final double value; const _Change(this.value); @override Widget build(BuildContext c){final pos=value>=0,color=pos?AppColors.successGreen:AppColors.dangerRed;return Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),decoration:BoxDecoration(color:color.withAlpha(20),borderRadius:BorderRadius.circular(20)),child:Text((pos?'↑ ':'↓ ')+_pct(value.abs()),style:TextStyle(color:color,fontSize:9,fontWeight:FontWeight.w800)));}}
 class _Panel extends StatelessWidget {
@@ -249,21 +320,102 @@ class _Panel extends StatelessWidget {
     padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:AppColors.cardBackground,borderRadius:BorderRadius.circular(AppDimensions.cardRadius),border:Border.all(color:AppColors.border),boxShadow:const[BoxShadow(color:AppColors.shadowColor,blurRadius:10,offset:Offset(0,3))]),
     child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Row(children:[Text(title,style:AppTextStyles.sectionTitle),const Spacer(),if(trailing!=null)trailing!]),const SizedBox(height:10),child]));
 }
-class _Trend extends StatelessWidget { final List<_Point> points; const _Trend(this.points); @override Widget build(BuildContext c)=>points.isEmpty?const Center(child:Text('No hay datos en este período.',style:TextStyle(fontSize:11,color:AppColors.textMuted))):CustomPaint(painter:_TrendPainter(points),child:const SizedBox.expand()); }
-class _Point { final String label; final double value; const _Point(this.label,this.value); }
-class _TrendPainter extends CustomPainter {
-  final List<_Point> p; _TrendPainter(this.p);
-  @override void paint(Canvas canvas,Size size){
-    const l=12.0,t=12.0,bp=28.0,rp=8.0; final r=size.width-rp,b=size.height-bp,h=b-t,w=r-l,maxV=p.fold<double>(0,(m,x)=>math.max(m,x.value));
-    final grid=Paint()..color=AppColors.border..strokeWidth=1; for(var i=0;i<4;i++){final y=t+h*i/3;canvas.drawLine(Offset(l,y),Offset(r,y),grid);} if(maxV<=0)return;
-    final path=Path(); for(var i=0;i<p.length;i++){final x=p.length==1?l+w/2:l+w*i/(p.length-1),y=b-p[i].value/maxV*h;if(i==0)path.moveTo(x,y);else path.lineTo(x,y);}
-    final fill=Path.from(path)..lineTo(p.length==1?l+w/2:r,b)..lineTo(l,b)..close(); canvas.drawPath(fill,Paint()..color=AppColors.primary.withAlpha(14));
-    canvas.drawPath(path,Paint()..color=AppColors.primary..style=PaintingStyle.stroke..strokeWidth=2.5..strokeCap=StrokeCap.round);
-    final dot=Paint()..color=AppColors.primary; for(var i=0;i<p.length;i++){final x=p.length==1?l+w/2:l+w*i/(p.length-1),y=b-p[i].value/maxV*h;canvas.drawCircle(Offset(x,y),3,dot);}
-    final step=math.max(1,(p.length/8).ceil()); for(var i=0;i<p.length;i+=step){final x=p.length==1?l+w/2:l+w*i/(p.length-1);final tp=TextPainter(text:TextSpan(text:p[i].label,style:const TextStyle(fontSize:9,color:AppColors.textMuted)),textDirection:TextDirection.ltr)..layout();tp.paint(canvas,Offset(x-tp.width/2,b+7));}
+class _Trend extends StatelessWidget {
+  final List<_Point> points;
+  const _Trend(this.points);
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return const Center(
+        child: Text('No hay datos en este período.',
+          style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+      );
+    }
+    return CustomPaint(
+      painter: _BarTrendPainter(points),
+      child: const SizedBox.expand(),
+    );
   }
-  @override bool shouldRepaint(covariant _TrendPainter old)=>old.p!=p;
 }
+
+class _Point {
+  final String label;
+  final double value;
+  const _Point(this.label, this.value);
+}
+
+class _BarTrendPainter extends CustomPainter {
+  final List<_Point> points;
+  _BarTrendPainter(this.points);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const left = 10.0, top = 12.0, bottom = 30.0, right = 10.0;
+    final chartWidth = size.width - left - right;
+    final chartHeight = size.height - top - bottom;
+    final maxValue =
+        points.fold<double>(0, (max, point) => math.max(max, point.value));
+
+    if (maxValue <= 0) return;
+
+    final gridPaint = Paint()..color = AppColors.border..strokeWidth = 1;
+    for (var i = 0; i < 4; i++) {
+      final y = top + chartHeight * i / 3;
+      canvas.drawLine(Offset(left, y), Offset(size.width - right, y), gridPaint);
+    }
+
+    final visible = points.length;
+    final gap = visible > 18 ? 4.0 : 8.0;
+    final slotWidth = chartWidth / visible;
+    final barWidth = math.max(5.0, math.min(28.0, slotWidth - gap));
+    final labelStep = math.max(1, (visible / 8).ceil());
+
+    for (var i = 0; i < visible; i++) {
+      final point = points[i];
+      final barHeight = (point.value / maxValue) * chartHeight;
+      final x = left + i * slotWidth + (slotWidth - barWidth) / 2;
+      final y = top + chartHeight - barHeight;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, y, barWidth, math.max(barHeight, 2)),
+        const Radius.circular(8),
+      );
+
+      final gradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [AppColors.primary, AppColors.primary.withAlpha(145)],
+      );
+      canvas.drawRRect(
+        rect,
+        Paint()..shader = gradient.createShader(
+          Rect.fromLTWH(x, y, barWidth, math.max(barHeight, 2)),
+        ),
+      );
+
+      if (i % labelStep == 0 || i == visible - 1) {
+        final tp = TextPainter(
+          text: TextSpan(
+            text: point.label,
+            style: const TextStyle(
+              fontSize: 9,
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas,
+          Offset(x + (barWidth - tp.width) / 2, size.height - 20));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BarTrendPainter oldDelegate) =>
+      oldDelegate.points != points;
+}
+
 class _Products extends StatelessWidget {
   final List<_ProductStat> data; const _Products(this.data);
   @override Widget build(BuildContext c)=>_Panel(title:'Productos destacados',trailing:const Icon(Icons.chevron_right_rounded,color:AppColors.textMuted),child:data.isEmpty?const _Empty('No hay ventas de productos en este período.'):Column(children:[for(var i=0;i<data.length;i++)...[if(i>0)const Divider(height:14),Row(children:[Container(width:28,height:28,decoration:BoxDecoration(color:AppColors.primaryLight,borderRadius:BorderRadius.circular(8)),child:Center(child:Text((i+1).toString(),style:const TextStyle(color:AppColors.primary,fontSize:10,fontWeight:FontWeight.w800)))),const SizedBox(width:8),Expanded(child:Text(data[i].name,overflow:TextOverflow.ellipsis,style:AppTextStyles.productName)),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(data[i].quantity.toString()+' und.',style:const TextStyle(fontSize:9,color:AppColors.textSecondary)),Text(_money(data[i].sales),style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))])])]]));
