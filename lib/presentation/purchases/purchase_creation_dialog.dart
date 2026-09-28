@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +10,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/utils/id_generator.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class PurchaseCreationDialog extends StatefulWidget {
@@ -34,6 +33,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   final _invoiceController = TextEditingController();
   final _searchController = TextEditingController();
   final _items = <_DraftPurchaseItem>[];
+  final ValueNotifier<int> _draftRevision = ValueNotifier<int>(0);
   String _scannerBuffer = '';
   DateTime? _lastScannerKey;
   DateTime _date = DateTime.now();
@@ -131,6 +131,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     FocusManager.instance.removeEarlyKeyEventHandler(_barcodeKeyHandler);
     _invoiceController.dispose();
     _searchController.dispose();
+    _draftRevision.dispose();
     super.dispose();
   }
 
@@ -206,7 +207,8 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final products = _visibleProducts(context.watch<ProductProvider>());
+    final productProvider = context.watch<ProductProvider>();
+    final products = _visibleProducts(productProvider);
     final distributors = context.watch<ProvidersProvider>().distributors;
     return Dialog(
       insetPadding: const EdgeInsets.all(18),
@@ -225,7 +227,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
                 child: Column(
                   children: [
-                    _productPicker(products),
+                    _productPicker(products, isLoading: productProvider.isLoading),
                     const SizedBox(height: 10),
                     _purchaseItems(),
                   ],
@@ -373,7 +375,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     ],
   );
 
-  Widget _productPicker(List<Product> products) => Container(
+  Widget _productPicker(List<Product> products, {required bool isLoading}) => Container(
     width: double.infinity,
     constraints: const BoxConstraints(minHeight: 205, maxHeight: 275),
     decoration: BoxDecoration(
@@ -422,7 +424,25 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: products.isEmpty
+          child: isLoading && products.isEmpty
+              ? const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Cargando productos...',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                )
+              : products.isEmpty
               ? const Center(
                   child: Text(
                     'No hay productos registrados.',
@@ -446,7 +466,6 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   );
 
   Widget _productCard(Product product) {
-    final bytes = _decode(product.imageData);
     return InkWell(
       onTap: _saving ? null : () => _addProduct(product),
       borderRadius: BorderRadius.circular(8),
@@ -467,13 +486,16 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: bytes == null
-                  ? const Icon(
-                      Icons.inventory_2_outlined,
-                      size: 21,
-                      color: AppColors.textMuted,
-                    )
-                  : Image.memory(bytes, fit: BoxFit.contain),
+              child: ProductImage(
+                productId: product.id,
+                imageData: product.imageData,
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
+                borderRadius: BorderRadius.circular(6),
+                placeholderIcon: Icons.inventory_2_outlined,
+                placeholderIconSize: 21,
+              ),
             ),
             const SizedBox(width: 7),
             Expanded(
@@ -556,14 +578,18 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                 ),
               ),
-              if (_items.isNotEmpty)
-                Text(
-                  '$_received recibidas · $_bonuses bonificadas',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
+              ValueListenableBuilder<int>(
+                valueListenable: _draftRevision,
+                builder: (context, _, __) => _items.isNotEmpty
+                    ? Text(
+                        '$_received recibidas · $_bonuses bonificadas',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
@@ -601,10 +627,11 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
       money: _money,
       baseStock: _baseStock(item.product),
       useDefaultHints: !_editing,
-      onChanged: (updated) => setState(() {
+      onChanged: (updated) {
         _items[index] = updated;
         _dirty = true;
-      }),
+        _draftRevision.value++;
+      },
       onDelete: () => setState(() {
         _items.removeAt(index);
         _dirty = true;
@@ -612,7 +639,9 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     );
   }
 
-  Widget _footer() => Padding(
+  Widget _footer() => ValueListenableBuilder<int>(
+    valueListenable: _draftRevision,
+    builder: (context, _, __) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
     child: Row(
       children: [
@@ -668,6 +697,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
           ),
         ),
       ],
+      ),
     ),
   );
 
@@ -937,14 +967,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
     type: AppAlertType.error,
   );
 
-  Uint8List? _decode(String value) {
-    if (value.trim().isEmpty) return null;
-    try {
-      return base64Decode(value.contains(',') ? value.split(',').last : value);
-    } catch (_) {
-      return null;
-    }
-  }
+
 }
 
 class _DraftPurchaseItem {
@@ -1041,6 +1064,7 @@ class _PurchaseItemCard extends StatefulWidget {
 }
 
 class _PurchaseItemCardState extends State<_PurchaseItemCard> {
+  late _DraftPurchaseItem _item;
   late final TextEditingController _purchasedController;
   late final TextEditingController _bonusController;
   late final TextEditingController _presentationController;
@@ -1058,7 +1082,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
   @override
   void initState() {
     super.initState();
-    final item = widget.item;
+    _item = widget.item;
+    final item = _item;
     final rememberedPresentation =
         item.product.purchaseUnitsPerPresentation > 0;
     _purchasedAutofilled = widget.useDefaultHints && rememberedPresentation;
@@ -1106,6 +1131,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     super.didUpdateWidget(oldWidget);
     final old = oldWidget.item;
     final current = widget.item;
+    _item = current;
     if (old.purchasedQuantity != current.purchasedQuantity &&
         _shouldSync(_purchasedController, current.purchasedQuantity))
       _replace(_purchasedController, '${current.purchasedQuantity}');
@@ -1148,6 +1174,12 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     if ((old.salePrice - current.salePrice).abs() > 0.0001 &&
         _shouldSync(_saleController, current.salePrice))
       _replace(_saleController, current.salePrice.toStringAsFixed(2));
+  }
+
+  void _commit(_DraftPurchaseItem updated) {
+    if (!mounted) return;
+    setState(() => _item = updated);
+    widget.onChanged(updated);
   }
 
   void _replace(TextEditingController controller, String value) {
@@ -1197,8 +1229,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       discount > 0 ? discount.toStringAsFixed(2) : '',
     );
     _updating = false;
-    widget.onChanged(
-      widget.item.copyWith(
+    _commit(
+      _item.copyWith(
         originalPresentationPrice: original,
         discountedPresentationPrice: discounted,
         discountPercent: discount,
@@ -1223,8 +1255,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _replace(_discountedController, calculatedDiscounted.toStringAsFixed(2));
       _discountedAutofilled = true;
       _updating = false;
-      widget.onChanged(
-        widget.item.copyWith(
+      _commit(
+        _item.copyWith(
           originalPresentationPrice: original,
           discountedPresentationPrice: calculatedDiscounted,
           discountPercent: discount,
@@ -1238,8 +1270,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _replace(_originalController, calculatedOriginal.toStringAsFixed(2));
       _originalAutofilled = true;
       _updating = false;
-      widget.onChanged(
-        widget.item.copyWith(
+      _commit(
+        _item.copyWith(
           originalPresentationPrice: calculatedOriginal,
           discountedPresentationPrice: discounted,
           discountPercent: discount,
@@ -1264,8 +1296,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       _replace(_originalController, calculatedOriginal.toStringAsFixed(2));
       _originalAutofilled = true;
       _updating = false;
-      widget.onChanged(
-        widget.item.copyWith(
+      _commit(
+        _item.copyWith(
           originalPresentationPrice: calculatedOriginal,
           discountedPresentationPrice: enteredDiscounted,
           discountPercent: discount,
@@ -1287,8 +1319,8 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       calculatedDiscount > 0 ? calculatedDiscount.toStringAsFixed(2) : '',
     );
     _updating = false;
-    widget.onChanged(
-      widget.item.copyWith(
+    _commit(
+      _item.copyWith(
         originalPresentationPrice: original,
         discountedPresentationPrice: discounted,
         discountPercent: calculatedDiscount,
@@ -1302,9 +1334,9 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     final discount = _number(_discountController).clamp(0, 100).toDouble();
     final discounted = recalculateDiscount
         ? original * (1 - discount / 100)
-        : widget.item.discountedPresentationPrice;
-    widget.onChanged(
-      widget.item.copyWith(
+        : _item.discountedPresentationPrice;
+    _commit(
+      _item.copyWith(
         purchasedQuantity: _integer(
           _purchasedController,
         ).clamp(0, 1 << 30).toInt(),
@@ -1353,7 +1385,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
 
   @override
   Widget build(BuildContext context) {
-    final item = widget.item;
+    final item = _item;
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 7, 7, 7),
       decoration: BoxDecoration(
@@ -1364,7 +1396,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _image(item.product.imageData),
+          _image(item.product.imageData, productId: item.product.id),
           const SizedBox(width: 8),
           SizedBox(
             width: 155,
@@ -1407,7 +1439,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _purchasedAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _quantityField(
                     _bonusController,
@@ -1416,7 +1448,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     hint: '0',
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _quantityField(
                     _presentationController,
@@ -1426,7 +1458,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _presentationAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _readonly(
                     'Recibidas',
@@ -1434,7 +1466,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     Icons.check_box_outlined,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _editablePrice(
                     _originalController,
@@ -1445,7 +1477,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _originalAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _numberField(
                     _discountController,
@@ -1455,7 +1487,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     hint: '0',
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _editablePrice(
                     _discountedController,
@@ -1466,7 +1498,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     autoFilled: _discountedAutofilled,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _numberField(
                     _ivaController,
@@ -1476,7 +1508,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     hint: '—',
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _readonly(
                     'Costo unitario',
@@ -1486,7 +1518,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     filled: true,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Expanded(
                   child: _numberField(
                     _saleController,
@@ -1722,35 +1754,36 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     ],
   );
 
-  Widget _image(String data) {
-    final bytes = _decode(data);
-    return Container(
+  Widget _image(String data, {String? productId}) {
+    if (data.trim().isEmpty) {
+      return Container(
+        width: 42,
+        height: 42,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Icon(
+          Icons.image_outlined,
+          size: 18,
+          color: AppColors.textMuted,
+        ),
+      );
+    }
+
+    return ProductImage(
+      productId: productId ?? data.hashCode.toString(),
+      imageData: data,
       width: 42,
       height: 42,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: bytes == null
-          ? const Icon(
-              Icons.image_outlined,
-              size: 18,
-              color: AppColors.textMuted,
-            )
-          : Image.memory(bytes, fit: BoxFit.contain),
+      fit: BoxFit.contain,
+      borderRadius: BorderRadius.circular(7),
+      showBorder: true,
     );
   }
 
-  Uint8List? _decode(String value) {
-    if (value.trim().isEmpty) return null;
-    try {
-      return base64Decode(value.contains(',') ? value.split(',').last : value);
-    } catch (_) {
-      return null;
-    }
-  }
 }
 
 class _CostChange {

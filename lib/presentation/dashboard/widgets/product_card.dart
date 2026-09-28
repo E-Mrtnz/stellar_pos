@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class ProductCard extends StatelessWidget {
@@ -76,39 +75,29 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildProductImage() {
     final imageData = product['imageData']?.toString().trim() ?? '';
-    if (imageData.isNotEmpty) {
-      try {
-        return ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(15),
-            topRight: Radius.circular(15),
-          ),
-          child: Image.memory(
-            base64Decode(imageData),
-            width: double.infinity,
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
-            gaplessPlayback: true,
-          ),
-        );
-      } catch (_) {}
-    }
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(15),
-          topRight: Radius.circular(15),
-        ),
-      ),
-      child: const Center(
-        child: Icon(
+    final productId = product['id']?.toString() ?? '';
+
+    if (imageData.isEmpty) {
+      return Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(color: AppColors.cardBackground),
+        child: const Icon(
           Icons.inventory_2_outlined,
           color: AppColors.textMuted,
-          size: AppDimensions.productImageSize,
         ),
+      );
+    }
+
+    return ProductImage(
+      productId: productId,
+      imageData: imageData,
+      width: double.infinity,
+      fit: BoxFit.contain,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(15),
+        topRight: Radius.circular(15),
       ),
+      placeholderIcon: Icons.inventory_2_outlined,
     );
   }
 

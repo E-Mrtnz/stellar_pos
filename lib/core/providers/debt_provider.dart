@@ -74,9 +74,44 @@ class DebtProvider extends ChangeNotifier {
               reference: sale.ticketNumber,
             ),
           ),
-      ..._payments,
+      ..._groupPaymentMovements(_payments),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return List.unmodifiable(result);
+  }
+
+  List<DebtMovement> _groupPaymentMovements(List<DebtMovement> payments) {
+    final grouped = <String, DebtMovement>{};
+    for (final payment in payments) {
+      if (payment.type != DebtMovementType.payment) {
+        grouped[payment.id] = payment;
+        continue;
+      }
+
+      // Older versions split one received amount across several sales. Those
+      // records share the same client and timestamp; present them as the
+      // single cash movement the customer actually made.
+      final key =
+          '${payment.clientId}|${payment.createdAt.microsecondsSinceEpoch}|'
+          '${payment.isInitialPayment}';
+      final existing = grouped[key];
+      if (existing == null) {
+        grouped[key] = payment;
+        continue;
+      }
+
+      grouped[key] = DebtMovement(
+        id: existing.id,
+        clientId: existing.clientId,
+        clientName: existing.clientName,
+        type: existing.type,
+        amount: existing.amount + payment.amount,
+        createdAt: existing.createdAt,
+        reference: null,
+        isInitialPayment: existing.isInitialPayment,
+        metadata: existing.metadata.touch(),
+      );
+    }
+    return grouped.values.toList(growable: false);
   }
 
   double get totalDebt => _service.totalDebt(_salesProvider.sales);
@@ -100,11 +135,21 @@ class DebtProvider extends ChangeNotifier {
     if (matching.isEmpty) return null;
 
     final paidBySale = _allocatedPaidBySale(matching, clientId);
-    final totalDebt = matching.fold<double>(
+    final openSales = matching
+        .where(
+          (sale) =>
+              (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
+                  .clamp(0, double.infinity)
+                  .toDouble() >
+              0.005,
+        )
+        .toList(growable: false);
+
+    final totalDebt = openSales.fold<double>(
       0,
       (sum, sale) => sum + sale.effectiveTotal,
     );
-    final totalPaid = matching.fold<double>(
+    final totalPaid = openSales.fold<double>(
       0,
       (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
     );
@@ -162,7 +207,7 @@ class DebtProvider extends ChangeNotifier {
     }
 
     final paidBySale = _allocatedPaidBySale(creditSales, clientId);
-    final pendingSales = creditSales
+    final openSales = creditSales
         .where(
           (sale) =>
               (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
@@ -172,24 +217,22 @@ class DebtProvider extends ChangeNotifier {
         )
         .toList(growable: false);
 
-    final totalDebt = pendingSales.fold<double>(
+    final totalDebt = openSales.fold<double>(
       0,
       (sum, sale) => sum + sale.effectiveTotal,
     );
-    final totalPaid = pendingSales.fold<double>(
+    final appliedFromPreviousPayments = openSales.fold<double>(
       0,
       (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
     );
 
     return (
-      sales: pendingSales,
+      sales: openSales,
       account: DebtAccount(
         clientId: clientId,
-        clientName: pendingSales.isEmpty
-            ? creditSales.last.clientName
-            : pendingSales.last.clientName,
+        clientName: creditSales.last.clientName,
         totalDebt: totalDebt,
-        totalPaid: totalPaid,
+        totalPaid: appliedFromPreviousPayments,
       ),
     );
   }
@@ -217,48 +260,27 @@ class DebtProvider extends ChangeNotifier {
     );
     if (clientId.trim().isEmpty || appliedAmount <= 0) return false;
 
-    final creditSales =
-        _service
-            .creditSales(_salesProvider.sales)
-            .where(
-              (sale) =>
-                  sale.clientId == clientId && sale.effectiveTotal > 0.005,
-            )
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final creditSales = _service
+        .creditSales(_salesProvider.sales)
+        .where(
+          (sale) =>
+              sale.clientId == clientId && sale.effectiveTotal > 0.005,
+        )
+        .toList(growable: false);
     if (creditSales.isEmpty) return false;
 
-    final paidBySale = _allocatedPaidBySale(creditSales, clientId);
-    var remaining = appliedAmount;
-    var savedAny = false;
-    final now = DateTime.now();
-
-    for (final sale in creditSales) {
-      if (remaining <= 0.005) break;
-      final outstanding = (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
-          .clamp(0, double.infinity)
-          .toDouble();
-      if (outstanding <= 0.005) continue;
-      final allocation = remaining > outstanding ? outstanding : remaining;
-      if (allocation <= 0.005) continue;
-
-      final payment = DebtMovement(
-        id: IdGenerator.newId(),
-        clientId: clientId,
-        clientName: clientName,
-        type: DebtMovementType.payment,
-        amount: allocation,
-        createdAt: now,
-        reference: sale.id,
-        isInitialPayment: false,
-      );
-      _payments.add(payment);
-      unawaited(_movementRepository?.save(payment));
-      savedAny = true;
-      remaining -= allocation;
-    }
-
-    if (!savedAny) return false;
+    final payment = DebtMovement(
+      id: IdGenerator.newId(),
+      clientId: clientId,
+      clientName: clientName,
+      type: DebtMovementType.payment,
+      amount: appliedAmount,
+      createdAt: DateTime.now(),
+      reference: null,
+      isInitialPayment: false,
+    );
+    _payments.add(payment);
+    unawaited(_movementRepository?.save(payment));
     notifyListeners();
     return true;
   }

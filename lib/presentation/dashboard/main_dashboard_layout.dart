@@ -56,12 +56,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   final TextEditingController _discountPercentController =
       TextEditingController();
   final TextEditingController _cashReceivedController = TextEditingController();
-  List<String> get _tags => context.watch<CatalogProvider>().tags;
-  List<String> get _debtors => context
-      .watch<CatalogProvider>()
-      .clients
-      .map((client) => client.name)
-      .toList();
   @override
   void initState() {
     super.initState();
@@ -265,10 +259,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   List<Map<String, dynamic>> get _salesCatalog {
-    final products = List<Map<String, dynamic>>.from(
-      context.read<ProductProvider>().productMaps,
-    );
-    for (final item in _electronicBalanceSelection)
+    final baseProducts = context.read<ProductProvider>().productMaps;
+    if (_electronicBalanceSelection.isEmpty) return baseProducts;
+
+    final products = List<Map<String, dynamic>>.from(baseProducts);
+    for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
         'name': '${item.companyName} · ${item.category}',
@@ -276,6 +271,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         'price': item.amount,
         'imageData': item.imageData,
       });
+    }
     return products;
   }
 
@@ -995,7 +991,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       setState(() => _selectedFilter = filter);
   @override
   Widget build(BuildContext context) {
-    final products = context.watch<ProductProvider>().productMaps;
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
@@ -1011,7 +1006,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                 onItemSelected: _onNavigationChanged,
               ),
-              Expanded(child: _buildMainContent(products)),
+              Expanded(child: _buildMainContent()),
             ],
           ),
         ),
@@ -1019,7 +1014,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     );
   }
 
-  Widget _buildMainContent(List<Map<String, dynamic>> products) {
+  Widget _buildMainContent() {
     if (_selectedNavIndex == AppNavigation.inventory)
       return const InventoryLayout();
     if (_selectedNavIndex == AppNavigation.electronicBalance)
@@ -1033,9 +1028,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return const PrinterSettingsLayout();
     if (_selectedNavIndex != AppNavigation.home)
       return const _EmptySectionPanel();
-    final salesCatalog = _salesCatalog;
-    final combinedCart = _combinedCartQuantities;
-    return Padding(
+    return Builder(
+      builder: (homeContext) {
+        final productProvider = homeContext.watch<ProductProvider>();
+        final products = productProvider.productMaps;
+        final catalog = homeContext.watch<CatalogProvider>();
+        final tags = catalog.tags;
+        final debtors = catalog.clients.map((client) => client.name).toList();
+        final salesCatalog = _salesCatalog;
+        final combinedCart = _combinedCartQuantities;
+        return Padding(
       padding: const EdgeInsets.all(AppDimensions.pagePadding),
       child: Row(
         children: [
@@ -1043,9 +1045,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             flex: 3,
             child: CentralProductGrid(
               products: products,
+              isLoading: productProvider.isLoading,
               cartQuantities: combinedCart,
               preparedProductIds: _preparedProductIds,
-              tags: _tags,
+              tags: tags,
               selectedTagIndex: _selectedTagIndex,
               onTagSelected: _onTagChanged,
               selectedFilter: _selectedFilter,
@@ -1074,7 +1077,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   onPaymentMethodChanged: (method) =>
                       setState(() => _selectedPaymentMethod = method),
                   selectedDebtor: _selectedDebtor,
-                  debtorsList: _debtors,
+                  debtorsList: debtors,
                   onDebtorChanged: (debtor) =>
                       setState(() => _selectedDebtor = debtor),
                   discountAmountController: _discountAmountController,
@@ -1132,6 +1135,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           ),
         ],
       ),
+        );
+      },
     );
   }
 }

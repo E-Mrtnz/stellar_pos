@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -13,6 +12,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
 import 'package:stellar_pos/core/services/inventory_file_service.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
@@ -37,12 +37,36 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   bool _isExporting = false;
   String _sortColumn = 'product';
   bool _sortAscending = true;
+  List<Map<String, dynamic>>? _filteredProductsCache;
+  int? _productsIdentity;
+  String? _filterCacheKey;
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
 
   List<Map<String, dynamic>> _filterProducts(
     List<Map<String, dynamic>> products,
   ) {
+    final productsIdentity = identityHashCode(products);
+    final selectedTag = _selectedTagIndex >= 0 && _selectedTagIndex < _tags.length
+        ? _tags[_selectedTagIndex]
+        : '';
+    final cacheKey = _searchQuery +
+        '|' +
+        (_selectedFilter ?? '') +
+        '|' +
+        _selectedTagIndex.toString() +
+        '|' +
+        _sortColumn +
+        '|' +
+        _sortAscending.toString() +
+        '|' +
+        selectedTag;
+    if (_filteredProductsCache != null &&
+        _productsIdentity == productsIdentity &&
+        _filterCacheKey == cacheKey) {
+      return _filteredProductsCache!;
+    }
+
     final filtered = ProductFilterUtils.apply(
       products: products,
       searchQuery: _searchQuery,
@@ -50,8 +74,11 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       tags: _tags,
       selectedTagIndex: _selectedTagIndex,
     );
-    final sorted = List<Map<String, dynamic>>.from(filtered);
-    sorted.sort(_compareProducts);
+    final sorted = List<Map<String, dynamic>>.from(filtered)
+      ..sort(_compareProducts);
+    _productsIdentity = productsIdentity;
+    _filterCacheKey = cacheKey;
+    _filteredProductsCache = sorted;
     return sorted;
   }
 
@@ -414,7 +441,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final products = context.watch<ProductProvider>().productMaps;
+    final productProvider = context.watch<ProductProvider>();
+    final products = productProvider.productMaps;
     final filteredProducts = _filterProducts(products);
     final totalInvestment = products.fold<double>(
       0,
@@ -450,6 +478,31 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               ],
             ),
           ),
+          if (productProvider.isLoading && products.isEmpty)
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x66000000),
+                child: Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Cargando inventario...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           _buildFloatingActions(),
         ],
       ),
@@ -552,23 +605,27 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         scrollDirection: Axis.horizontal,
         child: SizedBox(
           width: _tableWidth,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTableHeader(),
-                const Divider(height: 1, color: AppColors.border),
-                if (products.isEmpty)
-                  const SizedBox(
-                    height: 180,
-                    child: Center(child: Text(AppStrings.inventoryEmptyMessage, style: TextStyle(color: AppColors.textSecondary))),
-                  )
-                else
-                  ...products.map(_buildInventoryRow),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTableHeader(),
+              const Divider(height: 1, color: AppColors.border),
+              Expanded(
+                child: products.isEmpty
+                    ? const Center(
+                        child: Text(
+                          AppStrings.inventoryEmptyMessage,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: products.length,
+                        itemBuilder: (context, index) =>
+                            _buildInventoryRow(products[index]),
+                      ),
+              ),
+            ],
           ),
         ),
       ),
@@ -647,7 +704,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  _buildInventoryImage(imageData),
+                  _buildInventoryImage(
+                    imageData,
+                    productId: ProductUtils.asString(product['id']),
+                  ),
                   const SizedBox(width: 12),
                   _buildProductNameCell(name, product, 245),
                   _textCell(unit, 125),
@@ -741,25 +801,32 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     return AppColors.successGreen;
   }
 
-  Widget _buildInventoryImage(String imageData) {
-    if (imageData.isNotEmpty) {
-      try {
-        return ClipRRect(
+  Widget _buildInventoryImage(
+    String imageData, {
+    required String productId,
+  }) {
+    if (imageData.trim().isEmpty) {
+      return Container(
+        width: AppDimensions.inventoryImageSize,
+        height: AppDimensions.inventoryImageSize,
+        decoration: BoxDecoration(
+          color: AppColors.chipBackground,
           borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            base64Decode(imageData),
-            width: AppDimensions.inventoryImageSize,
-            height: AppDimensions.inventoryImageSize,
-            fit: BoxFit.cover,
-          ),
-        );
-      } catch (_) {}
+        ),
+        child: const Icon(
+          Icons.image_outlined,
+          color: AppColors.textMuted,
+        ),
+      );
     }
-    return Container(
+
+    return ProductImage(
+      productId: productId,
+      imageData: imageData,
       width: AppDimensions.inventoryImageSize,
       height: AppDimensions.inventoryImageSize,
-      decoration: BoxDecoration(color: AppColors.chipBackground, borderRadius: BorderRadius.circular(8)),
-      child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+      fit: BoxFit.cover,
+      borderRadius: BorderRadius.circular(8),
     );
   }
 

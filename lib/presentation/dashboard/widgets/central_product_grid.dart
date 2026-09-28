@@ -26,6 +26,7 @@ class CentralProductGrid extends StatefulWidget {
   final VoidCallback? onElectronicBalanceManage;
   final ValueChanged<String>? onSearchChanged;
   final String searchQuery;
+  final bool isLoading;
 
   const CentralProductGrid({
     super.key,
@@ -45,6 +46,7 @@ class CentralProductGrid extends StatefulWidget {
     this.onElectronicBalanceManage,
     this.onSearchChanged,
     this.searchQuery = '',
+    this.isLoading = false,
   });
 
   @override
@@ -58,6 +60,9 @@ class _CentralProductGridState extends State<CentralProductGrid> {
   final TextEditingController _searchController = TextEditingController();
   String _barcodeBuffer = '';
   DateTime? _lastBarcodeInputAt;
+  List<Map<String, dynamic>>? _sortedProductsCache;
+  int? _productsIdentity;
+  String? _filterCacheKey;
 
   @override
   void initState() {
@@ -153,19 +158,31 @@ class _CentralProductGridState extends State<CentralProductGrid> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredProducts = ProductFilterUtils.apply(
-      products: widget.products,
-      searchQuery: widget.searchQuery,
-      selectedFilter: widget.selectedFilter,
-      tags: widget.tags,
-      selectedTagIndex: widget.selectedTagIndex,
-    );
+    final selectedTag = widget.selectedTagIndex >= 0 &&
+            widget.selectedTagIndex < widget.tags.length
+        ? widget.tags[widget.selectedTagIndex]
+        : '';
+    final cacheKey = widget.searchQuery + '|' +
+        (widget.selectedFilter ?? '') + '|' +
+        widget.selectedTagIndex.toString() + '|' +
+        selectedTag;
+    final productsIdentity = identityHashCode(widget.products);
+    final cacheValid = _sortedProductsCache != null &&
+        _productsIdentity == productsIdentity &&
+        _filterCacheKey == cacheKey;
 
-    final sortedProducts = List<Map<String, dynamic>>.from(filteredProducts)
-      ..sort((a, b) => ProductUtils.asString(a['name'])
-          .trim()
-          .toLowerCase()
-          .compareTo(ProductUtils.asString(b['name']).trim().toLowerCase()));
+    final sortedProducts = cacheValid
+        ? _sortedProductsCache!
+        : _buildSortedProducts(cacheKey, productsIdentity);
+
+    if (widget.isLoading && widget.products.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -200,6 +217,34 @@ class _CentralProductGridState extends State<CentralProductGrid> {
         ],
       ),
     );
+  }
+
+  List<Map<String, dynamic>> _buildSortedProducts(
+    String cacheKey,
+    int productsIdentity,
+  ) {
+    final filteredProducts = ProductFilterUtils.apply(
+      products: widget.products,
+      searchQuery: widget.searchQuery,
+      selectedFilter: widget.selectedFilter,
+      tags: widget.tags,
+      selectedTagIndex: widget.selectedTagIndex,
+    );
+
+    final sortedProducts = List<Map<String, dynamic>>.from(filteredProducts)
+      ..sort(
+        (a, b) => ProductUtils.asString(a['name'])
+            .trim()
+            .toLowerCase()
+            .compareTo(
+              ProductUtils.asString(b['name']).trim().toLowerCase(),
+            ),
+      );
+
+    _productsIdentity = productsIdentity;
+    _filterCacheKey = cacheKey;
+    _sortedProductsCache = sortedProducts;
+    return sortedProducts;
   }
 
   Widget _buildEmptyState() {
