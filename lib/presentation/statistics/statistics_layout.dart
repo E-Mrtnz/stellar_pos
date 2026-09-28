@@ -300,7 +300,7 @@ class _KpiCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 21, height: 1.1,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: k.color,
                     )),
                   const SizedBox(height: 3),
                   Text(k.caption, maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -418,7 +418,7 @@ class _BarTrendPainter extends CustomPainter {
 
 class _Products extends StatelessWidget {
   final List<_ProductStat> data; const _Products(this.data);
-  @override Widget build(BuildContext c)=>_Panel(title:'Productos destacados',trailing:const Icon(Icons.chevron_right_rounded,color:AppColors.textMuted),child:data.isEmpty?const _Empty('No hay ventas de productos en este período.'):Column(children:[for(var i=0;i<data.length;i++)...[if(i>0)const Divider(height:14),Row(children:[Container(width:28,height:28,decoration:BoxDecoration(color:AppColors.primaryLight,borderRadius:BorderRadius.circular(8)),child:Center(child:Text((i+1).toString(),style:const TextStyle(color:AppColors.primary,fontSize:10,fontWeight:FontWeight.w800)))),const SizedBox(width:8),Expanded(child:Text(data[i].name,overflow:TextOverflow.ellipsis,style:AppTextStyles.productName)),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(data[i].quantity.toString()+' und.',style:const TextStyle(fontSize:9,color:AppColors.textSecondary)),Text(_money(data[i].sales),style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))])])]]));
+  @override Widget build(BuildContext c)=>_Panel(title:'Productos destacados',child:data.isEmpty?const _Empty('No hay ventas de productos en este período.'):Column(children:[for(var i=0;i<data.length;i++)...[if(i>0)const Divider(height:14),Row(children:[Container(width:28,height:28,decoration:BoxDecoration(color:AppColors.primaryLight,borderRadius:BorderRadius.circular(8)),child:Center(child:Text((i+1).toString(),style:const TextStyle(color:AppColors.primary,fontSize:10,fontWeight:FontWeight.w800)))),const SizedBox(width:8),Expanded(child:Text(data[i].name,overflow:TextOverflow.ellipsis,style:AppTextStyles.productName)),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(data[i].quantity.toString()+' und.',style:const TextStyle(fontSize:9,color:AppColors.textSecondary)),Text(_money(data[i].sales),style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))])])]]));
 }
 class _Clients extends StatelessWidget {
   final List<_ClientStat> data; const _Clients(this.data);
