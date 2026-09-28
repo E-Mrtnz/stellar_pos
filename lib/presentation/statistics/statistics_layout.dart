@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
-import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
