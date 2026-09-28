@@ -190,7 +190,7 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
     );
     return compact
         ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [title, const SizedBox(height: 8), Wrap(alignment: WrapAlignment.end, spacing: 8, children: [selector, dateButton])])
-        : Row(children: [const Expanded(child: title), selector, SizedBox(width: 8), dateButton]);
+        : Row(children: [Expanded(child: title), selector, const SizedBox(width: 8), dateButton]);
   });
   String _anchorLabel() {
     switch (_period) {
