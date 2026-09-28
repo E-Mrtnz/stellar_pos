@@ -76,8 +76,8 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
     final purchases = context.watch<PurchasesProvider>().purchases;
     final debts = context.watch<DebtProvider>();
     final r = _range, p = _previous;
-    final cs = sales.where(r.contains).toList(growable: false);
-    final ps = sales.where(p.contains).toList(growable: false);
+    final cs = sales.where((x) => r.contains(x.createdAt)).toList(growable: false);
+    final ps = sales.where((x) => p.contains(x.createdAt)).toList(growable: false);
     final cp = purchases.where((x) => r.contains(x.arrivalAt)).toList(growable: false);
     final pp = purchases.where((x) => p.contains(x.arrivalAt)).toList(growable: false);
     final a = _Snapshot.from(cs, cp), b = _Snapshot.from(ps, pp);
@@ -102,7 +102,7 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
         _Products(_topProducts(cs)), const SizedBox(height: 12),
         _Clients(_topClients(cs)), const SizedBox(height: 12),
         _Distribution('Métodos de pago', _paymentMix(cs)), const SizedBox(height: 12),
-        _Distribution('Ventas por categoría', _categoryMix(cs, categoryByProductId)),
+        _Distribution('Horario de ventas', _hourMix(cs)),
       ]);
     } else {
       content.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
