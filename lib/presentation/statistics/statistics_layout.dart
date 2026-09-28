@@ -328,17 +328,47 @@ class _Trend extends StatelessWidget {
   Widget build(BuildContext context) {
     if (points.isEmpty) {
       return const Center(
-        child: Text('No hay datos en este período.',
-          style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        child: Text(
+          'No hay datos en este período.',
+          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
       );
     }
-    return CustomPaint(
-      painter: _BarTrendPainter(points),
-      child: const SizedBox.expand(),
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const left = 10.0;
+        const right = 10.0;
+        const bottom = 30.0;
+        final chartWidth = constraints.maxWidth - left - right;
+        final slotWidth = chartWidth / points.length;
+
+        return Stack(
+          children: [
+            CustomPaint(
+              painter: _BarTrendPainter(points),
+              size: Size.infinite,
+            ),
+            for (var i = 0; i < points.length; i++)
+              Positioned(
+                left: left + i * slotWidth,
+                top: 0,
+                width: slotWidth,
+                bottom: bottom,
+                child: Tooltip(
+                  preferBelow: false,
+                  waitDuration: const Duration(milliseconds: 150),
+                  showDuration: const Duration(seconds: 3),
+                  message: '${points[i].label} - Ventas: ${_money(points[i].value)}',
+                  child: const SizedBox.expand(),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
-
 class _Point {
   final String label;
   final double value;
