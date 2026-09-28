@@ -150,45 +150,48 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
     );
   }
 
-  Widget _header() => LayoutBuilder(builder: (context, constraints) {\n    final compact = constraints.maxWidth < 650;\n    final controls = [\n      DropdownButtonHideUnderline(child: DropdownButton<_StatsPeriod>(
-    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Estadísticas', style: AppTextStyles.brandTitle),
-      SizedBox(height: 3),
-      Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-    ])),
-      value: _period,
-      items: const [
-        DropdownMenuItem(value: _StatsPeriod.day, child: Text('Diario')),
-        DropdownMenuItem(value: _StatsPeriod.week, child: Text('Semanal')),
-        DropdownMenuItem(value: _StatsPeriod.month, child: Text('Mensual')),
-        DropdownMenuItem(value: _StatsPeriod.year, child: Text('Anual')),
-        DropdownMenuItem(value: _StatsPeriod.custom, child: Text('Personalizado')),
+  Widget _header() => LayoutBuilder(builder: (context, constraints) {
+    final compact = constraints.maxWidth < 650;
+    final selector = DropdownButtonHideUnderline(
+      child: DropdownButton<_StatsPeriod>(
+        value: _period,
+        items: const [
+          DropdownMenuItem(value: _StatsPeriod.day, child: Text('Diario')),
+          DropdownMenuItem(value: _StatsPeriod.week, child: Text('Semanal')),
+          DropdownMenuItem(value: _StatsPeriod.month, child: Text('Mensual')),
+          DropdownMenuItem(value: _StatsPeriod.year, child: Text('Anual')),
+          DropdownMenuItem(value: _StatsPeriod.custom, child: Text('Personalizado')),
+        ],
+        onChanged: (v) {
+          if (v != null) {
+            setState(() {
+              _period = v;
+              if (v == _StatsPeriod.custom) {
+                _customStart = _anchor;
+                _customEnd = _anchor;
+              }
+            });
+          }
+        },
+      ),
+    );
+    final dateButton = OutlinedButton.icon(
+      onPressed: _pickDate,
+      icon: const Icon(Icons.calendar_month_outlined, size: 16),
+      label: Text(_period == _StatsPeriod.custom ? _rangeLabel(_range) : _anchorLabel()),
+    );
+    const title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Estadísticas', style: AppTextStyles.brandTitle),
+        SizedBox(height: 3),
+        Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],
-      onChanged: (v) { if (v != null) setState(() { _period = v; if (v == _StatsPeriod.custom) { _customStart = _anchor; _customEnd = _anchor; } }); },
-    )),
-    const SizedBox(width: 8),
-    OutlinedButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_month_outlined, size: 16), label: Text(_period == _StatsPeriod.custom ? _rangeLabel(_range) : _anchorLabel())),
-    ];
+    );
     return compact
-        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Estadísticas', style: AppTextStyles.brandTitle),
-              SizedBox(height: 3),
-              Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            ]),
-            const SizedBox(height: 8),
-            Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 4, children: controls),
-          ])
-        : Row(children: [
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Estadísticas', style: AppTextStyles.brandTitle),
-              SizedBox(height: 3),
-              Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            ])),
-            ...controls,
-          ]);
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [title, const SizedBox(height: 8), Wrap(alignment: WrapAlignment.end, spacing: 8, children: [selector, dateButton])])
+        : Row(children: [const Expanded(child: title), selector, SizedBox(width: 8), dateButton]);
   });
-
   String _anchorLabel() {
     switch (_period) {
       case _StatsPeriod.day: return _date(_anchor);
