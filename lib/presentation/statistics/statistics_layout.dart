@@ -297,7 +297,7 @@ class _KpiCard extends StatelessWidget {
                   )),
                   const SizedBox(height: 2),
                   Text(k.value, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 21, height: 1.1,
                       fontWeight: FontWeight.w800,
                       color: k.color,
@@ -452,7 +452,7 @@ class _Products extends StatelessWidget {
 }
 class _Clients extends StatelessWidget {
   final List<_ClientStat> data; const _Clients(this.data);
-  @override Widget build(BuildContext c)=>_Panel(title:'Clientes con mayor volumen',trailing:const Icon(Icons.chevron_right_rounded,color:AppColors.textMuted),child:data.isEmpty?const _Empty('No hay ventas con clientes registrados.'):Column(children:[for(var i=0;i<data.length;i++)...[if(i>0)const Divider(height:14),Row(children:[Expanded(child:Text(data[i].name,overflow:TextOverflow.ellipsis,style:AppTextStyles.productName)),Text(data[i].count.toString()+' ventas',style:const TextStyle(fontSize:9,color:AppColors.textSecondary)),const SizedBox(width:10),Text(_money(data[i].amount),style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))])]]));
+  @override Widget build(BuildContext c)=>_Panel(title:'Clientes con mayor volumen',child:data.isEmpty?const _Empty('No hay ventas con clientes registrados.'):Column(children:[for(var i=0;i<data.length;i++)...[if(i>0)const Divider(height:14),Row(children:[Expanded(child:Text(data[i].name,overflow:TextOverflow.ellipsis,style:AppTextStyles.productName)),Text(data[i].count.toString()+' ventas',style:const TextStyle(fontSize:9,color:AppColors.textSecondary)),const SizedBox(width:10),Text(_money(data[i].amount),style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))])]]));
 }
 class _Distribution extends StatelessWidget {
   final String title; final List<_Dist> data; const _Distribution(this.title,this.data);
