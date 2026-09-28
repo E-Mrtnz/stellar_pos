@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
@@ -82,6 +83,7 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
     final pp = purchases.where((x) => p.contains(x.arrivalAt)).toList(growable: false);
     final a = _Snapshot.from(cs, cp), b = _Snapshot.from(ps, pp);
     final compact = MediaQuery.sizeOf(context).width < 900;
+    final categoryByProductId = <String, String>{for (final product in products) product.id: product.category};
 
     final content = <Widget>[
       _header(),
@@ -90,7 +92,7 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
         _Kpi('Ventas', _money(a.sales), Icons.point_of_sale_outlined, AppColors.primary, _change(a.sales, b.sales), a.count.toString() + ' ventas'),
         _Kpi('Ganancia', _money(a.profit), Icons.trending_up_rounded, AppColors.successGreen, _change(a.profit, b.profit), 'Margen ' + _pct(a.margin)),
         _Kpi('Costo de ventas', _money(a.cost), Icons.inventory_2_outlined, AppColors.warningOrange, _change(a.cost, b.cost), a.sales == 0 ? 'Sin ventas' : _pct(a.costRatio) + ' de ventas'),
-        _Kpi('Por cobrar', _money(debts.totalRemaining), Icons.account_balance_wallet_outlined, AppColors.dangerRed, null, debts.clientsWithDebt.toString() + ' clientes'),
+        _Kpi('Por cobrar', _money(debts.totalRemaining), Icons.account_balance_wallet_outlined, AppColors.dangerRed, null, 'Saldo actual · ' + debts.clientsWithDebt.toString() + ' clientes'),
       ], compact),
       const SizedBox(height: 12),
       _Panel(title: 'Evolución de ventas', trailing: Text(_rangeLabel(r), style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)), child: SizedBox(height: 235, child: _Trend(_trend(sales, r)))),
@@ -102,7 +104,7 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
         _Products(_topProducts(cs)), const SizedBox(height: 12),
         _Clients(_topClients(cs)), const SizedBox(height: 12),
         _Distribution('Métodos de pago', _paymentMix(cs)), const SizedBox(height: 12),
-        _Distribution('Ventas por categoría', _categoryMix(cs)),
+        _Distribution('Ventas por categoría', _categoryMix(cs, categoryByProductId)),
       ]);
     } else {
       content.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -148,13 +150,12 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
     );
   }
 
-  Widget _header() => Row(children: [
+  Widget _header() => LayoutBuilder(builder: (context, constraints) {\n    final compact = constraints.maxWidth < 650;\n    final controls = [\n      DropdownButtonHideUnderline(child: DropdownButton<_StatsPeriod>(
     const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Estadísticas', style: AppTextStyles.brandTitle),
       SizedBox(height: 3),
       Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
     ])),
-    DropdownButtonHideUnderline(child: DropdownButton<_StatsPeriod>(
       value: _period,
       items: const [
         DropdownMenuItem(value: _StatsPeriod.day, child: Text('Diario')),
@@ -167,7 +168,26 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
     )),
     const SizedBox(width: 8),
     OutlinedButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_month_outlined, size: 16), label: Text(_period == _StatsPeriod.custom ? _rangeLabel(_range) : _anchorLabel())),
-  ]);
+    ];
+    return compact
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Estadísticas', style: AppTextStyles.brandTitle),
+              SizedBox(height: 3),
+              Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            ]),
+            const SizedBox(height: 8),
+            Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 4, children: controls),
+          ])
+        : Row(children: [
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Estadísticas', style: AppTextStyles.brandTitle),
+              SizedBox(height: 3),
+              Text('Resumen general del rendimiento de tu negocio', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            ])),
+            ...controls,
+          ]);
+  });
 
   String _anchorLabel() {
     switch (_period) {
@@ -267,7 +287,7 @@ class _Dist { final String label; final double value; const _Dist(this.label,thi
 List<_ProductStat> _topProducts(List<SaleRecord> sales){final m=<String,List<dynamic>>{};for(final s in sales){if(s.isAnnulled)continue;for(final i in s.items){if(i.isElectronicBalance)continue;final k=i.productId.isEmpty?i.productName:i.productId;final v=m.putIfAbsent(k,()=>[i.productName,0,0.0]);v[1]+=i.quantity;v[2]+=i.lineTotal;}}final o=m.values.map((v)=>_ProductStat(v[0] as String,v[1] as int,v[2] as double)).toList()..sort((a,b)=>b.quantity.compareTo(a.quantity));return o.take(4).toList(growable:false);}
 List<_ClientStat> _topClients(List<SaleRecord> sales){final m=<String,List<dynamic>>{};for(final s in sales){if(s.isAnnulled||s.clientId==null)continue;final k=s.clientId!;final v=m.putIfAbsent(k,()=>[s.clientName.trim().isEmpty?'Cliente':s.clientName.trim(),0,0.0]);v[1]++;v[2]+=s.effectiveTotal;}final o=m.values.map((v)=>_ClientStat(v[0] as String,v[1] as int,v[2] as double)).toList()..sort((a,b)=>b.amount.compareTo(a.amount));return o.take(4).toList(growable:false);}
 List<_Dist> _paymentMix(List<SaleRecord> sales){final m=<String,double>{};for(final s in sales)if(!s.isAnnulled)m[s.paymentMethod]=(m[s.paymentMethod]??0)+s.effectiveTotal;final o=m.entries.map((e)=>_Dist(e.key,e.value)).toList()..sort((a,b)=>b.value.compareTo(a.value));return o.take(4).toList(growable:false);}
-List<_Dist> _categoryMix(List<SaleRecord> sales){final m=<String,double>{};for(final s in sales){if(s.isAnnulled)continue;for(final i in s.items){if(i.isElectronicBalance)continue;final k=i.unit.trim().isEmpty?'Sin categoría':i.unit;m[k]=(m[k]??0)+i.lineTotal;}}final o=m.entries.map((e)=>_Dist(e.key,e.value)).toList()..sort((a,b)=>b.value.compareTo(a.value));return o.take(4).toList(growable:false);}
+List<_Dist> _categoryMix(List<SaleRecord> sales, Map<String, String> categoryByProductId){final m=<String,double>{};for(final s in sales){if(s.isAnnulled)continue;for(final i in s.items){if(i.isElectronicBalance)continue;final category = categoryByProductId[i.productId]?.trim() ?? ''; final k=category.isEmpty?'Sin categoría':category;m[k]=(m[k]??0)+i.lineTotal;}}final o=m.entries.map((e)=>_Dist(e.key,e.value)).toList()..sort((a,b)=>b.value.compareTo(a.value));return o.take(4).toList(growable:false);}
 List<_Point> _trend(List<SaleRecord> sales,_StatsRange r){final m=<DateTime,double>{},labels=<DateTime,String>{};if(r.duration.inDays<=1){for(var d=r.start;d.isBefore(r.end);d=d.add(const Duration(hours:1))){final k=DateTime(d.year,d.month,d.day,d.hour);m[k]=0;labels[k]=d.hour.toString().padLeft(2,'0')+':00';}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month,s.createdAt.day,s.createdAt.hour);m[k]=(m[k]??0)+s.effectiveTotal;}}else if(r.duration.inDays<=31){for(var d=r.start;d.isBefore(r.end);d=d.add(const Duration(days:1))){final k=DateTime(d.year,d.month,d.day);m[k]=0;labels[k]=d.day.toString()+'/'+d.month.toString();}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month,s.createdAt.day);m[k]=(m[k]??0)+s.effectiveTotal;}}else if(r.duration.inDays<=370){for(var d=r.start;d.isBefore(r.end);d=DateTime(d.year,d.month+1)){final k=DateTime(d.year,d.month);m[k]=0;labels[k]=_month(d.month).substring(0,3);}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month);m[k]=(m[k]??0)+s.effectiveTotal;}}else{for(var d=r.start;d.isBefore(r.end);d=DateTime(d.year+1)){final k=DateTime(d.year);m[k]=0;labels[k]=d.year.toString();}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year);m[k]=(m[k]??0)+s.effectiveTotal;}}final e=m.entries.toList()..sort((a,b)=>a.key.compareTo(b.key));return e.map((x)=>_Point(labels[x.key]??'',x.value)).toList(growable:false);}
 double _saleCost(SaleRecord s){if(s.isAnnulled)return 0;var c=s.items.fold<double>(0,(v,i)=>v+i.cost*i.quantity);for(final o in s.operations){c-=o.itemsOut.fold<double>(0,(v,i)=>v+i.cost*i.quantity);c+=o.itemsIn.fold<double>(0,(v,i)=>v+i.cost*i.quantity);}return math.max(0,c);}
 double? _change(double a,double b)=>b.abs()<.005?null:(a-b)/b;
