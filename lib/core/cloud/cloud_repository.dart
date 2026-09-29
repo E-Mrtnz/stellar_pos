@@ -50,10 +50,12 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
 
   @override
   Future<void> delete(String id) async {
+    final existing = await local.getById(id);
     await local.delete(id);
     await queue.enqueueDelete(
       collection: collection,
       entityId: id,
+      payload: existing?.metadata.toMap(),
     );
   }
 
