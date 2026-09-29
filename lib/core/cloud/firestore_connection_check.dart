@@ -40,7 +40,14 @@ class FirestoreConnectionCheck {
     final projectId = Firebase.app().options.projectId;
 
     try {
-      final user = auth.currentUser ?? (await auth.signInAnonymously()).user;
+      // STELLAR POS does not share Firebase Auth state with another app.
+      // On macOS, explicitly keep Auth on its own keychain access group so a
+      // stale/mismatched shared-keychain configuration cannot block the
+      // initial anonymous session.
+      await auth.setSettings(userAccessGroup: null);
+
+      final existingUser = auth.currentUser;
+      final user = existingUser ?? (await auth.signInAnonymously()).user;
 
       if (user == null) {
         return FirestoreConnectionResult(
@@ -76,7 +83,10 @@ class FirestoreConnectionCheck {
         status: FirestoreConnectionStatus.authRequired,
         message:
             'Firebase Authentication no pudo autenticar el diagnóstico. '
-            'Proyecto: $projectId. $details',
+            'Proyecto: $projectId. '
+            'App ID: ${Firebase.app().options.appId}. '
+            'Usuario previo: ${auth.currentUser?.uid ?? 'ninguno'}. '
+            '$details',
       );
     } on FirebaseException catch (error, stackTrace) {
       if (error.code == 'permission-denied') {
