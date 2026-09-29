@@ -67,7 +67,7 @@ class FirestoreDataSource<T extends SyncableEntity>
   }
 
   @override
-  Future<void> delete(String id) async {
+  Future<void> delete(String id, {SyncMetadata? metadata}) async {
     // Physical deletion is deliberately kept out of the synchronization
     // protocol. A tombstone remains long enough for other devices to observe
     // the deletion during incremental synchronization.
@@ -77,25 +77,38 @@ class FirestoreDataSource<T extends SyncableEntity>
     final existingMetadata = existingData?['metadata'] is Map
         ? Map<String, dynamic>.from(existingData!['metadata'] as Map)
         : <String, dynamic>{};
-    final version = existingMetadata['version'] is num
-        ? (existingMetadata['version'] as num).toInt() + 1
-        : 1;
+
+    final baseMetadata = metadata ??
+        SyncMetadata(
+          createdAt: DateTime.tryParse(
+                existingMetadata['createdAt']?.toString() ?? '',
+              )?.toUtc() ??
+              now,
+          updatedAt: now,
+          version: existingMetadata['version'] is num
+              ? (existingMetadata['version'] as num).toInt()
+              : 0,
+          schemaVersion: existingMetadata['schemaVersion'] is num
+              ? (existingMetadata['schemaVersion'] as num).toInt()
+              : 1,
+          syncState: SyncState.pending,
+          lastSyncedAt: DateTime.tryParse(
+            existingMetadata['lastSyncedAt']?.toString() ?? '',
+          )?.toUtc(),
+          deviceId: existingMetadata['deviceId']?.toString(),
+          storeId: existingMetadata['storeId']?.toString() ?? storeId,
+        );
+
+    final tombstone = baseMetadata.touch(
+      syncState: SyncState.deleted,
+      now: now,
+      deleted: true,
+    );
 
     await _collection.doc(id).set(
       {
         'id': id,
-        'metadata': {
-          'createdAt': existingMetadata['createdAt']?.toString() ??
-              now.toIso8601String(),
-          'updatedAt': now.toIso8601String(),
-          'version': version,
-          'schemaVersion': existingMetadata['schemaVersion'] ?? 1,
-          'syncState': SyncState.deleted.name,
-          'deletedAt': now.toIso8601String(),
-          'lastSyncedAt': existingMetadata['lastSyncedAt'],
-          'deviceId': existingMetadata['deviceId'],
-          'storeId': existingMetadata['storeId'] ?? storeId,
-        },
+        'metadata': tombstone.toMap(),
       },
       SetOptions(merge: true),
     );
