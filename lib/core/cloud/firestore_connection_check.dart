@@ -63,7 +63,7 @@ class FirestoreConnectionCheck {
       return FirestoreConnectionResult(
         status: FirestoreConnectionStatus.failed,
         message:
-            'Firestore devolvió un error (${error.code}): ${error.message ?? 'sin detalle'}.',
+            "Firestore devolvió un error (\${error.code}): \${error.message ?? 'sin detalle'}.",
       );
     } catch (error) {
       return FirestoreConnectionResult(
