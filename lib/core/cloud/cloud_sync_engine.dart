@@ -217,9 +217,26 @@ class CloudSyncEngine {
       final localEntity = await local.getById(remoteEntity.id);
 
       if (remoteEntity.metadata.syncState == SyncState.deleted) {
-        if (localEntity != null) {
+        if (localEntity == null) {
+          // There is nothing to remove locally. The checkpoint still advances
+          // so the tombstone is not reprocessed forever.
+          continue;
+        }
+
+        final localState = localEntity.metadata.syncState;
+        if (localState == SyncState.pending ||
+            localState == SyncState.updated) {
+          // Never let an older remote tombstone erase a local mutation that
+          // has not been acknowledged by the cloud yet.
+          result = result + const CloudSyncResult(skippedConflicts: 1);
+          continue;
+        }
+
+        if (_remoteIsNewer(remoteEntity, localEntity)) {
           await local.delete(remoteEntity.id);
           result = result + const CloudSyncResult(deleted: 1);
+        } else {
+          result = result + const CloudSyncResult(skippedConflicts: 1);
         }
         continue;
       }
