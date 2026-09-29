@@ -172,8 +172,7 @@ class SyncQueue {
       if (value is! Map) continue;
       final item = SyncQueueItem.fromMap(Map<String, dynamic>.from(value));
       if (item.collection == collection &&
-          item.entityId == entityId &&
-          item.operation == operation) {
+          item.entityId == entityId) {
         keys.add(key);
       }
     }
