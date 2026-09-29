@@ -12,6 +12,7 @@ abstract final class CloudCollection {
   static const debtMovements = 'debt_movements';
   static const inventoryMovements = 'inventory_movements';
   static const settings = 'settings';
+  static const clientGroups = 'client_groups';
   static const electronicBalanceAccounts = 'electronic_balance_accounts';
   static const electronicBalanceTransactions = 'electronic_balance_transactions';
 
