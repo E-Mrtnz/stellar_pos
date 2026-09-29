@@ -27,7 +27,7 @@ dependencies:
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
   firebase_core: ^2.31.1
-  firebase_auth: ^4.16.0
+  firebase_auth: ^4.17.7
   cloud_firestore: ^4.17.4
   path_provider: ^2.1.5
 
