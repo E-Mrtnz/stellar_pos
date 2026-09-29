@@ -1,6 +1,7 @@
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
 import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
 import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
 import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
