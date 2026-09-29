@@ -62,7 +62,7 @@ class FirestoreConnectionCheck {
         status: FirestoreConnectionStatus.connected,
         message:
             'Firestore respondió correctamente desde el servidor. '
-            'Proyecto: $projectId. Usuario autenticado: ${{user.uid}.',
+            'Proyecto: $projectId. Usuario autenticado: ${user.uid}.',
       );
     } on FirebaseAuthException catch (error) {
       return FirestoreConnectionResult(
@@ -70,8 +70,8 @@ class FirestoreConnectionCheck {
         message:
             'Firebase Authentication no pudo autenticar el diagnóstico. '
             'Proyecto: $projectId. '
-            'Código: ${{error.code}. '
-            'Detalle: ${{error.message ?? 'sin detalle'}.',
+            'Código: ${error.code}. '
+            'Detalle: ${error.message ?? 'sin detalle'}.',
       );
     } on FirebaseException catch (error) {
       if (error.code == 'permission-denied') {
@@ -81,9 +81,9 @@ class FirestoreConnectionCheck {
               'Firestore respondió desde el servidor, pero las reglas de '
               'seguridad denegaron la lectura. '
               'Proyecto: $projectId. '
-              'Usuario autenticado: ${{auth.currentUser?.uid ?? 'ninguno'}. '
-              'Código: ${{error.code}. '
-              'Detalle: ${{error.message ?? 'sin detalle'}.',
+              'Usuario autenticado: ${auth.currentUser?.uid ?? 'ninguno'}. '
+              'Código: ${error.code}. '
+              'Detalle: ${error.message ?? 'sin detalle'}.',
         );
       }
 
@@ -94,8 +94,8 @@ class FirestoreConnectionCheck {
           message:
               'No se pudo obtener respuesta de Firestore. '
               'Proyecto: $projectId. '
-              'Código: ${{error.code}. '
-              'Detalle: ${{error.message ?? 'sin detalle'}.',
+              'Código: ${error.code}. '
+              'Detalle: ${error.message ?? 'sin detalle'}.',
         );
       }
 
@@ -104,8 +104,8 @@ class FirestoreConnectionCheck {
         message:
             'Firestore devolvió un error. '
             'Proyecto: $projectId. '
-            'Código: ${{error.code}. '
-            'Detalle: ${{error.message ?? 'sin detalle'}.',
+            'Código: ${error.code}. '
+            'Detalle: ${error.message ?? 'sin detalle'}.',
       );
     } catch (error) {
       return FirestoreConnectionResult(
@@ -113,7 +113,7 @@ class FirestoreConnectionCheck {
         message:
             'No se pudo comprobar Firestore. '
             'Proyecto: $projectId. '
-            'Detalle: ${$error',
+            'Detalle: $error.',
       );
     }
   }
