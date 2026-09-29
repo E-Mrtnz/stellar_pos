@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -40,12 +42,6 @@ class FirestoreConnectionCheck {
     final projectId = Firebase.app().options.projectId;
 
     try {
-      // STELLAR POS does not share Firebase Auth state with another app.
-      // On macOS, explicitly keep Auth on its own keychain access group so a
-      // stale/mismatched shared-keychain configuration cannot block the
-      // initial anonymous session.
-      await auth.setSettings(userAccessGroup: null);
-
       final existingUser = auth.currentUser;
       final user = existingUser ?? (await auth.signInAnonymously()).user;
 
@@ -78,6 +74,40 @@ class FirestoreConnectionCheck {
         'Plugin: ${error.plugin ?? 'sin plugin'}',
         'Stack: $stackTrace',
       ].join(' | ');
+
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        try {
+          final native = await const MethodChannel(
+            'stellar_pos/firebase_auth_native_diagnostic',
+          ).invokeMapMethod<String, dynamic>('signInAnonymously');
+
+          if (native != null) {
+            final nativeMessage = native.entries
+                .map((entry) => '${entry.key}: ${entry.value}')
+                .join(' | ');
+
+            return FirestoreConnectionResult(
+              status: FirestoreConnectionStatus.authRequired,
+              message:
+                  'Firebase Authentication falló también en la capa nativa '
+                  'de macOS. Proyecto: $projectId. '
+                  'App ID: ${Firebase.app().options.appId}. '
+                  '$nativeMessage',
+            );
+          }
+        } catch (nativeError) {
+          return FirestoreConnectionResult(
+            status: FirestoreConnectionStatus.authRequired,
+            message:
+                'Firebase Authentication falló en Flutter y el diagnóstico '
+                'nativo de macOS tampoco pudo ejecutarse. '
+                'Proyecto: $projectId. '
+                'App ID: ${Firebase.app().options.appId}. '
+                'Error nativo: $nativeError. '
+                '$details',
+          );
+        }
+      }
 
       return FirestoreConnectionResult(
         status: FirestoreConnectionStatus.authRequired,
