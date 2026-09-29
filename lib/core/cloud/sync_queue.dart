@@ -78,7 +78,6 @@ class SyncQueue {
     await _replacePendingForEntity(
       collection: collection,
       entityId: entityId,
-      operation: SyncOperationType.upsert,
     );
     await _enqueue(
       SyncQueueItem(
@@ -99,7 +98,6 @@ class SyncQueue {
     await _replacePendingForEntity(
       collection: collection,
       entityId: entityId,
-      operation: SyncOperationType.delete,
     );
     await _enqueue(
       SyncQueueItem(
@@ -163,7 +161,6 @@ class SyncQueue {
   Future<void> _replacePendingForEntity({
     required String collection,
     required String entityId,
-    required SyncOperationType operation,
   }) async {
     final box = await LocalStorage.openBox(_boxName);
     final keys = <dynamic>[];
