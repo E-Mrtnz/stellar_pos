@@ -69,10 +69,15 @@ class CloudSyncEngine {
       // The first sync is a migration boundary. Existing local records that
       // have never been acknowledged by the cloud are queued so a previously
       // populated STELLAR POS installation is not silently lost.
+      //
+      // Before queueing them, assign the active store/device identity. This
+      // prevents legacy local records (which may have no sync metadata yet)
+      // from being uploaded without a tenant boundary.
       await _seedLocalPending(
         collection: collection,
         scope: scope,
         local: local,
+        fromMap: fromMap,
       );
     }
 
@@ -118,6 +123,7 @@ class CloudSyncEngine {
     required String collection,
     required CloudSyncScope scope,
     required LocalDataSource<T> local,
+    required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     final stored = await local.getAll();
     for (final entity in stored) {
@@ -125,14 +131,31 @@ class CloudSyncEngine {
           entity.metadata.syncState == SyncState.synced) {
         continue;
       }
+
       if (entity.metadata.storeId != null &&
           entity.metadata.storeId != scope.storeId) {
         continue;
       }
+
+      var prepared = entity;
+
+      final metadataNeedsScope =
+          entity.metadata.storeId != scope.storeId ||
+          entity.metadata.deviceId != scope.deviceId;
+
+      if (metadataNeedsScope ||
+          entity.metadata.syncState != SyncState.pending) {
+        final metadata = scope.applyTo(
+          entity.metadata.touch(syncState: SyncState.pending),
+        );
+        prepared = _withMetadata(entity, metadata, fromMap);
+        await local.save(prepared);
+      }
+
       await queue.enqueueUpsert(
         collection: collection,
-        entityId: entity.id,
-        payload: entity.toMap(),
+        entityId: prepared.id,
+        payload: prepared.toMap(),
       );
     }
   }
