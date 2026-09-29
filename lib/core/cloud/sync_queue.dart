@@ -94,6 +94,7 @@ class SyncQueue {
   Future<void> enqueueDelete({
     required String collection,
     required String entityId,
+    Map<String, dynamic>? payload,
   }) async {
     await _replacePendingForEntity(
       collection: collection,
@@ -105,6 +106,7 @@ class SyncQueue {
         collection: collection,
         entityId: entityId,
         operation: SyncOperationType.delete,
+        payload: payload == null ? null : Map<String, dynamic>.from(payload),
         queuedAt: DateTime.now().toUtc(),
       ),
     );
@@ -168,8 +170,7 @@ class SyncQueue {
       final value = box.get(key);
       if (value is! Map) continue;
       final item = SyncQueueItem.fromMap(Map<String, dynamic>.from(value));
-      if (item.collection == collection &&
-          item.entityId == entityId) {
+      if (item.collection == collection && item.entityId == entityId) {
         keys.add(key);
       }
     }
