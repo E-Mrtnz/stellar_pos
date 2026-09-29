@@ -172,7 +172,10 @@ class CloudSyncEngine {
     for (final item in items) {
       try {
         if (item.operation == SyncOperationType.delete) {
-          await cloud.delete(item.entityId);
+          final metadata = item.payload == null
+              ? null
+              : SyncMetadata.fromMap(item.payload!);
+          await cloud.delete(item.entityId, metadata: metadata);
           await queue.remove(item.id);
           result = result + const CloudSyncResult(uploaded: 1);
           continue;
