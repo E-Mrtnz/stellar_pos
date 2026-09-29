@@ -56,8 +56,8 @@ class FirestoreConnectionCheck {
               'Firestore respondió desde el servidor, pero las reglas de '
               'seguridad denegaron la lectura. '
               'Proyecto: $projectId. '
-              'Código: ${{error.code}. '
-              'Detalle: ${{error.message ?? 'sin detalle'}.',
+              'Código: ${error.code}. '
+              'Detalle: ${error.message ?? 'sin detalle'}.',
         );
       }
 
@@ -68,8 +68,8 @@ class FirestoreConnectionCheck {
           message:
               'No se pudo obtener respuesta de Firestore. '
               'Proyecto: $projectId. '
-              'Código: ${{error.code}. '
-              'Detalle: ${{error.message ?? 'sin detalle'}.',
+              'Código: ${error.code}. '
+              'Detalle: ${error.message ?? 'sin detalle'}.',
         );
       }
 
@@ -78,8 +78,8 @@ class FirestoreConnectionCheck {
         message:
             'Firestore devolvió un error. '
             'Proyecto: $projectId. '
-            'Código: ${{error.code}. '
-            'Detalle: ${{error.message ?? 'sin detalle'}.',
+            'Código: ${error.code}. '
+            'Detalle: ${error.message ?? 'sin detalle'}.',
       );
     } catch (error) {
       return FirestoreConnectionResult(
@@ -87,7 +87,7 @@ class FirestoreConnectionCheck {
         message:
             'No se pudo comprobar Firestore. '
             'Proyecto: $projectId. '
-            'Detalle: ${$error',
+            'Detalle: $error',
       );
     }
   }
