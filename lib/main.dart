@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/app.dart';
@@ -15,14 +17,17 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  if (kDebugMode) {
-    final result = await FirestoreConnectionCheck().run();
-    debugPrint('[STELLAR POS] Firestore: ${result.message}');
-  }
-
   runApp(
     const AppProviders(
       child: StellarPosApp(),
     ),
   );
+
+  if (kDebugMode) {
+    unawaited(
+      FirestoreConnectionCheck().run().then(
+        (result) => debugPrint('[STELLAR POS] Firestore: ${result.message}'),
+      ),
+    );
+  }
 }
