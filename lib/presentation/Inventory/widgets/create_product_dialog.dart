@@ -243,7 +243,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     try {
       List<int>? bytes;
       if (kIsWeb) {
-        final result = await FilePicker.pickFiles(
+        final result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: false,
           withData: true,
