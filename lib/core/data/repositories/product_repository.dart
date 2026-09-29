@@ -1,3 +1,4 @@
+import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
 import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
@@ -95,14 +96,14 @@ class ProductRepository implements Repository<Product> {
       local: _local,
       cloud: FirestoreDataSource<Product>(
         storeId: storeId,
-        collectionName: 'products',
+        collectionName: CloudCollection.products,
         fromMap: Product.fromMap,
       ),
       scope: CloudSyncScope(
         storeId: storeId,
         deviceId: deviceId,
       ),
-      collection: 'products',
+      collection: CloudCollection.products,
       fromMap: Product.fromMap,
     );
     return _cloud;
