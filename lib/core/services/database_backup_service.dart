@@ -83,13 +83,13 @@ class DatabaseBackupService {
     if (kIsWeb || Platform.isAndroid || Platform.isIOS) {
       return Future<String?>.value(null);
     }
-    return FilePicker.getDirectoryPath(
+    return FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Selecciona dónde guardar la copia de seguridad',
     );
   }
 
   static Future<BackupFileSelection?> selectBackupFile() async {
-    final result = await FilePicker.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       dialogTitle: 'Selecciona la copia de seguridad que deseas restaurar',
       type: FileType.custom,
       allowedExtensions: ['zip'],
@@ -138,7 +138,7 @@ class DatabaseBackupService {
       await FileSaver.instance.saveFile(
         name: fileName,
         bytes: result.bytes,
-        fileExtension: 'zip',
+        ext: 'zip',
         mimeType: MimeType.other,
       );
 
