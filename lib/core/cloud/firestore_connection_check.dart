@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 enum FirestoreConnectionStatus {
   connected,
   permissionDenied,
+  authRequired,
   unavailable,
   failed,
 }
@@ -22,19 +24,33 @@ class FirestoreConnectionResult {
 
 /// Performs a read-only server request against Firestore.
 ///
-/// No document is created or modified. The diagnostic explicitly enables the
-/// Firestore network before requesting the server so a disabled SDK network
-/// state is not mistaken for a backend connectivity problem.
+/// Authentication is established anonymously only for this diagnostic.
+/// No Firestore document is created or modified.
 class FirestoreConnectionCheck {
   final FirebaseFirestore firestore;
+  final FirebaseAuth auth;
 
-  FirestoreConnectionCheck({FirebaseFirestore? firestore})
-      : firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreConnectionCheck({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : firestore = firestore ?? FirebaseFirestore.instance,
+        auth = auth ?? FirebaseAuth.instance;
 
   Future<FirestoreConnectionResult> run() async {
     final projectId = Firebase.app().options.projectId;
 
     try {
+      final user = auth.currentUser ?? (await auth.signInAnonymously()).user;
+
+      if (user == null) {
+        return FirestoreConnectionResult(
+          status: FirestoreConnectionStatus.authRequired,
+          message:
+              'Firebase Authentication no devolvió un usuario anónimo. '
+              'Proyecto: $projectId.',
+        );
+      }
+
       await firestore.enableNetwork();
 
       await firestore
@@ -46,7 +62,16 @@ class FirestoreConnectionCheck {
         status: FirestoreConnectionStatus.connected,
         message:
             'Firestore respondió correctamente desde el servidor. '
-            'Proyecto: $projectId.',
+            'Proyecto: $projectId. Usuario autenticado: ${{user.uid}.',
+      );
+    } on FirebaseAuthException catch (error) {
+      return FirestoreConnectionResult(
+        status: FirestoreConnectionStatus.authRequired,
+        message:
+            'Firebase Authentication no pudo autenticar el diagnóstico. '
+            'Proyecto: $projectId. '
+            'Código: ${{error.code}. '
+            'Detalle: ${{error.message ?? 'sin detalle'}.',
       );
     } on FirebaseException catch (error) {
       if (error.code == 'permission-denied') {
@@ -56,8 +81,9 @@ class FirestoreConnectionCheck {
               'Firestore respondió desde el servidor, pero las reglas de '
               'seguridad denegaron la lectura. '
               'Proyecto: $projectId. '
-              'Código: ${error.code}. '
-              'Detalle: ${error.message ?? 'sin detalle'}.',
+              'Usuario autenticado: ${{auth.currentUser?.uid ?? 'ninguno'}. '
+              'Código: ${{error.code}. '
+              'Detalle: ${{error.message ?? 'sin detalle'}.',
         );
       }
 
@@ -68,8 +94,8 @@ class FirestoreConnectionCheck {
           message:
               'No se pudo obtener respuesta de Firestore. '
               'Proyecto: $projectId. '
-              'Código: ${error.code}. '
-              'Detalle: ${error.message ?? 'sin detalle'}.',
+              'Código: ${{error.code}. '
+              'Detalle: ${{error.message ?? 'sin detalle'}.',
         );
       }
 
@@ -78,8 +104,8 @@ class FirestoreConnectionCheck {
         message:
             'Firestore devolvió un error. '
             'Proyecto: $projectId. '
-            'Código: ${error.code}. '
-            'Detalle: ${error.message ?? 'sin detalle'}.',
+            'Código: ${{error.code}. '
+            'Detalle: ${{error.message ?? 'sin detalle'}.',
       );
     } catch (error) {
       return FirestoreConnectionResult(
@@ -87,7 +113,7 @@ class FirestoreConnectionCheck {
         message:
             'No se pudo comprobar Firestore. '
             'Proyecto: $projectId. '
-            'Detalle: $error',
+            'Detalle: ${$error',
       );
     }
   }
