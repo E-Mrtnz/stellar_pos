@@ -120,11 +120,6 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         files,
         subject: 'Estado de cuenta - ' + widget.clientName,
         sharePositionOrigin: origin,
-        fileNameOverrides: [
-          for (var i = 0; i < files.length; i++)
-            'estado_cuenta_' + _safeFileName(widget.clientName) + '_' +
-                (i + 1).toString() + '_de_' + files.length.toString() + '.png',
-        ],
       );
     } catch (error) {
       if (!mounted) return;
