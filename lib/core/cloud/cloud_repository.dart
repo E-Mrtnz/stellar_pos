@@ -45,6 +45,7 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
       collection: collection,
       entityId: prepared.id,
       payload: prepared.toMap(),
+      storeId: scope.storeId,
     );
   }
 
@@ -56,6 +57,7 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
       collection: collection,
       entityId: id,
       payload: existing?.metadata.toMap(),
+      storeId: scope.storeId,
     );
   }
 
