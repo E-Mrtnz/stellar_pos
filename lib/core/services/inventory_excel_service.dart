@@ -89,7 +89,7 @@ class InventoryExcelService {
       throw StateError('No se pudo generar el archivo Excel.');
     }
 
-    await FilePicker.saveFile(
+    await FilePicker.platform.saveFile(
       fileName: 'inventario_${_dateStamp()}.xlsx',
       bytes: Uint8List.fromList(bytes),
       type: FileType.custom,
