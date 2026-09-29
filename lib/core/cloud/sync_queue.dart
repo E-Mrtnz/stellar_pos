@@ -78,12 +78,14 @@ class SyncQueue {
     await _replacePendingForEntity(
       collection: collection,
       entityId: entityId,
+      storeId: storeId,
     );
     await _enqueue(
       SyncQueueItem(
         id: IdGenerator.newId(),
         collection: collection,
         entityId: entityId,
+        storeId: storeId,
         operation: SyncOperationType.upsert,
         payload: Map<String, dynamic>.from(payload),
         queuedAt: DateTime.now().toUtc(),
@@ -105,6 +107,7 @@ class SyncQueue {
         id: IdGenerator.newId(),
         collection: collection,
         entityId: entityId,
+        storeId: storeId,
         operation: SyncOperationType.delete,
         payload: payload == null ? null : Map<String, dynamic>.from(payload),
         queuedAt: DateTime.now().toUtc(),
