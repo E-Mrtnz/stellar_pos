@@ -1,0 +1,19 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Temporary connectivity/authentication diagnostic.
+    // Only an authenticated client may read this document.
+    // No client write is permitted.
+    match /_stellar_pos_diagnostics/connection {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Keep all real application data locked until the store/user
+    // authorization model is implemented.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
