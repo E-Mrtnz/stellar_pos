@@ -93,9 +93,14 @@ class CloudSyncEngine {
       collection: collection,
     );
 
-    final changed = afterUploadCheckpoint == null
+    // Re-read a tiny overlap window so two writes that receive the same
+    // timestamp precision are not skipped by the next incremental pull.
+    final pullSince = afterUploadCheckpoint?.subtract(
+      const Duration(milliseconds: 1),
+    );
+    final changed = pullSince == null
         ? await cloud.getAll()
-        : await cloud.getChangedSince(afterUploadCheckpoint);
+        : await cloud.getChangedSince(pullSince);
 
     result = result + await _applyRemote(
       local: local,
