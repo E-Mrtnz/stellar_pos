@@ -14,7 +14,7 @@ abstract interface class CloudDataSource<T extends SyncableEntity> {
 
   Future<void> save(T entity);
 
-  Future<void> delete(String id);
+  Future<void> delete(String id, {SyncMetadata? metadata});
 
   /// Replaces the local entity with the authoritative cloud version.
   Future<void> markSynced(T entity);
