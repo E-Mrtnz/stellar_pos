@@ -190,7 +190,7 @@ class InventoryFileService {
     );
 
     final bytes = await document.save();
-    await FilePicker.saveFile(
+    await FilePicker.platform.saveFile(
       fileName: 'inventario_${_dateStamp()}.pdf',
       bytes: Uint8List.fromList(bytes),
       type: FileType.custom,
