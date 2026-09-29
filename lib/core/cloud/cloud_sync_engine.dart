@@ -121,7 +121,10 @@ class CloudSyncEngine {
   }) async {
     final stored = await local.getAll();
     for (final entity in stored) {
-      if (entity.metadata.syncState == SyncState.deleted) continue;
+      if (entity.metadata.syncState == SyncState.deleted ||
+          entity.metadata.syncState == SyncState.synced) {
+        continue;
+      }
       if (entity.metadata.storeId != null &&
           entity.metadata.storeId != scope.storeId) {
         continue;
