@@ -64,16 +64,21 @@ class FirestoreConnectionCheck {
             'Firestore respondió correctamente desde el servidor. '
             'Proyecto: $projectId. Usuario autenticado: ${user.uid}.',
       );
-    } on FirebaseAuthException catch (error) {
+    } on FirebaseAuthException catch (error, stackTrace) {
+      final details = [
+        'Código: ${error.code}',
+        'Detalle: ${error.message ?? 'sin detalle'}',
+        'Plugin: ${error.plugin ?? 'sin plugin'}',
+        'Stack: $stackTrace',
+      ].join(' | ');
+
       return FirestoreConnectionResult(
         status: FirestoreConnectionStatus.authRequired,
         message:
             'Firebase Authentication no pudo autenticar el diagnóstico. '
-            'Proyecto: $projectId. '
-            'Código: ${error.code}. '
-            'Detalle: ${error.message ?? 'sin detalle'}.',
+            'Proyecto: $projectId. $details',
       );
-    } on FirebaseException catch (error) {
+    } on FirebaseException catch (error, stackTrace) {
       if (error.code == 'permission-denied') {
         return FirestoreConnectionResult(
           status: FirestoreConnectionStatus.permissionDenied,
@@ -105,15 +110,17 @@ class FirestoreConnectionCheck {
             'Firestore devolvió un error. '
             'Proyecto: $projectId. '
             'Código: ${error.code}. '
-            'Detalle: ${error.message ?? 'sin detalle'}.',
+            'Detalle: ${error.message ?? 'sin detalle'}. '
+            'Stack: $stackTrace',
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
       return FirestoreConnectionResult(
         status: FirestoreConnectionStatus.failed,
         message:
             'No se pudo comprobar Firestore. '
             'Proyecto: $projectId. '
-            'Detalle: $error.',
+            'Detalle: $error. '
+            'Stack: $stackTrace',
       );
     }
   }
