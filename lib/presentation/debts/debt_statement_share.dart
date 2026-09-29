@@ -116,12 +116,16 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         title: 'Estado de cuenta generado',
         type: AppAlertType.success,
       );
-      await SharePlus.instance.share(ShareParams(
-        files: files,
-        fileNameOverrides: [for (var i = 0; i < files.length; i++) 'estado_cuenta_' + _safeFileName(widget.clientName) + '_' + (i + 1).toString() + '_de_' + files.length.toString() + '.png'],
-        title: 'Estado de cuenta - ' + widget.clientName,
+      await Share.shareXFiles(
+        files,
+        subject: 'Estado de cuenta - ' + widget.clientName,
         sharePositionOrigin: origin,
-      ));
+        fileNameOverrides: [
+          for (var i = 0; i < files.length; i++)
+            'estado_cuenta_' + _safeFileName(widget.clientName) + '_' +
+                (i + 1).toString() + '_de_' + files.length.toString() + '.png',
+        ],
+      );
     } catch (error) {
       if (!mounted) return;
       Navigator.of(context).pop();
