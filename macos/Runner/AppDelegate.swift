@@ -4,9 +4,9 @@ import FirebaseCore
 
 @main
 class AppDelegate: FlutterAppDelegate {
-  override func applicationDidFinishLaunching(_ notification: Notification) {
+  override init() {
     FirebaseConfiguration.shared.setLoggerLevel(.max)
-    super.applicationDidFinishLaunching(notification)
+    super.init()
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
