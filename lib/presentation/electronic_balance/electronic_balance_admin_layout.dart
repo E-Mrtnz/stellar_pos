@@ -290,7 +290,7 @@ class _AccountDialogState extends State<_AccountDialog> {
               defaultTargetPlatform == TargetPlatform.windows ||
               defaultTargetPlatform == TargetPlatform.linux);
       if (kIsWeb || isDesktop) {
-        final result = await FilePicker.pickFiles(
+        final result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: false,
           withData: true,
