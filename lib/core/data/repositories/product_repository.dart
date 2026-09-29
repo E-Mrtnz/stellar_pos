@@ -2,6 +2,7 @@ import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_coordinator.dart';
 import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
 import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
 import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
@@ -19,13 +20,17 @@ class ProductRepository implements Repository<Product> {
     fromMap: Product.fromMap,
   );
   final CloudIdentityStore _identityStore;
+  final CloudSyncCoordinator _syncCoordinator;
 
   CloudRepository<Product>? _cloud;
   String? _cloudStoreId;
   String? _cloudDeviceId;
 
-  ProductRepository({CloudIdentityStore? identityStore})
-      : _identityStore = identityStore ?? CloudIdentityStore();
+  ProductRepository({
+    CloudIdentityStore? identityStore,
+    CloudSyncCoordinator? syncCoordinator,
+  })  : _identityStore = identityStore ?? CloudIdentityStore(),
+        _syncCoordinator = syncCoordinator ?? CloudSyncCoordinator.instance;
 
   @override
   Future<List<Product>> getAll() async {
@@ -72,7 +77,13 @@ class ProductRepository implements Repository<Product> {
     if (cloud == null) return;
 
     try {
-      await cloud.sync();
+      final storeId = await _identityStore.getStoreId();
+      if (storeId == null || storeId.isEmpty) return;
+
+      await _syncCoordinator.run(
+        key: '$storeId:${CloudCollection.products}',
+        operation: cloud.sync,
+      );
     } catch (_) {
       // Local POS operation must remain available when Firebase is offline,
       // unavailable, or temporarily rejects the request. The queued change
