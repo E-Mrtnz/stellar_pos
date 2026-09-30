@@ -14,6 +14,7 @@ class StorePermissions {
   static const providersCreate = 'providers.create';
   static const providersEdit = 'providers.edit';
   static const providersDelete = 'providers.delete';
+  static const productsView = 'products.view';
   static const inventoryView = 'inventory.view';
   static const inventoryCreate = 'inventory.create';
   static const inventoryEdit = 'inventory.edit';
@@ -107,6 +108,7 @@ class StoreAccessDefaults {
           StorePermissions.clientsView,
           StorePermissions.clientsCreate,
           StorePermissions.clientsEdit,
+          StorePermissions.productsView,
           StorePermissions.inventoryView,
         },
       );
