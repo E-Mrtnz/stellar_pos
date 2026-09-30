@@ -88,21 +88,25 @@ class CloudStoreAccessService {
     final uid = auth.currentUser?.uid;
     if (uid == null) throw StateError('No hay una sesión de Firebase activa.');
 
-    final query = await _users(storeId).where('authUid', isEqualTo: uid).limit(1).get();
-    final userId = query.docs.isEmpty ? DeviceRegistryService.newUserId() : query.docs.first.id;
+    final userId = uid;
     final ref = _users(storeId).doc(userId);
+    final existing = await ref.get();
 
     await ref.set({
       'userId': userId,
       'authUid': uid,
       'storeId': storeId,
       'displayName': displayName.trim(),
-      'roleId': 'employee',
-      'status': 'active',
+      'roleId': existing.exists ? (existing.data()?['roleId'] ?? 'employee') : 'employee',
+      'status': existing.exists ? (existing.data()?['status'] ?? 'active') : 'active',
       'inviteCode': invitationCode.trim().toUpperCase(),
-      'createdAt': query.docs.isEmpty ? FieldValue.serverTimestamp() : query.docs.first.data()['createdAt'],
+      'createdAt': existing.exists
+          ? existing.data()?['createdAt']
+          : FieldValue.serverTimestamp(),
       'lastSeenAt': FieldValue.serverTimestamp(),
-      'permissionOverrides': <String, bool>{},
+      'permissionOverrides': existing.exists
+          ? (existing.data()?['permissionOverrides'] ?? <String, bool>{})
+          : <String, bool>{},
     }, SetOptions(merge: true));
 
     await registerCurrentDevice(storeId: storeId, userId: userId);
