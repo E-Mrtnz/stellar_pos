@@ -13,6 +13,7 @@ class CloudIdentityStore {
   static const _storeIdKey = 'storeId';
   static const _storeNameKey = 'storeName';
   static const _inviteCodeKey = 'inviteCode';
+  static const _ownerEmailKey = 'ownerEmail';
 
   Future<String> getOrCreateDeviceId() async {
     final box = await LocalStorage.openBox(_boxName);
@@ -36,6 +37,12 @@ class CloudIdentityStore {
     return value == null || value.isEmpty ? null : value;
   }
 
+  Future<String?> getOwnerEmail() async {
+    final box = await LocalStorage.openBox(_boxName);
+    final value = box.get(_ownerEmailKey)?.toString().trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
   Future<String?> getInviteCode() async {
     final box = await LocalStorage.openBox(_boxName);
     final value = box.get(_inviteCodeKey)?.toString().trim();
@@ -46,6 +53,7 @@ class CloudIdentityStore {
     required String storeId,
     required String storeName,
     String? inviteCode,
+    String? ownerEmail,
   }) async {
     final normalizedId = storeId.trim();
     final normalizedName = storeName.trim();
@@ -60,12 +68,28 @@ class CloudIdentityStore {
     await box.put(_storeIdKey, normalizedId);
     await box.put(_storeNameKey, normalizedName);
 
+    final normalizedEmail = ownerEmail?.trim().toLowerCase() ?? '';
+    if (normalizedEmail.isEmpty) {
+      await box.delete(_ownerEmailKey);
+    } else {
+      await box.put(_ownerEmailKey, normalizedEmail);
+    }
+
     final normalizedInvite = inviteCode?.trim() ?? '';
     if (normalizedInvite.isEmpty) {
       await box.delete(_inviteCodeKey);
     } else {
       await box.put(_inviteCodeKey, normalizedInvite);
     }
+  }
+
+  Future<void> setOwnerEmail(String ownerEmail) async {
+    final normalized = ownerEmail.trim().toLowerCase();
+    if (normalized.isEmpty || !normalized.contains('@')) {
+      throw ArgumentError.value(ownerEmail, 'ownerEmail', 'correo no válido');
+    }
+    final box = await LocalStorage.openBox(_boxName);
+    await box.put(_ownerEmailKey, normalized);
   }
 
   Future<void> setStoreName(String storeName) async {
@@ -92,6 +116,7 @@ class CloudIdentityStore {
     final box = await LocalStorage.openBox(_boxName);
     await box.delete(_storeIdKey);
     await box.delete(_storeNameKey);
+    await box.delete(_ownerEmailKey);
     await box.delete(_inviteCodeKey);
   }
 }
