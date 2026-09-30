@@ -98,11 +98,11 @@ class ProviderCatalogRepository implements Repository<ProviderCatalogState> {
     CloudRepository<ProviderCatalogState>? existing,
   ]) async {
     final cloud = existing ?? await _getCloudRepository();
-    if (cloud == null) return;
+    if (cloud == null) return null;
 
     try {
       final storeId = await _identityStore.getStoreId();
-      if (storeId == null || storeId.isEmpty) return;
+      if (storeId == null || storeId.isEmpty) return null;
 
       return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:${CloudCollection.providerCatalog}',
