@@ -94,8 +94,6 @@ class ClientRepository implements Repository<Client> {
         stackTrace: stackTrace,
       );
       return null;
-      // Local POS operation remains available while Firebase is unavailable
-      // or while the security/tenant configuration is not ready.
     }
   }
 
