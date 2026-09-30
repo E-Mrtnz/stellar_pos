@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 /// Coordinates cloud synchronization across repository instances.
 ///
 /// STELLAR POS can create more than one [ProductRepository] in the provider
@@ -31,6 +33,14 @@ class CloudSyncCoordinator {
   ) async {
     try {
       await operation();
+    } catch (error, stackTrace) {
+      developer.log(
+        'Falló una sincronización de Firestore. Clave: ' + key,
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
     } finally {
       _inFlight.remove(key);
     }
