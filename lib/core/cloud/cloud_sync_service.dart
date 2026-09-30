@@ -99,43 +99,43 @@ class CloudSyncService {
     })>[
       (
         collection: CloudCollection.products,
-        run: products.forceUpload,
+        run: (onProgress) => products.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.clients,
-        run: clients.forceUpload,
+        run: (onProgress) => clients.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.purchases,
-        run: purchases.forceUpload,
+        run: (onProgress) => purchases.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.sales,
-        run: sales.forceUpload,
+        run: (onProgress) => sales.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.debtMovements,
-        run: debtMovements.forceUpload,
+        run: (onProgress) => debtMovements.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.clientGroups,
-        run: clientGroups.forceUpload,
+        run: (onProgress) => clientGroups.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.electronicBalanceAccounts,
-        run: electronicBalanceAccounts.forceUpload,
+        run: (onProgress) => electronicBalanceAccounts.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.electronicBalanceTransactions,
-        run: electronicBalanceTransactions.forceUpload,
+        run: (onProgress) => electronicBalanceTransactions.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.providerRoutes,
-        run: providerRoutes.forceUpload,
+        run: (onProgress) => providerRoutes.forceUpload(onProgress: onProgress),
       ),
       (
         collection: CloudCollection.providerCatalog,
-        run: providerCatalog.forceUpload,
+        run: (onProgress) => providerCatalog.forceUpload(onProgress: onProgress),
       ),
     ];
 
