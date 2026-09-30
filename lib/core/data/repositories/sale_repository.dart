@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'dart:async';
 
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
@@ -5,6 +7,7 @@ import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_coordinator.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
 import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
 import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
@@ -69,9 +72,9 @@ class SaleRepository implements Repository<SaleRecord> {
   }
 
   /// Performs a best-effort synchronization for the configured store.
-  Future<void> sync() => _trySync();
+  Future<CloudSyncResult?> sync() => _trySync();
 
-  Future<void> _trySync([CloudRepository<SaleRecord>? existing]) async {
+  Future<CloudSyncResult?> _trySync([CloudRepository<SaleRecord>? existing]) async {
     final cloud = existing ?? await _getCloudRepository();
     if (cloud == null) return;
 
@@ -79,11 +82,11 @@ class SaleRepository implements Repository<SaleRecord> {
       final storeId = await _identityStore.getStoreId();
       if (storeId == null || storeId.isEmpty) return;
 
-      await _syncCoordinator.run(
+      return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:${CloudCollection.sales}',
         operation: cloud.sync,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Keep checkout/history available while Firebase is unavailable or
       // while the cloud tenant/security configuration is not ready.
     }
