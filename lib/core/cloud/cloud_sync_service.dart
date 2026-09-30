@@ -1,3 +1,4 @@
+import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/data/repositories/client_group_repository.dart';
 import 'package:stellar_pos/core/data/repositories/client_repository.dart';
 import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart';
@@ -57,34 +58,34 @@ class CloudSyncService {
   /// collection does not force every repository to perform a full pull.
   Future<void> syncCollection(String collection) async {
     switch (collection) {
-      case 'products':
+      case CloudCollection.products:
         await products.sync();
         return;
-      case 'sales':
+      case CloudCollection.sales:
         await sales.sync();
         return;
-      case 'purchases':
+      case CloudCollection.purchases:
         await purchases.sync();
         return;
-      case 'clients':
+      case CloudCollection.clients:
         await clients.sync();
         return;
-      case 'debt_movements':
+      case CloudCollection.debtMovements:
         await debtMovements.sync();
         return;
-      case 'client_groups':
+      case CloudCollection.clientGroups:
         await clientGroups.sync();
         return;
-      case 'provider_routes':
+      case CloudCollection.providerRoutes:
         await providerRoutes.sync();
         return;
-      case 'provider_catalog':
+      case CloudCollection.providerCatalog:
         await providerCatalog.sync();
         return;
-      case 'electronic_balance_accounts':
+      case CloudCollection.electronicBalanceAccounts:
         await electronicBalanceAccounts.sync();
         return;
-      case 'electronic_balance_transactions':
+      case CloudCollection.electronicBalanceTransactions:
         await electronicBalanceTransactions.sync();
         return;
       default:
