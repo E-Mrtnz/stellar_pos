@@ -51,6 +51,51 @@ class CloudSyncService {
         providerRoutes = providerRoutes ?? ProviderRouteRepository(),
         providerCatalog = providerCatalog ?? ProviderCatalogRepository();
 
+  /// Synchronizes one cloud-aware collection.
+  ///
+  /// Realtime listeners use this targeted entry point so a change in one
+  /// collection does not force every repository to perform a full pull.
+  Future<void> syncCollection(String collection) async {
+    switch (collection) {
+      case 'products':
+        await products.sync();
+        return;
+      case 'sales':
+        await sales.sync();
+        return;
+      case 'purchases':
+        await purchases.sync();
+        return;
+      case 'clients':
+        await clients.sync();
+        return;
+      case 'debt_movements':
+        await debtMovements.sync();
+        return;
+      case 'client_groups':
+        await clientGroups.sync();
+        return;
+      case 'provider_routes':
+        await providerRoutes.sync();
+        return;
+      case 'provider_catalog':
+        await providerCatalog.sync();
+        return;
+      case 'electronic_balance_accounts':
+        await electronicBalanceAccounts.sync();
+        return;
+      case 'electronic_balance_transactions':
+        await electronicBalanceTransactions.sync();
+        return;
+      default:
+        throw ArgumentError.value(
+          collection,
+          'collection',
+          'La colección no tiene un repositorio de sincronización.',
+        );
+    }
+  }
+
   /// Runs synchronization for every cloud-aware repository.
   ///
   /// Each repository is best-effort and keeps local operation available when
