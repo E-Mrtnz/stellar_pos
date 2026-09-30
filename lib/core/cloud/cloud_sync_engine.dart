@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:stellar_pos/core/cloud/cloud_data_source.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
 import 'package:stellar_pos/core/cloud/sync_checkpoint_store.dart';
@@ -287,10 +289,21 @@ class CloudSyncEngine {
         await local.save(synced);
         await queue.remove(item.id);
         result = result + const CloudSyncResult(uploaded: 1);
-      } catch (_) {
+      } catch (error, stackTrace) {
         await queue.markAttempt(item.id, item.attempts + 1);
-        // Offline/network failures stay durable in the queue for the next run.
-        break;
+        developer.log(
+          'No se pudo sincronizar un registro con Firestore. '
+          'Colección: ' + collection + ', documento: ' + item.entityId + ', '
+          'operación: ' + item.operation.name + ', intento: ' +
+          (item.attempts + 1).toString() + '.',
+          name: 'STELLAR_POS.cloud_sync',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        // Un registro problemático no debe bloquear los demás registros de
+        // la misma colección. Se conserva en la cola para reintentarlo en
+        // el siguiente ciclo, pero continuamos con los siguientes elementos.
+        continue;
       }
     }
 
