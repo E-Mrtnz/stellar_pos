@@ -12,6 +12,7 @@ class CloudStoreProvider extends ChangeNotifier {
   String? _storeId;
   String? _storeName;
   String? _inviteCode;
+  String? _ownerEmail;
   bool _isLoading = true;
   bool _isSaving = false;
   String? _errorMessage;
@@ -22,6 +23,7 @@ class CloudStoreProvider extends ChangeNotifier {
   String? get storeId => _storeId;
   String? get storeName => _storeName;
   String? get inviteCode => _inviteCode;
+  String? get ownerEmail => _ownerEmail;
   bool get isConfigured => _storeId != null && _storeId!.isNotEmpty;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
@@ -36,6 +38,7 @@ class CloudStoreProvider extends ChangeNotifier {
       _storeId = await _service.getStoreId();
       _storeName = await _service.getStoreName();
       _inviteCode = await _service.getInviteCode();
+      _ownerEmail = await _service.getOwnerEmail();
     } catch (error) {
       _errorMessage = _friendlyError(error);
     } finally {
@@ -44,16 +47,16 @@ class CloudStoreProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> createStore(String storeName) async {
+  Future<bool> createStore(String storeName, String ownerEmail) async {
     return _run(() async {
-      await _service.createStore(storeName);
+      await _service.createStore(storeName, ownerEmail);
       await _reloadIdentity();
     });
   }
 
-  Future<bool> joinStore(String invitationCode) async {
+  Future<bool> joinStore(String displayName, String invitationCode) async {
     return _run(() async {
-      await _service.joinStore(invitationCode);
+      await _service.joinStore(displayName, invitationCode);
       await _reloadIdentity();
     });
   }
@@ -69,6 +72,7 @@ class CloudStoreProvider extends ChangeNotifier {
     return _run(() async {
       await _service.rotateInviteCode();
       _inviteCode = await _service.getInviteCode();
+      _ownerEmail = await _service.getOwnerEmail();
     });
   }
 
@@ -88,6 +92,7 @@ class CloudStoreProvider extends ChangeNotifier {
       _storeId = null;
       _storeName = null;
       _inviteCode = null;
+      _ownerEmail = null;
     } catch (error) {
       _errorMessage = _friendlyError(error);
     } finally {
