@@ -67,7 +67,9 @@ class ProviderRouteRepository implements Repository<ProviderRoute> {
     unawaited(_trySync(cloud));
   }
 
-  Future<CloudSyncResult?> forceUpload() async {
+  Future<CloudSyncResult?> forceUpload({
+    CloudSyncProgressCallback? onProgress,
+  }) async {
     final cloud = await _getCloudRepository();
     if (cloud == null) return null;
 
@@ -77,7 +79,7 @@ class ProviderRouteRepository implements Repository<ProviderRoute> {
 
       return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:' + CloudCollection.providerRoutes,
-        operation: cloud.forceUpload,
+        operation: () => cloud.forceUpload(onProgress: onProgress),
       );
     } catch (error, stackTrace) {
       developer.log(
