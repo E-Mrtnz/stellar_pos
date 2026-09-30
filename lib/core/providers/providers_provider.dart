@@ -212,6 +212,11 @@ class ProvidersProvider extends ChangeNotifier {
     unawaited(_routeRepository?.delete(id).catchError((_) {}));
   }
 
+  Future<void> refreshFromRepository() async {
+    await _loadRoutes();
+    notifyListeners();
+  }
+
   Future<void> _loadRoutes() async {
     final storedRoutes =
         await _routeRepository?.getAll() ?? const <ProviderRoute>[];
