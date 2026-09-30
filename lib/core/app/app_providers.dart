@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_auto_sync_service.dart';
 import 'package:stellar_pos/core/cloud/cloud_realtime_sync_service.dart';
+import 'package:stellar_pos/core/cloud/cloud_realtime_ui_bridge.dart';
 import 'package:stellar_pos/core/data/repositories/client_group_repository.dart';
 import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
@@ -116,7 +117,7 @@ class AppProviders extends StatelessWidget {
           create: (_) => ClientGroupProvider()..load(),
         ),
       ],
-      child: child,
+      child: CloudRealtimeUiBridge(child: child),
     );
   }
 }
