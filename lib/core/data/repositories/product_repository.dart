@@ -76,7 +76,9 @@ class ProductRepository implements Repository<Product> {
   /// Synchronization is intentionally optional until a store is explicitly
   /// assigned to this installation. A missing store identity therefore keeps
   /// the application fully local instead of inventing a tenant identifier.
-  Future<CloudSyncResult?> forceUpload() async {
+  Future<CloudSyncResult?> forceUpload({
+    CloudSyncProgressCallback? onProgress,
+  }) async {
     final cloud = await _getCloudRepository();
     if (cloud == null) return null;
 
@@ -86,7 +88,7 @@ class ProductRepository implements Repository<Product> {
 
       return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:' + CloudCollection.products,
-        operation: cloud.forceUpload,
+        operation: () => cloud.forceUpload(onProgress: onProgress),
       );
     } catch (error, stackTrace) {
       developer.log(
