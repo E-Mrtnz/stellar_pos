@@ -69,7 +69,7 @@ class _AccessHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Usuarios y dispositivos', style: AppTextStyles.brandTitle.copyWith(fontSize: 20)),
+                Text('Usuarios y dispositivos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                 SizedBox(height: 3),
                 Text(
                   'Gestiona quién puede acceder a esta tienda y desde qué dispositivos.',
