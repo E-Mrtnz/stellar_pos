@@ -36,6 +36,22 @@ class CloudAccessProvider extends ChangeNotifier {
     return null;
   }
 
+  bool hasPermission(String permission) {
+    final user = currentUser;
+    if (user == null) return true;
+    if (user.roleId == 'owner') return true;
+    if (user.permissionOverrides.containsKey(permission)) {
+      return user.permissionOverrides[permission] == true;
+    }
+    for (final role in _snapshot.roles) {
+      if (role.id == user.roleId) return role.permissions.contains(permission);
+    }
+    for (final role in StoreAccessDefaults.all) {
+      if (role.id == user.roleId) return role.permissions.contains(permission);
+    }
+    return false;
+  }
+
   bool get canManageUsers {
     final role = currentUser?.roleId;
     return role == 'owner' || role == 'administrator';
