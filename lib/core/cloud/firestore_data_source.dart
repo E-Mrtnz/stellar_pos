@@ -60,8 +60,10 @@ class FirestoreDataSource<T extends SyncableEntity>
 
   @override
   Future<void> save(T entity) async {
+    final payload = Map<String, dynamic>.from(entity.toMap());
+    payload['storeId'] = storeId;
     await _collection.doc(entity.id).set(
-          _cloudSafeMap(entity.toMap()),
+          _cloudSafeMap(payload),
           SetOptions(merge: false),
         );
   }
@@ -108,6 +110,7 @@ class FirestoreDataSource<T extends SyncableEntity>
     await _collection.doc(id).set(
       {
         'id': id,
+        'storeId': storeId,
         'metadata': tombstone.toMap(),
       },
       SetOptions(merge: true),
@@ -118,6 +121,7 @@ class FirestoreDataSource<T extends SyncableEntity>
   Future<void> markSynced(T entity) async {
     final synced = entity.metadata.markSynced();
     final payload = Map<String, dynamic>.from(entity.toMap());
+    payload['storeId'] = storeId;
     payload['metadata'] = synced.toMap();
     await _collection.doc(entity.id).set(
       _cloudSafeMap(payload),
