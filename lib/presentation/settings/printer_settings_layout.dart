@@ -439,6 +439,68 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     }
   }
 
+  Future<void> _forceUploadAll(BuildContext context) async {
+    final provider = context.read<CloudStoreProvider>();
+    final success = await provider.forceUploadAll();
+    if (!context.mounted) return;
+
+    final result = provider.lastSyncResult;
+    final errors = result?.errors ?? const <String>[];
+    final summary = result == null
+        ? 'No se pudo obtener un resultado de sincronización.'
+        : 'Registros procesados: ' + result.migrated.toString() + '\n'
+            'Subidos: ' + result.uploaded.toString() + '\n'
+            'Descargados: ' + result.downloaded.toString() + '\n'
+            'Eliminados: ' + result.deleted.toString() + '\n'
+            'Fallos: ' + result.failed.toString();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(success ? 'Carga a la nube completada' : 'Carga a la nube con problemas'),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(summary),
+                if (errors.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Errores detectados:',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  ...errors.take(8).map(
+                    (error) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        error,
+                        style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
+                      ),
+                    ),
+                  ),
+                  if (errors.length > 8)
+                    Text(
+                      'Se ocultaron ' + (errors.length - 8).toString() + ' errores adicionales. Revisa la consola de depuración para el detalle completo.',
+                      style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openAccessDialog(BuildContext context) async {
     await showDialog<void>(
       context: context,
@@ -836,6 +898,21 @@ class _CloudStoreSettingsContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 18),
+        _cloudSectionCard(
+          icon: Icons.cloud_upload_outlined,
+          title: 'Sincronización de datos',
+          subtitle: 'Fuerza una carga completa de los registros locales de este dispositivo hacia la nube.',
+          children: [
+            _cloudActionRow(
+              icon: Icons.cloud_upload_outlined,
+              title: 'Subir todos los datos ahora',
+              subtitle: 'Carga productos, ventas, compras, clientes, deudas, proveedores y saldos electrónicos.',
+              label: cloudStore.isSaving ? 'Subiendo...' : 'Subir todo',
+              onPressed: cloudStore.isSaving ? null : () => _forceUploadAll(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
         _cloudSectionCard(
           icon: Icons.manage_accounts_outlined,
           title: 'Administración',
