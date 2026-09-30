@@ -130,7 +130,9 @@ class SyncQueue {
       );
       if (existing.collection == collection &&
           targetIds.contains(existing.entityId) &&
-          (storeId == null || existing.storeId == storeId)) {
+          (storeId == null ||
+              existing.storeId == storeId ||
+              existing.storeId == null)) {
         keysToDelete.add(key);
       }
     }
