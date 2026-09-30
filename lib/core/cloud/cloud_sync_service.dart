@@ -178,25 +178,34 @@ class CloudSyncService {
   /// independent collections can synchronize concurrently; the shared
   /// [CloudSyncCoordinator] still prevents duplicate work per collection.
   Future<CloudSyncResult> syncAll() async {
-    final results = await Future.wait<CloudSyncResult?>([
-      products.sync(),
-      clients.sync(),
-      purchases.sync(),
-      sales.sync(),
-      debtMovements.sync(),
-      clientGroups.sync(),
-      electronicBalanceAccounts.sync(),
-      electronicBalanceTransactions.sync(),
-      providerRoutes.sync(),
-      providerCatalog.sync(),
-    ]);
+    final operations = <Future<CloudSyncResult?> Function()>[
+      products.sync,
+      clients.sync,
+      purchases.sync,
+      sales.sync,
+      debtMovements.sync,
+      clientGroups.sync,
+      electronicBalanceAccounts.sync,
+      electronicBalanceTransactions.sync,
+      providerRoutes.sync,
+      providerCatalog.sync,
+    ];
 
     var total = const CloudSyncResult();
-    for (final result in results) {
+
+    // Repositories share the same durable Hive sync queue. Running the first
+    // reconciliation for every collection concurrently made large local
+    // migrations compete for that queue and could leave the app apparently
+    // idle for a long time. Keep the reconciliation deterministic; each
+    // collection still performs its own network work asynchronously.
+    for (final operation in operations) {
+      final result = await operation();
       if (result != null) {
         total = total + result;
       }
     }
+
     return total;
   }
+
 }
