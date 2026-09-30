@@ -9,7 +9,8 @@ import 'package:stellar_pos/core/models/sync_metadata.dart';
 /// No domain model needs to extend a Hive class or know about Hive. The
 /// serializer/deserializer functions keep persistence concerns in the data
 /// layer.
-class HiveDataSource<T extends SyncableEntity> implements LocalDataSource<T> {
+class HiveDataSource<T extends SyncableEntity>
+    implements LocalDataSource<T>, BatchLocalDataSource<T> {
   HiveDataSource({
     required this.boxName,
     required this.fromMap,
@@ -41,6 +42,16 @@ class HiveDataSource<T extends SyncableEntity> implements LocalDataSource<T> {
   Future<void> save(T entity) async {
     final box = await _box;
     await box.put(entity.id, entity.toMap());
+  }
+
+  @override
+  Future<void> saveAll(Iterable<T> entities) async {
+    final entries = <dynamic, dynamic>{
+      for (final entity in entities) entity.id: entity.toMap(),
+    };
+    if (entries.isEmpty) return;
+    final box = await _box;
+    await box.putAll(entries);
   }
 
   @override
