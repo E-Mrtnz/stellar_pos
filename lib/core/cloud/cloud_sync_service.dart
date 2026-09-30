@@ -11,12 +11,11 @@ import 'package:stellar_pos/core/data/repositories/provider_route_repository.dar
 import 'package:stellar_pos/core/data/repositories/purchase_repository.dart';
 import 'package:stellar_pos/core/data/repositories/sale_repository.dart';
 
-/// Coordinates an explicit synchronization pass across all cloud-aware
+/// Coordinates the automatic synchronization pass across all cloud-aware
 /// repositories.
 ///
-/// Repositories remain responsible for persistence details. This service only
-/// provides an application-level entry point for a future "Sync now" action,
-/// startup reconciliation, or background synchronization trigger.
+/// Repositories remain responsible for local persistence. This service only
+/// orchestrates the order in which each collection reconciles with Firestore.
 class CloudSyncService {
   final ProductRepository products;
   final ClientRepository clients;
