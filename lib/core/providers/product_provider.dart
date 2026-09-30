@@ -217,6 +217,11 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshFromRepository() async {
+    await _loadFromRepository();
+    notifyListeners();
+  }
+
   Future<void> _loadFromRepository() async {
     final repository = _repository;
     if (repository == null) {
