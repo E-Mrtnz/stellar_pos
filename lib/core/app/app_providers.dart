@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/data/repositories/client_group_repository.dart';
+import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 import 'package:stellar_pos/core/data/repositories/client_repository.dart';
 import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart';
 import 'package:stellar_pos/core/data/repositories/electronic_balance_account_repository.dart';
@@ -31,6 +32,9 @@ class AppProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) => CloudStoreProvider()..load(),
+        ),
         ChangeNotifierProvider(
           create: (_) => CatalogProvider(
             clientRepository: ClientRepository(),
