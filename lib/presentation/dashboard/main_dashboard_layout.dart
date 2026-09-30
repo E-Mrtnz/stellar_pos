@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/cloud/store_access_models.dart';
+import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
 import 'package:stellar_pos/core/providers/debt_provider.dart';
