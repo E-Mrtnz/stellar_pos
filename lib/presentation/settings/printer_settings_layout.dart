@@ -154,54 +154,6 @@ class _PrinterContent extends StatelessWidget {
   }
 }
 
-class _CloudModeOption extends StatelessWidget {
-  final bool selected;
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  const _CloudModeOption({
-    required this.selected,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? AppColors.primary.withAlpha(18) : Colors.transparent,
-      borderRadius: BorderRadius.circular(9),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 17,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: selected ? AppColors.primary : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _CloudStoreSettingsContent extends StatelessWidget {
   const _CloudStoreSettingsContent();
 
@@ -283,7 +235,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             return AlertDialog(
               titlePadding: const EdgeInsets.fromLTRB(28, 26, 28, 0),
               contentPadding: const EdgeInsets.fromLTRB(28, 14, 28, 8),
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              actionsPadding: const EdgeInsets.fromLTRB(28, 0, 28, 22),
               title: Row(
                 children: [
                   Container(
@@ -308,7 +260,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                 ],
               ),
               content: SizedBox(
-                width: 460,
+                width: 500,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -382,50 +334,50 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                         ),
                       ],
                       if (dialogError != null) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          dialogError!,
-                          style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(
+                            color: AppColors.dangerRed.withAlpha(10),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.dangerRed.withAlpha(35)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.error_outline_rounded, size: 17, color: AppColors.dangerRed),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  dialogError!,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    height: 1.35,
+                                    color: AppColors.dangerRed,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppColors.inputBackground,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _CloudModeOption(
-                                selected: createMode,
-                                icon: Icons.add_business_outlined,
-                                label: 'Crear tienda',
-                                onTap: isWorking
-                                    ? null
-                                    : () => setDialogState(() {
-                                          createMode = true;
-                                          dialogError = null;
-                                        }),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: _CloudModeOption(
-                                selected: !createMode,
-                                icon: Icons.link_outlined,
-                                label: 'Unirse',
-                                onTap: isWorking
-                                    ? null
-                                    : () => setDialogState(() {
-                                          createMode = false;
-                                          dialogError = null;
-                                        }),
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 16),
+                      Center(
+                        child: TextButton(
+                          onPressed: isWorking
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    createMode = !createMode;
+                                    dialogError = null;
+                                  });
+                                },
+                          child: Text(
+                            createMode
+                                ? '¿Ya tienes una tienda? Únete con un código de invitación'
+                                : '¿Quieres crear una tienda nueva?',
+                          ),
                         ),
                       ),
                     ],
