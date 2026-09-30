@@ -353,7 +353,6 @@ class CloudSyncEngine {
             collection: collection,
             local: local,
             cloud: cloud,
-            scope: scope,
             fromMap: fromMap,
           ),
         ),
@@ -372,7 +371,6 @@ class CloudSyncEngine {
     required String collection,
     required LocalDataSource<T> local,
     required CloudDataSource<T> cloud,
-    required CloudSyncScope scope,
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     try {
