@@ -93,6 +93,14 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
 
   T _fromMap(Map<String, dynamic> map) => fromMap(map);
 
+  Future<CloudSyncResult> forceUpload() => engine.forceUpload<T>(
+        collection: collection,
+        scope: scope,
+        local: local,
+        cloud: cloud,
+        fromMap: fromMap,
+      );
+
   Future<CloudSyncResult> sync() => engine.sync<T>(
         collection: collection,
         scope: scope,
