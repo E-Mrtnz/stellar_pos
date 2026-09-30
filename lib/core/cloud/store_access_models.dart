@@ -142,6 +142,7 @@ class StoreAccessDefaults {
         administrator,
         employee,
         cashier,
+        inventory,
       ];
 }
 
