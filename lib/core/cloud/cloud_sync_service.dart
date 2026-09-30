@@ -88,94 +88,11 @@ class CloudSyncService {
     }
   }
 
-  /// Forces every cloud-aware repository to upload its complete local
-  /// dataset, regardless of checkpoints or previous sync state.
-  Future<CloudSyncResult> forceUploadAll({
-    CloudSyncProgressCallback? onProgress,
-  }) async {
-    final operations = <({
-      String collection,
-      Future<CloudSyncResult?> Function(CloudSyncProgressCallback) run,
-    })>[
-      (
-        collection: CloudCollection.products,
-        run: (onProgress) => products.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.clients,
-        run: (onProgress) => clients.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.purchases,
-        run: (onProgress) => purchases.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.sales,
-        run: (onProgress) => sales.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.debtMovements,
-        run: (onProgress) => debtMovements.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.clientGroups,
-        run: (onProgress) => clientGroups.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.electronicBalanceAccounts,
-        run: (onProgress) => electronicBalanceAccounts.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.electronicBalanceTransactions,
-        run: (onProgress) => electronicBalanceTransactions.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.providerRoutes,
-        run: (onProgress) => providerRoutes.forceUpload(onProgress: onProgress),
-      ),
-      (
-        collection: CloudCollection.providerCatalog,
-        run: (onProgress) => providerCatalog.forceUpload(onProgress: onProgress),
-      ),
-    ];
-
-    var total = const CloudSyncResult();
-
-    // Manual upload is deliberately sequential by collection. Each entity is
-    // uploaded concurrently inside its own repository, while collections are
-    // isolated so a large product catalog cannot make ten repositories fight
-    // over the same local storage/connection resources.
-    for (var index = 0; index < operations.length; index++) {
-      final operation = operations[index];
-      final result = await operation.run((progress) {
-        onProgress?.call(
-          CloudSyncProgress(
-            collection: progress.collection,
-            phase: progress.phase,
-            processed: progress.processed,
-            total: progress.total,
-            uploaded: progress.uploaded,
-            failed: progress.failed,
-            errors: progress.errors,
-            collectionIndex: index,
-            collectionCount: operations.length,
-          ),
-        );
-      });
-
-      if (result != null) {
-        total = total + result;
-      }
-    }
-
-    return total;
-  }
-
   /// Runs synchronization for every cloud-aware repository.
   ///
-  /// Each repository is best-effort and keeps local operation available when
-  /// Firebase is unavailable. Collections are reconciled sequentially so the
-  /// shared local sync queue remains deterministic during large migrations.
+  /// Each repository is best-effort. Collections are reconciled sequentially so
+  /// one collection can fail without preventing the remaining collections from
+  /// attempting their own automatic synchronization.
   Future<CloudSyncResult> syncAll() async {
     final operations = <Future<CloudSyncResult?> Function()>[
       products.sync,
