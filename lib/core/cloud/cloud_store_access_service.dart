@@ -149,6 +149,21 @@ class CloudStoreAccessService {
     );
   }
 
+  Future<void> setOwnerEmail({
+    required String storeId,
+    required String ownerEmail,
+  }) async {
+    final uid = auth.currentUser?.uid;
+    if (uid == null) throw StateError('No hay una sesión de Firebase activa.');
+    final normalized = ownerEmail.trim().toLowerCase();
+    if (normalized.isEmpty || !normalized.contains('@')) {
+      throw ArgumentError.value(ownerEmail, 'ownerEmail', 'correo no válido');
+    }
+    await _users(storeId).doc(uid).update({
+      'email': normalized,
+    });
+  }
+
   Future<void> setUserRole({
     required String storeId,
     required String userId,
