@@ -138,6 +138,27 @@ class CloudSyncEngine {
     var processed = 0;
     final errors = <String>[];
 
+    Future<({T? entity, String? error})> uploadOne(T entity) async {
+      try {
+        await cloud.save(entity);
+        return (entity: entity, error: null);
+      } catch (error, stackTrace) {
+        developer.log(
+          'Falló la carga manual de un registro. Colección: ' +
+              collection +
+              ', documento: ' +
+              entity.id,
+          name: 'STELLAR_POS.cloud_sync',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return (
+          entity: null,
+          error: collection + '/' + entity.id + ': ' + error.toString(),
+        );
+      }
+    }
+
     const concurrency = 8;
     for (var offset = 0; offset < prepared.length; offset += concurrency) {
       final chunk = prepared
@@ -145,30 +166,8 @@ class CloudSyncEngine {
           .take(concurrency)
           .toList(growable: false);
 
-      final outcomes = await Future.wait(
-        chunk.map((entity) async {
-          try {
-            await cloud.save(entity);
-            return (
-              entity: entity,
-              error: (String?)null,
-            );
-          } catch (error, stackTrace) {
-            developer.log(
-              'Falló la carga manual de un registro. Colección: ' +
-                  collection +
-                  ', documento: ' +
-                  entity.id,
-              name: 'STELLAR_POS.cloud_sync',
-              error: error,
-              stackTrace: stackTrace,
-            );
-            return (
-              entity: (T?)null,
-              error: collection + '/' + entity.id + ': ' + error.toString(),
-            );
-          }
-        }),
+      final outcomes = await Future.wait<({T? entity, String? error})>(
+        chunk.map(uploadOne),
       );
 
       final synced = <T>[];
