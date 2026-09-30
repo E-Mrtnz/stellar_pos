@@ -53,7 +53,7 @@ class SaleRepository implements Repository<SaleRecord> {
     }
 
     await cloud.save(entity);
-    await _trySync(cloud);
+    unawaited(_trySync(cloud));
   }
 
   @override
@@ -65,7 +65,7 @@ class SaleRepository implements Repository<SaleRecord> {
     }
 
     await cloud.delete(id);
-    await _trySync(cloud);
+    unawaited(_trySync(cloud));
   }
 
   /// Performs a best-effort synchronization for the configured store.
