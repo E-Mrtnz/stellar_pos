@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -232,11 +233,18 @@ class _CloudStoreSettingsContent extends StatelessWidget {
               });
             }
 
-            return AlertDialog(
-              titlePadding: const EdgeInsets.fromLTRB(28, 26, 28, 0),
-              contentPadding: const EdgeInsets.fromLTRB(28, 14, 28, 8),
-              actionsPadding: const EdgeInsets.fromLTRB(28, 0, 28, 22),
-              title: Row(
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 28),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: SizedBox(
+                width: 540,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(30, 28, 30, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                       Row(
                 children: [
                   Container(
                     width: 42,
@@ -244,7 +252,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.primary.withAlpha(20),
                       borderRadius: BorderRadius.circular(12),
-                    ),
+                            ),
                     child: Icon(
                       createMode ? Icons.add_business_outlined : Icons.link_outlined,
                       color: AppColors.primary,
@@ -259,8 +267,8 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                   ),
                 ],
               ),
-              content: SizedBox(
-                width: 500,
+                      SizedBox(
+                        width: double.infinity,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -382,10 +390,14 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-              ),
-              actions: [
-                TextButton(
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+
+TextButton(
                   onPressed: isWorking ? null : () => Navigator.of(dialogContext).pop(false),
                   child: const Text('Cancelar'),
                 ),
@@ -396,7 +408,14 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                       : Icon(createMode ? Icons.add_business_outlined : Icons.link_outlined, size: 18),
                   label: Text(createMode ? 'Crear tienda' : 'Unirse a tienda'),
                 ),
-              ],
+
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
             );
           },
         ),
@@ -545,14 +564,34 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                             child: Text(
                               provider.inviteCode ?? 'Sin código',
                               style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
                               ),
                             ),
                           ),
-                          TextButton(
+                          IconButton(
+                            tooltip: 'Copiar código',
+                            onPressed: saving || provider.inviteCode == null
+                                ? null
+                                : () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: provider.inviteCode!),
+                                    );
+                                    if (dialogContext.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Código de invitación copiado.'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            icon: const Icon(Icons.copy_rounded, size: 19),
+                          ),
+                          const SizedBox(width: 2),
+                          TextButton.icon(
                             onPressed: saving ? null : changeCode,
-                            child: const Text('Cambiar'),
+                            icon: const Icon(Icons.refresh_rounded, size: 17),
+                            label: const Text('Cambiar'),
                           ),
                         ],
                       ),
