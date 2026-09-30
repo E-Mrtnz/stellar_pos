@@ -16,7 +16,17 @@ abstract final class CloudCollection {
   static const providerRoutes = 'provider_routes';
   static const providerCatalog = 'provider_catalog';
   static const electronicBalanceAccounts = 'electronic_balance_accounts';
-  static const electronicBalanceTransactions = 'electronic_balance_transactions';
+  static const electronicBalanceTransactions =
+      'electronic_balance_transactions';
+
+  /// Top-level store metadata documents.
+  static const stores = 'stores';
+
+  /// Top-level invitation-code lookup documents.
+  static const storeInvites = 'store_invites';
+
+  /// Membership subcollection under each store.
+  static const members = 'members';
 
   static String store(String storeId) => 'stores/${storeId.trim()}';
 
