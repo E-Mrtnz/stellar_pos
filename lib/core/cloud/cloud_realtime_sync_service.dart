@@ -140,16 +140,18 @@ class CloudRealtimeSyncService extends ChangeNotifier
     try {
       do {
         _pendingTriggers.remove(collection);
-        await _syncService.syncCollection(collection);
-        _lastSyncedCollection = collection;
-        notifyListeners();
-      } catch (_) {
-        // Realtime synchronization is best-effort. The durable queue and
-        // periodic 60-second reconciliation remain responsible for recovery.
-      }
-    } while (_active &&
-        _storeId != null &&
-        _pendingTriggers.contains(collection));
+        try {
+          await _syncService.syncCollection(collection);
+          _lastSyncedCollection = collection;
+          notifyListeners();
+        } catch (_) {
+          // Realtime synchronization is best-effort. The durable queue and
+          // periodic 60-second reconciliation remain responsible for recovery.
+          break;
+        }
+      } while (_active &&
+          _storeId != null &&
+          _pendingTriggers.contains(collection));
     } finally {
       _syncing.remove(collection);
       if (_active &&
