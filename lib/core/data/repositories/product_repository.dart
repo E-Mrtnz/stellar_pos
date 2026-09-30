@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
@@ -34,7 +36,8 @@ class ProductRepository implements Repository<Product> {
 
   @override
   Future<List<Product>> getAll() async {
-    await _trySync();
+    // Local-first: never block the UI waiting for Firestore.
+    unawaited(_trySync());
     return _local.getAll();
   }
 
