@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
@@ -910,6 +911,10 @@ class _CloudStoreSettingsContent extends StatelessWidget {
               label: cloudStore.isSaving ? 'Subiendo...' : 'Subir todo',
               onPressed: cloudStore.isSaving ? null : () => _forceUploadAll(context),
             ),
+            if (cloudStore.syncProgress != null) ...[
+              const SizedBox(height: 8),
+              _buildCloudUploadProgress(cloudStore.syncProgress!),
+            ],
           ],
         ),
         const SizedBox(height: 14),
@@ -1188,6 +1193,63 @@ class _CloudStoreSettingsContent extends StatelessWidget {
           Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           const SizedBox(height: 14),
           ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCloudUploadProgress(CloudSyncProgress progress) {
+    final current = progress.total <= 0
+        ? progress.collection
+        : progress.collection + ' · ' +
+            progress.processed.toString() +
+            '/' +
+            progress.total.toString();
+    final percent = (progress.overallFraction * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withAlpha(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withAlpha(25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  progress.phase + ' · ' + current,
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                percent.toString() + '%',
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(value: progress.overallFraction, minHeight: 6),
+          ),
+          if (progress.failed > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Fallos: ' + progress.failed.toString(),
+              style: const TextStyle(fontSize: 10, color: AppColors.dangerRed, fontWeight: FontWeight.w700),
+            ),
+          ],
         ],
       ),
     );
