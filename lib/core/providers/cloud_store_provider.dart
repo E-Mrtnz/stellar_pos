@@ -140,6 +140,13 @@ class CloudStoreProvider extends ChangeNotifier {
             '',
           );
     }
-    return error.toString();
+    final message = error.toString();
+    if (message.contains('permission-denied') ||
+        message.contains('The caller does not have permission')) {
+      return 'Firebase rechazó esta operación por las reglas de seguridad de Firestore. '
+          'La aplicación sí está autenticada; hay que publicar las reglas de Firestore '
+          'del proyecto stellar-pos-8384a.';
+    }
+    return message;
   }
 }
