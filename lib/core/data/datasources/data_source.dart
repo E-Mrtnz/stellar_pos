@@ -12,5 +12,13 @@ abstract interface class DataSource<T extends SyncableEntity> {
 abstract interface class LocalDataSource<T extends SyncableEntity>
     implements DataSource<T> {}
 
+/// Optional optimized local persistence contract for migrations and bulk
+/// synchronization preparation. Implementations can persist many entities in
+/// one storage operation while callers remain compatible with simple local
+/// data sources.
+abstract interface class BatchLocalDataSource<T extends SyncableEntity> {
+  Future<void> saveAll(Iterable<T> entities);
+}
+
 abstract interface class RemoteDataSource<T extends SyncableEntity>
     implements DataSource<T> {}
