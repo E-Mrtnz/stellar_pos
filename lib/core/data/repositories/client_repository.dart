@@ -72,6 +72,29 @@ class ClientRepository implements Repository<Client> {
   }
 
   /// Performs a best-effort synchronization for the configured store.
+  Future<CloudSyncResult?> forceUpload() async {
+    final cloud = await _getCloudRepository();
+    if (cloud == null) return null;
+
+    try {
+      final storeId = await _identityStore.getStoreId();
+      if (storeId == null || storeId.isEmpty) return null;
+
+      return await _syncCoordinator.run<CloudSyncResult>(
+        key: '$storeId:' + CloudCollection.clients,
+        operation: cloud.forceUpload,
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        'Falló la carga forzada de Firestore.',
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
   Future<CloudSyncResult?> sync() => _trySync();
 
   Future<CloudSyncResult?> _trySync([CloudRepository<Client>? existing]) async {
