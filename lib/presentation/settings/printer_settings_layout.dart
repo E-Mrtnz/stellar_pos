@@ -828,11 +828,8 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _cloudInfoCard(
-                icon: Icons.vpn_key_outlined,
-                title: 'Invitación',
-                value: cloudStore.inviteCode ?? 'Sin código',
-                detail: 'Código para vincular nuevos dispositivos',
+              child: _cloudInviteInfoCard(
+                code: cloudStore.inviteCode ?? 'Sin código',
               ),
             ),
           ],
@@ -962,6 +959,78 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             onPressed: onPressed,
             icon: Icon(icon, size: 18),
             label: Text(buttonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cloudInviteInfoCard({required String code}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(18),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.vpn_key_outlined, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Invitación',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        code,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.3,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Copiar código',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: code == 'Sin código'
+                          ? null
+                          : () async {
+                              await Clipboard.setData(ClipboardData(text: code));
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Código de invitación copiado.')),
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 1),
+                const Text(
+                  'Código para vincular nuevos dispositivos',
+                  style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+                ),
+              ],
+            ),
           ),
         ],
       ),
