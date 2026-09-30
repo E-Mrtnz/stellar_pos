@@ -28,6 +28,29 @@ class CloudStoreAccessService {
       firestore.collection(CloudCollection.stores).doc(storeId).collection('roles');
 
   Future<StoreAccessSnapshot> load(String storeId) async {
+    final uid = auth.currentUser?.uid;
+    if (uid == null) {
+      return const StoreAccessSnapshot(users: [], devices: [], roles: []);
+    }
+
+    final currentUserDoc = await _users(storeId).doc(uid).get();
+    if (!currentUserDoc.exists) {
+      return const StoreAccessSnapshot(users: [], devices: [], roles: []);
+    }
+
+    final currentUser =
+        StoreUserRecord.fromFirestore(currentUserDoc.id, currentUserDoc.data()!);
+    final canManage =
+        currentUser.roleId == 'owner' || currentUser.roleId == 'administrator';
+
+    if (!canManage) {
+      return StoreAccessSnapshot(
+        users: [currentUser],
+        devices: const [],
+        roles: StoreAccessDefaults.all,
+      );
+    }
+
     final results = await Future.wait([
       _users(storeId).orderBy('createdAt').get(),
       _devices(storeId).orderBy('lastSeenAt', descending: true).get(),
