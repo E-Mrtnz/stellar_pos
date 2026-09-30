@@ -44,6 +44,31 @@ class CloudSyncResult {
 /// 2. download only documents newer than the last checkpoint;
 /// 3. apply remote data only when it does not replace a newer local change;
 /// 4. advance the checkpoint only after the pull completed successfully.
+typedef CloudSyncProgressCallback = void Function(CloudSyncProgress progress);
+
+class CloudSyncProgress {
+  final String collection;
+  final String phase;
+  final int processed;
+  final int total;
+  final int uploaded;
+  final int failed;
+  final List<String> errors;
+
+  const CloudSyncProgress({
+    required this.collection,
+    required this.phase,
+    required this.processed,
+    required this.total,
+    this.uploaded = 0,
+    this.failed = 0,
+    this.errors = const <String>[],
+  });
+
+  double get fraction =>
+      total <= 0 ? 0 : (processed / total).clamp(0, 1).toDouble();
+}
+
 class CloudSyncEngine {
   final SyncQueue queue;
   final SyncCheckpointStore checkpoints;
@@ -60,6 +85,7 @@ class CloudSyncEngine {
     required LocalDataSource<T> local,
     required CloudDataSource<T> cloud,
     required T Function(Map<String, dynamic> map) fromMap,
+    CloudSyncProgressCallback? onProgress,
   }) async {
     final stored = await local.getAll();
     final prepared = <T>[];
@@ -81,29 +107,125 @@ class CloudSyncEngine {
       prepared.add(_withMetadata(entity, metadata, fromMap));
     }
 
-    await _saveLocalBatch(local, prepared);
-    await _enqueueUpserts(
-      collection: collection,
-      scope: scope,
-      entities: prepared,
+    onProgress?.call(
+      CloudSyncProgress(
+        collection: collection,
+        phase: 'Preparando',
+        processed: 0,
+        total: prepared.length,
+      ),
     );
 
-    final result = await _flushQueue(
-      collection: collection,
-      local: local,
-      cloud: cloud,
-      scope: scope,
-      fromMap: fromMap,
+    // A manual "Subir todo" is an explicit migration/upload operation. It
+    // must not depend on the durable queue: when thousands of records are
+    // present, repeatedly scanning the shared queue can make the operation
+    // appear frozen and can cause collections to compete for the same Hive box.
+    // Upload the prepared local snapshot directly and only mark each record
+    // synced after Firestore acknowledges it.
+    var uploaded = 0;
+    var failed = 0;
+    var processed = 0;
+    final errors = <String>[];
+
+    const concurrency = 8;
+    for (var offset = 0; offset < prepared.length; offset += concurrency) {
+      final chunk = prepared
+          .skip(offset)
+          .take(concurrency)
+          .toList(growable: false);
+
+      final outcomes = await Future.wait(
+        chunk.map((entity) async {
+          try {
+            await cloud.save(entity);
+            return (
+              entity: entity,
+              error: (String?)null,
+            );
+          } catch (error, stackTrace) {
+            developer.log(
+              'Falló la carga manual de un registro. Colección: ' +
+                  collection +
+                  ', documento: ' +
+                  entity.id,
+              name: 'STELLAR_POS.cloud_sync',
+              error: error,
+              stackTrace: stackTrace,
+            );
+            return (
+              entity: (T?)null,
+              error: collection + '/' + entity.id + ': ' + error.toString(),
+            );
+          }
+        }),
+      );
+
+      final synced = <T>[];
+      for (final outcome in outcomes) {
+        processed++;
+        if (outcome.entity != null) {
+          uploaded++;
+          synced.add(
+            _withMetadata(
+              outcome.entity!,
+              outcome.entity!.metadata.markSynced(),
+              fromMap,
+            ),
+          );
+        } else {
+          failed++;
+          final error = outcome.error;
+          if (error != null) errors.add(error);
+        }
+      }
+
+      await _saveLocalBatch(local, synced);
+
+      onProgress?.call(
+        CloudSyncProgress(
+          collection: collection,
+          phase: 'Subiendo',
+          processed: processed,
+          total: prepared.length,
+          uploaded: uploaded,
+          failed: failed,
+          errors: List.unmodifiable(errors),
+        ),
+      );
+    }
+
+    final result = CloudSyncResult(
+      uploaded: uploaded,
+      failed: failed,
+      errors: List.unmodifiable(errors),
+      migrated: prepared.length,
     );
 
     developer.log(
-      'Carga forzada completada. Colección: ' + collection +
-          ', registros locales: ' + prepared.length.toString() +
-          ', subidos: ' + result.uploaded.toString() +
-          ', fallos: ' + result.failed.toString(),
+      'Carga manual completada. Colección: ' +
+          collection +
+          ', registros locales: ' +
+          prepared.length.toString() +
+          ', subidos: ' +
+          result.uploaded.toString() +
+          ', fallos: ' +
+          result.failed.toString(),
       name: 'STELLAR_POS.cloud_sync',
     );
-    return result + CloudSyncResult(migrated: prepared.length);
+
+    onProgress?.call(
+      CloudSyncProgress(
+        collection: collection,
+        phase: 'Completado',
+        processed: processed,
+        total: prepared.length,
+        uploaded: uploaded,
+        failed: failed,
+        errors: List.unmodifiable(errors),
+      ),
+    );
+
+    return result;
   }
 
   Future<CloudSyncResult> sync<T extends SyncableEntity>({
