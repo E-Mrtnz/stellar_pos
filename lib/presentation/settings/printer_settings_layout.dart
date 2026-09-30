@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
@@ -440,71 +439,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     }
   }
 
-  Future<void> _forceUploadAll(BuildContext context) async {
-    final provider = context.read<CloudStoreProvider>();
-    await provider.forceUploadAll();
-    if (!context.mounted) return;
-
-    final result = provider.lastSyncResult;
-    final success = result != null && result.failed == 0;
-    final errors = result?.errors ?? const <String>[];
-    final fatalError = provider.errorMessage;
-    final summary = result == null
-        ? 'No se pudo completar la carga.\n' +
-            (fatalError ?? 'La operación terminó sin un resultado.')
-        : 'Registros procesados: ' + result.migrated.toString() + '\n'
-            'Subidos: ' + result.uploaded.toString() + '\n'
-            'Descargados: ' + result.downloaded.toString() + '\n'
-            'Eliminados: ' + result.deleted.toString() + '\n'
-            'Fallos: ' + result.failed.toString();
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(success ? 'Carga a la nube completada' : 'Carga a la nube con problemas'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(summary),
-                if (errors.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Errores detectados:',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  ...errors.take(8).map(
-                    (error) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        error,
-                        style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
-                      ),
-                    ),
-                  ),
-                  if (errors.length > 8)
-                    Text(
-                      'Se ocultaron ' + (errors.length - 8).toString() + ' errores adicionales. Revisa la consola de depuración para el detalle completo.',
-                      style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
-                    ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _openAccessDialog(BuildContext context) async {
     await showDialog<void>(
       context: context,
@@ -903,25 +837,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         _cloudSectionCard(
-          icon: Icons.cloud_upload_outlined,
-          title: 'Sincronización de datos',
-          subtitle: 'Fuerza una carga completa de los registros locales de este dispositivo hacia la nube.',
-          children: [
-            _cloudActionRow(
-              icon: Icons.cloud_upload_outlined,
-              title: 'Subir todos los datos ahora',
-              subtitle: 'Carga productos, ventas, compras, clientes, deudas, proveedores y saldos electrónicos.',
-              label: cloudStore.isSaving ? 'Subiendo...' : 'Subir todo',
-              onPressed: cloudStore.isSaving ? null : () => _forceUploadAll(context),
-            ),
-            if (cloudStore.syncProgress != null) ...[
-              const SizedBox(height: 8),
-              _buildCloudUploadProgress(cloudStore.syncProgress!),
-            ],
-          ],
-        ),
-        const SizedBox(height: 14),
-        _cloudSectionCard(
           icon: Icons.manage_accounts_outlined,
           title: 'Administración',
           subtitle: 'Gestiona la tienda y controla quién puede acceder a ella.',
@@ -1201,69 +1116,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCloudUploadProgress(CloudSyncProgress progress) {
-    final current = progress.total <= 0
-        ? progress.collection
-        : progress.collection + ' · ' +
-            progress.processed.toString() +
-            '/' +
-            progress.total.toString();
-    final percent = (progress.overallFraction * 100).round();
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withAlpha(8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withAlpha(25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (progress.phase == 'Completado')
-                const Icon(
-                  Icons.check_circle_outline,
-                  size: 16,
-                  color: AppColors.successGreen,
-                )
-              else
-                const SizedBox(
-                  width: 15,
-                  height: 15,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  progress.phase + ' · ' + current,
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                percent.toString() + '%',
-                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.primary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(value: progress.overallFraction, minHeight: 6),
-          ),
-          if (progress.failed > 0) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Fallos: ' + progress.failed.toString(),
-              style: const TextStyle(fontSize: 10, color: AppColors.dangerRed, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _cloudActionRow({
     required IconData icon,
