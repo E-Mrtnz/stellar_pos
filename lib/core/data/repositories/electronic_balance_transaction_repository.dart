@@ -71,7 +71,9 @@ class ElectronicBalanceTransactionRepository
     unawaited(_trySync(cloud));
   }
 
-  Future<CloudSyncResult?> forceUpload() async {
+  Future<CloudSyncResult?> forceUpload({
+    CloudSyncProgressCallback? onProgress,
+  }) async {
     final cloud = await _getCloudRepository();
     if (cloud == null) return null;
 
@@ -81,7 +83,7 @@ class ElectronicBalanceTransactionRepository
 
       return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:' + CloudCollection.electronicBalanceTransactions,
-        operation: cloud.forceUpload,
+        operation: () => cloud.forceUpload(onProgress: onProgress),
       );
     } catch (error, stackTrace) {
       developer.log(
