@@ -32,6 +32,12 @@ service cloud.firestore {
 
     function hasPermission(storeId, permission) {
       return memberOf(storeId) &&
+        exists(
+          /databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)
+        ) &&
+        get(
+          /databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)
+        ).data.status == 'active' &&
         (
           get(
             /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
