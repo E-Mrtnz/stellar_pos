@@ -98,9 +98,6 @@ class ProductRepository implements Repository<Product> {
         stackTrace: stackTrace,
       );
       return null;
-      // Local POS operation must remain available when Firebase is offline,
-      // unavailable, or temporarily rejects the request. The queued change
-      // remains durable and can be retried by the next synchronization.
     }
   }
 
