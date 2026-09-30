@@ -92,6 +92,12 @@ class CloudStoreProvider extends ChangeNotifier {
     });
   }
 
+  Future<bool> forceUploadAll() async {
+    return _run(() async {
+      _lastSyncResult = await _service.forceUploadAll();
+    });
+  }
+
   Future<void> clear() async {
     if (_isSaving) return;
 
