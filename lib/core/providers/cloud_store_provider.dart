@@ -18,7 +18,6 @@ class CloudStoreProvider extends ChangeNotifier {
   bool _isSaving = false;
   String? _errorMessage;
   CloudSyncResult? _lastSyncResult;
-  CloudSyncProgress? _syncProgress;
 
   CloudStoreProvider({CloudStoreService? service})
       : _service = service ?? CloudStoreService();
@@ -32,7 +31,6 @@ class CloudStoreProvider extends ChangeNotifier {
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
   CloudSyncResult? get lastSyncResult => _lastSyncResult;
-  CloudSyncProgress? get syncProgress => _syncProgress;
 
   Future<void> load() async {
     _isLoading = true;
@@ -91,26 +89,6 @@ class CloudStoreProvider extends ChangeNotifier {
   Future<bool> sync() async {
     return _run(() async {
       _lastSyncResult = await _service.sync();
-    });
-  }
-
-  Future<bool> forceUploadAll() async {
-    return _run(() async {
-      _lastSyncResult = null;
-      _syncProgress = const CloudSyncProgress(
-        collection: 'Preparando',
-        phase: 'Preparando',
-        processed: 0,
-        total: 0,
-      );
-      notifyListeners();
-
-      _lastSyncResult = await _service.forceUploadAll(
-        onProgress: (progress) {
-          _syncProgress = progress;
-          notifyListeners();
-        },
-      );
     });
   }
 
