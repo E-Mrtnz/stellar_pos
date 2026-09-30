@@ -1016,6 +1016,31 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   Widget _buildMainContent() {
+    final access = context.watch<CloudAccessProvider>();
+    if (_selectedNavIndex == AppNavigation.purchases &&
+        !access.hasPermission(StorePermissions.purchasesView)) {
+      return const _EmptySectionPanel();
+    }
+    if (_selectedNavIndex == AppNavigation.providers &&
+        !access.hasPermission(StorePermissions.providersView)) {
+      return const _EmptySectionPanel();
+    }
+    if (_selectedNavIndex == AppNavigation.stats &&
+        !access.hasPermission(StorePermissions.statisticsView)) {
+      return const _EmptySectionPanel();
+    }
+    if (_selectedNavIndex == AppNavigation.inventory &&
+        !access.hasPermission(StorePermissions.inventoryView)) {
+      return const _EmptySectionPanel();
+    }
+    if (_selectedNavIndex == AppNavigation.debts &&
+        !access.hasPermission(StorePermissions.debtsView)) {
+      return const _EmptySectionPanel();
+    }
+    if (_selectedNavIndex == AppNavigation.settings &&
+        !access.hasPermission(StorePermissions.settingsView)) {
+      return const _EmptySectionPanel();
+    }
     if (_selectedNavIndex == AppNavigation.inventory)
       return const InventoryLayout();
     if (_selectedNavIndex == AppNavigation.electronicBalance)
