@@ -48,7 +48,6 @@ class CloudSyncEngine {
     required CloudSyncScope scope,
     required LocalDataSource<T> local,
     required CloudDataSource<T> cloud,
-    required CloudSyncScope scope,
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     var result = const CloudSyncResult();
@@ -172,6 +171,7 @@ class CloudSyncEngine {
     required String collection,
     required LocalDataSource<T> local,
     required CloudDataSource<T> cloud,
+    required CloudSyncScope scope,
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     var result = const CloudSyncResult();
