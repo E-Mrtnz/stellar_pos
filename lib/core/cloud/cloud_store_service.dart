@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_service.dart';
+import 'package:stellar_pos/core/cloud/cloud_store_access_service.dart';
 
 /// Manages the business/store identity that sits above the application data.
 ///
@@ -17,20 +18,24 @@ class CloudStoreService {
   final CloudSyncService syncService;
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
+  final CloudStoreAccessService accessService;
 
   CloudStoreService({
     CloudIdentityStore? identityStore,
     CloudSyncService? syncService,
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    CloudStoreAccessService? accessService,
   })  : identityStore = identityStore ?? CloudIdentityStore(),
         syncService = syncService ?? CloudSyncService(),
         firestore = firestore ?? FirebaseFirestore.instance,
-        auth = auth ?? FirebaseAuth.instance;
+        auth = auth ?? FirebaseAuth.instance,
+        accessService = accessService ?? CloudStoreAccessService();
 
   Future<String?> getStoreId() => identityStore.getStoreId();
   Future<String?> getStoreName() => identityStore.getStoreName();
   Future<String?> getInviteCode() => identityStore.getInviteCode();
+  Future<String?> getOwnerEmail() => identityStore.getOwnerEmail();
 
   Future<bool> get isConfigured async =>
       (await identityStore.getStoreId())?.isNotEmpty == true;
@@ -62,7 +67,11 @@ class CloudStoreService {
   ///
   /// The id comes from a Firestore auto-generated document reference, while
   /// the invitation code is a short human-friendly value.
-  Future<void> createStore(String storeName) async {
+  Future<void> createStore(String storeName, String ownerEmail) async {
+    final normalizedEmail = ownerEmail.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
+      throw ArgumentError.value(ownerEmail, 'ownerEmail', 'El correo del propietario no es válido.');
+    }
     final normalizedName = storeName.trim();
     if (normalizedName.isEmpty) {
       throw ArgumentError.value(
@@ -99,6 +108,7 @@ class CloudStoreService {
           final storeData = <String, dynamic>{
             'name': normalizedName,
             'ownerUid': user.uid,
+            'ownerEmail': normalizedEmail,
             'inviteCode': inviteCode,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
@@ -121,7 +131,12 @@ class CloudStoreService {
         await identityStore.setStoreIdentity(
           storeId: storeRef.id,
           storeName: normalizedName,
+          ownerEmail: normalizedEmail,
           inviteCode: inviteCode,
+        );
+        await accessService.ensureOwnerUser(
+          storeId: storeRef.id,
+          ownerEmail: normalizedEmail,
         );
         await syncService.syncAll();
         return;
@@ -140,7 +155,11 @@ class CloudStoreService {
   ///
   /// The code is the lookup key; the immutable store id returned by the
   /// invitation document is what becomes the local cloud identity.
-  Future<void> joinStore(String invitationCode) async {
+  Future<void> joinStore(String displayName, String invitationCode) async {
+    final normalizedName = displayName.trim();
+    if (normalizedName.isEmpty) {
+      throw ArgumentError.value(displayName, 'displayName', 'El nombre del usuario no puede estar vacío.');
+    }
     final normalizedCode = invitationCode.trim().toUpperCase();
     if (normalizedCode.isEmpty) {
       throw ArgumentError.value(
@@ -196,9 +215,16 @@ class CloudStoreService {
       throw StateError('La tienda no tiene un nombre válido.');
     }
 
+    await accessService.joinAsUser(
+      storeId: storeId,
+      displayName: normalizedName,
+      invitationCode: normalizedCode,
+    );
+
     await identityStore.setStoreIdentity(
       storeId: storeId,
       storeName: storeName,
+      ownerEmail: storeData['ownerEmail']?.toString(),
       inviteCode: normalizedCode,
     );
     await syncService.syncAll();
