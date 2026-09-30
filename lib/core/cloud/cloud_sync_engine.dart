@@ -14,6 +14,7 @@ class CloudSyncResult {
   final int skippedConflicts;
   final int failed;
   final int migrated;
+  final List<String> errors;
 
   const CloudSyncResult({
     this.uploaded = 0,
@@ -22,6 +23,7 @@ class CloudSyncResult {
     this.skippedConflicts = 0,
     this.failed = 0,
     this.migrated = 0,
+    this.errors = const <String>[],
   });
 
   CloudSyncResult operator +(CloudSyncResult other) => CloudSyncResult(
@@ -31,6 +33,7 @@ class CloudSyncResult {
         skippedConflicts: skippedConflicts + other.skippedConflicts,
         failed: failed + other.failed,
         migrated: migrated + other.migrated,
+        errors: <String>[...errors, ...other.errors],
       );
 }
 
@@ -50,6 +53,58 @@ class CloudSyncEngine {
     SyncCheckpointStore? checkpoints,
   })  : queue = queue ?? SyncQueue(),
         checkpoints = checkpoints ?? SyncCheckpointStore();
+
+  Future<CloudSyncResult> forceUpload<T extends SyncableEntity>({
+    required String collection,
+    required CloudSyncScope scope,
+    required LocalDataSource<T> local,
+    required CloudDataSource<T> cloud,
+    required T Function(Map<String, dynamic> map) fromMap,
+  }) async {
+    final stored = await local.getAll();
+    final prepared = <T>[];
+
+    for (final entity in stored) {
+      if (entity.metadata.syncState == SyncState.deleted) continue;
+
+      final metadata = scope.applyTo(
+        SyncMetadata(
+          createdAt: entity.metadata.createdAt,
+          updatedAt: entity.metadata.updatedAt,
+          version: entity.metadata.version,
+          schemaVersion: entity.metadata.schemaVersion,
+          syncState: SyncState.pending,
+          lastSyncedAt: entity.metadata.lastSyncedAt,
+          deletedAt: entity.metadata.deletedAt,
+        ),
+      );
+      prepared.add(_withMetadata(entity, metadata, fromMap));
+    }
+
+    await _saveLocalBatch(local, prepared);
+    await _enqueueUpserts(
+      collection: collection,
+      scope: scope,
+      entities: prepared,
+    );
+
+    final result = await _flushQueue(
+      collection: collection,
+      local: local,
+      cloud: cloud,
+      scope: scope,
+      fromMap: fromMap,
+    );
+
+    developer.log(
+      'Carga forzada completada. Colección: ' + collection +
+          ', registros locales: ' + prepared.length.toString() +
+          ', subidos: ' + result.uploaded.toString() +
+          ', fallos: ' + result.failed.toString(),
+      name: 'STELLAR_POS.cloud_sync',
+    );
+    return result + CloudSyncResult(migrated: prepared.length);
+  }
 
   Future<CloudSyncResult> sync<T extends SyncableEntity>({
     required String collection,
@@ -412,7 +467,12 @@ class CloudSyncEngine {
         error: error,
         stackTrace: stackTrace,
       );
-      return const CloudSyncResult(failed: 1);
+      return CloudSyncResult(
+        failed: 1,
+        errors: <String>[
+          collection + '/' + item.entityId + ': ' + error.toString(),
+        ],
+      );
     }
   }
 
