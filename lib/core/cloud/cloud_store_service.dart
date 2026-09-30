@@ -108,7 +108,6 @@ class CloudStoreService {
           final storeData = <String, dynamic>{
             'name': normalizedName,
             'ownerUid': user.uid,
-            'ownerEmail': normalizedEmail,
             'inviteCode': inviteCode,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
@@ -224,7 +223,6 @@ class CloudStoreService {
     await identityStore.setStoreIdentity(
       storeId: storeId,
       storeName: storeName,
-      ownerEmail: storeData['ownerEmail']?.toString(),
       inviteCode: normalizedCode,
     );
     await syncService.syncAll();
