@@ -52,8 +52,10 @@ class SidebarDrawer extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSidebarItem(AppNavigation.home, Icons.point_of_sale_rounded, AppStrings.navHome),
-                    _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
+                    if (access.hasPermission(StorePermissions.dashboardView))
+                      _buildSidebarItem(AppNavigation.home, Icons.point_of_sale_rounded, AppStrings.navHome),
+                    if (access.hasPermission(StorePermissions.salesView))
+                      _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
                     if (access.hasPermission(StorePermissions.purchasesView))
                       _buildSidebarItem(AppNavigation.purchases, Icons.shopping_bag_rounded, AppStrings.navPurchases),
                     if (access.hasPermission(StorePermissions.debtsView))
@@ -68,7 +70,8 @@ class SidebarDrawer extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
-              _buildSidebarItem(AppNavigation.settings, Icons.settings_outlined, AppStrings.navSettings),
+              if (access.hasPermission(StorePermissions.settingsView))
+                _buildSidebarItem(AppNavigation.settings, Icons.settings_outlined, AppStrings.navSettings),
               const SizedBox(height: 16),
             ],
           ),
