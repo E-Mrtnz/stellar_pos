@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_auto_sync_service.dart';
+import 'package:stellar_pos/core/cloud/cloud_realtime_sync_service.dart';
 import 'package:stellar_pos/core/data/repositories/client_group_repository.dart';
 import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
@@ -39,6 +42,15 @@ class AppProviders extends StatelessWidget {
         ),
         Provider<CloudAutoSyncService>(
           create: (_) => CloudAutoSyncService()..start(),
+          dispose: (_, service) => service.dispose(),
+        ),
+        ProxyProvider<CloudStoreProvider, CloudRealtimeSyncService>(
+          create: (_) => CloudRealtimeSyncService()..start(),
+          update: (_, store, realtime) {
+            final service = realtime ?? (CloudRealtimeSyncService()..start());
+            unawaited(service.setStoreId(store.storeId));
+            return service;
+          },
           dispose: (_, service) => service.dispose(),
         ),
         ChangeNotifierProvider(
