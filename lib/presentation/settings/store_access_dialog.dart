@@ -203,7 +203,13 @@ class _PermissionEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final access = context.watch<CloudAccessProvider>();
-    final role = access.snapshot.roles.where((item) => item.id == user.roleId).firstOrNull;
+    StoreRoleDefinition? role;
+    for (final candidate in access.snapshot.roles) {
+      if (candidate.id == user.roleId) {
+        role = candidate;
+        break;
+      }
+    }
     final defaults = role?.permissions ?? const <String>{};
 
     return ExpansionTile(
