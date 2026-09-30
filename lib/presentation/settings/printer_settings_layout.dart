@@ -448,10 +448,8 @@ class _CloudStoreSettingsContent extends StatelessWidget {
 
   Future<void> _manageStore(BuildContext context) async {
     final provider = context.read<CloudStoreProvider>();
-    final nameController =
-        TextEditingController(text: provider.storeName ?? '');
-    final emailController =
-        TextEditingController(text: provider.ownerEmail ?? '');
+    final nameController = TextEditingController(text: provider.storeName ?? '');
+    final emailController = TextEditingController(text: provider.ownerEmail ?? '');
 
     try {
       await showDialog<void>(
@@ -468,26 +466,31 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                 return;
               }
 
-              final nameSuccess =
-                  await provider.renameStore(nameController.text.trim());
-              final emailSuccess =
-                  await provider.updateOwnerEmail(emailController.text.trim());
-              final success = nameSuccess && emailSuccess;
+              final nameSuccess = await provider.renameStore(nameController.text.trim());
+              final emailSuccess = await provider.updateOwnerEmail(emailController.text.trim());
               if (!dialogContext.mounted) return;
 
-              if (success) {
+              if (nameSuccess && emailSuccess) {
                 setDialogState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Nombre de la tienda actualizado.'),
-                  ),
+                  const SnackBar(content: Text('Cambios guardados correctamente.')),
+                );
+              }
+            }
+
+            Future<void> copyCode() async {
+              final code = provider.inviteCode;
+              if (code == null) return;
+              await Clipboard.setData(ClipboardData(text: code));
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Código de invitación copiado.')),
                 );
               }
             }
 
             Future<void> changeCode() async {
               if (saving) return;
-
               final confirmed = await showDialog<bool>(
                 context: dialogContext,
                 builder: (confirmContext) => AlertDialog(
@@ -509,134 +512,178 @@ class _CloudStoreSettingsContent extends StatelessWidget {
               );
 
               if (confirmed != true || !dialogContext.mounted) return;
-
               final success = await provider.rotateInviteCode();
               if (!dialogContext.mounted) return;
 
               if (success) {
                 setDialogState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Se generó un nuevo código de invitación.'),
-                  ),
+                  const SnackBar(content: Text('Nuevo código de invitación generado.')),
                 );
               }
             }
 
-            return AlertDialog(
-              title: const Text('Administrar tienda'),
-              content: SizedBox(
-                width: 460,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre de la tienda',
-                        prefixIcon: Icon(Icons.storefront_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo del propietario',
-                        prefixIcon: Icon(Icons.alternate_email_rounded),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Código de invitación',
-                        prefixIcon: Icon(Icons.vpn_key_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      child: Row(
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 28),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: SizedBox(
+                width: 560,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(30, 28, 30, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
                         children: [
-                          Expanded(
-                            child: Text(
-                              provider.inviteCode ?? 'Sin código',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                              ),
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(20),
+                              borderRadius: BorderRadius.circular(14),
                             ),
+                            child: const Icon(Icons.storefront_outlined, color: AppColors.primary, size: 24),
                           ),
-                          IconButton(
-                            tooltip: 'Copiar código',
-                            onPressed: saving || provider.inviteCode == null
-                                ? null
-                                : () async {
-                                    await Clipboard.setData(
-                                      ClipboardData(text: provider.inviteCode!),
-                                    );
-                                    if (dialogContext.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Código de invitación copiado.'),
-                                        ),
-                                      );
-                                    }
-                                  },
-                            icon: const Icon(Icons.copy_rounded, size: 19),
-                          ),
-                          const SizedBox(width: 2),
-                          TextButton.icon(
-                            onPressed: saving ? null : changeCode,
-                            icon: const Icon(Icons.refresh_rounded, size: 17),
-                            label: const Text('Cambiar'),
+                          const SizedBox(width: 13),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Administrar tienda', style: AppTextStyles.brandTitle),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Actualiza la identidad visible y controla el acceso mediante el código de invitación.',
+                                  style: TextStyle(fontSize: 11, height: 1.35, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Comparte este código únicamente con dispositivos que deban acceder a esta tienda.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        height: 1.35,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'ID interno: ' + (provider.storeId ?? 'No disponible'),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    if (provider.errorMessage != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        provider.errorMessage!,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.dangerRed,
+                      const SizedBox(height: 22),
+                      TextField(
+                        controller: nameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de la tienda',
+                          prefixIcon: Icon(Icons.storefront_outlined),
+                          border: OutlineInputBorder(),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Correo del propietario',
+                          prefixIcon: Icon(Icons.alternate_email_rounded),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputBackground,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.vpn_key_outlined, color: AppColors.primary, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Código de invitación',
+                                    style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    provider.inviteCode ?? 'Sin código',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.6,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Copiar código',
+                              onPressed: saving ? null : copyCode,
+                              icon: const Icon(Icons.copy_rounded),
+                            ),
+                            IconButton(
+                              tooltip: 'Cambiar código',
+                              onPressed: saving ? null : changeCode,
+                              icon: const Icon(Icons.refresh_rounded),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Comparte este código solo con las personas o dispositivos que deban acceder a esta tienda.',
+                        style: TextStyle(fontSize: 10.5, height: 1.35, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(11),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputBackground,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.fingerprint_rounded, size: 17, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Store ID: ' + (provider.storeId ?? 'No disponible'),
+                                style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (provider.errorMessage != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          provider.errorMessage!,
+                          style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
+                        ),
+                      ],
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
+                            child: const Text('Cerrar'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            onPressed: saving ? null : saveChanges,
+                            icon: saving
+                                ? const SizedBox(
+                                    width: 15,
+                                    height: 15,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.check_rounded, size: 18),
+                            label: const Text('Guardar cambios'),
+                          ),
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: saving
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cerrar'),
-                ),
-                FilledButton(
-                  onPressed: saving ? null : saveChanges,
-                  child: const Text('Guardar cambios'),
-                ),
-              ],
             );
           },
         ),
