@@ -280,8 +280,11 @@ class CloudSyncEngine {
   ) async {
     if (entities.isEmpty) return;
 
-    if (local is BatchLocalDataSource<T>) {
-      await local.saveAll(entities);
+    final batchLocal = local is BatchLocalDataSource<T>
+        ? local as BatchLocalDataSource<T>
+        : null;
+    if (batchLocal != null) {
+      await batchLocal.saveAll(entities);
       return;
     }
 
