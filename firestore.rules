@@ -227,7 +227,9 @@ service cloud.firestore {
 
       allow create: if signedIn() &&
         memberOf(storeId) &&
-        request.resource.data.userId == request.auth.uid;
+        get(
+          /databases/$(database)/documents/stores/$(storeId)/users/$(request.resource.data.userId)
+        ).data.authUid == request.auth.uid;
 
       allow update: if hasPermission(storeId, 'devices.manage') ||
         (
