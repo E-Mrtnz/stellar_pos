@@ -556,6 +556,11 @@ class DebtProvider extends ChangeNotifier {
 
   void _onSalesChanged() => notifyListeners();
 
+  Future<void> refreshFromRepository() async {
+    await _loadFromRepository();
+    notifyListeners();
+  }
+
   Future<void> _loadFromRepository() async {
     await _salesProvider.load();
     final repository = _movementRepository;
