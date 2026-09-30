@@ -90,26 +90,84 @@ class CloudSyncService {
 
   /// Forces every cloud-aware repository to upload its complete local
   /// dataset, regardless of checkpoints or previous sync state.
-  Future<CloudSyncResult> forceUploadAll() async {
-    final results = await Future.wait<CloudSyncResult?>([
-      products.forceUpload(),
-      clients.forceUpload(),
-      purchases.forceUpload(),
-      sales.forceUpload(),
-      debtMovements.forceUpload(),
-      clientGroups.forceUpload(),
-      electronicBalanceAccounts.forceUpload(),
-      electronicBalanceTransactions.forceUpload(),
-      providerRoutes.forceUpload(),
-      providerCatalog.forceUpload(),
-    ]);
+  Future<CloudSyncResult> forceUploadAll({
+    CloudSyncProgressCallback? onProgress,
+  }) async {
+    final operations = <({
+      String collection,
+      Future<CloudSyncResult?> Function(CloudSyncProgressCallback) run,
+    })>[
+      (
+        collection: CloudCollection.products,
+        run: products.forceUpload,
+      ),
+      (
+        collection: CloudCollection.clients,
+        run: clients.forceUpload,
+      ),
+      (
+        collection: CloudCollection.purchases,
+        run: purchases.forceUpload,
+      ),
+      (
+        collection: CloudCollection.sales,
+        run: sales.forceUpload,
+      ),
+      (
+        collection: CloudCollection.debtMovements,
+        run: debtMovements.forceUpload,
+      ),
+      (
+        collection: CloudCollection.clientGroups,
+        run: clientGroups.forceUpload,
+      ),
+      (
+        collection: CloudCollection.electronicBalanceAccounts,
+        run: electronicBalanceAccounts.forceUpload,
+      ),
+      (
+        collection: CloudCollection.electronicBalanceTransactions,
+        run: electronicBalanceTransactions.forceUpload,
+      ),
+      (
+        collection: CloudCollection.providerRoutes,
+        run: providerRoutes.forceUpload,
+      ),
+      (
+        collection: CloudCollection.providerCatalog,
+        run: providerCatalog.forceUpload,
+      ),
+    ];
 
     var total = const CloudSyncResult();
-    for (final result in results) {
+
+    // Manual upload is deliberately sequential by collection. Each entity is
+    // uploaded concurrently inside its own repository, while collections are
+    // isolated so a large product catalog cannot make ten repositories fight
+    // over the same local storage/connection resources.
+    for (var index = 0; index < operations.length; index++) {
+      final operation = operations[index];
+      final result = await operation.run((progress) {
+        onProgress?.call(
+          CloudSyncProgress(
+            collection: progress.collection,
+            phase: progress.phase,
+            processed: progress.processed,
+            total: progress.total,
+            uploaded: progress.uploaded,
+            failed: progress.failed,
+            errors: progress.errors,
+            collectionIndex: index,
+            collectionCount: operations.length,
+          ),
+        );
+      });
+
       if (result != null) {
         total = total + result;
       }
     }
+
     return total;
   }
 
