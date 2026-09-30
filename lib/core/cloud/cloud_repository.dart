@@ -39,14 +39,12 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
 
   @override
   Future<void> save(T entity) async {
+    // Local Hive remains the source of truth. The automatic synchronization
+    // engine scans pending local records and sends them directly to Firestore.
+    // Keeping upserts out of the durable queue prevents the queue from becoming
+    // a second source of truth during large migrations.
     final prepared = _prepareLocalEntity(entity);
     await local.save(prepared);
-    await queue.enqueueUpsert(
-      collection: collection,
-      entityId: prepared.id,
-      payload: prepared.toMap(),
-      storeId: scope.storeId,
-    );
   }
 
   @override
@@ -92,18 +90,6 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
   }
 
   T _fromMap(Map<String, dynamic> map) => fromMap(map);
-
-  Future<CloudSyncResult> forceUpload({
-    CloudSyncProgressCallback? onProgress,
-  }) =>
-      engine.forceUpload<T>(
-        collection: collection,
-        scope: scope,
-        local: local,
-        cloud: cloud,
-        fromMap: fromMap,
-        onProgress: onProgress,
-      );
 
   Future<CloudSyncResult> sync() => engine.sync<T>(
         collection: collection,
