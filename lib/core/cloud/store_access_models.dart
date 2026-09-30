@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StorePermissions {
   static const dashboardView = 'dashboard.view';
@@ -196,7 +196,7 @@ class StoreUserRecord {
     Map<String, dynamic> map,
   ) {
     DateTime? date(dynamic value) =>
-        value is DateTime ? value : (value?.toDate?.call() as DateTime?);
+        value is Timestamp ? value.toDate() : value is DateTime ? value : null;
     return StoreUserRecord(
       userId: id,
       authUid: map['authUid']?.toString() ?? '',
