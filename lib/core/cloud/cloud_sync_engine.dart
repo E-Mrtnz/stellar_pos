@@ -89,6 +89,17 @@ class CloudSyncEngine {
       fromMap: fromMap,
     );
 
+    // A failed offline delete remains in the durable queue while the local
+    // record is already gone. Keep that tombstone intent in mind during the
+    // pull so an older remote copy cannot resurrect the deleted record.
+    final pendingDeletes = (await queue.pending(
+      collection: collection,
+      storeId: scope.storeId,
+    ))
+        .where((item) => item.operation == SyncOperationType.delete)
+        .map((item) => item.entityId)
+        .toSet();
+
     final afterUploadCheckpoint = await checkpoints.get(
       storeId: scope.storeId,
       collection: collection,
@@ -107,6 +118,7 @@ class CloudSyncEngine {
       local: local,
       remote: changed,
       fromMap: fromMap,
+      pendingDeletes: pendingDeletes,
     );
 
     final timestamps = <DateTime>[
@@ -221,10 +233,18 @@ class CloudSyncEngine {
     required LocalDataSource<T> local,
     required List<T> remote,
     required T Function(Map<String, dynamic> map) fromMap,
+    Set<String> pendingDeletes = const <String>{},
   }) async {
     var result = const CloudSyncResult();
 
     for (final remoteEntity in remote) {
+      // The local deletion is authoritative until its durable queue entry
+      // reaches Firestore. Do not resurrect the remote copy in the meantime.
+      if (pendingDeletes.contains(remoteEntity.id)) {
+        result = result + const CloudSyncResult(skippedConflicts: 1);
+        continue;
+      }
+
       final localEntity = await local.getById(remoteEntity.id);
 
       if (remoteEntity.metadata.syncState == SyncState.deleted) {
