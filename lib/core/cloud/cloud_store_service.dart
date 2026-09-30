@@ -228,6 +228,15 @@ class CloudStoreService {
     await syncService.syncAll();
   }
 
+  Future<void> updateOwnerEmail(String ownerEmail) async {
+    final storeId = await identityStore.getStoreId();
+    if (storeId == null) {
+      throw StateError('No hay una tienda configurada en este dispositivo.');
+    }
+    await accessService.setOwnerEmail(storeId: storeId, ownerEmail: ownerEmail);
+    await identityStore.setOwnerEmail(ownerEmail);
+  }
+
   Future<void> renameStore(String storeName) async {
     final normalizedName = storeName.trim();
     if (normalizedName.isEmpty) {
