@@ -1,4 +1,5 @@
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/data/repositories/client_group_repository.dart';
 import 'package:stellar_pos/core/data/repositories/client_repository.dart';
 import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart';
@@ -56,38 +57,28 @@ class CloudSyncService {
   ///
   /// Realtime listeners use this targeted entry point so a change in one
   /// collection does not force every repository to perform a full pull.
-  Future<void> syncCollection(String collection) async {
+  Future<CloudSyncResult?> syncCollection(String collection) async {
     switch (collection) {
       case CloudCollection.products:
-        await products.sync();
-        return;
+        return products.sync();
       case CloudCollection.sales:
-        await sales.sync();
-        return;
+        return sales.sync();
       case CloudCollection.purchases:
-        await purchases.sync();
-        return;
+        return purchases.sync();
       case CloudCollection.clients:
-        await clients.sync();
-        return;
+        return clients.sync();
       case CloudCollection.debtMovements:
-        await debtMovements.sync();
-        return;
+        return debtMovements.sync();
       case CloudCollection.clientGroups:
-        await clientGroups.sync();
-        return;
+        return clientGroups.sync();
       case CloudCollection.providerRoutes:
-        await providerRoutes.sync();
-        return;
+        return providerRoutes.sync();
       case CloudCollection.providerCatalog:
-        await providerCatalog.sync();
-        return;
+        return providerCatalog.sync();
       case CloudCollection.electronicBalanceAccounts:
-        await electronicBalanceAccounts.sync();
-        return;
+        return electronicBalanceAccounts.sync();
       case CloudCollection.electronicBalanceTransactions:
-        await electronicBalanceTransactions.sync();
-        return;
+        return electronicBalanceTransactions.sync();
       default:
         throw ArgumentError.value(
           collection,
@@ -103,8 +94,8 @@ class CloudSyncService {
   /// Firebase is unavailable. Futures are intentionally started together so
   /// independent collections can synchronize concurrently; the shared
   /// [CloudSyncCoordinator] still prevents duplicate work per collection.
-  Future<void> syncAll() async {
-    await Future.wait<void>([
+  Future<CloudSyncResult> syncAll() async {
+    final results = await Future.wait<CloudSyncResult?>([
       products.sync(),
       clients.sync(),
       purchases.sync(),
@@ -116,5 +107,13 @@ class CloudSyncService {
       providerRoutes.sync(),
       providerCatalog.sync(),
     ]);
+
+    var total = const CloudSyncResult();
+    for (final result in results) {
+      if (result != null) {
+        total = total + result;
+      }
+    }
+    return total;
   }
 }
