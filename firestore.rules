@@ -98,21 +98,73 @@ service cloud.firestore {
         false;
     }
 
-    function canWriteCollection(storeId, collection) {
-      return collection == 'products' ? hasPermission(storeId, 'inventory.edit') :
-        collection == 'sales' ? hasPermission(storeId, 'sales.create') :
-        collection == 'purchases' ? hasPermission(storeId, 'purchases.create') :
-        collection == 'clients' ? hasPermission(storeId, 'clients.create') :
-        collection == 'distributors' ? hasPermission(storeId, 'providers.create') :
-        collection == 'debts' ? hasPermission(storeId, 'debts.create') :
-        collection == 'debt_movements' ? hasPermission(storeId, 'debts.create') :
-        collection == 'inventory_movements' ? hasPermission(storeId, 'inventory.create') :
+    function canWriteCollection(storeId, collection, action) {
+      return collection == 'products' ? (
+          action == 'create' ? hasPermission(storeId, 'inventory.create') :
+          action == 'update' ? hasPermission(storeId, 'inventory.edit') :
+          hasPermission(storeId, 'inventory.delete')
+        ) :
+        collection == 'sales' ? (
+          action == 'create' ? hasPermission(storeId, 'sales.create') :
+          action == 'update' ? hasPermission(storeId, 'sales.edit') :
+          hasPermission(storeId, 'sales.delete')
+        ) :
+        collection == 'purchases' ? (
+          action == 'create' ? hasPermission(storeId, 'purchases.create') :
+          action == 'update' ? hasPermission(storeId, 'purchases.edit') :
+          hasPermission(storeId, 'purchases.delete')
+        ) :
+        collection == 'clients' ? (
+          action == 'create' ? hasPermission(storeId, 'clients.create') :
+          action == 'update' ? hasPermission(storeId, 'clients.edit') :
+          hasPermission(storeId, 'clients.delete')
+        ) :
+        collection == 'distributors' ? (
+          action == 'create' ? hasPermission(storeId, 'providers.create') :
+          action == 'update' ? hasPermission(storeId, 'providers.edit') :
+          hasPermission(storeId, 'providers.delete')
+        ) :
+        collection == 'debts' ? (
+          action == 'create' ? hasPermission(storeId, 'debts.create') :
+          action == 'update' ? hasPermission(storeId, 'debts.edit') :
+          hasPermission(storeId, 'debts.delete')
+        ) :
+        collection == 'debt_movements' ? (
+          action == 'create' ? hasPermission(storeId, 'debts.create') :
+          action == 'update' ? hasPermission(storeId, 'debts.edit') :
+          hasPermission(storeId, 'debts.delete')
+        ) :
+        collection == 'inventory_movements' ? (
+          action == 'create' ? hasPermission(storeId, 'inventory.create') :
+          action == 'update' ? hasPermission(storeId, 'inventory.edit') :
+          hasPermission(storeId, 'inventory.delete')
+        ) :
         collection == 'settings' ? hasPermission(storeId, 'settings.edit') :
-        collection == 'client_groups' ? hasPermission(storeId, 'clients.create') :
-        collection == 'provider_routes' ? hasPermission(storeId, 'providers.create') :
-        collection == 'provider_catalog' ? hasPermission(storeId, 'providers.create') :
-        collection == 'electronic_balance_accounts' ? hasPermission(storeId, 'sales.create') :
-        collection == 'electronic_balance_transactions' ? hasPermission(storeId, 'sales.create') :
+        collection == 'client_groups' ? (
+          action == 'create' ? hasPermission(storeId, 'clients.create') :
+          action == 'update' ? hasPermission(storeId, 'clients.edit') :
+          hasPermission(storeId, 'clients.delete')
+        ) :
+        collection == 'provider_routes' ? (
+          action == 'create' ? hasPermission(storeId, 'providers.create') :
+          action == 'update' ? hasPermission(storeId, 'providers.edit') :
+          hasPermission(storeId, 'providers.delete')
+        ) :
+        collection == 'provider_catalog' ? (
+          action == 'create' ? hasPermission(storeId, 'providers.create') :
+          action == 'update' ? hasPermission(storeId, 'providers.edit') :
+          hasPermission(storeId, 'providers.delete')
+        ) :
+        collection == 'electronic_balance_accounts' ? (
+          action == 'create' ? hasPermission(storeId, 'sales.create') :
+          action == 'update' ? hasPermission(storeId, 'sales.edit') :
+          hasPermission(storeId, 'sales.delete')
+        ) :
+        collection == 'electronic_balance_transactions' ? (
+          action == 'create' ? hasPermission(storeId, 'sales.create') :
+          action == 'update' ? hasPermission(storeId, 'sales.edit') :
+          hasPermission(storeId, 'sales.delete')
+        ) :
         false;
     }
 
@@ -278,13 +330,13 @@ service cloud.firestore {
         && canReadCollection(storeId, collection);
 
       allow create: if validApplicationCollection(collection)
-        && canWriteCollection(storeId, collection);
+        && canWriteCollection(storeId, collection, 'create');
 
       allow update: if validApplicationCollection(collection)
-        && canWriteCollection(storeId, collection);
+        && canWriteCollection(storeId, collection, 'update');
 
       allow delete: if validApplicationCollection(collection)
-        && canWriteCollection(storeId, collection);
+        && canWriteCollection(storeId, collection, 'delete');
     }
 
     match /{document=**} {
