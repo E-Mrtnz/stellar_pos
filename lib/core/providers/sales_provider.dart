@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/app/app_dependencies.dart';
@@ -621,6 +623,10 @@ class SalesProvider extends ChangeNotifier {
       return;
     }
     final stored = await repository.getAll();
+    developer.log(
+      'Ventas locales cargadas desde el repositorio: ' + stored.length.toString(),
+      name: 'STELLAR_POS.sales',
+    );
     stored.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     _sales
       ..clear()
