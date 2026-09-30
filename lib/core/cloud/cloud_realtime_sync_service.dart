@@ -12,9 +12,8 @@ import 'package:stellar_pos/core/cloud/cloud_sync_service.dart';
 ///
 /// This service does not write remote snapshots directly into Hive. A remote
 /// event only schedules the existing synchronization engine for the affected
-/// collection. That preserves the local-first conflict rules, durable queue,
-/// tombstones, tenant scoping, and checkpoint handling already implemented in
-/// [CloudSyncService].
+/// collection. That preserves the local-first conflict rules, tenant scoping,
+/// retry behavior, and delete tombstones.
 class CloudRealtimeSyncService extends ChangeNotifier
     with WidgetsBindingObserver {
   final CloudSyncService _syncService;
