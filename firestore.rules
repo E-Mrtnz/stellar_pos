@@ -23,6 +23,37 @@ service cloud.firestore {
         ).data.role == 'owner';
     }
 
+    function hasRole(storeId, roleId) {
+      return memberOf(storeId) &&
+        get(
+          /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
+        ).data.role == roleId;
+    }
+
+    function hasPermission(storeId, permission) {
+      return memberOf(storeId) &&
+        (
+          get(
+            /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
+          ).data.role == 'owner' ||
+          (
+            get(
+              /databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)
+            ).data.permissionOverrides.get(permission, null) == true ||
+            (
+              get(
+                /databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)
+              ).data.permissionOverrides.get(permission, null) == null &&
+              get(
+                /databases/$(database)/documents/stores/$(storeId)/roles/$(get(
+                  /databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)
+                ).data.roleId)
+              ).data.permissions.hasAny([permission])
+            )
+          )
+        );
+    }
+
     function ownerAfter(storeId) {
       return signedIn() &&
         getAfter(
@@ -49,14 +80,47 @@ service cloud.firestore {
       ];
     }
 
-    // Temporary connectivity/authentication diagnostic.
+    function canReadCollection(storeId, collection) {
+      return collection == 'products' ? hasPermission(storeId, 'products.view') :
+        collection == 'sales' ? hasPermission(storeId, 'sales.view') :
+        collection == 'purchases' ? hasPermission(storeId, 'purchases.view') :
+        collection == 'clients' ? hasPermission(storeId, 'clients.view') :
+        collection == 'distributors' ? hasPermission(storeId, 'providers.view') :
+        collection == 'debts' ? hasPermission(storeId, 'debts.view') :
+        collection == 'debt_movements' ? hasPermission(storeId, 'debts.view') :
+        collection == 'inventory_movements' ? hasPermission(storeId, 'inventory.view') :
+        collection == 'settings' ? hasPermission(storeId, 'settings.view') :
+        collection == 'client_groups' ? hasPermission(storeId, 'clients.view') :
+        collection == 'provider_routes' ? hasPermission(storeId, 'providers.view') :
+        collection == 'provider_catalog' ? hasPermission(storeId, 'providers.view') :
+        collection == 'electronic_balance_accounts' ? hasPermission(storeId, 'sales.view') :
+        collection == 'electronic_balance_transactions' ? hasPermission(storeId, 'sales.view') :
+        false;
+    }
+
+    function canWriteCollection(storeId, collection) {
+      return collection == 'products' ? hasPermission(storeId, 'inventory.edit') :
+        collection == 'sales' ? hasPermission(storeId, 'sales.create') :
+        collection == 'purchases' ? hasPermission(storeId, 'purchases.create') :
+        collection == 'clients' ? hasPermission(storeId, 'clients.create') :
+        collection == 'distributors' ? hasPermission(storeId, 'providers.create') :
+        collection == 'debts' ? hasPermission(storeId, 'debts.create') :
+        collection == 'debt_movements' ? hasPermission(storeId, 'debts.create') :
+        collection == 'inventory_movements' ? hasPermission(storeId, 'inventory.create') :
+        collection == 'settings' ? hasPermission(storeId, 'settings.edit') :
+        collection == 'client_groups' ? hasPermission(storeId, 'clients.create') :
+        collection == 'provider_routes' ? hasPermission(storeId, 'providers.create') :
+        collection == 'provider_catalog' ? hasPermission(storeId, 'providers.create') :
+        collection == 'electronic_balance_accounts' ? hasPermission(storeId, 'sales.create') :
+        collection == 'electronic_balance_transactions' ? hasPermission(storeId, 'sales.create') :
+        false;
+    }
+
     match /_stellar_pos_diagnostics/connection {
       allow read: if signedIn();
       allow write: if false;
     }
 
-    // Store metadata. The store document id is the immutable internal
-    // identity; name and invitation code are editable by the owner.
     match /stores/{storeId} {
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
@@ -75,35 +139,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Store membership. A new owner membership must be created atomically
-    // with its store document. A regular member can only join through a
-    // valid invitation code that resolves to this exact store id.
     match /stores/{storeId}/members/{uid} {
-      allow get: if signedIn()
-        && (request.auth.uid == uid || ownerOf(storeId));
+      allow get: if signedIn() &&
+        (request.auth.uid == uid || ownerOf(storeId));
 
       allow list: if ownerOf(storeId);
 
-      allow create: if signedIn()
-        && (
+      allow create: if signedIn() &&
+        (
           (
-            uid == request.auth.uid
-            && request.resource.data.uid == request.auth.uid
-            && request.resource.data.storeId == storeId
-            && request.resource.data.role == 'owner'
-            && ownerAfter(storeId)
+            uid == request.auth.uid &&
+            request.resource.data.uid == request.auth.uid &&
+            request.resource.data.storeId == storeId &&
+            request.resource.data.role == 'owner' &&
+            ownerAfter(storeId)
           )
           ||
           (
-            uid == request.auth.uid
-            && request.resource.data.uid == request.auth.uid
-            && request.resource.data.storeId == storeId
-            && request.resource.data.role == 'member'
-            && request.resource.data.inviteCode is string
-            && exists(
+            uid == request.auth.uid &&
+            request.resource.data.uid == request.auth.uid &&
+            request.resource.data.storeId == storeId &&
+            request.resource.data.role == 'member' &&
+            request.resource.data.inviteCode is string &&
+            exists(
               /databases/$(database)/documents/store_invites/$(request.resource.data.inviteCode)
-            )
-            && get(
+            ) &&
+            get(
               /databases/$(database)/documents/store_invites/$(request.resource.data.inviteCode)
             ).data.storeId == storeId
           )
@@ -113,8 +174,71 @@ service cloud.firestore {
       allow delete: if ownerOf(storeId) && uid != request.auth.uid;
     }
 
-    // Invitation codes are intentionally lookup documents. Knowing a code
-    // is the secret required to discover and join its associated store.
+    match /stores/{storeId}/users/{userId} {
+      allow get: if signedIn() &&
+        (
+          userId == request.auth.uid ||
+          hasPermission(storeId, 'users.view')
+        );
+
+      allow list: if hasPermission(storeId, 'users.view');
+
+      allow create: if signedIn() &&
+        (
+          (
+            request.auth.uid == userId &&
+            request.resource.data.authUid == request.auth.uid &&
+            request.resource.data.storeId == storeId &&
+            request.resource.data.roleId == 'owner' &&
+            ownerOf(storeId)
+          )
+          ||
+          (
+            request.auth.uid == request.resource.data.authUid &&
+            request.resource.data.storeId == storeId &&
+            request.resource.data.roleId == 'employee' &&
+            memberOf(storeId)
+          )
+        );
+
+      allow update: if ownerOf(storeId) ||
+        (
+          userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'lastSeenAt'])
+        );
+
+      allow delete: if ownerOf(storeId) && userId != request.auth.uid;
+    }
+
+    match /stores/{storeId}/roles/{roleId} {
+      allow get, list: if hasPermission(storeId, 'users.view');
+      allow create, update, delete: if hasPermission(storeId, 'users.manage');
+    }
+
+    match /stores/{storeId}/devices/{deviceId} {
+      allow get: if signedIn() &&
+        (
+          resource.data.userId == request.auth.uid ||
+          hasPermission(storeId, 'devices.view')
+        );
+
+      allow list: if hasPermission(storeId, 'devices.view');
+
+      allow create: if signedIn() &&
+        memberOf(storeId) &&
+        request.resource.data.userId == request.auth.uid;
+
+      allow update: if hasPermission(storeId, 'devices.manage') ||
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['lastSeenAt', 'appVersion', 'osVersion', 'model', 'manufacturer', 'platform'])
+        );
+
+      allow delete: if hasPermission(storeId, 'devices.manage');
+    }
+
     match /store_invites/{inviteCode} {
       allow get: if signedIn();
 
@@ -131,14 +255,20 @@ service cloud.firestore {
       allow delete: if ownerOf(resource.data.storeId);
     }
 
-    // All application data is partitioned by store and requires an explicit
-    // membership document for the authenticated user.
     match /stores/{storeId}/{collection}/{documentId} {
-      allow read, write: if validApplicationCollection(collection)
-        && memberOf(storeId);
+      allow read: if validApplicationCollection(collection)
+        && canReadCollection(storeId, collection);
+
+      allow create: if validApplicationCollection(collection)
+        && canWriteCollection(storeId, collection);
+
+      allow update: if validApplicationCollection(collection)
+        && canWriteCollection(storeId, collection);
+
+      allow delete: if validApplicationCollection(collection)
+        && canWriteCollection(storeId, collection);
     }
 
-    // Everything else remains locked by default.
     match /{document=**} {
       allow read, write: if false;
     }
