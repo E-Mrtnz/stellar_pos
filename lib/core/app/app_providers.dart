@@ -52,7 +52,6 @@ class AppProviders extends StatelessWidget {
             unawaited(service.setStoreId(store.storeId));
             return service;
           },
-          dispose: (_, service) => service.dispose(),
         ),
         ChangeNotifierProvider(
           create: (_) => CloudAccessProvider()..load(),
