@@ -24,6 +24,8 @@ class CloudSyncResult {
     this.failed = 0,
     this.migrated = 0,
     this.errors = const <String>[],
+    this.collectionIndex = 0,
+    this.collectionCount = 1,
   });
 
   CloudSyncResult operator +(CloudSyncResult other) => CloudSyncResult(
@@ -54,6 +56,8 @@ class CloudSyncProgress {
   final int uploaded;
   final int failed;
   final List<String> errors;
+  final int collectionIndex;
+  final int collectionCount;
 
   const CloudSyncProgress({
     required this.collection,
@@ -67,6 +71,13 @@ class CloudSyncProgress {
 
   double get fraction =>
       total <= 0 ? 0 : (processed / total).clamp(0, 1).toDouble();
+
+  double get overallFraction {
+    if (collectionCount <= 0) return fraction;
+    return ((collectionIndex + fraction) / collectionCount)
+        .clamp(0, 1)
+        .toDouble();
+  }
 }
 
 class CloudSyncEngine {
