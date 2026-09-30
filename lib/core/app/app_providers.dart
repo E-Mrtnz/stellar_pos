@@ -42,6 +42,7 @@ class AppProviders extends StatelessWidget {
           create: (_) => CloudStoreProvider()..load(),
         ),
         Provider<CloudAutoSyncService>(
+          lazy: false,
           create: (_) => CloudAutoSyncService()..start(),
           dispose: (_, service) => service.dispose(),
         ),
