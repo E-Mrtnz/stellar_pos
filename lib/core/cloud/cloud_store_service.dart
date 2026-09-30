@@ -19,7 +19,21 @@ class CloudStoreService {
   Future<String?> getStoreId() => identityStore.getStoreId();
 
   Future<void> configureStore(String storeId) async {
-    await identityStore.setStoreId(storeId);
+    final normalized = storeId.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(storeId, 'storeId', 'cannot be empty');
+    }
+
+    final current = await identityStore.getStoreId();
+    if (current != null && current != normalized) {
+      throw StateError(
+        'Cannot switch the cloud store on this device while local data '
+        'belongs to another store. Clear or migrate the local data before '
+        'selecting a different store.',
+      );
+    }
+
+    await identityStore.setStoreId(normalized);
     await syncService.syncAll();
   }
 
