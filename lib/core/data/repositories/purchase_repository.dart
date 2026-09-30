@@ -54,7 +54,7 @@ class PurchaseRepository implements Repository<PurchaseRecord> {
     }
 
     await cloud.save(entity);
-    await _trySync(cloud);
+    unawaited(_trySync(cloud));
   }
 
   @override
@@ -66,7 +66,7 @@ class PurchaseRepository implements Repository<PurchaseRecord> {
     }
 
     await cloud.delete(id);
-    await _trySync(cloud);
+    unawaited(_trySync(cloud));
   }
 
   /// Performs a best-effort synchronization for the configured store.
