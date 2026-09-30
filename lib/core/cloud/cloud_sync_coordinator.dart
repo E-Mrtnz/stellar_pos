@@ -13,23 +13,23 @@ class CloudSyncCoordinator {
 
   static final CloudSyncCoordinator instance = CloudSyncCoordinator._();
 
-  final Map<String, Future<void>> _inFlight = <String, Future<void>>{};
+  final Map<String, Future<dynamic>> _inFlight = <String, Future<dynamic>>{};
 
-  Future<void> run({
+  Future<T> run<T>({
     required String key,
-    required Future<void> Function() operation,
+    required Future<T> Function() operation,
   }) {
     final existing = _inFlight[key];
-    if (existing != null) return existing;
+    if (existing != null) return existing.then((value) => value as T);
 
-    final future = _runAndRelease(key, operation);
+    final future = _runAndRelease<T>(key, operation);
     _inFlight[key] = future;
     return future;
   }
 
-  Future<void> _runAndRelease(
+  Future<T> _runAndRelease<T>(
     String key,
-    Future<void> Function() operation,
+    Future<T> Function() operation,
   ) async {
     try {
       await operation();
