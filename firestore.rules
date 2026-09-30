@@ -333,15 +333,25 @@ service cloud.firestore {
       allow delete: if ownerOf(resource.data.storeId);
     }
 
+    function documentBelongsToStore(storeId, data) {
+      return data.storeId == storeId &&
+        (
+          data.metadata == null ||
+          data.metadata.storeId == storeId
+        );
+    }
+
     match /stores/{storeId}/{collection}/{documentId} {
       allow read: if validApplicationCollection(collection)
         && canReadCollection(storeId, collection);
 
       allow create: if validApplicationCollection(collection)
-        && canWriteCollection(storeId, collection, 'create');
+        && canWriteCollection(storeId, collection, 'create')
+        && documentBelongsToStore(storeId, request.resource.data);
 
       allow update: if validApplicationCollection(collection)
-        && canWriteCollection(storeId, collection, 'update');
+        && canWriteCollection(storeId, collection, 'update')
+        && documentBelongsToStore(storeId, request.resource.data);
 
       allow delete: if validApplicationCollection(collection)
         && canWriteCollection(storeId, collection, 'delete');
