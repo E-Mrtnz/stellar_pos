@@ -44,7 +44,9 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                       ? const _GeneralSettingsContent()
                       : _selectedIndex == 1
                       ? const _PrinterContent()
-                      : const DatabaseBackupLayout(),
+                      : _selectedIndex == 2
+                      ? const DatabaseBackupLayout()
+                      : const _CloudStoreSettingsContent(),
               ),
             ),
           ],
@@ -70,6 +72,7 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
         _menuItem(0, Icons.tune_outlined, 'General'),
         _menuItem(1, Icons.print_outlined, 'Impresoras'),
         _menuItem(2, Icons.backup_outlined, 'Copias de seguridad'),
+        _menuItem(3, Icons.cloud_outlined, 'Tienda y nube'),
       ]),
     );
   }
@@ -127,10 +130,7 @@ class _GeneralSettingsContent extends StatelessWidget {
                   _switchTile('Mostrar "Subir inventario"', 'Muestra la herramienta de importación en Inventario.', settings.showInventoryImport, settings.setShowInventoryImport),
                   const SizedBox(height: 8),
                   _switchTile('Mostrar "Descargar inventario"', 'Muestra las opciones para exportar el inventario.', settings.showInventoryExport, settings.setShowInventoryExport),
-                  const SizedBox(height: 24),
-                  const Divider(color: AppColors.border),
-                  const SizedBox(height: 18),
-                  const _CloudStoreSettingsSection(),
+
                 ]),
               ),
             ),
@@ -154,7 +154,7 @@ class _PrinterContent extends StatelessWidget {
   }
 }
 
-class _CloudStoreSettingsSection extends StatelessWidget {
+class _CloudStoreSettingsContent extends StatelessWidget {
   const _CloudStoreSettingsSection();
 
   Future<void> _openStoreDialog(BuildContext context) async {
@@ -592,152 +592,395 @@ class _CloudStoreSettingsSection extends StatelessWidget {
     return Consumer<CloudStoreProvider>(
       builder: (context, cloudStore, _) {
         final configured = cloudStore.isConfigured;
+        final access = context.watch<CloudAccessProvider>();
 
-        return Column(
+        return Padding(
+          padding: const EdgeInsets.all(AppDimensions.pagePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Tienda y nube', style: AppTextStyles.brandTitle),
+              const SizedBox(height: 4),
+              const Text(
+                'Administra la identidad de tu tienda, sus usuarios, dispositivos y sincronización.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: configured
+                      ? _buildConfigured(context, cloudStore, access)
+                      : _buildUnconfigured(context),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUnconfigured(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _cloudHero(
+          icon: Icons.cloud_off_outlined,
+          title: 'Conecta Stellar POS con una tienda',
+          subtitle:
+              'Crea una tienda nueva para este negocio o vincula este dispositivo a una tienda que ya existe.',
+        ),
+        const SizedBox(height: 18),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            Expanded(
+              child: _cloudActionCard(
+                icon: Icons.add_business_outlined,
+                title: 'Crear una tienda',
+                description:
+                    'Registra el nombre del negocio y el correo del propietario. El Store ID se generará automáticamente.',
+                buttonLabel: 'Crear tienda',
+                onPressed: () => _openStoreDialog(context),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _cloudActionCard(
+                icon: Icons.link_outlined,
+                title: 'Unirse a una tienda',
+                description:
+                    'Usa el código de invitación que te proporcionó el propietario para registrar este usuario y dispositivo.',
+                buttonLabel: 'Unirme a una tienda',
+                onPressed: () => _openStoreDialog(context),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfigured(
+    BuildContext context,
+    CloudStoreProvider cloudStore,
+    CloudAccessProvider access,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _cloudHero(
+          icon: Icons.cloud_done_outlined,
+          title: cloudStore.storeName ?? 'Tienda configurada',
+          subtitle:
+              'Este dispositivo está vinculado a la tienda y puede sincronizar sus datos con la nube.',
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.successGreen.withAlpha(18),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.successGreen.withAlpha(50)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(20),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.cloud_outlined,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Tienda y sincronización en la nube',
-                        style: AppTextStyles.sectionTitle,
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'Crea una tienda o vincula este dispositivo a una tienda existente para compartir sus datos en la nube.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                Icon(Icons.check_circle_outline, size: 16, color: AppColors.successGreen),
+                SizedBox(width: 6),
+                Text(
+                  'Conectada',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.successGreen,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.inputBackground,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    configured
-                        ? Icons.cloud_done_outlined
-                        : Icons.cloud_off_outlined,
-                    size: 22,
-                    color: configured
-                        ? AppColors.successGreen
-                        : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: configured
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                cloudStore.storeName ?? 'Tienda configurada',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                cloudStore.inviteCode == null
-                                    ? 'Tienda vinculada a la nube.'
-                                    : 'Código para vincular otro dispositivo: ' +
-                                        cloudStore.inviteCode!,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          )
-                        : const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Este dispositivo aún no está vinculado a una tienda.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(height: 3),
-                              Text(
-                                'Puedes crear una tienda nueva o unirte a una existente con un código de invitación.',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                  const SizedBox(width: 12),
-                  if (context.watch<CloudAccessProvider>().canManageUsers) ...[
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: cloudStore.isSaving ? null : () => _openAccessDialog(context),
-                      icon: const Icon(Icons.group_outlined, size: 18),
-                      label: const Text('Usuarios y dispositivos'),
-                    ),
-                  ],
-                  OutlinedButton.icon(
-                    onPressed: cloudStore.isSaving
-                        ? null
-                        : () => configured
-                            ? _manageStore(context)
-                            : _openStoreDialog(context),
-                    icon: Icon(
-                      configured
-                          ? Icons.manage_accounts_outlined
-                          : Icons.add_business_outlined,
-                      size: 17,
-                    ),
-                    label: Text(configured ? 'Administrar' : 'Crear o vincular'),
-                  ),
-                ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _cloudInfoCard(
+                icon: Icons.storefront_outlined,
+                title: 'Tienda',
+                value: cloudStore.storeName ?? 'Sin nombre',
+                detail: 'ID: ' + (cloudStore.storeId ?? 'No disponible'),
               ),
             ),
-            if (cloudStore.errorMessage != null && !configured) ...[
-              const SizedBox(height: 8),
-              Text(
-                cloudStore.errorMessage!,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.dangerRed,
-                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _cloudInfoCard(
+                icon: Icons.person_outline,
+                title: 'Propietario',
+                value: cloudStore.ownerEmail ?? 'Sin correo',
+                detail: 'Correo de contacto y administración',
               ),
-            ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _cloudInfoCard(
+                icon: Icons.vpn_key_outlined,
+                title: 'Invitación',
+                value: cloudStore.inviteCode ?? 'Sin código',
+                detail: 'Código para vincular nuevos dispositivos',
+              ),
+            ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 18),
+        _cloudSectionCard(
+          icon: Icons.manage_accounts_outlined,
+          title: 'Administración',
+          subtitle: 'Gestiona la tienda y controla quién puede acceder a ella.',
+          children: [
+            _cloudActionRow(
+              icon: Icons.storefront_outlined,
+              title: 'Administrar tienda',
+              subtitle: 'Nombre, correo del propietario y código de invitación.',
+              label: 'Administrar',
+              onPressed: cloudStore.isSaving ? null : () => _manageStore(context),
+            ),
+            if (access.canManageUsers)
+              _cloudActionRow(
+                icon: Icons.groups_outlined,
+                title: 'Usuarios y dispositivos',
+                subtitle: 'Consulta usuarios, roles, permisos y dispositivos vinculados.',
+                label: 'Gestionar',
+                onPressed: cloudStore.isSaving ? null : () => _openAccessDialog(context),
+              ),
+          ],
+        ),
+        if (cloudStore.errorMessage != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            cloudStore.errorMessage!,
+            style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _cloudHero({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: AppColors.shadowColor, blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(24),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 27),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.sectionTitle),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 16),
+            trailing,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _cloudActionCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required String buttonLabel,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: AppColors.shadowColor, blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.primary),
+          ),
+          const SizedBox(height: 14),
+          Text(title, style: AppTextStyles.sectionTitle),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onPressed,
+            icon: Icon(icon, size: 18),
+            label: Text(buttonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cloudInfoCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String detail,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 21),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(detail, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cloudSectionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: AppColors.shadowColor, blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 21),
+              const SizedBox(width: 9),
+              Expanded(child: Text(title, style: AppTextStyles.sectionTitle)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _cloudActionRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(18),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 19),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+            label: Text(label),
+          ),
+        ],
+      ),
     );
   }
 }
