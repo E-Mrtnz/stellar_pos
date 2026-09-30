@@ -92,6 +92,11 @@ class ClientGroupProvider extends ChangeNotifier {
     return result;
   }
 
+  Future<void> refreshFromRepository() async {
+    await _loadFromRepository();
+    notifyListeners();
+  }
+
   Future<void> _loadFromRepository() async {
     final stored = await _repository.getAll();
     final byId = <String, ClientGroup>{for (final group in _groups) group.id: group};
