@@ -88,9 +88,13 @@ class ElectronicBalanceTransactionRepository
         operation: cloud.sync,
       );
     } catch (error, stackTrace) {
-      // Keep electronic-balance operations available while Firebase is
-      // unavailable or while the cloud tenant/security configuration is not
-      // ready.
+      developer.log(
+        'Falló la sincronización de Firestore.',
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
     }
   }
 
