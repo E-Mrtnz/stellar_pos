@@ -175,7 +175,10 @@ class CloudSyncEngine {
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     var result = const CloudSyncResult();
-    final items = await queue.pending(collection: collection);
+    final items = await queue.pending(
+      collection: collection,
+      storeId: scope.storeId,
+    );
 
     for (final item in items) {
       try {
