@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_store_access_service.dart';
 import 'package:stellar_pos/core/cloud/store_access_models.dart';
@@ -25,6 +26,20 @@ class CloudAccessProvider extends ChangeNotifier {
   StoreAccessSnapshot get snapshot => _snapshot;
   bool get isLoading => _loading;
   String? get errorMessage => _error;
+
+  StoreUserRecord? get currentUser {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return null;
+    for (final user in _snapshot.users) {
+      if (user.authUid == uid) return user;
+    }
+    return null;
+  }
+
+  bool get canManageUsers {
+    final role = currentUser?.roleId;
+    return role == 'owner' || role == 'administrator';
+  }
 
   Future<void> load() async {
     final storeId = await storeService.getStoreId();
