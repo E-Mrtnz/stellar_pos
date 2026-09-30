@@ -105,7 +105,6 @@ class CloudStoreAccessService {
       'permissionOverrides': <String, bool>{},
     }, SetOptions(merge: true));
 
-    await _seedRoles(storeId);
     await registerCurrentDevice(storeId: storeId, userId: userId);
     return userId;
   }
