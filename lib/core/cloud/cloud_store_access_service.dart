@@ -169,6 +169,9 @@ class CloudStoreAccessService {
     required String userId,
     required String roleId,
   }) async {
+    if (roleId == 'owner') {
+      throw StateError('El rol de propietario no se puede asignar desde esta pantalla.');
+    }
     await _users(storeId).doc(userId).update({
       'roleId': roleId,
       'lastSeenAt': FieldValue.serverTimestamp(),
