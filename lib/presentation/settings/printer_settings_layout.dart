@@ -647,7 +647,7 @@ class _CloudStoreSettingsSection extends StatelessWidget {
                           : Icons.add_business_outlined,
                       size: 17,
                     ),
-                    label: Text(configured ? 'Administrar' : 'Configurar'),
+                    label: Text(configured ? 'Administrar' : 'Crear o vincular'),
                   ),
                 ],
               ),
