@@ -157,9 +157,9 @@ class _PrinterContent extends StatelessWidget {
 class _CloudStoreSettingsContent extends StatelessWidget {
   const _CloudStoreSettingsSection();
 
-  Future<void> _openStoreDialog(BuildContext context) async {
+  Future<void> _openStoreDialog(BuildContext context, {bool? initialCreateMode}) async {
     final provider = context.read<CloudStoreProvider>();
-    var createMode = !provider.isConfigured;
+    var createMode = initialCreateMode ?? !provider.isConfigured;
     var isWorking = false;
     String? dialogError;
 
@@ -641,7 +641,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                 description:
                     'Registra el nombre del negocio y el correo del propietario. El Store ID se generará automáticamente.',
                 buttonLabel: 'Crear tienda',
-                onPressed: () => _openStoreDialog(context),
+                onPressed: () => _openStoreDialog(context, initialCreateMode: true),
               ),
             ),
             const SizedBox(width: 14),
@@ -652,7 +652,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                 description:
                     'Usa el código de invitación que te proporcionó el propietario para registrar este usuario y dispositivo.',
                 buttonLabel: 'Unirme a una tienda',
-                onPressed: () => _openStoreDialog(context),
+                onPressed: () => _openStoreDialog(context, initialCreateMode: false),
               ),
             ),
           ],
