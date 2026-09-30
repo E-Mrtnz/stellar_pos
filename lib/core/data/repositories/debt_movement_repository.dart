@@ -72,7 +72,9 @@ class DebtMovementRepository implements Repository<DebtMovement> {
   }
 
   /// Performs a best-effort synchronization for the configured store.
-  Future<CloudSyncResult?> forceUpload() async {
+  Future<CloudSyncResult?> forceUpload({
+    CloudSyncProgressCallback? onProgress,
+  }) async {
     final cloud = await _getCloudRepository();
     if (cloud == null) return null;
 
@@ -82,7 +84,7 @@ class DebtMovementRepository implements Repository<DebtMovement> {
 
       return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:' + CloudCollection.debtMovements,
-        operation: cloud.forceUpload,
+        operation: () => cloud.forceUpload(onProgress: onProgress),
       );
     } catch (error, stackTrace) {
       developer.log(
