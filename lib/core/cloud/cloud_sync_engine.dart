@@ -335,52 +335,84 @@ class CloudSyncEngine {
       storeId: scope.storeId,
     );
 
-    for (final item in items) {
-      try {
-        if (item.operation == SyncOperationType.delete) {
-          final metadata = item.payload == null
-              ? null
-              : SyncMetadata.fromMap(item.payload!);
-          await cloud.delete(item.entityId, metadata: metadata);
-          await queue.remove(item.id);
-          result = result + const CloudSyncResult(uploaded: 1);
-          continue;
-        }
+    // Independent Firestore writes are allowed to progress concurrently.
+    // These remain individual writes rather than a Firestore batch, avoiding
+    // security-rule access-call limits for large batches.
+    const concurrency = 8;
 
-        final current = await local.getById(item.entityId);
-        if (current == null) {
-          await queue.remove(item.id);
-          continue;
-        }
+    for (var offset = 0; offset < items.length; offset += concurrency) {
+      final chunk = items
+          .skip(offset)
+          .take(concurrency)
+          .toList(growable: false);
 
-        await cloud.save(current);
-        final synced = _withMetadata(
-          current,
-          current.metadata.markSynced(),
-          fromMap,
-        );
-        await local.save(synced);
-        await queue.remove(item.id);
-        result = result + const CloudSyncResult(uploaded: 1);
-      } catch (error, stackTrace) {
-        await queue.markAttempt(item.id, item.attempts + 1);
-        developer.log(
-          'No se pudo sincronizar un registro con Firestore. '
-          'Colección: ' + collection + ', documento: ' + item.entityId + ', '
-          'operación: ' + item.operation.name + ', intento: ' +
-          (item.attempts + 1).toString() + '.',
-          name: 'STELLAR_POS.cloud_sync',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        // Un registro problemático no debe bloquear los demás registros de
-        // la misma colección. Se conserva en la cola para reintentarlo en
-        // el siguiente ciclo, pero continuamos con los siguientes elementos.
-        continue;
+      final outcomes = await Future.wait(
+        chunk.map(
+          (item) => _flushQueueItem(
+            item: item,
+            collection: collection,
+            local: local,
+            cloud: cloud,
+            scope: scope,
+            fromMap: fromMap,
+          ),
+        ),
+      );
+
+      for (final outcome in outcomes) {
+        result = result + outcome;
       }
     }
 
     return result;
+  }
+
+  Future<CloudSyncResult> _flushQueueItem<T extends SyncableEntity>({
+    required SyncQueueItem item,
+    required String collection,
+    required LocalDataSource<T> local,
+    required CloudDataSource<T> cloud,
+    required CloudSyncScope scope,
+    required T Function(Map<String, dynamic> map) fromMap,
+  }) async {
+    try {
+      if (item.operation == SyncOperationType.delete) {
+        final metadata = item.payload == null
+            ? null
+            : SyncMetadata.fromMap(item.payload!);
+        await cloud.delete(item.entityId, metadata: metadata);
+        await queue.remove(item.id);
+        return const CloudSyncResult(uploaded: 1);
+      }
+
+      final current = await local.getById(item.entityId);
+      if (current == null) {
+        await queue.remove(item.id);
+        return const CloudSyncResult();
+      }
+
+      await cloud.save(current);
+      final synced = _withMetadata(
+        current,
+        current.metadata.markSynced(),
+        fromMap,
+      );
+      await local.save(synced);
+      await queue.remove(item.id);
+      return const CloudSyncResult(uploaded: 1);
+    } catch (error, stackTrace) {
+      await queue.markAttempt(item.id, item.attempts + 1);
+      developer.log(
+        'No se pudo sincronizar un registro con Firestore. '
+        'Colección: ' + collection + ', documento: ' + item.entityId + ', '
+        'operación: ' + item.operation.name + ', intento: ' +
+        (item.attempts + 1).toString() + '.',
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return const CloudSyncResult(failed: 1);
+    }
   }
 
   Future<CloudSyncResult> _applyRemote<T extends SyncableEntity>({
