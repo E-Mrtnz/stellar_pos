@@ -427,6 +427,11 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   double totalProfit(String id) => _transactions.where((t) => t.accountId == id && t.type == ElectronicBalanceTransactionType.sale).fold(0, (sum, t) => sum + t.profit);
   List<ElectronicBalanceTransaction> transactionsFor(String id) => _transactions.where((t) => t.accountId == id).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+  Future<void> refreshFromRepository() async {
+    await _loadFromRepository();
+    notifyListeners();
+  }
+
   Future<void> _loadFromRepository() async {
     final accounts = await _accountRepository?.getAll() ?? const <ElectronicBalanceAccount>[];
     final transactions = await _transactionRepository?.getAll() ?? const <ElectronicBalanceTransaction>[];
