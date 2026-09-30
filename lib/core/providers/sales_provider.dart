@@ -609,6 +609,11 @@ class SalesProvider extends ChangeNotifier {
     for (final id in ids) _persistDelete(id);
   }
 
+  Future<void> refreshFromRepository() async {
+    await _loadFromRepository();
+    notifyListeners();
+  }
+
   Future<void> _loadFromRepository() async {
     final repository = _repository;
     if (repository == null) {
