@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
+import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 import 'package:stellar_pos/presentation/backups/database_backup_layout.dart';
 import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
@@ -124,6 +125,10 @@ class _GeneralSettingsContent extends StatelessWidget {
                   _switchTile('Mostrar "Subir inventario"', 'Muestra la herramienta de importación en Inventario.', settings.showInventoryImport, settings.setShowInventoryImport),
                   const SizedBox(height: 8),
                   _switchTile('Mostrar "Descargar inventario"', 'Muestra las opciones para exportar el inventario.', settings.showInventoryExport, settings.setShowInventoryExport),
+                  const SizedBox(height: 24),
+                  const Divider(color: AppColors.border),
+                  const SizedBox(height: 18),
+                  const _CloudStoreSettingsSection(),
                 ]),
               ),
             ),
@@ -144,5 +149,148 @@ class _PrinterContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const legacy.PrinterSettingsContent();
+  }
+}
+
+class _CloudStoreSettingsSection extends StatelessWidget {
+  const _CloudStoreSettingsSection();
+
+  Future<void> _configure(BuildContext context) async {
+    final provider = context.read<CloudStoreProvider>();
+    final controller = TextEditingController(text: provider.storeId ?? '');
+    try {
+      final storeId = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Configurar tienda en la nube'),
+          content: SizedBox(
+            width: 420,
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'ID de tienda',
+                hintText: 'Ej. tienda-el-eden',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      );
+
+      if (storeId == null || storeId.trim().isEmpty || !context.mounted) return;
+      final success = await provider.configure(storeId);
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'La tienda quedó configurada para sincronización.'
+                : (provider.errorMessage ?? 'No se pudo configurar la tienda.'),
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<CloudStoreProvider>(
+      builder: (context, cloudStore, _) {
+        final configured = cloudStore.isConfigured;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.cloud_outlined, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Sincronización en la nube', style: AppTextStyles.sectionTitle),
+                      SizedBox(height: 3),
+                      Text(
+                        'Identifica la tienda cuyos datos puede sincronizar este dispositivo.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.inputBackground,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    configured ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+                    size: 20,
+                    color: configured ? AppColors.successGreen : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      configured
+                          ? 'Tienda configurada: ${cloudStore.storeId}'
+                          : 'Sin tienda configurada. El sistema continúa funcionando de forma local.',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(
+                    onPressed: cloudStore.isSaving ? null : () => _configure(context),
+                    icon: cloudStore.isSaving
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.settings_outlined, size: 17),
+                    label: Text(configured ? 'Cambiar' : 'Configurar'),
+                  ),
+                ],
+              ),
+            ),
+            if (cloudStore.errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                cloudStore.errorMessage!,
+                style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
+              ),
+            ],
+          ],
+        );
+      },
+    );
   }
 }
