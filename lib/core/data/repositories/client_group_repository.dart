@@ -67,7 +67,9 @@ class ClientGroupRepository implements Repository<ClientGroup> {
     unawaited(_trySync(cloud));
   }
 
-  Future<CloudSyncResult?> forceUpload() async {
+  Future<CloudSyncResult?> forceUpload({
+    CloudSyncProgressCallback? onProgress,
+  }) async {
     final cloud = await _getCloudRepository();
     if (cloud == null) return null;
 
@@ -77,7 +79,7 @@ class ClientGroupRepository implements Repository<ClientGroup> {
 
       return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:' + CloudCollection.clientGroups,
-        operation: cloud.forceUpload,
+        operation: () => cloud.forceUpload(onProgress: onProgress),
       );
     } catch (error, stackTrace) {
       developer.log(
