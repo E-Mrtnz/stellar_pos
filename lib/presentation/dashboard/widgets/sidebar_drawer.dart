@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
+import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
+import 'package:stellar_pos/core/cloud/store_access_models.dart';
 
 class SidebarDrawer extends StatelessWidget {
   final bool isExpanded;
@@ -14,6 +16,7 @@ class SidebarDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final storeName = context.watch<CloudStoreProvider>().storeName ?? AppStrings.appName;
+    final access = context.watch<CloudAccessProvider>();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -51,11 +54,16 @@ class SidebarDrawer extends StatelessWidget {
                   children: [
                     _buildSidebarItem(AppNavigation.home, Icons.point_of_sale_rounded, AppStrings.navHome),
                     _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
-                    _buildSidebarItem(AppNavigation.purchases, Icons.shopping_bag_rounded, AppStrings.navPurchases),
-                    _buildSidebarItem(AppNavigation.debts, Icons.receipt_long_outlined, AppStrings.navDebts),
-                    _buildSidebarItem(AppNavigation.stats, Icons.bar_chart_rounded, AppStrings.navStats),
-                    _buildSidebarItem(AppNavigation.providers, Icons.local_shipping_outlined, AppStrings.navProviders),
-                    _buildSidebarItem(AppNavigation.inventory, Icons.inventory_2_rounded, AppStrings.navInventory),
+                    if (access.hasPermission(StorePermissions.purchasesView))
+                      _buildSidebarItem(AppNavigation.purchases, Icons.shopping_bag_rounded, AppStrings.navPurchases),
+                    if (access.hasPermission(StorePermissions.debtsView))
+                      _buildSidebarItem(AppNavigation.debts, Icons.receipt_long_outlined, AppStrings.navDebts),
+                    if (access.hasPermission(StorePermissions.statisticsView))
+                      _buildSidebarItem(AppNavigation.stats, Icons.bar_chart_rounded, AppStrings.navStats),
+                    if (access.hasPermission(StorePermissions.providersView))
+                      _buildSidebarItem(AppNavigation.providers, Icons.local_shipping_outlined, AppStrings.navProviders),
+                    if (access.hasPermission(StorePermissions.inventoryView))
+                      _buildSidebarItem(AppNavigation.inventory, Icons.inventory_2_rounded, AppStrings.navInventory),
                   ],
                 ),
               ),
