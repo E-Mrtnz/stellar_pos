@@ -181,6 +181,7 @@ class CloudRealtimeSyncService extends ChangeNotifier
     _active = false;
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_cancelListeners());
+    super.dispose();
   }
 
   static const List<String> _collectionNames = <String>[
