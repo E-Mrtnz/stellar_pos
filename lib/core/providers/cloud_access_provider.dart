@@ -38,7 +38,13 @@ class CloudAccessProvider extends ChangeNotifier {
 
   bool hasPermission(String permission) {
     final user = currentUser;
-    if (user == null) return true;
+
+    // Fail closed while the access snapshot is not available. Firestore
+    // rules remain the authoritative security boundary, but the client UI
+    // should never expose privileged actions merely because access data has
+    // not finished loading yet.
+    if (user == null) return false;
+
     if (user.roleId == 'owner') return true;
     if (user.permissionOverrides.containsKey(permission)) {
       return user.permissionOverrides[permission] == true;
