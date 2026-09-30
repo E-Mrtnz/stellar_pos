@@ -191,6 +191,8 @@ class CloudSyncEngine {
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     final stored = await local.getAll();
+    final prepared = <T>[];
+
     for (final entity in stored) {
       if (entity.metadata.syncState == SyncState.deleted ||
           entity.metadata.storeId != null) {
@@ -208,15 +210,16 @@ class CloudSyncEngine {
           deletedAt: entity.metadata.deletedAt,
         ),
       );
-      final prepared = _withMetadata(entity, metadata, fromMap);
-      await local.save(prepared);
-      await queue.enqueueUpsert(
-        collection: collection,
-        entityId: prepared.id,
-        payload: prepared.toMap(),
-        storeId: scope.storeId,
-      );
+      prepared.add(_withMetadata(entity, metadata, fromMap));
     }
+
+    await _saveLocalBatch(local, prepared);
+    await _enqueueUpserts(
+      collection: collection,
+      scope: scope,
+      entities: prepared,
+    );
+    return prepared.length;
   }
 
   Future<void> _seedLocalPending<T extends SyncableEntity>({
