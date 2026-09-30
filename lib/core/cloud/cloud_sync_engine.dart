@@ -175,7 +175,15 @@ class CloudSyncEngine {
       }
 
       final metadata = scope.applyTo(
-        entity.metadata.touch(syncState: SyncState.pending),
+        SyncMetadata(
+          createdAt: entity.metadata.createdAt,
+          updatedAt: entity.metadata.updatedAt,
+          version: entity.metadata.version,
+          schemaVersion: entity.metadata.schemaVersion,
+          syncState: SyncState.pending,
+          lastSyncedAt: entity.metadata.lastSyncedAt,
+          deletedAt: entity.metadata.deletedAt,
+        ),
       );
       final prepared = _withMetadata(entity, metadata, fromMap);
       await local.save(prepared);
