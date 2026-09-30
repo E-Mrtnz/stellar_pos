@@ -442,10 +442,11 @@ class _CloudStoreSettingsContent extends StatelessWidget {
 
   Future<void> _forceUploadAll(BuildContext context) async {
     final provider = context.read<CloudStoreProvider>();
-    final success = await provider.forceUploadAll();
+    await provider.forceUploadAll();
     if (!context.mounted) return;
 
     final result = provider.lastSyncResult;
+    final success = result != null && result.failed == 0;
     final errors = result?.errors ?? const <String>[];
     final summary = result == null
         ? 'No se pudo obtener un resultado de sincronización.'
