@@ -174,9 +174,8 @@ class CloudSyncService {
   /// Runs synchronization for every cloud-aware repository.
   ///
   /// Each repository is best-effort and keeps local operation available when
-  /// Firebase is unavailable. Futures are intentionally started together so
-  /// independent collections can synchronize concurrently; the shared
-  /// [CloudSyncCoordinator] still prevents duplicate work per collection.
+  /// Firebase is unavailable. Collections are reconciled sequentially so the
+  /// shared local sync queue remains deterministic during large migrations.
   Future<CloudSyncResult> syncAll() async {
     final operations = <Future<CloudSyncResult?> Function()>[
       products.sync,
