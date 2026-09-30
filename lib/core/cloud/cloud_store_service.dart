@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_service.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/cloud/cloud_store_access_service.dart';
 
 /// Manages the business/store identity that sits above the application data.
@@ -339,7 +340,7 @@ class CloudStoreService {
     );
   }
 
-  Future<void> sync() => syncService.syncAll();
+  Future<CloudSyncResult> sync() => syncService.syncAll();
 
   /// Legacy bridge kept only so older callers do not silently break.
   ///
