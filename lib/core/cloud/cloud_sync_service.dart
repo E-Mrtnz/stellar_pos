@@ -88,6 +88,31 @@ class CloudSyncService {
     }
   }
 
+  /// Forces every cloud-aware repository to upload its complete local
+  /// dataset, regardless of checkpoints or previous sync state.
+  Future<CloudSyncResult> forceUploadAll() async {
+    final results = await Future.wait<CloudSyncResult?>([
+      products.forceUpload(),
+      clients.forceUpload(),
+      purchases.forceUpload(),
+      sales.forceUpload(),
+      debtMovements.forceUpload(),
+      clientGroups.forceUpload(),
+      electronicBalanceAccounts.forceUpload(),
+      electronicBalanceTransactions.forceUpload(),
+      providerRoutes.forceUpload(),
+      providerCatalog.forceUpload(),
+    ]);
+
+    var total = const CloudSyncResult();
+    for (final result in results) {
+      if (result != null) {
+        total = total + result;
+      }
+    }
+    return total;
+  }
+
   /// Runs synchronization for every cloud-aware repository.
   ///
   /// Each repository is best-effort and keeps local operation available when
