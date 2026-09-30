@@ -12,12 +12,16 @@ class CloudSyncResult {
   final int downloaded;
   final int deleted;
   final int skippedConflicts;
+  final int failed;
+  final int migrated;
 
   const CloudSyncResult({
     this.uploaded = 0,
     this.downloaded = 0,
     this.deleted = 0,
     this.skippedConflicts = 0,
+    this.failed = 0,
+    this.migrated = 0,
   });
 
   CloudSyncResult operator +(CloudSyncResult other) => CloudSyncResult(
@@ -25,6 +29,8 @@ class CloudSyncResult {
         downloaded: downloaded + other.downloaded,
         deleted: deleted + other.deleted,
         skippedConflicts: skippedConflicts + other.skippedConflicts,
+        failed: failed + other.failed,
+        migrated: migrated + other.migrated,
       );
 }
 
@@ -53,17 +59,19 @@ class CloudSyncEngine {
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     var result = const CloudSyncResult();
+    final startedAt = DateTime.now();
 
     // Legacy local records can outlive the first synchronization checkpoint.
     // Revisit only records that still have no tenant identity so a previous
     // failed migration can recover automatically without re-uploading already
     // acknowledged records on every cycle.
-    await _seedLegacyLocalPending(
+    final migratedLegacy = await _seedLegacyLocalPending(
       collection: collection,
       scope: scope,
       local: local,
       fromMap: fromMap,
     );
+    result = result + CloudSyncResult(migrated: migratedLegacy);
 
     final checkpoint = await checkpoints.get(
       storeId: scope.storeId,
@@ -99,12 +107,13 @@ class CloudSyncEngine {
       // Before queueing them, assign the active store/device identity. This
       // prevents legacy local records (which may have no sync metadata yet)
       // from being uploaded without a tenant boundary.
-      await _seedLocalPending(
+      final seeded = await _seedLocalPending(
         collection: collection,
         scope: scope,
         local: local,
         fromMap: fromMap,
       );
+      result = result + CloudSyncResult(migrated: seeded);
     }
 
     result = result + await _flushQueue(
@@ -160,10 +169,22 @@ class CloudSyncEngine {
       );
     }
 
+    final elapsed = DateTime.now().difference(startedAt);
+    developer.log(
+      'Sincronización completada. Colección: ' + collection +
+          ', migrados/encolados: ' + result.migrated.toString() +
+          ', subidos: ' + result.uploaded.toString() +
+          ', descargados: ' + result.downloaded.toString() +
+          ', eliminados: ' + result.deleted.toString() +
+          ', conflictos omitidos: ' + result.skippedConflicts.toString() +
+          ', fallos: ' + result.failed.toString() +
+          ', duración: ' + elapsed.inMilliseconds.toString() + ' ms.',
+      name: 'STELLAR_POS.cloud_sync',
+    );
     return result;
   }
 
-  Future<void> _seedLegacyLocalPending<T extends SyncableEntity>({
+  Future<int> _seedLegacyLocalPending<T extends SyncableEntity>({
     required String collection,
     required CloudSyncScope scope,
     required LocalDataSource<T> local,
