@@ -61,6 +61,13 @@ class CloudStoreProvider extends ChangeNotifier {
     });
   }
 
+  Future<bool> updateOwnerEmail(String ownerEmail) async {
+    return _run(() async {
+      await _service.updateOwnerEmail(ownerEmail);
+      _ownerEmail = await _service.getOwnerEmail();
+    });
+  }
+
   Future<bool> renameStore(String storeName) async {
     return _run(() async {
       await _service.renameStore(storeName);
