@@ -45,7 +45,7 @@ class AppProviders extends StatelessWidget {
           create: (_) => CloudAutoSyncService()..start(),
           dispose: (_, service) => service.dispose(),
         ),
-        ProxyProvider<CloudStoreProvider, CloudRealtimeSyncService>(
+        ChangeNotifierProxyProvider<CloudStoreProvider, CloudRealtimeSyncService>(
           create: (_) => CloudRealtimeSyncService()..start(),
           update: (_, store, realtime) {
             final service = realtime ?? (CloudRealtimeSyncService()..start());
