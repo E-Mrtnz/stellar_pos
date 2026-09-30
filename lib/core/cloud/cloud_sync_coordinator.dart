@@ -32,7 +32,7 @@ class CloudSyncCoordinator {
     Future<T> Function() operation,
   ) async {
     try {
-      await operation();
+      return await operation();
     } catch (error, stackTrace) {
       developer.log(
         'Falló una sincronización de Firestore. Clave: ' + key,
