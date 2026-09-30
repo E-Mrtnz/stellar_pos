@@ -325,6 +325,14 @@ class CatalogProvider extends ChangeNotifier
     return null;
   }
 
+  Future<void> refreshFromRepository() async {
+    await Future.wait<void>([
+      _loadCatalogFromRepository(),
+      _loadClientsFromRepository(),
+    ]);
+    notifyListeners();
+  }
+
   Future<void> _loadCatalogFromRepository() async {
     final repository = _catalogRepository;
     if (repository == null) {
