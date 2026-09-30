@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'dart:async';
 
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
@@ -5,6 +7,7 @@ import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_coordinator.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
 import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
 import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
@@ -68,9 +71,9 @@ class ElectronicBalanceTransactionRepository
     unawaited(_trySync(cloud));
   }
 
-  Future<void> sync() => _trySync();
+  Future<CloudSyncResult?> sync() => _trySync();
 
-  Future<void> _trySync([
+  Future<CloudSyncResult?> _trySync([
     CloudRepository<ElectronicBalanceTransaction>? existing,
   ]) async {
     final cloud = existing ?? await _getCloudRepository();
@@ -80,11 +83,11 @@ class ElectronicBalanceTransactionRepository
       final storeId = await _identityStore.getStoreId();
       if (storeId == null || storeId.isEmpty) return;
 
-      await _syncCoordinator.run(
+      return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:${CloudCollection.electronicBalanceTransactions}',
         operation: cloud.sync,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Keep electronic-balance operations available while Firebase is
       // unavailable or while the cloud tenant/security configuration is not
       // ready.
