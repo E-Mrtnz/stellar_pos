@@ -11,6 +11,7 @@ class SyncQueueItem {
   final Map<String, dynamic>? payload;
   final DateTime queuedAt;
   final int attempts;
+  final String? storeId;
 
   const SyncQueueItem({
     required this.id,
@@ -20,6 +21,7 @@ class SyncQueueItem {
     required this.queuedAt,
     this.payload,
     this.attempts = 0,
+    this.storeId,
   });
 
   Map<String, dynamic> toMap() => {
@@ -30,6 +32,7 @@ class SyncQueueItem {
         'payload': payload,
         'queuedAt': queuedAt.toUtc().toIso8601String(),
         'attempts': attempts,
+        'storeId': storeId,
       };
 
   factory SyncQueueItem.fromMap(Map<String, dynamic> map) {
@@ -49,6 +52,13 @@ class SyncQueueItem {
       attempts: map['attempts'] is num
           ? (map['attempts'] as num).toInt()
           : int.tryParse(map['attempts']?.toString() ?? '') ?? 0,
+      storeId: map['storeId']?.toString() ??
+          ((map['payload'] is Map)
+              ? (map['payload'] as Map)['storeId']?.toString() ??
+                  ((map['payload'] as Map)['metadata'] is Map
+                      ? (map['payload'] as Map)['metadata']['storeId']?.toString()
+                      : null)
+              : null),
     );
   }
 
@@ -60,6 +70,7 @@ class SyncQueueItem {
         payload: payload,
         queuedAt: queuedAt,
         attempts: attempts ?? this.attempts,
+        storeId: storeId,
       );
 }
 
@@ -74,6 +85,7 @@ class SyncQueue {
     required String collection,
     required String entityId,
     required Map<String, dynamic> payload,
+    String? storeId,
   }) async {
     await _replacePendingForEntity(
       collection: collection,
@@ -97,10 +109,12 @@ class SyncQueue {
     required String collection,
     required String entityId,
     Map<String, dynamic>? payload,
+    String? storeId,
   }) async {
     await _replacePendingForEntity(
       collection: collection,
       entityId: entityId,
+      storeId: storeId,
     );
     await _enqueue(
       SyncQueueItem(
@@ -115,13 +129,15 @@ class SyncQueue {
     );
   }
 
-  Future<List<SyncQueueItem>> pending({String? collection}) async {
+  Future<List<SyncQueueItem>> pending({String? collection, String? storeId}) async {
     final box = await LocalStorage.openBox(_boxName);
     final items = <SyncQueueItem>[];
     for (final value in box.values) {
       if (value is! Map) continue;
       final item = SyncQueueItem.fromMap(Map<String, dynamic>.from(value));
-      if (collection == null || item.collection == collection) {
+      final itemStoreId = item.storeId;
+      if ((collection == null || item.collection == collection) &&
+          (storeId == null || itemStoreId == storeId)) {
         items.add(item);
       }
     }
@@ -166,6 +182,7 @@ class SyncQueue {
   Future<void> _replacePendingForEntity({
     required String collection,
     required String entityId,
+    String? storeId,
   }) async {
     final box = await LocalStorage.openBox(_boxName);
     final keys = <dynamic>[];
@@ -173,7 +190,9 @@ class SyncQueue {
       final value = box.get(key);
       if (value is! Map) continue;
       final item = SyncQueueItem.fromMap(Map<String, dynamic>.from(value));
-      if (item.collection == collection && item.entityId == entityId) {
+      if (item.collection == collection &&
+          item.entityId == entityId &&
+          (storeId == null || item.storeId == storeId)) {
         keys.add(key);
       }
     }
