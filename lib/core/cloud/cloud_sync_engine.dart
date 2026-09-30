@@ -157,13 +157,22 @@ class CloudSyncEngine {
   }) async {
     final stored = await local.getAll();
     for (final entity in stored) {
-      if (entity.metadata.syncState == SyncState.deleted ||
-          entity.metadata.syncState == SyncState.synced) {
+      if (entity.metadata.syncState == SyncState.deleted) {
         continue;
       }
 
       if (entity.metadata.storeId != null &&
           entity.metadata.storeId != scope.storeId) {
+        continue;
+      }
+
+      // A record marked as synced is considered safe to skip only when it
+      // already belongs to this store and has a real cloud acknowledgement.
+      // Legacy records created before cloud synchronization can carry a
+      // default/synced state without ever having been uploaded.
+      if (entity.metadata.syncState == SyncState.synced &&
+          entity.metadata.storeId == scope.storeId &&
+          entity.metadata.lastSyncedAt != null) {
         continue;
       }
 
