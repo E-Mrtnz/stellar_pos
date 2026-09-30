@@ -222,13 +222,15 @@ class CloudSyncEngine {
     return prepared.length;
   }
 
-  Future<void> _seedLocalPending<T extends SyncableEntity>({
+  Future<int> _seedLocalPending<T extends SyncableEntity>({
     required String collection,
     required CloudSyncScope scope,
     required LocalDataSource<T> local,
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     final stored = await local.getAll();
+    final prepared = <T>[];
+
     for (final entity in stored) {
       if (entity.metadata.syncState == SyncState.deleted) {
         continue;
@@ -241,16 +243,13 @@ class CloudSyncEngine {
 
       // A record marked as synced is considered safe to skip only when it
       // already belongs to this store and has a real cloud acknowledgement.
-      // Legacy records created before cloud synchronization can carry a
-      // default/synced state without ever having been uploaded.
       if (entity.metadata.syncState == SyncState.synced &&
           entity.metadata.storeId == scope.storeId &&
           entity.metadata.lastSyncedAt != null) {
         continue;
       }
 
-      var prepared = entity;
-
+      var nextEntity = entity;
       final metadataNeedsScope =
           entity.metadata.storeId != scope.storeId ||
           entity.metadata.deviceId != scope.deviceId;
@@ -260,17 +259,67 @@ class CloudSyncEngine {
         final metadata = scope.applyTo(
           entity.metadata.touch(syncState: SyncState.pending),
         );
-        prepared = _withMetadata(entity, metadata, fromMap);
-        await local.save(prepared);
+        nextEntity = _withMetadata(entity, metadata, fromMap);
       }
 
-      await queue.enqueueUpsert(
-        collection: collection,
-        entityId: prepared.id,
-        payload: prepared.toMap(),
-        storeId: scope.storeId,
-      );
+      prepared.add(nextEntity);
     }
+
+    await _saveLocalBatch(local, prepared);
+    await _enqueueUpserts(
+      collection: collection,
+      scope: scope,
+      entities: prepared,
+    );
+    return prepared.length;
+  }
+
+  Future<void> _saveLocalBatch<T extends SyncableEntity>(
+    LocalDataSource<T> local,
+    List<T> entities,
+  ) async {
+    if (entities.isEmpty) return;
+
+    if (local is BatchLocalDataSource<T>) {
+      await local.saveAll(entities);
+      return;
+    }
+
+    for (final entity in entities) {
+      await local.save(entity);
+    }
+  }
+
+  Future<void> _enqueueUpserts<T extends SyncableEntity>({
+    required String collection,
+    required CloudSyncScope scope,
+    required List<T> entities,
+  }) async {
+    if (entities.isEmpty) return;
+
+    final now = DateTime.now().toUtc();
+    await queue.enqueueUpserts(
+      collection: collection,
+      storeId: scope.storeId,
+      items: [
+        for (var index = 0; index < entities.length; index++)
+          SyncQueueItem(
+            id: collection +
+                ':' +
+                entities[index].id +
+                ':' +
+                now.microsecondsSinceEpoch.toString() +
+                ':' +
+                index.toString(),
+            collection: collection,
+            entityId: entities[index].id,
+            operation: SyncOperationType.upsert,
+            payload: Map<String, dynamic>.from(entities[index].toMap()),
+            queuedAt: now,
+            storeId: scope.storeId,
+          ),
+      ],
+    );
   }
 
   Future<CloudSyncResult> _flushQueue<T extends SyncableEntity>({
