@@ -7,10 +7,10 @@ import 'package:stellar_pos/core/cloud/cloud_store_service.dart';
 /// Keeps the active installation reconciled with Firestore without requiring
 /// the user to open a specific module.
 ///
-/// The POS remains local-first: every repository still saves to Hive first and
-/// keeps queued changes when Firebase is unavailable. This service only adds a
-/// periodic reconciliation while the app is active and an immediate pass when
-/// the app resumes.
+/// The POS remains local-first: every repository saves to Hive first and
+/// retries pending local changes during automatic reconciliation. This service
+/// adds a periodic reconciliation while the app is active and an immediate
+/// pass when the app resumes.
 class CloudAutoSyncService with WidgetsBindingObserver {
   static const _syncInterval = Duration(seconds: 60);
 
