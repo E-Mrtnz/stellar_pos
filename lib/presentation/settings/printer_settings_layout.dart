@@ -829,6 +829,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _cloudInviteInfoCard(
+                context: context,
                 code: cloudStore.inviteCode ?? 'Sin código',
               ),
             ),
@@ -965,7 +966,10 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     );
   }
 
-  Widget _cloudInviteInfoCard({required String code}) {
+  Widget _cloudInviteInfoCard({
+    required BuildContext context,
+    required String code,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
