@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_store_service.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 
 /// Application state for the store identity used by Stellar POS.
 ///
@@ -16,6 +17,7 @@ class CloudStoreProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool _isSaving = false;
   String? _errorMessage;
+  CloudSyncResult? _lastSyncResult;
 
   CloudStoreProvider({CloudStoreService? service})
       : _service = service ?? CloudStoreService();
@@ -28,6 +30,7 @@ class CloudStoreProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
+  CloudSyncResult? get lastSyncResult => _lastSyncResult;
 
   Future<void> load() async {
     _isLoading = true;
@@ -84,7 +87,9 @@ class CloudStoreProvider extends ChangeNotifier {
   }
 
   Future<bool> sync() async {
-    return _run(() => _service.sync());
+    return _run(() async {
+      _lastSyncResult = await _service.sync();
+    });
   }
 
   Future<void> clear() async {
