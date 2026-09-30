@@ -91,10 +91,7 @@ class StoreAccessDefaults {
         id: 'administrator',
         name: 'Administrador',
         description: 'Administración operativa sin cambiar la propiedad.',
-        permissions: {
-          ...StorePermissions.all,
-          StorePermissions.settingsEdit,
-        }..remove(StorePermissions.usersManage),
+        permissions: StorePermissions.all,
       );
 
   static StoreRoleDefinition get employee => const StoreRoleDefinition(
