@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
 
 class SidebarDrawer extends StatelessWidget {
   final bool isExpanded;
@@ -11,6 +13,8 @@ class SidebarDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final storeName = context.watch<CloudStoreProvider>().storeName ?? AppStrings.appName;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
@@ -26,7 +30,16 @@ class SidebarDrawer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(children: [
                   Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withAlpha(25), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24)),
-                  if (isExpanded) ...[const SizedBox(width: 12), const Text(AppStrings.appName, style: AppTextStyles.brandTitle)],
+                  if (isExpanded) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        storeName,
+                        style: AppTextStyles.brandTitle,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ]),
               ),
               const SizedBox(height: 30),
