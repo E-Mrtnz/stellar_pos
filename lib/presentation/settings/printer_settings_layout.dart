@@ -1220,11 +1220,18 @@ class _CloudStoreSettingsContent extends StatelessWidget {
         children: [
           Row(
             children: [
-              const SizedBox(
-                width: 15,
-                height: 15,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+              if (progress.phase == 'Completado')
+                const Icon(
+                  Icons.check_circle_outline,
+                  size: 16,
+                  color: AppColors.successGreen,
+                )
+              else
+                const SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
