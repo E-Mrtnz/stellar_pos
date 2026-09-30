@@ -5,7 +5,7 @@ import 'package:stellar_pos/core/models/sync_metadata.dart';
 /// introduced. It deliberately implements the same boundary expected from a
 /// future Hive/SQLite data source.
 class InMemoryDataSource<T extends SyncableEntity>
-    implements LocalDataSource<T> {
+    implements LocalDataSource<T>, BatchLocalDataSource<T> {
   final Map<String, T> _items = <String, T>{};
 
   @override
@@ -17,6 +17,13 @@ class InMemoryDataSource<T extends SyncableEntity>
   @override
   Future<void> save(T entity) async {
     _items[entity.id] = entity;
+  }
+
+  @override
+  Future<void> saveAll(Iterable<T> entities) async {
+    for (final entity in entities) {
+      _items[entity.id] = entity;
+    }
   }
 
   @override
