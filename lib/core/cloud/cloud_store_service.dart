@@ -169,18 +169,8 @@ class CloudStoreService {
 
     final storeRef =
         firestore.collection(CloudCollection.stores).doc(storeId);
-    final storeSnapshot = await storeRef.get();
-    if (!storeSnapshot.exists) {
-      throw StateError('La tienda asociada a esta invitación no existe.');
-    }
-
-    final storeData = storeSnapshot.data() ?? const <String, dynamic>{};
-    final storeName = storeData['name']?.toString().trim();
-    if (storeName == null || storeName.isEmpty) {
-      throw StateError('La tienda no tiene un nombre válido.');
-    }
-
-    final memberRef = storeRef.collection(CloudCollection.members).doc(user.uid);
+    final memberRef =
+        storeRef.collection(CloudCollection.members).doc(user.uid);
     final existingMember = await memberRef.get();
 
     if (!existingMember.exists) {
@@ -191,6 +181,19 @@ class CloudStoreService {
         'inviteCode': normalizedCode,
         'createdAt': FieldValue.serverTimestamp(),
       });
+    }
+
+    // Membership now exists, so the authenticated user can safely read the
+    // store metadata protected by the Firestore rules.
+    final storeSnapshot = await storeRef.get();
+    if (!storeSnapshot.exists) {
+      throw StateError('La tienda asociada a esta invitación no existe.');
+    }
+
+    final storeData = storeSnapshot.data() ?? const <String, dynamic>{};
+    final storeName = storeData['name']?.toString().trim();
+    if (storeName == null || storeName.isEmpty) {
+      throw StateError('La tienda no tiene un nombre válido.');
     }
 
     await identityStore.setStoreIdentity(
