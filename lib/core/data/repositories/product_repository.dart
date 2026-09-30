@@ -1,9 +1,12 @@
+import 'dart:developer' as developer;
+
 import 'dart:async';
 
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
 import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
 import 'package:stellar_pos/core/cloud/cloud_repository.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
+import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_coordinator.dart';
 import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
 import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
@@ -73,9 +76,9 @@ class ProductRepository implements Repository<Product> {
   /// Synchronization is intentionally optional until a store is explicitly
   /// assigned to this installation. A missing store identity therefore keeps
   /// the application fully local instead of inventing a tenant identifier.
-  Future<void> sync() => _trySync();
+  Future<CloudSyncResult?> sync() => _trySync();
 
-  Future<void> _trySync([CloudRepository<Product>? existing]) async {
+  Future<CloudSyncResult?> _trySync([CloudRepository<Product>? existing]) async {
     final cloud = existing ?? await _getCloudRepository();
     if (cloud == null) return;
 
@@ -83,11 +86,18 @@ class ProductRepository implements Repository<Product> {
       final storeId = await _identityStore.getStoreId();
       if (storeId == null || storeId.isEmpty) return;
 
-      await _syncCoordinator.run(
+      return await _syncCoordinator.run<CloudSyncResult>(
         key: '$storeId:${CloudCollection.products}',
         operation: cloud.sync,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      developer.log(
+        'Falló la sincronización de Firestore.',
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
       // Local POS operation must remain available when Firebase is offline,
       // unavailable, or temporarily rejects the request. The queued change
       // remains durable and can be retried by the next synchronization.
