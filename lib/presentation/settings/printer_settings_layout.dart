@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
 import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
+import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
+import 'package:stellar_pos/presentation/settings/store_access_dialog.dart';
 import 'package:stellar_pos/presentation/backups/database_backup_layout.dart';
 import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
@@ -161,8 +163,9 @@ class _CloudStoreSettingsSection extends StatelessWidget {
     var isWorking = false;
     String? dialogError;
 
-    final nameController =
-        TextEditingController(text: provider.storeName ?? '');
+    final nameController = TextEditingController(text: provider.storeName ?? '');
+    final emailController = TextEditingController(text: provider.ownerEmail ?? '');
+    final userNameController = TextEditingController();
     final inviteController = TextEditingController();
 
     try {
@@ -172,23 +175,31 @@ class _CloudStoreSettingsSection extends StatelessWidget {
           builder: (dialogContext, setDialogState) {
             final title = createMode ? 'Crear tu tienda' : 'Unirse a una tienda';
             final description = createMode
-                ? 'Crea la identidad de tu negocio en la nube. El sistema generará automáticamente un identificador único para la tienda.'
-                : 'Introduce el código de invitación que te proporcionó el propietario de una tienda para vincular este dispositivo a sus datos.';
+                ? 'Crea la identidad de tu negocio. El Store ID se generará automáticamente y no podrá cambiarse.'
+                : 'Registra tu nombre y usa el código de invitación que te proporcionó el propietario.';
 
             Future<void> submit() async {
               if (isWorking) return;
 
-              final value = createMode
-                  ? nameController.text.trim()
-                  : inviteController.text.trim();
-
-              if (value.isEmpty) {
-                setDialogState(() {
-                  dialogError = createMode
-                      ? 'Escribe el nombre de la tienda.'
-                      : 'Escribe el código de invitación.';
-                });
-                return;
+              if (createMode) {
+                if (nameController.text.trim().isEmpty) {
+                  setDialogState(() => dialogError = 'Escribe el nombre de la tienda.');
+                  return;
+                }
+                if (emailController.text.trim().isEmpty ||
+                    !emailController.text.contains('@')) {
+                  setDialogState(() => dialogError = 'Escribe un correo válido para el propietario.');
+                  return;
+                }
+              } else {
+                if (userNameController.text.trim().isEmpty) {
+                  setDialogState(() => dialogError = 'Escribe el nombre del usuario.');
+                  return;
+                }
+                if (inviteController.text.trim().isEmpty) {
+                  setDialogState(() => dialogError = 'Escribe el código de invitación.');
+                  return;
+                }
               }
 
               setDialogState(() {
@@ -197,13 +208,20 @@ class _CloudStoreSettingsSection extends StatelessWidget {
               });
 
               final success = createMode
-                  ? await provider.createStore(value)
-                  : await provider.joinStore(value);
+                  ? await provider.createStore(
+                      nameController.text.trim(),
+                      emailController.text.trim(),
+                    )
+                  : await provider.joinStore(
+                      userNameController.text.trim(),
+                      inviteController.text.trim(),
+                    );
 
               if (!dialogContext.mounted) return;
 
               if (success) {
-                Navigator.of(dialogContext).pop(true);
+                await context.read<CloudAccessProvider>().load();
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
                 return;
               }
 
@@ -228,9 +246,7 @@ class _CloudStoreSettingsSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      createMode
-                          ? Icons.add_business_outlined
-                          : Icons.link_outlined,
+                      createMode ? Icons.add_business_outlined : Icons.link_outlined,
                       color: AppColors.primary,
                     ),
                   ),
@@ -245,97 +261,117 @@ class _CloudStoreSettingsSection extends StatelessWidget {
               ),
               content: SizedBox(
                 width: 460,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        height: 1.45,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller:
-                          createMode ? nameController : inviteController,
-                      autofocus: true,
-                      textCapitalization: createMode
-                          ? TextCapitalization.words
-                          : TextCapitalization.characters,
-                      decoration: InputDecoration(
-                        labelText: createMode
-                            ? 'Nombre de la tienda'
-                            : 'Código de invitación',
-                        hintText: createMode
-                            ? 'Ej. Tienda El Edén'
-                            : 'Ej. EDEN-4827',
-                        prefixIcon: Icon(
-                          createMode
-                              ? Icons.storefront_outlined
-                              : Icons.vpn_key_outlined,
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                      onSubmitted: (_) => submit(),
-                    ),
-                    if (dialogError != null) ...[
-                      const SizedBox(height: 10),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        dialogError!,
+                        description,
                         style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.dangerRed,
+                          fontSize: 12,
+                          height: 1.45,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      if (createMode) ...[
+                        TextField(
+                          controller: nameController,
+                          autofocus: true,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Nombre de la tienda',
+                            prefixIcon: Icon(Icons.storefront_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Correo del propietario',
+                            hintText: 'propietario@ejemplo.com',
+                            prefixIcon: Icon(Icons.alternate_email_rounded),
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => submit(),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'El correo identifica al propietario y podrá utilizarse posteriormente para autenticación, recuperación y notificaciones.',
+                          style: TextStyle(fontSize: 11, height: 1.35, color: AppColors.textSecondary),
+                        ),
+                      ] else ...[
+                        TextField(
+                          controller: userNameController,
+                          autofocus: true,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Tu nombre',
+                            hintText: 'Ej. Samuel',
+                            prefixIcon: Icon(Icons.person_outline),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: inviteController,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(
+                            labelText: 'Código de invitación',
+                            hintText: 'Ej. EDEN-4827',
+                            prefixIcon: Icon(Icons.vpn_key_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => submit(),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tu nombre será el nombre visible del usuario. La cuenta tendrá un User ID único y este dispositivo quedará registrado por separado.',
+                          style: TextStyle(fontSize: 11, height: 1.35, color: AppColors.textSecondary),
+                        ),
+                      ],
+                      if (dialogError != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          dialogError!,
+                          style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton(
+                          onPressed: isWorking
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    createMode = !createMode;
+                                    dialogError = null;
+                                  });
+                                },
+                          child: Text(
+                            createMode
+                                ? '¿Ya tienes una tienda? Usa un código de invitación'
+                                : '¿Quieres crear una tienda nueva?',
+                          ),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                        onPressed: isWorking
-                            ? null
-                            : () {
-                                setDialogState(() {
-                                  createMode = !createMode;
-                                  dialogError = null;
-                                  if (!createMode) {
-                                    inviteController.clear();
-                                  }
-                                });
-                              },
-                        child: Text(
-                          createMode
-                              ? '¿Ya tienes una tienda? Usa un código de invitación'
-                              : '¿Quieres crear una tienda nueva?',
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: isWorking
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(false),
+                  onPressed: isWorking ? null : () => Navigator.of(dialogContext).pop(false),
                   child: const Text('Cancelar'),
                 ),
                 FilledButton.icon(
                   onPressed: isWorking ? null : submit,
                   icon: isWorking
-                      ? const SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          createMode
-                              ? Icons.add_business_outlined
-                              : Icons.link_outlined,
-                          size: 18,
-                        ),
+                      ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(createMode ? Icons.add_business_outlined : Icons.link_outlined, size: 18),
                   label: Text(createMode ? 'Crear tienda' : 'Unirse a tienda'),
                 ),
               ],
@@ -350,15 +386,24 @@ class _CloudStoreSettingsSection extends StatelessWidget {
             content: Text(
               createMode
                   ? 'La tienda fue creada correctamente.'
-                  : 'El dispositivo quedó vinculado a la tienda.',
+                  : 'El usuario y su dispositivo quedaron registrados.',
             ),
           ),
         );
       }
     } finally {
       nameController.dispose();
+      emailController.dispose();
+      userNameController.dispose();
       inviteController.dispose();
     }
+  }
+
+  Future<void> _openAccessDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => const StoreAccessDialog(),
+    );
   }
 
   Future<void> _manageStore(BuildContext context) async {
@@ -635,6 +680,14 @@ class _CloudStoreSettingsSection extends StatelessWidget {
                           ),
                   ),
                   const SizedBox(width: 12),
+                  if (context.watch<CloudAccessProvider>().canManageUsers) ...[
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: cloudStore.isSaving ? null : () => _openAccessDialog(context),
+                      icon: const Icon(Icons.group_outlined, size: 18),
+                      label: const Text('Usuarios y dispositivos'),
+                    ),
+                  ],
                   OutlinedButton.icon(
                     onPressed: cloudStore.isSaving
                         ? null
