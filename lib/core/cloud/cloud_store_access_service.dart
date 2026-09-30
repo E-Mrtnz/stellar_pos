@@ -114,21 +114,22 @@ class CloudStoreAccessService {
     final userId = uid;
     final ref = _users(storeId).doc(userId);
     final existing = await ref.get();
+    final existingData = existing.data() ?? <String, dynamic>{};
 
     await ref.set({
       'userId': userId,
       'authUid': uid,
       'storeId': storeId,
       'displayName': displayName.trim(),
-      'roleId': existing.exists ? (existing.data()?['roleId'] ?? 'employee') : 'employee',
-      'status': existing.exists ? (existing.data()?['status'] ?? 'active') : 'active',
+      'roleId': existing.exists ? (existingData['roleId'] ?? 'employee') : 'employee',
+      'status': existing.exists ? (existingData['status'] ?? 'active') : 'active',
       'inviteCode': invitationCode.trim().toUpperCase(),
       'createdAt': existing.exists
-          ? existing.data()?['createdAt']
+          ? existingData['createdAt']
           : FieldValue.serverTimestamp(),
       'lastSeenAt': FieldValue.serverTimestamp(),
       'permissionOverrides': existing.exists
-          ? (existing.data()?['permissionOverrides'] ?? <String, bool>{})
+          ? (existingData['permissionOverrides'] ?? <String, bool>{})
           : <String, bool>{},
     }, SetOptions(merge: true));
 
