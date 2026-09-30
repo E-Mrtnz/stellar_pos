@@ -203,7 +203,7 @@ class _CloudModeOption extends StatelessWidget {
 }
 
 class _CloudStoreSettingsContent extends StatelessWidget {
-  const _CloudStoreSettingsSection();
+  const _CloudStoreSettingsContent();
 
   Future<void> _openStoreDialog(BuildContext context, {bool? initialCreateMode}) async {
     final provider = context.read<CloudStoreProvider>();
