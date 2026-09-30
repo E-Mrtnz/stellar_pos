@@ -154,6 +154,54 @@ class _PrinterContent extends StatelessWidget {
   }
 }
 
+class _CloudModeOption extends StatelessWidget {
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _CloudModeOption({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primary.withAlpha(18) : Colors.transparent,
+      borderRadius: BorderRadius.circular(9),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(9),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 17,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CloudStoreSettingsContent extends StatelessWidget {
   const _CloudStoreSettingsSection();
 
@@ -340,22 +388,44 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                           style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: isWorking
-                              ? null
-                              : () {
-                                  setDialogState(() {
-                                    createMode = !createMode;
-                                    dialogError = null;
-                                  });
-                                },
-                          child: Text(
-                            createMode
-                                ? '¿Ya tienes una tienda? Usa un código de invitación'
-                                : '¿Quieres crear una tienda nueva?',
-                          ),
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputBackground,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _CloudModeOption(
+                                selected: createMode,
+                                icon: Icons.add_business_outlined,
+                                label: 'Crear tienda',
+                                onTap: isWorking
+                                    ? null
+                                    : () => setDialogState(() {
+                                          createMode = true;
+                                          dialogError = null;
+                                        }),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: _CloudModeOption(
+                                selected: !createMode,
+                                icon: Icons.link_outlined,
+                                label: 'Unirse',
+                                onTap: isWorking
+                                    ? null
+                                    : () => setDialogState(() {
+                                          createMode = false;
+                                          dialogError = null;
+                                        }),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
