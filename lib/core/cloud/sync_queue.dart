@@ -105,6 +105,46 @@ class SyncQueue {
     );
   }
 
+  /// Enqueues many upserts while opening/scanning the durable queue only once.
+  /// This avoids the O(n²) behavior that appears when thousands of legacy
+  /// records are migrated one by one and each item scans the existing queue.
+  Future<void> enqueueUpserts({
+    required String collection,
+    required Iterable<SyncQueueItem> items,
+    String? storeId,
+  }) async {
+    final pendingItems = items.toList(growable: false);
+    if (pendingItems.isEmpty) return;
+
+    final box = await LocalStorage.openBox(_boxName);
+    final keysToDelete = <dynamic>[];
+    final targetIds = <String>{
+      for (final item in pendingItems) item.entityId,
+    };
+
+    for (final key in box.keys) {
+      final value = box.get(key);
+      if (value is! Map) continue;
+      final existing = SyncQueueItem.fromMap(
+        Map<String, dynamic>.from(value),
+      );
+      if (existing.collection == collection &&
+          targetIds.contains(existing.entityId) &&
+          (storeId == null || existing.storeId == storeId)) {
+        keysToDelete.add(key);
+      }
+    }
+
+    if (keysToDelete.isNotEmpty) {
+      await box.deleteAll(keysToDelete);
+    }
+
+    final entries = <dynamic, dynamic>{
+      for (final item in pendingItems) item.id: item.toMap(),
+    };
+    await box.putAll(entries);
+  }
+
   Future<void> enqueueDelete({
     required String collection,
     required String entityId,
