@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -48,31 +46,31 @@ class DeviceRegistryService {
       osVersion = info.platform ?? 'unknown';
       manufacturer = 'browser';
       model = info.browserName.name;
-    } else if (Platform.isAndroid) {
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
       final info = await _deviceInfo.androidInfo;
       platform = 'android';
       osVersion = info.version.release;
       manufacturer = info.manufacturer;
       model = info.model;
-    } else if (Platform.isIOS) {
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       final info = await _deviceInfo.iosInfo;
       platform = 'ios';
       osVersion = info.systemVersion;
       manufacturer = 'Apple';
       model = info.model;
-    } else if (Platform.isMacOS) {
+    } else if (defaultTargetPlatform == TargetPlatform.macOS) {
       final info = await _deviceInfo.macOsInfo;
       platform = 'macos';
       osVersion = info.osRelease;
       manufacturer = 'Apple';
       model = info.model;
-    } else if (Platform.isWindows) {
+    } else if (defaultTargetPlatform == TargetPlatform.windows) {
       final info = await _deviceInfo.windowsInfo;
       platform = 'windows';
       osVersion = info.displayVersion;
       manufacturer = 'Microsoft';
       model = info.computerName;
-    } else if (Platform.isLinux) {
+    } else if (defaultTargetPlatform == TargetPlatform.linux) {
       final info = await _deviceInfo.linuxInfo;
       platform = 'linux';
       osVersion = info.version ?? 'unknown';
