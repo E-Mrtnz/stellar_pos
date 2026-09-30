@@ -342,11 +342,6 @@ class CloudStoreService {
 
   Future<CloudSyncResult> sync() => syncService.syncAll();
 
-  Future<CloudSyncResult> forceUploadAll({
-    CloudSyncProgressCallback? onProgress,
-  }) =>
-      syncService.forceUploadAll(onProgress: onProgress);
-
   /// Legacy bridge kept only so older callers do not silently break.
   ///
   /// New UI flows must use [createStore] or [joinStore] so the immutable
