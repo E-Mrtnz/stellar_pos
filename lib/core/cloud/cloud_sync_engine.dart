@@ -51,6 +51,18 @@ class CloudSyncEngine {
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     var result = const CloudSyncResult();
+
+    // Legacy local records can outlive the first synchronization checkpoint.
+    // Revisit only records that still have no tenant identity so a previous
+    // failed migration can recover automatically without re-uploading already
+    // acknowledged records on every cycle.
+    await _seedLegacyLocalPending(
+      collection: collection,
+      scope: scope,
+      local: local,
+      fromMap: fromMap,
+    );
+
     final checkpoint = await checkpoints.get(
       storeId: scope.storeId,
       collection: collection,
@@ -147,6 +159,33 @@ class CloudSyncEngine {
     }
 
     return result;
+  }
+
+  Future<void> _seedLegacyLocalPending<T extends SyncableEntity>({
+    required String collection,
+    required CloudSyncScope scope,
+    required LocalDataSource<T> local,
+    required T Function(Map<String, dynamic> map) fromMap,
+  }) async {
+    final stored = await local.getAll();
+    for (final entity in stored) {
+      if (entity.metadata.syncState == SyncState.deleted ||
+          entity.metadata.storeId != null) {
+        continue;
+      }
+
+      final metadata = scope.applyTo(
+        entity.metadata.touch(syncState: SyncState.pending),
+      );
+      final prepared = _withMetadata(entity, metadata, fromMap);
+      await local.save(prepared);
+      await queue.enqueueUpsert(
+        collection: collection,
+        entityId: prepared.id,
+        payload: prepared.toMap(),
+        storeId: scope.storeId,
+      );
+    }
   }
 
   Future<void> _seedLocalPending<T extends SyncableEntity>({
