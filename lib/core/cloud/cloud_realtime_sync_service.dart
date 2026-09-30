@@ -150,6 +150,14 @@ class CloudRealtimeSyncService extends ChangeNotifier
     } while (_active &&
         _storeId != null &&
         _pendingTriggers.contains(collection));
+    } finally {
+      _syncing.remove(collection);
+      if (_active &&
+          _storeId != null &&
+          _pendingTriggers.remove(collection)) {
+        _scheduleSync(collection);
+      }
+    }
   }
 
   Future<void> _cancelListeners() async {
