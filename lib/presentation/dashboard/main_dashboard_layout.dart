@@ -1017,6 +1017,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Widget _buildMainContent() {
     final access = context.watch<CloudAccessProvider>();
+    if (_selectedNavIndex == AppNavigation.home &&
+        !access.hasPermission(StorePermissions.dashboardView)) {
+      return const _EmptySectionPanel();
+    }
+    if (_selectedNavIndex == AppNavigation.electronicBalance &&
+        !access.hasPermission(StorePermissions.salesView)) {
+      return const _EmptySectionPanel();
+    }
     if (_selectedNavIndex == AppNavigation.purchases &&
         !access.hasPermission(StorePermissions.purchasesView)) {
       return const _EmptySectionPanel();
