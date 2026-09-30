@@ -410,6 +410,8 @@ class _CloudStoreSettingsSection extends StatelessWidget {
     final provider = context.read<CloudStoreProvider>();
     final nameController =
         TextEditingController(text: provider.storeName ?? '');
+    final emailController =
+        TextEditingController(text: provider.ownerEmail ?? '');
 
     try {
       await showDialog<void>(
@@ -418,12 +420,19 @@ class _CloudStoreSettingsSection extends StatelessWidget {
           builder: (dialogContext, setDialogState) {
             final saving = provider.isSaving;
 
-            Future<void> saveName() async {
+            Future<void> saveChanges() async {
               if (saving) return;
-              if (nameController.text.trim().isEmpty) return;
+              if (nameController.text.trim().isEmpty ||
+                  emailController.text.trim().isEmpty ||
+                  !emailController.text.contains('@')) {
+                return;
+              }
 
-              final success =
+              final nameSuccess =
                   await provider.renameStore(nameController.text.trim());
+              final emailSuccess =
+                  await provider.updateOwnerEmail(emailController.text.trim());
+              final success = nameSuccess && emailSuccess;
               if (!dialogContext.mounted) return;
 
               if (success) {
@@ -491,6 +500,16 @@ class _CloudStoreSettingsSection extends StatelessWidget {
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Correo del propietario',
+                        prefixIcon: Icon(Icons.alternate_email_rounded),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     InputDecorator(
                       decoration: const InputDecoration(
@@ -554,7 +573,7 @@ class _CloudStoreSettingsSection extends StatelessWidget {
                   child: const Text('Cerrar'),
                 ),
                 FilledButton(
-                  onPressed: saving ? null : saveName,
+                  onPressed: saving ? null : saveChanges,
                   child: const Text('Guardar cambios'),
                 ),
               ],
@@ -564,6 +583,7 @@ class _CloudStoreSettingsSection extends StatelessWidget {
       );
     } finally {
       nameController.dispose();
+      emailController.dispose();
     }
   }
 
