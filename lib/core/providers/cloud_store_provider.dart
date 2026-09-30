@@ -50,7 +50,9 @@ class CloudStoreProvider extends ChangeNotifier {
       _storeId = await _service.getStoreId();
       return true;
     } catch (error) {
-      _errorMessage = error is StateError || error is ArgumentError
+      _errorMessage = error is StateError
+          ? error.message
+          : error is ArgumentError
           ? error.message
           : error.toString();
       return false;
