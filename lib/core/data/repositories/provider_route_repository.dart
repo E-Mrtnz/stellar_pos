@@ -49,7 +49,7 @@ class ProviderRouteRepository implements Repository<ProviderRoute> {
     }
 
     await cloud.save(entity);
-    await _trySync(cloud);
+    unawaited(_trySync(cloud));
   }
 
   @override
@@ -61,7 +61,7 @@ class ProviderRouteRepository implements Repository<ProviderRoute> {
     }
 
     await cloud.delete(id);
-    await _trySync(cloud);
+    unawaited(_trySync(cloud));
   }
 
   Future<void> sync() => _trySync();
