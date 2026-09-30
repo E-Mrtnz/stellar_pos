@@ -201,7 +201,23 @@ service cloud.firestore {
           )
         );
 
-      allow update: if ownerOf(storeId) ||
+      allow update: if ownerOf(storeId) &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.authUid == resource.data.authUid &&
+        request.resource.data.storeId == resource.data.storeId &&
+        (
+          (resource.data.roleId == 'owner' && request.resource.data.roleId == 'owner') ||
+          (resource.data.roleId != 'owner' && request.resource.data.roleId != 'owner')
+        ) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'displayName',
+            'roleId',
+            'status',
+            'email',
+            'lastSeenAt',
+            'permissionOverrides'
+          ]) ||
         (
           userId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
