@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_collection.dart';
@@ -14,7 +15,8 @@ import 'package:stellar_pos/core/cloud/cloud_sync_service.dart';
 /// collection. That preserves the local-first conflict rules, durable queue,
 /// tombstones, tenant scoping, and checkpoint handling already implemented in
 /// [CloudSyncService].
-class CloudRealtimeSyncService with WidgetsBindingObserver {
+class CloudRealtimeSyncService extends ChangeNotifier
+    with WidgetsBindingObserver {
   final CloudSyncService _syncService;
   final FirebaseFirestore _firestore;
 
@@ -25,8 +27,11 @@ class CloudRealtimeSyncService with WidgetsBindingObserver {
   final Set<String> _pendingTriggers = <String>{};
 
   String? _storeId;
+  String? _lastSyncedCollection;
   bool _started = false;
   bool _active = true;
+
+  String? get lastSyncedCollection => _lastSyncedCollection;
 
   CloudRealtimeSyncService({
     CloudSyncService? syncService,
@@ -136,6 +141,8 @@ class CloudRealtimeSyncService with WidgetsBindingObserver {
       do {
         _pendingTriggers.remove(collection);
         await _syncService.syncCollection(collection);
+        _lastSyncedCollection = collection;
+        notifyListeners();
       } catch (_) {
         // Realtime synchronization is best-effort. The durable queue and
         // periodic 60-second reconciliation remain responsible for recovery.
