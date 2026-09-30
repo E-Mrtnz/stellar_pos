@@ -24,8 +24,6 @@ class CloudSyncResult {
     this.failed = 0,
     this.migrated = 0,
     this.errors = const <String>[],
-    this.collectionIndex = 0,
-    this.collectionCount = 1,
   });
 
   CloudSyncResult operator +(CloudSyncResult other) => CloudSyncResult(
@@ -67,6 +65,8 @@ class CloudSyncProgress {
     this.uploaded = 0,
     this.failed = 0,
     this.errors = const <String>[],
+    this.collectionIndex = 0,
+    this.collectionCount = 1,
   });
 
   double get fraction =>
