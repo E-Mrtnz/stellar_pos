@@ -448,8 +448,10 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     final result = provider.lastSyncResult;
     final success = result != null && result.failed == 0;
     final errors = result?.errors ?? const <String>[];
+    final fatalError = provider.errorMessage;
     final summary = result == null
-        ? 'No se pudo obtener un resultado de sincronización.'
+        ? 'No se pudo completar la carga.\n' +
+            (fatalError ?? 'La operación terminó sin un resultado.')
         : 'Registros procesados: ' + result.migrated.toString() + '\n'
             'Subidos: ' + result.uploaded.toString() + '\n'
             'Descargados: ' + result.downloaded.toString() + '\n'
