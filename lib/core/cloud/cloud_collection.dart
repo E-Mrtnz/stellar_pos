@@ -27,6 +27,9 @@ abstract final class CloudCollection {
 
   /// Membership subcollection under each store.
   static const members = 'members';
+  static const users = 'users';
+  static const roles = 'roles';
+  static const devices = 'devices';
 
   static String store(String storeId) => 'stores/${storeId.trim()}';
 
