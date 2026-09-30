@@ -56,6 +56,17 @@ class CloudSyncEngine {
       collection: collection,
     );
 
+    // Capture durable delete intent before the initial remote bootstrap too.
+    // Otherwise an offline delete could be resurrected by the first getAll()
+    // before the queue gets a chance to upload its tombstone.
+    final pendingDeletesBeforeBootstrap = (await queue.pending(
+      collection: collection,
+      storeId: scope.storeId,
+    ))
+        .where((item) => item.operation == SyncOperationType.delete)
+        .map((item) => item.entityId)
+        .toSet();
+
     if (checkpoint == null) {
       final remote = await cloud.getAll();
       if (remote.isNotEmpty) {
@@ -63,6 +74,7 @@ class CloudSyncEngine {
           local: local,
           remote: remote,
           fromMap: fromMap,
+          pendingDeletes: pendingDeletesBeforeBootstrap,
         );
       }
 
