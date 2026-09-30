@@ -52,10 +52,7 @@ class CloudAccessProvider extends ChangeNotifier {
     return false;
   }
 
-  bool get canManageUsers {
-    final role = currentUser?.roleId;
-    return role == 'owner' || role == 'administrator';
-  }
+  bool get canManageUsers => hasPermission(StorePermissions.usersManage);
 
   Future<void> load() async {
     final storeId = await storeService.getStoreId();
