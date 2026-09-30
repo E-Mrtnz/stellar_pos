@@ -176,8 +176,8 @@ class _CloudStoreSettingsContent extends StatelessWidget {
           builder: (dialogContext, setDialogState) {
             final title = createMode ? 'Crear tu tienda' : 'Unirse a una tienda';
             final description = createMode
-                ? 'Crea la identidad de tu negocio. El Store ID se generará automáticamente y no podrá cambiarse.'
-                : 'Registra tu nombre y usa el código de invitación que te proporcionó el propietario.';
+                ? 'Define la identidad de tu negocio. El identificador interno se generará automáticamente.'
+                : 'Registra tu nombre y utiliza el código que te proporcionó el propietario.';
 
             Future<void> submit() async {
               if (isWorking) return;
@@ -222,14 +222,15 @@ class _CloudStoreSettingsContent extends StatelessWidget {
 
               if (success) {
                 await context.read<CloudAccessProvider>().load();
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop(true);
+                }
                 return;
               }
 
               setDialogState(() {
                 isWorking = false;
-                dialogError = provider.errorMessage ??
-                    'No se pudo completar la operación.';
+                dialogError = provider.errorMessage ?? 'No se pudo completar la operación.';
               });
             }
 
@@ -239,50 +240,47 @@ class _CloudStoreSettingsContent extends StatelessWidget {
               child: SizedBox(
                 width: 540,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(30, 28, 30, 20),
+                  padding: const EdgeInsets.fromLTRB(30, 28, 30, 22),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                       Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(20),
-                      borderRadius: BorderRadius.circular(12),
+                      Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(20),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                    child: Icon(
-                      createMode ? Icons.add_business_outlined : Icons.link_outlined,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: AppTextStyles.brandTitle.copyWith(fontSize: 20),
-                    ),
-                  ),
-                ],
-              ),
-                      SizedBox(
-                        width: double.infinity,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: AppColors.textSecondary,
-                        ),
+                            child: Icon(
+                              createMode ? Icons.add_business_outlined : Icons.link_outlined,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 13),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(title, style: AppTextStyles.brandTitle.copyWith(fontSize: 20)),
+                                const SizedBox(height: 3),
+                                Text(
+                                  description,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    height: 1.35,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 22),
                       if (createMode) ...[
                         TextField(
                           controller: nameController,
@@ -308,8 +306,8 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'El correo identifica al propietario y podrá utilizarse posteriormente para autenticación, recuperación y notificaciones.',
-                          style: TextStyle(fontSize: 11, height: 1.35, color: AppColors.textSecondary),
+                          'Se utilizará como dato de contacto y podrá servir posteriormente para autenticación, recuperación y notificaciones.',
+                          style: TextStyle(fontSize: 10.5, height: 1.35, color: AppColors.textSecondary),
                         ),
                       ] else ...[
                         TextField(
@@ -337,8 +335,8 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Tu nombre será el nombre visible del usuario. La cuenta tendrá un User ID único y este dispositivo quedará registrado por separado.',
-                          style: TextStyle(fontSize: 11, height: 1.35, color: AppColors.textSecondary),
+                          'Tu nombre será visible para la administración. Tu User ID y este dispositivo se registrarán por separado.',
+                          style: TextStyle(fontSize: 10.5, height: 1.35, color: AppColors.textSecondary),
                         ),
                       ],
                       if (dialogError != null) ...[
@@ -370,7 +368,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       Center(
                         child: TextButton(
                           onPressed: isWorking
@@ -388,34 +386,35 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                        ),
-                      ),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-
-TextButton(
-                  onPressed: isWorking ? null : () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton.icon(
-                  onPressed: isWorking ? null : submit,
-                  icon: isWorking
-                      ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Icon(createMode ? Icons.add_business_outlined : Icons.link_outlined, size: 18),
-                  label: Text(createMode ? 'Crear tienda' : 'Unirse a tienda'),
-                ),
-
+                          TextButton(
+                            onPressed: isWorking ? null : () => Navigator.of(dialogContext).pop(false),
+                            child: const Text('Cancelar'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            onPressed: isWorking ? null : submit,
+                            icon: isWorking
+                                ? const SizedBox(
+                                    width: 15,
+                                    height: 15,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Icon(
+                                    createMode ? Icons.add_business_outlined : Icons.link_outlined,
+                                    size: 18,
+                                  ),
+                            label: Text(createMode ? 'Crear tienda' : 'Unirse a tienda'),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-            );
             );
           },
         ),
