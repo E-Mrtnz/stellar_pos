@@ -52,7 +52,7 @@ class CloudStoreProvider extends ChangeNotifier {
 
   Future<bool> createStore(String storeName, String ownerEmail) async {
     return _run(() async {
-      await _service.createStore(storeName, ownerEmail);
+      await _service.createStore(storeName);
       await _reloadIdentity();
     });
   }
