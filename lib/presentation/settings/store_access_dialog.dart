@@ -280,6 +280,44 @@ class _UserCard extends StatelessWidget {
   final StoreUserRecord user;
   const _UserCard({required this.user});
 
+  Future<void> _deleteUser(BuildContext context, CloudAccessProvider access) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (confirmContext) => AlertDialog(
+        title: const Text('Eliminar usuario'),
+        content: Text(
+          '¿Estás seguro de que quieres eliminar a "' +
+              (user.displayName.isEmpty ? 'este usuario' : user.displayName) +
+              '"?\n\n'
+          'Se eliminará su acceso a esta tienda y se revocarán sus dispositivos registrados. '
+          'Esta acción no elimina su cuenta global de Firebase.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(confirmContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(confirmContext).pop(true),
+            child: const Text('Eliminar usuario'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await access.deleteUser(user.userId);
+    if (!context.mounted || ok) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(access.errorMessage ?? 'No se pudo eliminar el usuario.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final access = context.watch<CloudAccessProvider>();
@@ -331,6 +369,17 @@ class _UserCard extends StatelessWidget {
               (devices.length == 1 ? ' dispositivo' : ' dispositivos'),
         ),
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: current || user.roleId == 'owner'
+                  ? null
+                  : () => _deleteUser(context, access),
+              icon: const Icon(Icons.delete_outline_rounded, size: 17),
+              label: const Text('Eliminar usuario'),
+            ),
+          ),
+          const SizedBox(height: 10),
           _RoleAndStatusEditor(user: user, disabled: current),
           const SizedBox(height: 12),
           _PermissionEditor(user: user, disabled: current),
