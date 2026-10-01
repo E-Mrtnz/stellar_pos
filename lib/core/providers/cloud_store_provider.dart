@@ -136,6 +136,7 @@ class CloudStoreProvider extends ChangeNotifier {
     _storeId = await _service.getStoreId();
     _storeName = await _service.getStoreName();
     _inviteCode = await _service.getInviteCode();
+    _ownerEmail = await _service.getOwnerEmail();
   }
 
   String _friendlyError(Object error) {
