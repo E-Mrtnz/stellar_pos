@@ -71,6 +71,8 @@ class CloudAccessProvider extends ChangeNotifier {
     return false;
   }
 
+  bool get hasStoreAccess => _accessResolved && currentUser != null && currentUser!.isActive;
+
   bool get canManageUsers => hasPermission(StorePermissions.usersManage);
 
   Future<void> load() async {
