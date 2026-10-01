@@ -29,7 +29,9 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
     SyncQueue? queue,
     CloudSyncEngine? engine,
   }) : queue = queue ?? SyncQueue() {
-    engine = engine ?? CloudSyncEngine(queue: this.queue);
+    // The constructor parameter has the same name as the field.
+    // Explicitly assign the field so the repository always owns the engine.
+    this.engine = engine ?? CloudSyncEngine(queue: this.queue);
   }
 
   @override
