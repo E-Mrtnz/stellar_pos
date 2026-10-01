@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_store_service.dart';
 
@@ -16,19 +17,31 @@ class CloudAutoSyncService with WidgetsBindingObserver {
   static const _syncInterval = Duration(seconds: 60);
 
   final CloudStoreService _storeService;
+  final FirebaseAuth _auth;
+  StreamSubscription<User?>? _authSubscription;
   Timer? _timer;
   bool _started = false;
   bool _syncing = false;
 
-  CloudAutoSyncService({CloudStoreService? storeService})
-      : _storeService = storeService ?? CloudStoreService();
+  CloudAutoSyncService({
+    CloudStoreService? storeService,
+    FirebaseAuth? auth,
+  })  : _storeService = storeService ?? CloudStoreService(),
+        _auth = auth ?? FirebaseAuth.instance;
 
   void start() {
     if (_started) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
+    _authSubscription = _auth.authStateChanges().listen((user) {
+      if (user != null) {
+        unawaited(syncNow());
+      }
+    });
     _scheduleTimer();
-    unawaited(syncNow());
+    if (_auth.currentUser != null) {
+      unawaited(syncNow());
+    }
   }
 
   Future<void> syncNow() async {
@@ -62,6 +75,13 @@ class CloudAutoSyncService with WidgetsBindingObserver {
   }
 
   @override
+  void dispose() {
+    _authSubscription?.cancel();
+    _stopTimer();
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
@@ -79,8 +99,4 @@ class CloudAutoSyncService with WidgetsBindingObserver {
     }
   }
 
-  void dispose() {
-    _stopTimer();
-    WidgetsBinding.instance.removeObserver(this);
-  }
 }
