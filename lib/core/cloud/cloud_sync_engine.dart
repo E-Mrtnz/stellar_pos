@@ -456,12 +456,9 @@ class CloudSyncEngine {
   ) async {
     if (entities.isEmpty) return;
 
-    if (local is BatchLocalDataSource<T>) {
-      await local.saveAll(entities);
-      return;
-    }
-
-    for (final entity in entities) {
+    // LocalDataSource exposes only the basic CRUD contract. Keep the
+    // synchronization engine compatible with every local data source.
+    for (final entity of entities) {
       await local.save(entity);
     }
   }
