@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud/cloud_data_source.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
 import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
-import 'package:stellar_pos/core/cloud/sync_checkpoint_store.dart';
 import 'package:stellar_pos/core/cloud/sync_queue.dart';
 import 'package:stellar_pos/core/data/datasources/data_source.dart';
 import 'package:stellar_pos/core/models/sync_metadata.dart';
@@ -35,7 +34,6 @@ void main() {
 
       await CloudSyncEngine(
         queue: queue,
-        checkpoints: _MemoryCheckpointStore(),
       ).sync<_TestEntity>(
         collection: 'products',
         scope: const CloudSyncScope(storeId: 'store-a', deviceId: 'device-a'),
@@ -70,7 +68,6 @@ void main() {
 
       await CloudSyncEngine(
         queue: _MemorySyncQueue(),
-        checkpoints: _MemoryCheckpointStore(),
       ).sync<_TestEntity>(
         collection: 'products',
         scope: const CloudSyncScope(storeId: 'store-a', deviceId: 'device-a'),
@@ -106,7 +103,6 @@ void main() {
 
       final result = await CloudSyncEngine(
         queue: _MemorySyncQueue(),
-        checkpoints: _MemoryCheckpointStore(),
       ).sync<_TestEntity>(
         collection: 'products',
         scope: const CloudSyncScope(storeId: 'store-a', deviceId: 'device-a'),
@@ -314,30 +310,3 @@ class _MemorySyncQueue extends SyncQueue {
   }
 }
 
-class _MemoryCheckpointStore extends SyncCheckpointStore {
-  final Map<String, DateTime> _values = {};
-
-  @override
-  Future<DateTime?> get({
-    required String storeId,
-    required String collection,
-  }) async =>
-      _values['$storeId::$collection'];
-
-  @override
-  Future<void> save({
-    required String storeId,
-    required String collection,
-    required DateTime timestamp,
-  }) async {
-    _values['$storeId::$collection'] = timestamp.toUtc();
-  }
-
-  @override
-  Future<void> clear({
-    required String storeId,
-    required String collection,
-  }) async {
-    _values.remove('$storeId::$collection');
-  }
-}
