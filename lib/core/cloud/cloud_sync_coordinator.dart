@@ -14,13 +14,21 @@ class CloudSyncCoordinator {
   static final CloudSyncCoordinator instance = CloudSyncCoordinator._();
 
   final Map<String, Future<dynamic>> _inFlight = <String, Future<dynamic>>{};
+  final Map<String, bool> _rerunRequested = <String, bool>{};
 
   Future<T> run<T>({
     required String key,
     required Future<T> Function() operation,
   }) {
     final existing = _inFlight[key];
-    if (existing != null) return existing.then((value) => value as T);
+    if (existing != null) {
+      // A mutation may arrive while the current reconciliation is reading
+      // Firestore. Mark the collection dirty so it is reconciled again after
+      // the current snapshot finishes instead of silently missing the new
+      // record until the next timer tick.
+      _rerunRequested[key] = true;
+      return existing.then((value) => value as T);
+    }
 
     final future = _runAndRelease<T>(key, operation);
     _inFlight[key] = future;
@@ -32,7 +40,13 @@ class CloudSyncCoordinator {
     Future<T> Function() operation,
   ) async {
     try {
-      return await operation();
+      T? result;
+      do {
+        _rerunRequested[key] = false;
+        result = await operation();
+      } while (_rerunRequested[key] == true);
+
+      return result as T;
     } catch (error, stackTrace) {
       developer.log(
         'Falló una sincronización de Firestore. Clave: ' + key,
@@ -42,6 +56,7 @@ class CloudSyncCoordinator {
       );
       rethrow;
     } finally {
+      _rerunRequested.remove(key);
       _inFlight.remove(key);
     }
   }
