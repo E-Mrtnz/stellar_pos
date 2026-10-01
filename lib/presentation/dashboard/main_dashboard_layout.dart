@@ -1295,4 +1295,3 @@ class _ProductNotFoundAlert extends StatelessWidget {
     ),
   );
 }
-}
