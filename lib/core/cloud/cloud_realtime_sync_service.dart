@@ -132,7 +132,9 @@ class CloudRealtimeSyncService extends ChangeNotifier
         continue;
       }
 
-      final data = Map<String, dynamic>.from(change.doc.data());
+      final raw = change.doc.data();
+      if (raw == null) continue;
+      final data = Map<String, dynamic>.from(raw);
       data['id'] ??= change.doc.id;
       documents.add(data);
     }
