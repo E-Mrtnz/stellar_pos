@@ -142,4 +142,19 @@ class ProviderRouteRepository implements Repository<ProviderRoute> {
     );
     return _cloud;
   }
+
+  /// Applies a single remote Firestore document to the local Hive cache.
+  Future<bool> applyRemoteData(Map<String, dynamic> data) async {
+    final cloud = await _getCloudRepository();
+    if (cloud == null) return false;
+    return cloud.applyRemoteData(data);
+  }
+
+  /// Applies a single remote Firestore deletion to the local Hive cache.
+  Future<bool> applyRemoteDelete(String id) async {
+    final cloud = await _getCloudRepository();
+    if (cloud == null) return false;
+    return cloud.applyRemoteDelete(id);
+  }
+
 }
