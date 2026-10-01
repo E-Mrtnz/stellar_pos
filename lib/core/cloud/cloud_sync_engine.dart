@@ -458,9 +458,9 @@ class CloudSyncEngine {
 
     // LocalDataSource exposes only the basic CRUD contract. Keep the
     // synchronization engine compatible with every local data source.
-    for (final entity of entities) {
-      await local.save(entity);
-    }
+    await Future.wait(
+      entities.map(local.save),
+    );
   }
 
   T _withMetadata<T extends SyncableEntity>(
