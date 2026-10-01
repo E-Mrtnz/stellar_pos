@@ -125,7 +125,7 @@ class CloudStoreAccessService {
         'lastSeenAt': FieldValue.serverTimestamp(),
       });
     } else {
-      await ref.create({
+      await ref.set({
         'userId': userId,
         'authUid': uid,
         'storeId': storeId,
@@ -158,11 +158,10 @@ class CloudStoreAccessService {
     final descriptor = await deviceRegistry.describeCurrentDevice();
     final ref = _devices(storeId).doc(descriptor.deviceId);
 
-    // Do not read a missing device document before creating it. The previous
-    // read was denied by the security rule because resource.data is not
-    // available for a non-existent document. Create first, then update only
-    // the fields that an already registered device is allowed to change.
-    final data = <String, dynamic>{
+    // Do not read a missing device document before writing it. The security
+    // rule intentionally allows creation from the joined user context, while
+    // updates are restricted to the device heartbeat fields.
+    await ref.set({
       'deviceId': descriptor.deviceId,
       'userId': userId,
       'storeId': storeId,
@@ -173,25 +172,7 @@ class CloudStoreAccessService {
       'appVersion': descriptor.appVersion,
       'lastSeenAt': FieldValue.serverTimestamp(),
       'active': true,
-      'firstSeenAt': FieldValue.serverTimestamp(),
-    };
-
-    try {
-      await ref.create(data);
-    } on FirebaseException catch (error) {
-      if (error.code != 'already-exists') {
-        rethrow;
-      }
-
-      await ref.update({
-        'lastSeenAt': FieldValue.serverTimestamp(),
-        'appVersion': descriptor.appVersion,
-        'osVersion': descriptor.osVersion,
-        'manufacturer': descriptor.manufacturer,
-        'model': descriptor.model,
-        'platform': descriptor.platform,
-      });
-    }
+    }, SetOptions(merge: true));
     await _users(storeId).doc(userId).set(
       {'lastSeenAt': FieldValue.serverTimestamp()},
       SetOptions(merge: true),
