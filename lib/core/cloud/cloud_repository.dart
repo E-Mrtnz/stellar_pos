@@ -18,7 +18,7 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
   final String collection;
   final T Function(Map<String, dynamic> map) fromMap;
   final SyncQueue queue;
-  final CloudSyncEngine engine;
+  late final CloudSyncEngine engine;
 
   CloudRepository({
     required this.local,
@@ -28,8 +28,9 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
     required this.fromMap,
     SyncQueue? queue,
     CloudSyncEngine? engine,
-  })  : queue = queue ?? SyncQueue(),
-        engine = engine ?? CloudSyncEngine();
+  }) : queue = queue ?? SyncQueue() {
+    engine = engine ?? CloudSyncEngine(queue: this.queue);
+  }
 
   @override
   Future<List<T>> getAll() => local.getAll();
