@@ -757,6 +757,15 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => _signOut(context),
+            icon: const Icon(Icons.logout_rounded, size: 17),
+            label: const Text('Cerrar sesión'),
+          ),
+        ),
       ],
     );
   }
