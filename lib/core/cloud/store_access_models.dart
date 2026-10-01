@@ -175,6 +175,30 @@ class StoreUserRecord {
 
   bool get isActive => status == 'active';
 
+  StoreUserRecord copyWith({
+    String? displayName,
+    String? roleId,
+    String? status,
+    String? email,
+    DateTime? lastSeenAt,
+    Map<String, bool>? permissionOverrides,
+  }) {
+    return StoreUserRecord(
+      userId: userId,
+      authUid: authUid,
+      storeId: storeId,
+      displayName: displayName ?? this.displayName,
+      roleId: roleId ?? this.roleId,
+      status: status ?? this.status,
+      email: email ?? this.email,
+      invitedByUid: invitedByUid,
+      createdAt: createdAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      permissionOverrides:
+          permissionOverrides ?? this.permissionOverrides,
+    );
+  }
+
   Map<String, dynamic> toMap() => {
         'userId': userId,
         'authUid': authUid,
