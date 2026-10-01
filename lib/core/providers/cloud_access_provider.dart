@@ -67,13 +67,13 @@ class CloudAccessProvider extends ChangeNotifier {
 
   Future<void> load() async {
     final storeId = await storeService.getStoreId();
-    await loadForStore(storeId);
+    await loadForStore(storeId, force: true);
   }
 
   /// Loads access whenever the active store changes. This is important after
   /// joining a store because this provider is created before the store
   /// identity is available during application startup.
-  Future<void> loadForStore(String? storeId) async {
+  Future<void> loadForStore(String? storeId, {bool force = false}) async {
     final normalizedStoreId = storeId?.trim();
     if (normalizedStoreId == null || normalizedStoreId.isEmpty) {
       _loadedStoreId = null;
@@ -82,7 +82,7 @@ class CloudAccessProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (_loadedStoreId == normalizedStoreId && _accessResolved) return;
+    if (!force && _loadedStoreId == normalizedStoreId && _accessResolved) return;
     _loadedStoreId = normalizedStoreId;
     _accessResolved = false;
 
