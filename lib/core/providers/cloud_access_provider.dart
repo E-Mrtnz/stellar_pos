@@ -15,6 +15,7 @@ class CloudAccessProvider extends ChangeNotifier {
     roles: [],
   );
   bool _loading = false;
+  bool _accessResolved = false;
   String? _error;
 
   CloudAccessProvider({
@@ -25,6 +26,7 @@ class CloudAccessProvider extends ChangeNotifier {
 
   StoreAccessSnapshot get snapshot => _snapshot;
   bool get isLoading => _loading;
+  bool get accessResolved => _accessResolved;
   String? get errorMessage => _error;
 
   StoreUserRecord? get currentUser {
@@ -39,11 +41,13 @@ class CloudAccessProvider extends ChangeNotifier {
   bool hasPermission(String permission) {
     final user = currentUser;
 
-    // Fail closed while the access snapshot is not available. Firestore
-    // rules remain the authoritative security boundary, but the client UI
-    // should never expose privileged actions merely because access data has
-    // not finished loading yet.
-    if (user == null) return false;
+    // Cloud access controls are not the security boundary; Firestore rules
+    // are. The POS is local-first, so a temporary Auth/access loading failure
+    // must not blank the entire application. Until the access snapshot is
+    // resolved, keep the local UI available. Once a valid user record is
+    // loaded, enforce that user's permissions normally.
+    if (!_accessResolved) return true;
+    if (user == null) return true;
 
     if (user.roleId == 'owner') return true;
     if (user.permissionOverrides.containsKey(permission)) {
@@ -92,6 +96,9 @@ class CloudAccessProvider extends ChangeNotifier {
     } catch (error) {
       _error = error.toString();
     } finally {
+      // A failed/anonymous access lookup must remain non-blocking for the
+      // local-first POS. Firestore itself still enforces the real permissions.
+      _accessResolved = true;
       _loading = false;
       notifyListeners();
     }
