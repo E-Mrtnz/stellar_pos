@@ -307,7 +307,7 @@ service cloud.firestore {
         (
           userId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['displayName', 'lastSeenAt'])
+            .hasOnly(['displayName', 'email', 'lastSeenAt'])
         );
 
       allow delete: if (ownerOf(storeId) || hasPermission(storeId, 'users.manage')) && userId != request.auth.uid && resource.data.roleId != 'owner';
