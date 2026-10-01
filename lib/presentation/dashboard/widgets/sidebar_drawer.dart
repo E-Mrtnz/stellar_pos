@@ -47,43 +47,67 @@ class SidebarDrawer extends StatelessWidget {
               ),
               const SizedBox(height: 30),
               Expanded(
-                child: access.accessResolved
-                    ? ListView(
-                        scrollDirection: Axis.vertical,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        children: [
-                          if (access.hasPermission(StorePermissions.dashboardView))
-                            _buildSidebarItem(
-                              AppNavigation.home,
-                              Icons.point_of_sale_rounded,
-                              AppStrings.navHome,
-                            ),
-                    if (access.hasPermission(StorePermissions.salesView))
-                      _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
-                    if (access.hasPermission(StorePermissions.purchasesView))
-                      _buildSidebarItem(AppNavigation.purchases, Icons.shopping_bag_rounded, AppStrings.navPurchases),
-                    if (access.hasPermission(StorePermissions.debtsView))
-                      _buildSidebarItem(AppNavigation.debts, Icons.receipt_long_outlined, AppStrings.navDebts),
-                    if (access.hasPermission(StorePermissions.statisticsView))
-                      _buildSidebarItem(AppNavigation.stats, Icons.bar_chart_rounded, AppStrings.navStats),
-                    if (access.hasPermission(StorePermissions.providersView))
-                      _buildSidebarItem(AppNavigation.providers, Icons.local_shipping_outlined, AppStrings.navProviders),
-                          if (access.hasPermission(StorePermissions.inventoryView))
-                            _buildSidebarItem(
-                              AppNavigation.inventory,
-                              Icons.inventory_2_rounded,
-                              AppStrings.navInventory,
-                            ),
-                        ],
-                      )
-                    : const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                child: ListView(
+                  scrollDirection: Axis.vertical,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // The navigation shell must not wait for Firebase. During
+                    // access resolution we keep the full shell visible; the
+                    // selected destination itself remains gated by
+                    // CloudAccessProvider. Once access is resolved, entries
+                    // are filtered normally by the user's permissions.
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.dashboardView))
+                      _buildSidebarItem(
+                        AppNavigation.home,
+                        Icons.point_of_sale_rounded,
+                        AppStrings.navHome,
                       ),
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.salesView))
+                      _buildSidebarItem(
+                        AppNavigation.electronicBalance,
+                        Icons.receipt_long_rounded,
+                        AppStrings.navSales,
+                      ),
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.purchasesView))
+                      _buildSidebarItem(
+                        AppNavigation.purchases,
+                        Icons.shopping_bag_rounded,
+                        AppStrings.navPurchases,
+                      ),
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.debtsView))
+                      _buildSidebarItem(
+                        AppNavigation.debts,
+                        Icons.receipt_long_outlined,
+                        AppStrings.navDebts,
+                      ),
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.statisticsView))
+                      _buildSidebarItem(
+                        AppNavigation.stats,
+                        Icons.bar_chart_rounded,
+                        AppStrings.navStats,
+                      ),
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.providersView))
+                      _buildSidebarItem(
+                        AppNavigation.providers,
+                        Icons.local_shipping_outlined,
+                        AppStrings.navProviders,
+                      ),
+                    if (!access.accessResolved ||
+                        access.hasPermission(StorePermissions.inventoryView))
+                      _buildSidebarItem(
+                        AppNavigation.inventory,
+                        Icons.inventory_2_rounded,
+                        AppStrings.navInventory,
+                      ),
+                  ],
+                ),
               ),
               const Divider(
                 height: 1,
@@ -91,7 +115,7 @@ class SidebarDrawer extends StatelessWidget {
                 endIndent: 16,
                 color: AppColors.border,
               ),
-              if (access.accessResolved &&
+              if (!access.accessResolved ||
                   access.hasPermission(StorePermissions.settingsView))
                 _buildSidebarItem(
                   AppNavigation.settings,
