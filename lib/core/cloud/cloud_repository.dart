@@ -102,14 +102,27 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
     }
 
     final localEntity = await local.getById(remote.id);
-    if (localEntity != null &&
-        (localEntity.metadata.syncState == SyncState.pending ||
-            localEntity.metadata.syncState == SyncState.updated)) {
+    if (localEntity != null) {
       final localUpdated = localEntity.metadata.updatedAt;
       final remoteUpdated = remote.metadata.updatedAt;
+      final hasLocalPendingMutation =
+          localEntity.metadata.syncState == SyncState.pending ||
+          localEntity.metadata.syncState == SyncState.updated;
+
       if (!remoteUpdated.isAfter(localUpdated)) {
         return false;
       }
+
+      if (remote.metadata.syncState == SyncState.deleted &&
+          hasLocalPendingMutation) {
+        return false;
+      }
+    }
+
+    if (remote.metadata.syncState == SyncState.deleted) {
+      if (localEntity == null) return false;
+      await local.delete(remote.id);
+      return true;
     }
 
     final synced = _copyWithMetadata(
