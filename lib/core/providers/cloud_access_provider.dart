@@ -73,6 +73,21 @@ class CloudAccessProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // On Web, Firebase Auth can still be restoring its persisted anonymous
+      // session when this provider is created. Wait for that first auth event
+      // before loading the store access document; otherwise currentUser can be
+      // null temporarily and the sidebar fails closed with no navigation.
+      var user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        user = await FirebaseAuth.instance.authStateChanges().first;
+      }
+      if (user == null) {
+        user = (await FirebaseAuth.instance.signInAnonymously()).user;
+      }
+      if (user == null) {
+        throw StateError('Firebase Authentication no devolvió un usuario.');
+      }
+
       _snapshot = await service.load(storeId);
     } catch (error) {
       _error = error.toString();
