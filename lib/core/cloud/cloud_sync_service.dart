@@ -87,6 +87,32 @@ class CloudSyncService {
     }
   }
 
+  /// Restores all collections from Firestore when a device joins a
+  /// store. Pre-existing local data on that device is not uploaded.
+  Future<CloudSyncResult> restoreFromCloud() async {
+    final operations = <Future<CloudSyncResult?> Function()>[
+      products.restoreFromCloud,
+      clients.restoreFromCloud,
+      purchases.restoreFromCloud,
+      sales.restoreFromCloud,
+      debtMovements.restoreFromCloud,
+      clientGroups.restoreFromCloud,
+      electronicBalanceAccounts.restoreFromCloud,
+      electronicBalanceTransactions.restoreFromCloud,
+      providerRoutes.restoreFromCloud,
+      providerCatalog.restoreFromCloud,
+    ];
+
+    var total = const CloudSyncResult();
+    for (final operation in operations) {
+      final result = await operation();
+      if (result != null) {
+        total = total + result;
+      }
+    }
+    return total;
+  }
+
   /// Runs synchronization for every cloud-aware repository.
   ///
   /// Each repository is best-effort. Collections are reconciled sequentially so
