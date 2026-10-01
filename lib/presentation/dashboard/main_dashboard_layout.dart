@@ -1036,10 +1036,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         !access.hasPermission(StorePermissions.salesView)) {
       return const _AccessDeniedPanel();
     }
-    if (_selectedNavIndex == AppNavigation.electronicBalance &&
-        !access.hasPermission(StorePermissions.salesView)) {
-      return const _EmptySectionPanel();
-    }
     if (_selectedNavIndex == AppNavigation.purchases &&
         access.accessResolved &&
         !access.hasPermission(StorePermissions.purchasesView)) {
@@ -1051,8 +1047,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.stats &&
+        access.accessResolved &&
         !access.hasPermission(StorePermissions.statisticsView)) {
-      return const _EmptySectionPanel();
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.inventory &&
         access.accessResolved &&
