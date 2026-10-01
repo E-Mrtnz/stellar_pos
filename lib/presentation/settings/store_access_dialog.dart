@@ -762,12 +762,6 @@ class _PermissionGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = group.permissions.where(
-      (permission) => overrides.containsKey(permission)
-          ? overrides[permission] == true
-          : defaults.contains(permission),
-    ).length;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
       decoration: BoxDecoration(
