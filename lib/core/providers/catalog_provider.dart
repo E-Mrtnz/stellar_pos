@@ -377,6 +377,7 @@ class CatalogProvider extends ChangeNotifier
     for (final product in products) {
       addUnique(mergedBrands, product.brand);
       addUnique(mergedDistributors, product.department);
+      addUnique(mergedTags, product.category);
     }
 
     _tags
