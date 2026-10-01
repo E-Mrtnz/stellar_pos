@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
 
@@ -36,9 +37,13 @@ class CloudAutoSyncService with WidgetsBindingObserver {
     try {
       if (!await _storeService.isConfigured) return;
       await _storeService.sync();
-    } catch (_) {
-      // Cloud synchronization is best-effort. Individual repositories keep
-      // local operation and durable queue entries when Firebase is offline.
+    } catch (error, stackTrace) {
+      developer.log(
+        'Falló la sincronización automática de Firestore.',
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
     } finally {
       _syncing = false;
     }
