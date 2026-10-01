@@ -91,7 +91,9 @@ class CloudStoreAccessService {
       'userId': uid,
       'authUid': uid,
       'storeId': storeId,
-      'displayName': ownerEmail.split('@').first,
+      'displayName': auth.currentUser?.displayName?.trim().isNotEmpty == true
+          ? auth.currentUser!.displayName!.trim()
+          : ownerEmail.split('@').first,
       'email': ownerEmail.trim().toLowerCase(),
       'roleId': 'owner',
       'status': 'active',
