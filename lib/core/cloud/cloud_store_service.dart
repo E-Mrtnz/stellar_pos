@@ -42,22 +42,11 @@ class CloudStoreService {
       (await identityStore.getStoreId())?.isNotEmpty == true;
 
   Future<User> _ensureAuthenticated() async {
-    var existing = auth.currentUser;
-    if (existing == null) {
-      // Give Firebase Web time to restore its persisted anonymous session.
-      // Signing in immediately on a transient null state can create a second
-      // anonymous UID for the same installation.
-      for (var attempt = 0; attempt < 20 && existing == null; attempt++) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        existing = auth.currentUser;
-      }
-    }
-    if (existing != null) return existing;
-
-    final credential = await auth.signInAnonymously();
-    final user = credential.user;
+    final user = auth.currentUser;
     if (user == null) {
-      throw StateError('Firebase Authentication no devolvió un usuario.');
+      throw StateError(
+        'Debes iniciar sesión con una cuenta de Stellar POS antes de usar la nube.',
+      );
     }
     return user;
   }
@@ -77,10 +66,13 @@ class CloudStoreService {
   ///
   /// The id comes from a Firestore auto-generated document reference, while
   /// the invitation code is a short human-friendly value.
-  Future<void> createStore(String storeName, String ownerEmail) async {
-    final normalizedEmail = ownerEmail.trim().toLowerCase();
+  Future<void> createStore(String storeName) async {
+    final user = await _ensureAuthenticated();
+    final normalizedEmail = user.email?.trim().toLowerCase() ?? '';
     if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
-      throw ArgumentError.value(ownerEmail, 'ownerEmail', 'El correo del propietario no es válido.');
+      throw StateError(
+        'La cuenta de Firebase no tiene un correo válido para crear la tienda.',
+      );
     }
     final normalizedName = storeName.trim();
     if (normalizedName.isEmpty) {
@@ -99,7 +91,6 @@ class CloudStoreService {
       );
     }
 
-    final user = await _ensureAuthenticated();
     final storeRef = firestore.collection(CloudCollection.stores).doc();
 
     for (var attempt = 0; attempt < 5; attempt++) {
