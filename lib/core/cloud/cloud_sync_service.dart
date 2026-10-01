@@ -87,6 +87,69 @@ class CloudSyncService {
     }
   }
 
+  /// Applies only the documents reported by a realtime Firestore snapshot.
+  ///
+  /// This intentionally avoids a collection-wide read. The realtime listener
+  /// already gives us the changed documents, so only those records are written
+  /// into Hive.
+  Future<int> applyRemoteChanges(
+    String collection, {
+    Iterable<Map<String, dynamic>> documents =
+        const <Map<String, dynamic>>[],
+    Iterable<String> deletedIds = const <String>[],
+  }) async {
+    var applied = 0;
+
+    for (final document in documents) {
+      final changed = switch (collection) {
+        CloudCollection.products => await products.applyRemoteData(document),
+        CloudCollection.sales => await sales.applyRemoteData(document),
+        CloudCollection.purchases =>
+          await purchases.applyRemoteData(document),
+        CloudCollection.clients => await clients.applyRemoteData(document),
+        CloudCollection.debtMovements =>
+          await debtMovements.applyRemoteData(document),
+        CloudCollection.clientGroups =>
+          await clientGroups.applyRemoteData(document),
+        CloudCollection.providerRoutes =>
+          await providerRoutes.applyRemoteData(document),
+        CloudCollection.providerCatalog =>
+          await providerCatalog.applyRemoteData(document),
+        CloudCollection.electronicBalanceAccounts =>
+          await electronicBalanceAccounts.applyRemoteData(document),
+        CloudCollection.electronicBalanceTransactions =>
+          await electronicBalanceTransactions.applyRemoteData(document),
+        _ => false,
+      };
+      if (changed) applied++;
+    }
+
+    for (final id in deletedIds) {
+      final changed = switch (collection) {
+        CloudCollection.products => await products.applyRemoteDelete(id),
+        CloudCollection.sales => await sales.applyRemoteDelete(id),
+        CloudCollection.purchases => await purchases.applyRemoteDelete(id),
+        CloudCollection.clients => await clients.applyRemoteDelete(id),
+        CloudCollection.debtMovements =>
+          await debtMovements.applyRemoteDelete(id),
+        CloudCollection.clientGroups =>
+          await clientGroups.applyRemoteDelete(id),
+        CloudCollection.providerRoutes =>
+          await providerRoutes.applyRemoteDelete(id),
+        CloudCollection.providerCatalog =>
+          await providerCatalog.applyRemoteDelete(id),
+        CloudCollection.electronicBalanceAccounts =>
+          await electronicBalanceAccounts.applyRemoteDelete(id),
+        CloudCollection.electronicBalanceTransactions =>
+          await electronicBalanceTransactions.applyRemoteDelete(id),
+        _ => false,
+      };
+      if (changed) applied++;
+    }
+
+    return applied;
+  }
+
   /// Restores all collections from Firestore when a device joins a
   /// store. Pre-existing local data on that device is not uploaded.
   Future<CloudSyncResult> restoreFromCloud() async {
