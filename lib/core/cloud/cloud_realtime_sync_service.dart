@@ -21,9 +21,12 @@ class CloudRealtimeSyncService extends ChangeNotifier
 
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
       _listeners = <String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>{};
-  final Map<String, Future<void>> _syncing =
+  final Map<String, Future<void>> _applying =
       <String, Future<void>>{};
-  final Set<String> _pendingTriggers = <String>{};
+  final Map<String, List<Map<String, dynamic>>> _pendingDocuments =
+      <String, List<Map<String, dynamic>>>{};
+  final Map<String, Set<String>> _pendingDeletes =
+      <String, Set<String>>{};
 
   String? _storeId;
   String? _lastSyncedCollection;
@@ -115,48 +118,97 @@ class CloudRealtimeSyncService extends ChangeNotifier
     String collection,
     QuerySnapshot<Map<String, dynamic>> snapshot,
   ) {
-    // Ignore snapshots caused only by this installation's pending local
-    // writes. The local repository has already persisted those changes and
-    // its durable queue is responsible for uploading them.
+    // Local writes are already reflected in Hive. Wait for the server
+    // acknowledgement before treating the event as a remote change.
     if (snapshot.metadata.hasPendingWrites) return;
+    if (snapshot.docChanges.isEmpty) return;
 
-    _scheduleSync(collection);
-  }
+    final documents = <Map<String, dynamic>>[];
+    final deletedIds = <String>[];
 
-  void _scheduleSync(String collection) {
-    if (!_active || _storeId == null) return;
+    for (final change in snapshot.docChanges) {
+      if (change.type == DocumentChangeType.removed) {
+        deletedIds.add(change.doc.id);
+        continue;
+      }
 
-    if (_syncing.containsKey(collection)) {
-      _pendingTriggers.add(collection);
-      return;
+      final data = Map<String, dynamic>.from(change.doc.data());
+      data['id'] ??= change.doc.id;
+      documents.add(data);
     }
 
-    final future = _runCollectionSync(collection);
-    _syncing[collection] = future;
+    _scheduleRemoteChanges(
+      collection,
+      documents: documents,
+      deletedIds: deletedIds,
+    );
   }
 
-  Future<void> _runCollectionSync(String collection) async {
+  void _scheduleRemoteChanges(
+    String collection, {
+    required Iterable<Map<String, dynamic>> documents,
+    required Iterable<String> deletedIds,
+  }) {
+    if (!_active || _storeId == null) return;
+
+    final pendingDocuments = _pendingDocuments.putIfAbsent(
+      collection,
+      () => <Map<String, dynamic>>[],
+    );
+    pendingDocuments.addAll(documents);
+
+    final pendingDeletes = _pendingDeletes.putIfAbsent(
+      collection,
+      () => <String>{},
+    );
+    pendingDeletes.addAll(deletedIds);
+
+    if (_applying.containsKey(collection)) return;
+
+    final future = _runRemoteChanges(collection);
+    _applying[collection] = future;
+  }
+
+  Future<void> _runRemoteChanges(String collection) async {
     try {
       do {
-        _pendingTriggers.remove(collection);
+        final documents = List<Map<String, dynamic>>.from(
+          _pendingDocuments.remove(collection) ?? const <Map<String, dynamic>>[],
+        );
+        final deletedIds = Set<String>.from(
+          _pendingDeletes.remove(collection) ?? const <String>{},
+        );
+
+        if (documents.isEmpty && deletedIds.isEmpty) break;
+
         try {
-          await _syncService.syncCollection(collection);
+          await _syncService.applyRemoteChanges(
+            collection,
+            documents: documents,
+            deletedIds: deletedIds,
+          );
           _lastSyncedCollection = collection;
           notifyListeners();
         } catch (_) {
-          // Realtime synchronization is best-effort. The durable queue and
-          // periodic 60-second reconciliation remain responsible for recovery.
+          // Keep realtime delivery best-effort. The periodic synchronization
+          // path remains responsible for recovering a failed remote apply.
           break;
         }
       } while (_active &&
           _storeId != null &&
-          _pendingTriggers.contains(collection));
+          (_pendingDocuments.containsKey(collection) ||
+              _pendingDeletes.containsKey(collection)));
     } finally {
-      _syncing.remove(collection);
+      _applying.remove(collection);
       if (_active &&
           _storeId != null &&
-          _pendingTriggers.remove(collection)) {
-        _scheduleSync(collection);
+          (_pendingDocuments.containsKey(collection) ||
+              _pendingDeletes.containsKey(collection))) {
+        _scheduleRemoteChanges(
+          collection,
+          documents: const <Map<String, dynamic>>[],
+          deletedIds: const <String>[],
+        );
       }
     }
   }
@@ -167,7 +219,8 @@ class CloudRealtimeSyncService extends ChangeNotifier
     for (final subscription in subscriptions) {
       await subscription.cancel();
     }
-    _pendingTriggers.clear();
+    _pendingDocuments.clear();
+    _pendingDeletes.clear();
   }
 
   @override
