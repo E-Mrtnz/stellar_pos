@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:stellar_pos/core/cloud/cloud_store_access_service.dart';
 import 'package:stellar_pos/core/cloud/store_access_models.dart';
@@ -12,6 +13,8 @@ class CloudAccessProvider extends ChangeNotifier {
   final CloudStoreService storeService;
   final FirebaseAuth auth;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _accessSubscription;
+  int _accessGeneration = 0;
 
   StoreAccessSnapshot _snapshot = const StoreAccessSnapshot(
     users: [],
@@ -84,8 +87,12 @@ class CloudAccessProvider extends ChangeNotifier {
   /// joining a store because this provider is created before the store
   /// identity is available during application startup.
   Future<void> loadForStore(String? storeId, {bool force = false}) async {
+    await _cancelAccessListener();
+    final generation = ++_accessGeneration;
     final normalizedStoreId = storeId?.trim();
     if (normalizedStoreId == null || normalizedStoreId.isEmpty) {
+      await _cancelAccessListener();
+      ++_accessGeneration;
       _loadedStoreId = null;
       _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
       _accessResolved = true;
@@ -108,6 +115,9 @@ class CloudAccessProvider extends ChangeNotifier {
       }
 
       _snapshot = await service.load(normalizedStoreId);
+      if (generation == _accessGeneration) {
+        _startAccessListener(normalizedStoreId, generation);
+      }
     } catch (error) {
       _error = error.toString();
     } finally {
@@ -224,6 +234,8 @@ class CloudAccessProvider extends ChangeNotifier {
 
   Future<void> _handleAuthChanged(User? user) async {
     if (user == null) {
+      await _cancelAccessListener();
+      ++_accessGeneration;
       _loadedStoreId = null;
       _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
       _accessResolved = true;
@@ -238,8 +250,103 @@ class CloudAccessProvider extends ChangeNotifier {
     }
   }
 
+  void _startAccessListener(String storeId, int generation) {
+    _accessSubscription?.cancel();
+    _accessSubscription = service.watchCurrentUser(storeId).listen(
+      (document) => _handleAccessDocument(
+        storeId,
+        generation,
+        document,
+      ),
+      onError: (Object error) {
+        if (generation != _accessGeneration) return;
+        _error = error.toString();
+        notifyListeners();
+      },
+    );
+  }
+
+  Future<void> _handleAccessDocument(
+    String storeId,
+    int generation,
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) async {
+    if (generation != _accessGeneration) return;
+
+    if (!document.exists || document.data() == null) {
+      _snapshot = const StoreAccessSnapshot(
+        users: [],
+        devices: [],
+        roles: [],
+      );
+      _accessResolved = true;
+      notifyListeners();
+      return;
+    }
+
+    final current = StoreUserRecord.fromFirestore(
+      document.id,
+      document.data()!,
+    );
+    final previous = currentUser;
+    final privilegeBoundaryChanged = previous == null ||
+        previous.roleId != current.roleId ||
+        previous.status != current.status;
+
+    if (privilegeBoundaryChanged) {
+      _accessResolved = false;
+      notifyListeners();
+      try {
+        final refreshed = await service.load(storeId);
+        if (generation != _accessGeneration) return;
+        _snapshot = refreshed;
+        _error = null;
+      } catch (error) {
+        if (generation != _accessGeneration) return;
+        _error = error.toString();
+      } finally {
+        if (generation == _accessGeneration) {
+          _accessResolved = true;
+          notifyListeners();
+        }
+      }
+      return;
+    }
+
+    _replaceCurrentUser(current);
+    _error = null;
+    _accessResolved = true;
+    notifyListeners();
+  }
+
+  void _replaceCurrentUser(StoreUserRecord user) {
+    final users = List<StoreUserRecord>.from(_snapshot.users);
+    final index = users.indexWhere((item) => item.authUid == user.authUid);
+    if (index < 0) {
+      _snapshot = StoreAccessSnapshot(
+        users: <StoreUserRecord>[...users, user],
+        devices: _snapshot.devices,
+        roles: _snapshot.roles,
+      );
+      return;
+    }
+    users[index] = user;
+    _snapshot = StoreAccessSnapshot(
+      users: users,
+      devices: _snapshot.devices,
+      roles: _snapshot.roles,
+    );
+  }
+
+  Future<void> _cancelAccessListener() async {
+    final subscription = _accessSubscription;
+    _accessSubscription = null;
+    await subscription?.cancel();
+  }
+
   @override
   void dispose() {
+    _accessSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();
   }
