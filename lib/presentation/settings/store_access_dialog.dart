@@ -734,6 +734,7 @@ class _PermissionEditor extends StatelessWidget {
                     _togglePermission(context, access, permission, value),
                 onReset: (permission) =>
                     _resetPermission(context, access, permission),
+                disabled: disabled,
               ),
             ),
           ),
@@ -772,6 +773,7 @@ class _PermissionGroupCard extends StatelessWidget {
   final String Function(String) titleFor;
   final Future<void> Function(String, bool) onChanged;
   final Future<void> Function(String) onReset;
+  final bool disabled;
 
   const _PermissionGroupCard({
     required this.group,
@@ -780,6 +782,7 @@ class _PermissionGroupCard extends StatelessWidget {
     required this.titleFor,
     required this.onChanged,
     required this.onReset,
+    required this.disabled,
   });
 
   @override
