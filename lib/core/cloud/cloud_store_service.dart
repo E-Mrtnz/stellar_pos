@@ -246,6 +246,7 @@ class CloudStoreService {
         storeId: storeId,
         displayName: normalizedName,
         invitationCode: normalizedCode,
+        invitedByUid: invite['createdBy']?.toString(),
       ),
     );
 
