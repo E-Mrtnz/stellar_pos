@@ -25,7 +25,7 @@ class StellarPosApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AuthGate(),
+      home: AuthGate(),
     );
   }
 }
