@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -8,6 +10,8 @@ import 'package:stellar_pos/core/cloud/cloud_store_service.dart';
 class CloudAccessProvider extends ChangeNotifier {
   final CloudStoreAccessService service;
   final CloudStoreService storeService;
+  final FirebaseAuth auth;
+  StreamSubscription<User?>? _authSubscription;
 
   StoreAccessSnapshot _snapshot = const StoreAccessSnapshot(
     users: [],
@@ -22,8 +26,12 @@ class CloudAccessProvider extends ChangeNotifier {
   CloudAccessProvider({
     CloudStoreAccessService? service,
     CloudStoreService? storeService,
+    FirebaseAuth? auth,
   })  : service = service ?? CloudStoreAccessService(),
-        storeService = storeService ?? CloudStoreService();
+        storeService = storeService ?? CloudStoreService(),
+        auth = auth ?? FirebaseAuth.instance {
+    _authSubscription = this.auth.authStateChanges().listen(_handleAuthChanged);
+  }
 
   StoreAccessSnapshot get snapshot => _snapshot;
   bool get isLoading => _loading;
@@ -31,7 +39,7 @@ class CloudAccessProvider extends ChangeNotifier {
   String? get errorMessage => _error;
 
   StoreUserRecord? get currentUser {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = auth.currentUser?.uid;
     if (uid == null) return null;
     for (final user in _snapshot.users) {
       if (user.authUid == uid) return user;
@@ -91,34 +99,17 @@ class CloudAccessProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // On Web, Firebase Auth can still be restoring its persisted anonymous
-      // session when this provider is created. Wait for that first auth event
-      // before loading the store access document; otherwise currentUser can be
-      // null temporarily and the sidebar fails closed with no navigation.
-      var user = FirebaseAuth.instance.currentUser;
+      final user = auth.currentUser;
       if (user == null) {
-        // Firebase Web may restore the persisted anonymous session
-        // asynchronously. Do not create a new anonymous account immediately
-        // after the first null state, otherwise a reload can accidentally
-        // create a duplicate employee record.
-        for (var attempt = 0; attempt < 20 && user == null; attempt++) {
-          await Future<void>.delayed(const Duration(milliseconds: 100));
-          user = FirebaseAuth.instance.currentUser;
-        }
-      }
-      if (user == null) {
-        user = (await FirebaseAuth.instance.signInAnonymously()).user;
-      }
-      if (user == null) {
-        throw StateError('Firebase Authentication no devolvió un usuario.');
+        _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
+        return;
       }
 
       _snapshot = await service.load(normalizedStoreId);
     } catch (error) {
       _error = error.toString();
     } finally {
-      // A failed/anonymous access lookup must remain non-blocking for the
-      // local-first POS. Firestore itself still enforces the real permissions.
+      // Access is a UI state; Firestore rules remain the security boundary.
       _accessResolved = true;
       _loading = false;
       notifyListeners();
@@ -226,6 +217,70 @@ class CloudAccessProvider extends ChangeNotifier {
         );
       },
       rollback: () => _replaceDevice(previous!, notify: true),
+    );
+  }
+
+  Future<void> _handleAuthChanged(User? user) async {
+    if (user == null) {
+      _loadedStoreId = null;
+      _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
+      _accessResolved = true;
+      _loading = false;
+      notifyListeners();
+      return;
+    }
+
+    final storeId = await storeService.getStoreId();
+    if (storeId != null && storeId.isNotEmpty) {
+      await loadForStore(storeId, force: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<bool> deleteUser(String userId) async {
+    final target = _userById(userId);
+    final currentUid = auth.currentUser?.uid;
+    if (target == null) return false;
+    if (target.roleId == 'owner') {
+      _error = 'El propietario de la tienda no se puede eliminar.';
+      notifyListeners();
+      return false;
+    }
+    if (target.authUid == currentUid) {
+      _error = 'No puedes eliminar tu propia cuenta desde esta pantalla.';
+      notifyListeners();
+      return false;
+    }
+
+    final previousUsers = _snapshot.users;
+    final previousDevices = _snapshot.devices;
+    final nextUsers = previousUsers.where((user) => user.userId != userId).toList(growable: false);
+    final nextDevices = previousDevices.where((device) => device.userId != userId).toList(growable: false);
+    _snapshot = StoreAccessSnapshot(
+      users: nextUsers,
+      devices: nextDevices,
+      roles: _snapshot.roles,
+    );
+    notifyListeners();
+
+    return _runMutation(
+      () async {
+        final storeId = await _requiredStoreId();
+        await service.deleteUser(storeId: storeId, userId: userId);
+      },
+      rollback: () {
+        _snapshot = StoreAccessSnapshot(
+          users: previousUsers,
+          devices: previousDevices,
+          roles: _snapshot.roles,
+        );
+        notifyListeners();
+      },
     );
   }
 
