@@ -331,9 +331,9 @@ class _UserCard extends StatelessWidget {
               (devices.length == 1 ? ' dispositivo' : ' dispositivos'),
         ),
         children: [
-          _RoleAndStatusEditor(user: user, disabled: current && user.roleId == 'owner'),
+          _RoleAndStatusEditor(user: user, disabled: current),
           const SizedBox(height: 12),
-          _PermissionEditor(user: user),
+          _PermissionEditor(user: user, disabled: current),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
@@ -419,9 +419,10 @@ class _RoleAndStatusEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final access = context.watch<CloudAccessProvider>();
-    final roles = access.snapshot.roles.isEmpty
+    final allRoles = access.snapshot.roles.isEmpty
         ? StoreAccessDefaults.all
         : access.snapshot.roles;
+    final roles = allRoles.where((role) => role.id != 'owner').toList(growable: false);
 
     return Row(
       children: [
@@ -492,8 +493,9 @@ class _RoleAndStatusEditor extends StatelessWidget {
 
 class _PermissionEditor extends StatelessWidget {
   final StoreUserRecord user;
+  final bool disabled;
 
-  const _PermissionEditor({required this.user});
+  const _PermissionEditor({required this.user, required this.disabled});
 
   static const _groups = <_PermissionGroup>[
     _PermissionGroup(
@@ -866,13 +868,15 @@ class _PermissionGroupCard extends StatelessWidget {
                           ),
                         ),
                         value: enabled,
-                        onChanged: (value) => onChanged(permission, value),
+                        onChanged: disabled
+                            ? null
+                            : (value) => onChanged(permission, value),
                       ),
                     ),
                     if (custom)
                       IconButton(
                         tooltip: 'Restaurar valor del rol',
-                        onPressed: () => onReset(permission),
+                        onPressed: disabled ? null : () => onReset(permission),
                         icon: const Icon(
                           Icons.restart_alt_rounded,
                           size: 18,
