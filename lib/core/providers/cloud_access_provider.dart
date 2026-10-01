@@ -47,8 +47,8 @@ class CloudAccessProvider extends ChangeNotifier {
     // must not blank the entire application. Until the access snapshot is
     // resolved, keep the local UI available. Once a valid user record is
     // loaded, enforce that user's permissions normally.
-    if (!_accessResolved) return true;
-    if (user == null) return true;
+    if (!_accessResolved || _loadedStoreId == null) return true;
+    if (user == null) return false;
 
     if (user.roleId == 'owner') return true;
     if (user.permissionOverrides.containsKey(permission)) {
