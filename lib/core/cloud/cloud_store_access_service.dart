@@ -27,6 +27,19 @@ class CloudStoreAccessService {
   CollectionReference<Map<String, dynamic>> _roles(String storeId) =>
       firestore.collection(CloudCollection.stores).doc(storeId).collection('roles');
 
+
+  /// Watches the authenticated user's access record for a store.
+  ///
+  /// This is intentionally scoped to one document so permission/role/status
+  /// changes propagate without reloading the entire store database.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchCurrentUser(
+    String storeId,
+  ) {
+    final uid = auth.currentUser?.uid;
+    if (uid == null) return const Stream.empty();
+    return _users(storeId).doc(uid).snapshots();
+  }
+
   Future<StoreAccessSnapshot> load(String storeId) async {
     final uid = auth.currentUser?.uid;
     if (uid == null) {
