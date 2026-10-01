@@ -48,6 +48,7 @@ class CloudAutoSyncService with WidgetsBindingObserver {
     if (_syncing) return;
     _syncing = true;
     try {
+      if (_auth.currentUser == null) return;
       if (!await _storeService.isConfigured) return;
       await _storeService.sync();
     } catch (error, stackTrace) {
