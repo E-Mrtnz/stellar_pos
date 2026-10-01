@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -165,7 +166,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     String? dialogError;
 
     final nameController = TextEditingController(text: provider.storeName ?? '');
-    final emailController = TextEditingController(text: provider.ownerEmail ?? '');
     final userNameController = TextEditingController();
     final inviteController = TextEditingController();
 
@@ -187,11 +187,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                   setDialogState(() => dialogError = 'Escribe el nombre de la tienda.');
                   return;
                 }
-                if (emailController.text.trim().isEmpty ||
-                    !emailController.text.contains('@')) {
-                  setDialogState(() => dialogError = 'Escribe un correo válido para el propietario.');
-                  return;
-                }
               } else {
                 if (userNameController.text.trim().isEmpty) {
                   setDialogState(() => dialogError = 'Escribe el nombre del usuario.');
@@ -211,7 +206,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
               final success = createMode
                   ? await provider.createStore(
                       nameController.text.trim(),
-                      emailController.text.trim(),
                     )
                   : await provider.joinStore(
                       userNameController.text.trim(),
@@ -292,22 +286,15 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Correo del propietario',
-                            hintText: 'propietario@ejemplo.com',
-                            prefixIcon: Icon(Icons.alternate_email_rounded),
-                            border: OutlineInputBorder(),
-                          ),
-                          onSubmitted: (_) => submit(),
-                        ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Se utilizará como dato de contacto y podrá servir posteriormente para autenticación, recuperación y notificaciones.',
-                          style: TextStyle(fontSize: 10.5, height: 1.35, color: AppColors.textSecondary),
+                        Text(
+                          'Cuenta autenticada: ' +
+                              (FirebaseAuth.instance.currentUser?.email ?? 'sin correo'),
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            height: 1.35,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ] else ...[
                         TextField(
@@ -433,7 +420,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
       }
     } finally {
       nameController.dispose();
-      emailController.dispose();
       userNameController.dispose();
       inviteController.dispose();
     }
@@ -449,7 +435,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
   Future<void> _manageStore(BuildContext context) async {
     final provider = context.read<CloudStoreProvider>();
     final nameController = TextEditingController(text: provider.storeName ?? '');
-    final emailController = TextEditingController(text: provider.ownerEmail ?? '');
 
     try {
       await showDialog<void>(
@@ -460,17 +445,14 @@ class _CloudStoreSettingsContent extends StatelessWidget {
 
             Future<void> saveChanges() async {
               if (saving) return;
-              if (nameController.text.trim().isEmpty ||
-                  emailController.text.trim().isEmpty ||
-                  !emailController.text.contains('@')) {
+              if (nameController.text.trim().isEmpty) {
                 return;
               }
 
               final nameSuccess = await provider.renameStore(nameController.text.trim());
-              final emailSuccess = await provider.updateOwnerEmail(emailController.text.trim());
               if (!dialogContext.mounted) return;
 
-              if (nameSuccess && emailSuccess) {
+              if (nameSuccess) {
                 setDialogState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Cambios guardados correctamente.')),
@@ -572,13 +554,25 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Correo del propietario',
-                          prefixIcon: Icon(Icons.alternate_email_rounded),
-                          border: OutlineInputBorder(),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputBackground,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                'Cuenta propietaria: ' +
+                                    (FirebaseAuth.instance.currentUser?.email ?? 'sin correo'),
+                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -768,6 +762,32 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     );
   }
 
+  Future<void> _signOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (confirmContext) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+          'La sesión de Firebase se cerrará en este dispositivo. '
+          'Los datos locales de la tienda no se eliminarán.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(confirmContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(confirmContext).pop(true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await FirebaseAuth.instance.signOut();
+  }
+
   Widget _buildConfigured(
     BuildContext context,
     CloudStoreProvider cloudStore,
@@ -857,6 +877,13 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                 onPressed: cloudStore.isSaving ? null : () => _openAccessDialog(context),
               ),
           ],
+        ),
+        _cloudActionRow(
+          icon: Icons.logout_rounded,
+          title: 'Cerrar sesión',
+          subtitle: 'Salir de esta cuenta de Stellar POS en este dispositivo.',
+          label: 'Cerrar sesión',
+          onPressed: cloudStore.isSaving ? null : () => _signOut(context),
         ),
         if (cloudStore.errorMessage != null) ...[
           const SizedBox(height: 10),
