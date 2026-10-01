@@ -17,6 +17,7 @@ class CloudAccessProvider extends ChangeNotifier {
   bool _loading = false;
   bool _accessResolved = false;
   String? _error;
+  String? _loadedStoreId;
 
   CloudAccessProvider({
     CloudStoreAccessService? service,
@@ -66,11 +67,24 @@ class CloudAccessProvider extends ChangeNotifier {
 
   Future<void> load() async {
     final storeId = await storeService.getStoreId();
-    if (storeId == null) {
+    await loadForStore(storeId);
+  }
+
+  /// Loads access whenever the active store changes. This is important after
+  /// joining a store because this provider is created before the store
+  /// identity is available during application startup.
+  Future<void> loadForStore(String? storeId) async {
+    final normalizedStoreId = storeId?.trim();
+    if (normalizedStoreId == null || normalizedStoreId.isEmpty) {
+      _loadedStoreId = null;
       _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
+      _accessResolved = true;
       notifyListeners();
       return;
     }
+    if (_loadedStoreId == normalizedStoreId && _accessResolved) return;
+    _loadedStoreId = normalizedStoreId;
+    _accessResolved = false;
 
     _loading = true;
     _error = null;
@@ -92,7 +106,7 @@ class CloudAccessProvider extends ChangeNotifier {
         throw StateError('Firebase Authentication no devolvió un usuario.');
       }
 
-      _snapshot = await service.load(storeId);
+      _snapshot = await service.load(normalizedStoreId);
     } catch (error) {
       _error = error.toString();
     } finally {
@@ -124,6 +138,16 @@ class CloudAccessProvider extends ChangeNotifier {
           userId: userId,
           permission: permission,
           enabled: enabled,
+        );
+      });
+
+  Future<bool> resetPermission(String userId, String permission) async =>
+      _run(() async {
+        final storeId = await _requiredStoreId();
+        await service.clearPermissionOverride(
+          storeId: storeId,
+          userId: userId,
+          permission: permission,
         );
       });
 
