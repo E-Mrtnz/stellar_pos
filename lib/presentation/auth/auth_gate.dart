@@ -10,7 +10,7 @@ import 'package:stellar_pos/presentation/dashboard/main_dashboard_layout.dart';
 class AuthGate extends StatelessWidget {
   final AuthService authService;
 
-  const AuthGate({super.key, AuthService? authService})
+  AuthGate({super.key, AuthService? authService})
       : authService = authService ?? AuthService();
 
   @override
