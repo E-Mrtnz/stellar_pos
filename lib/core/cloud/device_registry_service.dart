@@ -33,8 +33,8 @@ class DeviceRegistryService {
   })  : _deviceInfo = deviceInfo ?? DeviceInfoPlugin(),
         identityStore = identityStore ?? CloudIdentityStore();
 
-  Future<DeviceDescriptor> describeCurrentDevice() async {
-    final deviceId = await identityStore.getOrCreateDeviceId();
+  Future<DeviceDescriptor> describeCurrentDevice({required String authUid}) async {
+    final deviceId = await identityStore.getOrCreateDeviceId(authUid: authUid);
     var platform = 'unknown';
     var osVersion = 'unknown';
     var manufacturer = 'unknown';
