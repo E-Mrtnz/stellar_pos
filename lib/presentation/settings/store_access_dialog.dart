@@ -394,32 +394,66 @@ class _MiniBadge extends StatelessWidget {
 class _RoleAndStatusEditor extends StatelessWidget {
   final StoreUserRecord user;
   final bool disabled;
-  const _RoleAndStatusEditor({required this.user, required this.disabled});
+
+  const _RoleAndStatusEditor({
+    required this.user,
+    required this.disabled,
+  });
+
+  Future<void> _showResult(
+    BuildContext context,
+    CloudAccessProvider access,
+    Future<bool> Function() action,
+  ) async {
+    final ok = await action();
+    if (!context.mounted || ok) return;
+    final message = access.errorMessage ?? 'No se pudo guardar el cambio.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final access = context.watch<CloudAccessProvider>();
-    final roles = access.snapshot.roles.isEmpty ? StoreAccessDefaults.all : access.snapshot.roles;
+    final roles = access.snapshot.roles.isEmpty
+        ? StoreAccessDefaults.all
+        : access.snapshot.roles;
 
     return Row(
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            value: user.roleId,
+            value: roles.any((role) => role.id == user.roleId)
+                ? user.roleId
+                : null,
             decoration: const InputDecoration(
               labelText: 'Rol',
+              helperText: 'Define los permisos base',
               prefixIcon: Icon(Icons.badge_outlined),
               border: OutlineInputBorder(),
               isDense: true,
             ),
             items: roles
-                .map((role) => DropdownMenuItem(value: role.id, child: Text(role.name)))
+                .map(
+                  (role) => DropdownMenuItem(
+                    value: role.id,
+                    child: Text(role.name),
+                  ),
+                )
                 .toList(),
             onChanged: disabled
                 ? null
                 : (value) async {
                     if (value == null || value == user.roleId) return;
-                    await access.changeRole(user.userId, value);
+                    await _showResult(
+                      context,
+                      access,
+                      () => access.changeRole(user.userId, value),
+                    );
                   },
           ),
         ),
@@ -429,6 +463,7 @@ class _RoleAndStatusEditor extends StatelessWidget {
             value: user.status,
             decoration: const InputDecoration(
               labelText: 'Estado',
+              helperText: 'Controla si puede operar',
               prefixIcon: Icon(Icons.toggle_on_outlined),
               border: OutlineInputBorder(),
               isDense: true,
@@ -442,7 +477,11 @@ class _RoleAndStatusEditor extends StatelessWidget {
                 ? null
                 : (value) async {
                     if (value == null || value == user.status) return;
-                    await access.changeStatus(user.userId, value);
+                    await _showResult(
+                      context,
+                      access,
+                      () => access.changeStatus(user.userId, value),
+                    );
                   },
           ),
         ),
@@ -453,96 +492,401 @@ class _RoleAndStatusEditor extends StatelessWidget {
 
 class _PermissionEditor extends StatelessWidget {
   final StoreUserRecord user;
+
   const _PermissionEditor({required this.user});
+
+  static const _groups = <_PermissionGroup>[
+    _PermissionGroup(
+      title: 'Inicio y ventas',
+      icon: Icons.point_of_sale_rounded,
+      permissions: [
+        StorePermissions.dashboardView,
+        StorePermissions.salesView,
+        StorePermissions.salesCreate,
+        StorePermissions.salesEdit,
+        StorePermissions.salesDelete,
+      ],
+    ),
+    _PermissionGroup(
+      title: 'Compras',
+      icon: Icons.shopping_bag_outlined,
+      permissions: [
+        StorePermissions.purchasesView,
+        StorePermissions.purchasesCreate,
+        StorePermissions.purchasesEdit,
+        StorePermissions.purchasesDelete,
+      ],
+    ),
+    _PermissionGroup(
+      title: 'Inventario y productos',
+      icon: Icons.inventory_2_outlined,
+      permissions: [
+        StorePermissions.productsView,
+        StorePermissions.inventoryView,
+        StorePermissions.inventoryCreate,
+        StorePermissions.inventoryEdit,
+        StorePermissions.inventoryDelete,
+      ],
+    ),
+    _PermissionGroup(
+      title: 'Proveedores',
+      icon: Icons.local_shipping_outlined,
+      permissions: [
+        StorePermissions.providersView,
+        StorePermissions.providersCreate,
+        StorePermissions.providersEdit,
+        StorePermissions.providersDelete,
+      ],
+    ),
+    _PermissionGroup(
+      title: 'Clientes y cuentas por cobrar',
+      icon: Icons.people_outline,
+      permissions: [
+        StorePermissions.clientsView,
+        StorePermissions.clientsCreate,
+        StorePermissions.clientsEdit,
+        StorePermissions.clientsDelete,
+        StorePermissions.debtsView,
+        StorePermissions.debtsCreate,
+        StorePermissions.debtsEdit,
+        StorePermissions.debtsDelete,
+      ],
+    ),
+    _PermissionGroup(
+      title: 'Estadísticas y ajustes',
+      icon: Icons.analytics_outlined,
+      permissions: [
+        StorePermissions.statisticsView,
+        StorePermissions.settingsView,
+        StorePermissions.settingsEdit,
+      ],
+    ),
+    _PermissionGroup(
+      title: 'Usuarios y dispositivos',
+      icon: Icons.admin_panel_settings_outlined,
+      permissions: [
+        StorePermissions.usersView,
+        StorePermissions.usersManage,
+        StorePermissions.devicesView,
+        StorePermissions.devicesManage,
+      ],
+    ),
+  ];
+
+  StoreRoleDefinition? _roleFor(
+    CloudAccessProvider access,
+    String roleId,
+  ) {
+    for (final role in access.snapshot.roles) {
+      if (role.id == roleId) return role;
+    }
+    for (final role in StoreAccessDefaults.all) {
+      if (role.id == roleId) return role;
+    }
+    return null;
+  }
+
+  String _permissionTitle(String permission) {
+    const labels = {
+      'dashboard.view': 'Ver inicio',
+      'sales.view': 'Ver ventas',
+      'sales.create': 'Crear ventas',
+      'sales.edit': 'Editar ventas',
+      'sales.delete': 'Eliminar ventas',
+      'purchases.view': 'Ver compras',
+      'purchases.create': 'Crear compras',
+      'purchases.edit': 'Editar compras',
+      'purchases.delete': 'Eliminar compras',
+      'products.view': 'Ver productos',
+      'inventory.view': 'Ver inventario',
+      'inventory.create': 'Crear productos',
+      'inventory.edit': 'Editar productos',
+      'inventory.delete': 'Eliminar productos',
+      'providers.view': 'Ver proveedores',
+      'providers.create': 'Crear proveedores',
+      'providers.edit': 'Editar proveedores',
+      'providers.delete': 'Eliminar proveedores',
+      'clients.view': 'Ver clientes',
+      'clients.create': 'Crear clientes',
+      'clients.edit': 'Editar clientes',
+      'clients.delete': 'Eliminar clientes',
+      'debts.view': 'Ver cuentas por cobrar',
+      'debts.create': 'Crear cuentas por cobrar',
+      'debts.edit': 'Editar cuentas por cobrar',
+      'debts.delete': 'Eliminar cuentas por cobrar',
+      'statistics.view': 'Ver estadísticas',
+      'settings.view': 'Ver ajustes',
+      'settings.edit': 'Editar ajustes',
+      'users.view': 'Ver usuarios',
+      'users.manage': 'Administrar usuarios',
+      'devices.view': 'Ver dispositivos',
+      'devices.manage': 'Administrar dispositivos',
+    };
+    return labels[permission] ?? permission;
+  }
+
+  Future<void> _togglePermission(
+    BuildContext context,
+    CloudAccessProvider access,
+    String permission,
+    bool enabled,
+  ) async {
+    final ok = await access.changePermission(user.userId, permission, enabled);
+    if (!context.mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          access.errorMessage ?? 'No se pudo guardar el permiso.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _resetPermission(
+    BuildContext context,
+    CloudAccessProvider access,
+    String permission,
+  ) async {
+    final ok = await access.resetPermission(user.userId, permission);
+    if (!context.mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          access.errorMessage ?? 'No se pudo restaurar el permiso.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final access = context.watch<CloudAccessProvider>();
-    StoreRoleDefinition? role;
-    for (final candidate in access.snapshot.roles) {
-      if (candidate.id == user.roleId) {
-        role = candidate;
-        break;
-      }
-    }
+    final role = _roleFor(access, user.roleId);
     final defaults = role?.permissions ?? const <String>{};
+    final overrides = user.permissionOverrides;
+    final activeCount = StorePermissions.all.where((permission) {
+      return overrides.containsKey(permission)
+          ? overrides[permission] == true
+          : defaults.contains(permission);
+    }).length;
+
+    final subtitle = overrides.isEmpty
+        ? 'Usando únicamente los permisos del rol ' + roleNameFor(user.roleId)
+        : overrides.length.toString() +
+            ' permisos personalizados · puedes restaurarlos al rol';
 
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(top: 8),
-        title: const Text(
-          'Permisos personalizados',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        initiallyExpanded: false,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.tune_rounded,
+              size: 19,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 9),
+            const Expanded(
+              child: Text(
+                'Permisos personalizados',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            _MiniBadge(label: activeCount.toString() + ' activos'),
+          ],
         ),
-        subtitle: Text(
-          defaults.length.toString() + ' permisos por defecto del rol',
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(left: 28, top: 3),
+          child: Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 10.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ),
         children: [
-          Wrap(
-            spacing: 7,
-            runSpacing: 6,
-            children: StorePermissions.all.map((permission) {
-              final override = user.permissionOverrides.containsKey(permission)
-                  ? user.permissionOverrides[permission]
-                  : null;
-              final effective = override ?? defaults.contains(permission);
-              return FilterChip(
-                label: Text(_permissionLabel(permission)),
-                selected: effective,
-                onSelected: (selected) async {
-                  await access.changePermission(user.userId, permission, selected);
-                },
-              );
-            }).toList(),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          ..._groups.map(
+            (group) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _PermissionGroupCard(
+                group: group,
+                defaults: defaults,
+                overrides: overrides,
+                titleFor: _permissionTitle,
+                onChanged: (permission, value) =>
+                    _togglePermission(context, access, permission, value),
+                onReset: (permission) =>
+                    _resetPermission(context, access, permission),
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Un permiso personalizado sustituye el valor predeterminado del rol.',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          const SizedBox(height: 2),
+          const Text(
+            'Activado sin etiqueta = heredado del rol. '
+            '“Personalizado” = valor guardado específicamente para este usuario.',
+            style: TextStyle(
+              fontSize: 10,
+              height: 1.35,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  String _permissionLabel(String permission) {
-    final parts = permission.split('.');
-    final section = parts.first;
-    final action = parts.length > 1 ? parts[1] : '';
-    const sectionLabels = {
-      'dashboard': 'Inicio',
-      'sales': 'Ventas',
-      'products': 'Productos',
-      'purchases': 'Compras',
-      'providers': 'Proveedores',
-      'inventory': 'Inventario',
-      'clients': 'Clientes',
-      'debts': 'Cuentas por cobrar',
-      'statistics': 'Estadísticas',
-      'settings': 'Ajustes',
-      'users': 'Usuarios',
-      'devices': 'Dispositivos',
-    };
-    const actionLabels = {
-      'view': 'ver',
-      'create': 'crear',
-      'edit': 'editar',
-      'delete': 'eliminar',
-      'manage': 'administrar',
-    };
-    return (sectionLabels[section] ?? section) +
-        (action.isEmpty ? '' : ' · ' + (actionLabels[action] ?? action));
+class _PermissionGroup {
+  final String title;
+  final IconData icon;
+  final List<String> permissions;
+
+  const _PermissionGroup({
+    required this.title,
+    required this.icon,
+    required this.permissions,
+  });
+}
+
+class _PermissionGroupCard extends StatelessWidget {
+  final _PermissionGroup group;
+  final Set<String> defaults;
+  final Map<String, bool> overrides;
+  final String Function(String) titleFor;
+  final Future<void> Function(String, bool) onChanged;
+  final Future<void> Function(String) onReset;
+
+  const _PermissionGroupCard({
+    required this.group,
+    required this.defaults,
+    required this.overrides,
+    required this.titleFor,
+    required this.onChanged,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = group.permissions.where(
+      (permission) => overrides.containsKey(permission)
+          ? overrides[permission] == true
+          : defaults.contains(permission),
+    ).length;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(group.icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  group.title,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                active.toString() + '/' + group.permissions.length.toString(),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ...group.permissions.map(
+            (permission) {
+              final custom = overrides.containsKey(permission);
+              final enabled = custom
+                  ? overrides[permission] == true
+                  : defaults.contains(permission);
+              return Container(
+                margin: const EdgeInsets.only(top: 5),
+                decoration: BoxDecoration(
+                  color: custom
+                      ? AppColors.primary.withAlpha(10)
+                      : AppColors.inputBackground,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: custom
+                        ? AppColors.primary.withAlpha(35)
+                        : AppColors.border,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SwitchListTile.adaptive(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 0,
+                        ),
+                        title: Text(
+                          titleFor(permission),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          custom ? 'Personalizado' : 'Heredado del rol',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: custom
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        value: enabled,
+                        onChanged: (value) => onChanged(permission, value),
+                      ),
+                    ),
+                    if (custom)
+                      IconButton(
+                        tooltip: 'Restaurar valor del rol',
+                        onPressed: () => onReset(permission),
+                        icon: const Icon(
+                          Icons.restart_alt_rounded,
+                          size: 18,
+                        ),
+                        color: AppColors.textSecondary,
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 
