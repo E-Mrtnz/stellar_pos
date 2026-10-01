@@ -15,13 +15,17 @@ class CloudIdentityStore {
   static const _inviteCodeKey = 'inviteCode';
   static const _ownerEmailKey = 'ownerEmail';
 
-  Future<String> getOrCreateDeviceId() async {
+  Future<String> getOrCreateDeviceId({String? authUid}) async {
     final box = await LocalStorage.openBox(_boxName);
-    final existing = box.get(_deviceIdKey)?.toString().trim();
+    final normalizedUid = authUid?.trim();
+    final key = normalizedUid == null || normalizedUid.isEmpty
+        ? _deviceIdKey
+        : '$_deviceIdKey:$normalizedUid';
+    final existing = box.get(key)?.toString().trim();
     if (existing != null && existing.isNotEmpty) return existing;
 
     final deviceId = IdGenerator.newId();
-    await box.put(_deviceIdKey, deviceId);
+    await box.put(key, deviceId);
     return deviceId;
   }
 
