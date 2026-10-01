@@ -101,4 +101,15 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
         cloud: cloud,
         fromMap: fromMap,
       );
+
+  /// Replaces the local collection with the cloud snapshot when a device
+  /// joins an existing store. This is intentionally separate from normal
+  /// local-first synchronization so pre-existing local data is never uploaded
+  /// into a store merely because the device joined it.
+  Future<CloudSyncResult> restoreFromCloud() => engine.restoreFromCloud<T>(
+        collection: collection,
+        local: local,
+        cloud: cloud,
+        fromMap: fromMap,
+      );
 }
