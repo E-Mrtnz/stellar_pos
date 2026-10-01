@@ -491,94 +491,54 @@ class _RoleAndStatusEditor extends StatelessWidget {
   }
 }
 
-class _PermissionEditor extends StatelessWidget {
+class _PermissionEditor extends StatefulWidget {
   final StoreUserRecord user;
   final bool disabled;
 
   const _PermissionEditor({required this.user, required this.disabled});
 
+  @override
+  State<_PermissionEditor> createState() => _PermissionEditorState();
+}
+
+class _PermissionEditorState extends State<_PermissionEditor> {
+  int _selectedGroup = 0;
+
   static const _groups = <_PermissionGroup>[
-    _PermissionGroup(
-      title: 'Inicio y ventas',
-      icon: Icons.point_of_sale_rounded,
-      permissions: [
-        StorePermissions.dashboardView,
-        StorePermissions.salesView,
-        StorePermissions.salesCreate,
-        StorePermissions.salesEdit,
-        StorePermissions.salesDelete,
-      ],
-    ),
-    _PermissionGroup(
-      title: 'Compras',
-      icon: Icons.shopping_bag_outlined,
-      permissions: [
-        StorePermissions.purchasesView,
-        StorePermissions.purchasesCreate,
-        StorePermissions.purchasesEdit,
-        StorePermissions.purchasesDelete,
-      ],
-    ),
-    _PermissionGroup(
-      title: 'Inventario y productos',
-      icon: Icons.inventory_2_outlined,
-      permissions: [
-        StorePermissions.productsView,
-        StorePermissions.inventoryView,
-        StorePermissions.inventoryCreate,
-        StorePermissions.inventoryEdit,
-        StorePermissions.inventoryDelete,
-      ],
-    ),
-    _PermissionGroup(
-      title: 'Proveedores',
-      icon: Icons.local_shipping_outlined,
-      permissions: [
-        StorePermissions.providersView,
-        StorePermissions.providersCreate,
-        StorePermissions.providersEdit,
-        StorePermissions.providersDelete,
-      ],
-    ),
-    _PermissionGroup(
-      title: 'Clientes y cuentas por cobrar',
-      icon: Icons.people_outline,
-      permissions: [
-        StorePermissions.clientsView,
-        StorePermissions.clientsCreate,
-        StorePermissions.clientsEdit,
-        StorePermissions.clientsDelete,
-        StorePermissions.debtsView,
-        StorePermissions.debtsCreate,
-        StorePermissions.debtsEdit,
-        StorePermissions.debtsDelete,
-      ],
-    ),
-    _PermissionGroup(
-      title: 'Estadísticas y ajustes',
-      icon: Icons.analytics_outlined,
-      permissions: [
-        StorePermissions.statisticsView,
-        StorePermissions.settingsView,
-        StorePermissions.settingsEdit,
-      ],
-    ),
-    _PermissionGroup(
-      title: 'Usuarios y dispositivos',
-      icon: Icons.admin_panel_settings_outlined,
-      permissions: [
-        StorePermissions.usersView,
-        StorePermissions.usersManage,
-        StorePermissions.devicesView,
-        StorePermissions.devicesManage,
-      ],
-    ),
+    _PermissionGroup(title: 'Inicio y ventas', icon: Icons.point_of_sale_rounded, permissions: [
+      StorePermissions.dashboardView, StorePermissions.salesView, StorePermissions.salesCreate,
+      StorePermissions.salesEdit, StorePermissions.salesDelete,
+    ]),
+    _PermissionGroup(title: 'Compras', icon: Icons.shopping_bag_outlined, permissions: [
+      StorePermissions.purchasesView, StorePermissions.purchasesCreate,
+      StorePermissions.purchasesEdit, StorePermissions.purchasesDelete,
+    ]),
+    _PermissionGroup(title: 'Inventario y productos', icon: Icons.inventory_2_outlined, permissions: [
+      StorePermissions.productsView, StorePermissions.inventoryView, StorePermissions.inventoryCreate,
+      StorePermissions.inventoryEdit, StorePermissions.inventoryDelete,
+    ]),
+    _PermissionGroup(title: 'Proveedores', icon: Icons.local_shipping_outlined, permissions: [
+      StorePermissions.providersView, StorePermissions.providersCreate,
+      StorePermissions.providersEdit, StorePermissions.providersDelete,
+    ]),
+    _PermissionGroup(title: 'Clientes', icon: Icons.people_outline, permissions: [
+      StorePermissions.clientsView, StorePermissions.clientsCreate,
+      StorePermissions.clientsEdit, StorePermissions.clientsDelete,
+    ]),
+    _PermissionGroup(title: 'Cuentas por cobrar', icon: Icons.receipt_long_outlined, permissions: [
+      StorePermissions.debtsView, StorePermissions.debtsCreate,
+      StorePermissions.debtsEdit, StorePermissions.debtsDelete,
+    ]),
+    _PermissionGroup(title: 'Estadísticas y ajustes', icon: Icons.analytics_outlined, permissions: [
+      StorePermissions.statisticsView, StorePermissions.settingsView, StorePermissions.settingsEdit,
+    ]),
+    _PermissionGroup(title: 'Usuarios y dispositivos', icon: Icons.admin_panel_settings_outlined, permissions: [
+      StorePermissions.usersView, StorePermissions.usersManage,
+      StorePermissions.devicesView, StorePermissions.devicesManage,
+    ]),
   ];
 
-  StoreRoleDefinition? _roleFor(
-    CloudAccessProvider access,
-    String roleId,
-  ) {
+  StoreRoleDefinition? _roleFor(CloudAccessProvider access, String roleId) {
     for (final role in access.snapshot.roles) {
       if (role.id == roleId) return role;
     }
@@ -633,13 +593,11 @@ class _PermissionEditor extends StatelessWidget {
     String permission,
     bool enabled,
   ) async {
-    final ok = await access.changePermission(user.userId, permission, enabled);
+    final ok = await access.changePermission(widget.user.userId, permission, enabled);
     if (!context.mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          access.errorMessage ?? 'No se pudo guardar el permiso.',
-        ),
+        content: Text(access.errorMessage ?? 'No se pudo guardar el permiso.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -650,13 +608,11 @@ class _PermissionEditor extends StatelessWidget {
     CloudAccessProvider access,
     String permission,
   ) async {
-    final ok = await access.resetPermission(user.userId, permission);
+    final ok = await access.resetPermission(widget.user.userId, permission);
     if (!context.mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          access.errorMessage ?? 'No se pudo restaurar el permiso.',
-        ),
+        content: Text(access.errorMessage ?? 'No se pudo restaurar el permiso.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -665,6 +621,7 @@ class _PermissionEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final access = context.watch<CloudAccessProvider>();
+    final user = access.snapshot.userById(widget.user.userId) ?? widget.user;
     final role = _roleFor(access, user.roleId);
     final defaults = role?.permissions ?? const <String>{};
     final overrides = user.permissionOverrides;
@@ -674,10 +631,8 @@ class _PermissionEditor extends StatelessWidget {
           : defaults.contains(permission);
     }).length;
 
-    final subtitle = overrides.isEmpty
-        ? 'Usando únicamente los permisos del rol ' + roleNameFor(user.roleId)
-        : overrides.length.toString() +
-            ' permisos personalizados · puedes restaurarlos al rol';
+    final group = _groups[_selectedGroup];
+    final groupActive = _groupActiveCount(group, defaults, overrides);
 
     return Container(
       decoration: BoxDecoration(
@@ -685,72 +640,90 @@ class _PermissionEditor extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: ExpansionTile(
-        initiallyExpanded: false,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(
-              Icons.tune_rounded,
-              size: 19,
-              color: AppColors.primary,
-            ),
-            const SizedBox(width: 9),
-            const Expanded(
-              child: Text(
-                'Permisos personalizados',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
+            Row(
+              children: [
+                const Icon(Icons.tune_rounded, size: 19, color: AppColors.primary),
+                const SizedBox(width: 9),
+                const Expanded(
+                  child: Text(
+                    'Permisos personalizados',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                  ),
                 ),
-              ),
+                _MiniBadge(label: '${activeCount} activos'),
+              ],
             ),
-            _MiniBadge(label: activeCount.toString() + ' activos'),
+            const SizedBox(height: 4),
+            Text(
+              overrides.isEmpty
+                  ? 'Usando los permisos definidos por el rol ${roleNameFor(user.roleId)}.'
+                  : '${overrides.length} permisos personalizados · puedes restaurarlos al rol.',
+              style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              value: _selectedGroup,
+              decoration: const InputDecoration(
+                labelText: 'Módulo',
+                prefixIcon: Icon(Icons.folder_open_outlined),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: [
+                for (var index = 0; index < _groups.length; index++)
+                  DropdownMenuItem(
+                    value: index,
+                    child: Text(
+                      '${_groups[index].title} · ${_groupActiveCount(_groups[index], defaults, overrides)}/${_groups[index].permissions.length}',
+                    ),
+                  ),
+              ],
+              onChanged: widget.disabled
+                  ? null
+                  : (value) {
+                      if (value == null) return;
+                      setState(() => _selectedGroup = value);
+                    },
+            ),
+            const SizedBox(height: 10),
+            _PermissionGroupCard(
+              group: group,
+              defaults: defaults,
+              overrides: overrides,
+              titleFor: _permissionTitle,
+              onChanged: (permission, value) =>
+                  _togglePermission(context, access, permission, value),
+              onReset: (permission) =>
+                  _resetPermission(context, access, permission),
+              disabled: widget.disabled,
+              activeCount: groupActive,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Sin etiqueta = heredado del rol. “Personalizado” = valor específico de este usuario.',
+              style: TextStyle(fontSize: 10, height: 1.35, color: AppColors.textSecondary),
+            ),
           ],
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(left: 28, top: 3),
-          child: Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 10.5,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-        children: [
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          ..._groups.map(
-            (group) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _PermissionGroupCard(
-                group: group,
-                defaults: defaults,
-                overrides: overrides,
-                titleFor: _permissionTitle,
-                onChanged: (permission, value) =>
-                    _togglePermission(context, access, permission, value),
-                onReset: (permission) =>
-                    _resetPermission(context, access, permission),
-                disabled: disabled,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Activado sin etiqueta = heredado del rol. '
-            '“Personalizado” = valor guardado específicamente para este usuario.',
-            style: TextStyle(
-              fontSize: 10,
-              height: 1.35,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
       ),
     );
+  }
+
+  int _groupActiveCount(
+    _PermissionGroup group,
+    Set<String> defaults,
+    Map<String, bool> overrides,
+  ) {
+    return group.permissions.where(
+      (permission) => overrides.containsKey(permission)
+          ? overrides[permission] == true
+          : defaults.contains(permission),
+    ).length;
   }
 }
 
@@ -774,6 +747,7 @@ class _PermissionGroupCard extends StatelessWidget {
   final Future<void> Function(String, bool) onChanged;
   final Future<void> Function(String) onReset;
   final bool disabled;
+  final int activeCount;
 
   const _PermissionGroupCard({
     required this.group,
@@ -783,6 +757,7 @@ class _PermissionGroupCard extends StatelessWidget {
     required this.onChanged,
     required this.onReset,
     required this.disabled,
+    required this.activeCount,
   });
 
   @override
@@ -816,7 +791,7 @@ class _PermissionGroupCard extends StatelessWidget {
                 ),
               ),
               Text(
-                active.toString() + '/' + group.permissions.length.toString(),
+                activeCount.toString() + '/' + group.permissions.length.toString(),
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
@@ -848,8 +823,12 @@ class _PermissionGroupCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: SwitchListTile.adaptive(
-                        dense: true,
+                      child: MouseRegion(
+                        cursor: disabled
+                            ? SystemMouseCursors.basic
+                            : SystemMouseCursors.click,
+                        child: SwitchListTile.adaptive(
+                          dense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 0,
@@ -871,20 +850,26 @@ class _PermissionGroupCard extends StatelessWidget {
                           ),
                         ),
                         value: enabled,
-                        onChanged: disabled
-                            ? null
-                            : (value) => onChanged(permission, value),
+                          onChanged: disabled
+                              ? null
+                              : (value) => onChanged(permission, value),
+                        ),
                       ),
                     ),
                     if (custom)
-                      IconButton(
-                        tooltip: 'Restaurar valor del rol',
-                        onPressed: disabled ? null : () => onReset(permission),
+                      MouseRegion(
+                        cursor: disabled
+                            ? SystemMouseCursors.basic
+                            : SystemMouseCursors.click,
+                        child: IconButton(
+                          tooltip: 'Restaurar valor del rol',
+                          onPressed: disabled ? null : () => onReset(permission),
                         icon: const Icon(
                           Icons.restart_alt_rounded,
                           size: 18,
                         ),
-                        color: AppColors.textSecondary,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                   ],
                 ),
