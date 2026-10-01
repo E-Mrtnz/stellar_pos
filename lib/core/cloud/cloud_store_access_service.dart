@@ -114,8 +114,7 @@ class CloudStoreAccessService {
     final userId = uid;
     final ref = _users(storeId).doc(userId);
     final existing = await ref.get();
-    final existingData = existing.data() ?? <String, dynamic>{};
-
+    final email = auth.currentUser?.email?.trim().toLowerCase();
     if (existing.exists) {
       // Once the user document exists, a member is only allowed to update
       // their own display name and activity timestamp. Do not try to rewrite
@@ -123,6 +122,7 @@ class CloudStoreAccessService {
       await ref.update({
         'displayName': displayName.trim(),
         'lastSeenAt': FieldValue.serverTimestamp(),
+        if (email != null && email.isNotEmpty) 'email': email,
       });
     } else {
       await ref.set({
@@ -133,6 +133,8 @@ class CloudStoreAccessService {
         'roleId': 'employee',
         'status': 'active',
         'inviteCode': invitationCode.trim().toUpperCase(),
+        if (email != null && email.isNotEmpty) 'email': email,
+        'invitedByUid': null,
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeenAt': FieldValue.serverTimestamp(),
         'permissionOverrides': <String, bool>{},
@@ -155,7 +157,7 @@ class CloudStoreAccessService {
     required String storeId,
     required String userId,
   }) async {
-    final descriptor = await deviceRegistry.describeCurrentDevice();
+    final descriptor = await deviceRegistry.describeCurrentDevice(authUid: auth.currentUser?.uid ?? '');
     final ref = _devices(storeId).doc(descriptor.deviceId);
 
     // Do not read a missing device document before writing it. The security
