@@ -202,6 +202,86 @@ class CloudSyncEngine {
     return result;
   }
 
+  /// Restores a newly joined device from the store's remote snapshot.
+  ///
+  /// This path is deliberately different from normal local-first sync:
+  /// existing local records are treated as pre-join cache data and are not
+  /// uploaded into the joined store. The remote store is authoritative for
+  /// onboarding. Local records absent remotely are removed.
+  Future<CloudSyncResult> restoreFromCloud<T extends SyncableEntity>({
+    required String collection,
+    required LocalDataSource<T> local,
+    required CloudDataSource<T> cloud,
+    required T Function(Map<String, dynamic> map) fromMap,
+  }) async {
+    var result = const CloudSyncResult();
+    final startedAt = DateTime.now().toUtc();
+
+    try {
+      final remote = await cloud.getAll().timeout(_operationTimeout);
+      final localSnapshot = await local.getAll();
+      final remoteById = <String, T>{
+        for (final entity in remote) entity.id: entity,
+      };
+
+      // Remove any pre-join local records that do not belong to the cloud
+      // snapshot. They must never leak into the newly joined store.
+      for (final localEntity in localSnapshot) {
+        if (!remoteById.containsKey(localEntity.id)) {
+          await local.delete(localEntity.id);
+        }
+      }
+
+      for (final remoteEntity in remote) {
+        if (remoteEntity.metadata.syncState == SyncState.deleted) {
+          await local.delete(remoteEntity.id);
+          result = result + const CloudSyncResult(deleted: 1);
+          continue;
+        }
+
+        await local.save(
+          _withMetadata(
+            remoteEntity,
+            remoteEntity.metadata.markSynced(),
+            fromMap,
+          ),
+        );
+        result = result + const CloudSyncResult(downloaded: 1);
+      }
+    } catch (error, stackTrace) {
+      developer.log(
+        'No se pudo restaurar la colección desde Firestore. Colección: ' +
+            collection +
+            '.',
+        name: 'STELLAR_POS.cloud_sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      result = result + CloudSyncResult(
+        failed: 1,
+        errors: <String>[collection + ': ' + error.toString()],
+      );
+    }
+
+    final elapsed = DateTime.now().toUtc().difference(startedAt);
+    developer.log(
+      'Restauración desde Firestore completada. Colección: ' +
+          collection +
+          ', descargados: ' +
+          result.downloaded.toString() +
+          ', eliminados: ' +
+          result.deleted.toString() +
+          ', fallos: ' +
+          result.failed.toString() +
+          ', duración: ' +
+          elapsed.inMilliseconds.toString() +
+          ' ms.',
+      name: 'STELLAR_POS.cloud_sync',
+    );
+
+    return result;
+  }
+
   Future<CloudSyncResult> _uploadPending<T extends SyncableEntity>({
     required String collection,
     required LocalDataSource<T> local,
