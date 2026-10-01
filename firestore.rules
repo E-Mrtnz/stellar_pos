@@ -273,7 +273,7 @@ service cloud.firestore {
         );
 
       allow update: if (
-          ownerOf(storeId) &&
+          (ownerOf(storeId) || hasPermission(storeId, 'users.manage')) &&
           request.resource.data.userId == resource.data.userId &&
           request.resource.data.authUid == resource.data.authUid &&
           request.resource.data.storeId == resource.data.storeId &&
@@ -297,7 +297,7 @@ service cloud.firestore {
             .hasOnly(['displayName', 'lastSeenAt'])
         );
 
-      allow delete: if ownerOf(storeId) && userId != request.auth.uid;
+      allow delete: if (ownerOf(storeId) || hasPermission(storeId, 'users.manage')) && userId != request.auth.uid;
     }
 
     match /stores/{storeId}/roles/{roleId} {
