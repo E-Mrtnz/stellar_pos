@@ -1195,6 +1195,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     },
   );
 
+  }
+}
+
 class _AccessLoadingPanel extends StatelessWidget {
   const _AccessLoadingPanel();
 
