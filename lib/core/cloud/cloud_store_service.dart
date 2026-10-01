@@ -254,7 +254,10 @@ class CloudStoreService {
       storeName: storeName,
       inviteCode: normalizedCode,
     );
-    await syncService.syncAll();
+    // Onboarding is intentionally remote-authoritative: the device must
+    // download the store's existing data instead of uploading whatever local
+    // records happened to exist before joining it.
+    await syncService.restoreFromCloud();
   }
 
   Future<void> updateOwnerEmail(String ownerEmail) async {
