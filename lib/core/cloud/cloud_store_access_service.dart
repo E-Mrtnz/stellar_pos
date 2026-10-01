@@ -111,6 +111,7 @@ class CloudStoreAccessService {
     required String storeId,
     required String displayName,
     required String invitationCode,
+    String? invitedByUid,
   }) async {
     final uid = auth.currentUser?.uid;
     if (uid == null) throw StateError('No hay una sesión de Firebase activa.');
@@ -138,7 +139,8 @@ class CloudStoreAccessService {
         'status': 'active',
         'inviteCode': invitationCode.trim().toUpperCase(),
         if (email != null && email.isNotEmpty) 'email': email,
-        'invitedByUid': null,
+        if (invitedByUid != null && invitedByUid.trim().isNotEmpty)
+          'invitedByUid': invitedByUid.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeenAt': FieldValue.serverTimestamp(),
         'permissionOverrides': <String, bool>{},
