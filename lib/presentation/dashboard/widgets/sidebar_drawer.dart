@@ -47,13 +47,18 @@ class SidebarDrawer extends StatelessWidget {
               ),
               const SizedBox(height: 30),
               Expanded(
-                child: ListView(
-                  scrollDirection: Axis.vertical,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  children: [
-                    if (access.hasPermission(StorePermissions.dashboardView))
-                      _buildSidebarItem(AppNavigation.home, Icons.point_of_sale_rounded, AppStrings.navHome),
+                child: access.accessResolved
+                    ? ListView(
+                        scrollDirection: Axis.vertical,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        children: [
+                          if (access.hasPermission(StorePermissions.dashboardView))
+                            _buildSidebarItem(
+                              AppNavigation.home,
+                              Icons.point_of_sale_rounded,
+                              AppStrings.navHome,
+                            ),
                     if (access.hasPermission(StorePermissions.salesView))
                       _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
                     if (access.hasPermission(StorePermissions.purchasesView))
@@ -64,14 +69,35 @@ class SidebarDrawer extends StatelessWidget {
                       _buildSidebarItem(AppNavigation.stats, Icons.bar_chart_rounded, AppStrings.navStats),
                     if (access.hasPermission(StorePermissions.providersView))
                       _buildSidebarItem(AppNavigation.providers, Icons.local_shipping_outlined, AppStrings.navProviders),
-                    if (access.hasPermission(StorePermissions.inventoryView))
-                      _buildSidebarItem(AppNavigation.inventory, Icons.inventory_2_rounded, AppStrings.navInventory),
-                  ],
-                ),
+                          if (access.hasPermission(StorePermissions.inventoryView))
+                            _buildSidebarItem(
+                              AppNavigation.inventory,
+                              Icons.inventory_2_rounded,
+                              AppStrings.navInventory,
+                            ),
+                        ],
+                      )
+                    : const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
               ),
-              const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
-              if (access.hasPermission(StorePermissions.settingsView))
-                _buildSidebarItem(AppNavigation.settings, Icons.settings_outlined, AppStrings.navSettings),
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppColors.border,
+              ),
+              if (access.accessResolved &&
+                  access.hasPermission(StorePermissions.settingsView))
+                _buildSidebarItem(
+                  AppNavigation.settings,
+                  Icons.settings_outlined,
+                  AppStrings.navSettings,
+                ),
               const SizedBox(height: 16),
             ],
           ),
