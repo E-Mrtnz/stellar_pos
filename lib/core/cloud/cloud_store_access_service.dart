@@ -292,6 +292,13 @@ class CloudStoreAccessService {
       batch.delete(device.reference);
     }
     batch.delete(userRef);
+    batch.delete(
+      firestore
+          .collection(CloudCollection.stores)
+          .doc(storeId)
+          .collection(CloudCollection.members)
+          .doc(userId),
+    );
     await batch.commit();
   }
 
