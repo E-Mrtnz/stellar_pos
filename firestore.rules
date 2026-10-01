@@ -310,7 +310,7 @@ service cloud.firestore {
             .hasOnly(['displayName', 'lastSeenAt'])
         );
 
-      allow delete: if (ownerOf(storeId) || hasPermission(storeId, 'users.manage')) && userId != request.auth.uid;
+      allow delete: if (ownerOf(storeId) || hasPermission(storeId, 'users.manage')) && userId != request.auth.uid && resource.data.roleId != 'owner';
     }
 
     match /stores/{storeId}/roles/{roleId} {
