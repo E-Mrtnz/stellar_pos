@@ -150,12 +150,21 @@ class CloudSyncEngine {
       }
 
       if (remote != null) {
-        result = result + await _reconcileRemote(
-          local: local,
-          localSnapshot: prepared,
-          remote: remote,
-          fromMap: fromMap,
-        );
+        final pendingDeleteIds = (await queue.pending(
+        collection: collection,
+        storeId: scope.storeId,
+      ))
+          .where((item) => item.operation == SyncOperationType.delete)
+          .map((item) => item.entityId)
+          .toSet();
+
+      result = result + await _reconcileRemote(
+        local: local,
+        localSnapshot: prepared,
+        remote: remote,
+        pendingDeleteIds: pendingDeleteIds,
+        fromMap: fromMap,
+      );
       }
     } catch (error, stackTrace) {
       developer.log(
@@ -351,6 +360,7 @@ class CloudSyncEngine {
     required LocalDataSource<T> local,
     required List<T> localSnapshot,
     required List<T> remote,
+    required Set<String> pendingDeleteIds,
     required T Function(Map<String, dynamic> map) fromMap,
   }) async {
     var result = const CloudSyncResult();
@@ -361,6 +371,14 @@ class CloudSyncEngine {
 
     for (final remoteEntity in remote) {
       final localEntity = localById[remoteEntity.id];
+
+      // A failed local delete is still authoritative for this synchronization
+      // cycle. Do not re-download the remote copy while its tombstone remains
+      // pending in the durable delete queue.
+      if (pendingDeleteIds.contains(remoteEntity.id)) {
+        result = result + const CloudSyncResult(skippedConflicts: 1);
+        continue;
+      }
 
       if (remoteEntity.metadata.syncState == SyncState.deleted) {
         if (localEntity == null) {
