@@ -42,7 +42,16 @@ class CloudStoreService {
       (await identityStore.getStoreId())?.isNotEmpty == true;
 
   Future<User> _ensureAuthenticated() async {
-    final existing = auth.currentUser;
+    var existing = auth.currentUser;
+    if (existing == null) {
+      // Give Firebase Web time to restore its persisted anonymous session.
+      // Signing in immediately on a transient null state can create a second
+      // anonymous UID for the same installation.
+      for (var attempt = 0; attempt < 20 && existing == null; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        existing = auth.currentUser;
+      }
+    }
     if (existing != null) return existing;
 
     final credential = await auth.signInAnonymously();
