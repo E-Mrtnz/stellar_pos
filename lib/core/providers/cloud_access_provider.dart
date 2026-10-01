@@ -97,7 +97,14 @@ class CloudAccessProvider extends ChangeNotifier {
       // null temporarily and the sidebar fails closed with no navigation.
       var user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        user = await FirebaseAuth.instance.authStateChanges().first;
+        // Firebase Web may restore the persisted anonymous session
+        // asynchronously. Do not create a new anonymous account immediately
+        // after the first null state, otherwise a reload can accidentally
+        // create a duplicate employee record.
+        for (var attempt = 0; attempt < 20 && user == null; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          user = FirebaseAuth.instance.currentUser;
+        }
       }
       if (user == null) {
         user = (await FirebaseAuth.instance.signInAnonymously()).user;
