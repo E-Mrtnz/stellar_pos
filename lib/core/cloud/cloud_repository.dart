@@ -94,6 +94,46 @@ class CloudRepository<T extends SyncableEntity> implements Repository<T> {
 
   T _fromMap(Map<String, dynamic> map) => fromMap(map);
 
+  Future<bool> applyRemoteData(Map<String, dynamic> data) async {
+    final remote = fromMap(Map<String, dynamic>.from(data));
+    if (remote.metadata.storeId != null &&
+        remote.metadata.storeId != scope.storeId) {
+      return false;
+    }
+
+    final localEntity = await local.getById(remote.id);
+    if (localEntity != null &&
+        (localEntity.metadata.syncState == SyncState.pending ||
+            localEntity.metadata.syncState == SyncState.updated)) {
+      final localUpdated = localEntity.metadata.updatedAt;
+      final remoteUpdated = remote.metadata.updatedAt;
+      if (!remoteUpdated.isAfter(localUpdated)) {
+        return false;
+      }
+    }
+
+    final synced = _copyWithMetadata(
+      remote,
+      remote.metadata.markSynced(),
+    );
+    await local.save(synced);
+    return true;
+  }
+
+  /// Applies a physical server-side removal without running a collection-wide sync.
+  Future<bool> applyRemoteDelete(String id) async {
+    final localEntity = await local.getById(id);
+    if (localEntity == null) return false;
+
+    if (localEntity.metadata.syncState == SyncState.pending ||
+        localEntity.metadata.syncState == SyncState.updated) {
+      return false;
+    }
+
+    await local.delete(id);
+    return true;
+  }
+
   Future<CloudSyncResult> sync() => engine.sync<T>(
         collection: collection,
         scope: scope,
