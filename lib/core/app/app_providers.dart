@@ -54,8 +54,13 @@ class AppProviders extends StatelessWidget {
             return service;
           },
         ),
-        ChangeNotifierProvider(
-          create: (_) => CloudAccessProvider()..load(),
+        ChangeNotifierProxyProvider<CloudStoreProvider, CloudAccessProvider>(
+          create: (_) => CloudAccessProvider(),
+          update: (_, store, access) {
+            final provider = access ?? CloudAccessProvider();
+            unawaited(provider.loadForStore(store.storeId));
+            return provider;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => CatalogProvider(
