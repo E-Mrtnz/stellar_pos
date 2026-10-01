@@ -684,7 +684,6 @@ class _CloudStoreSettingsContent extends StatelessWidget {
       );
     } finally {
       nameController.dispose();
-      emailController.dispose();
     }
   }
 
@@ -740,7 +739,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                 icon: Icons.add_business_outlined,
                 title: 'Crear una tienda',
                 description:
-                    'Registra el nombre del negocio y el correo del propietario. El Store ID se generará automáticamente.',
+                    'Registra el nombre del negocio. La cuenta autenticada quedará como propietario y el Store ID se generará automáticamente.',
                 buttonLabel: 'Crear tienda',
                 onPressed: () => _openStoreDialog(context, initialCreateMode: true),
               ),
@@ -864,7 +863,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             _cloudActionRow(
               icon: Icons.storefront_outlined,
               title: 'Administrar tienda',
-              subtitle: 'Nombre, correo del propietario y código de invitación.',
+              subtitle: 'Nombre de la tienda y código de invitación.',
               label: 'Administrar',
               onPressed: cloudStore.isSaving ? null : () => _manageStore(context),
             ),
