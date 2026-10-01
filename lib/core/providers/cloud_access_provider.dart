@@ -118,20 +118,55 @@ class CloudAccessProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> changeRole(String userId, String roleId) async =>
-      _run(() async {
+  Future<bool> changeRole(String userId, String roleId) async {
+    final previous = _userById(userId);
+    if (previous == null) return false;
+    final optimistic = previous.copyWith(roleId: roleId);
+    _replaceUser(optimistic);
+    return _runMutation(
+      () async {
         final storeId = await _requiredStoreId();
-        await service.setUserRole(storeId: storeId, userId: userId, roleId: roleId);
-      });
+        await service.setUserRole(
+          storeId: storeId,
+          userId: userId,
+          roleId: roleId,
+        );
+      },
+      rollback: () => _replaceUser(previous, notify: true),
+    );
+  }
 
-  Future<bool> changeStatus(String userId, String status) async =>
-      _run(() async {
+  Future<bool> changeStatus(String userId, String status) async {
+    final previous = _userById(userId);
+    if (previous == null) return false;
+    final optimistic = previous.copyWith(status: status);
+    _replaceUser(optimistic);
+    return _runMutation(
+      () async {
         final storeId = await _requiredStoreId();
-        await service.setUserStatus(storeId: storeId, userId: userId, status: status);
-      });
+        await service.setUserStatus(
+          storeId: storeId,
+          userId: userId,
+          status: status,
+        );
+      },
+      rollback: () => _replaceUser(previous, notify: true),
+    );
+  }
 
-  Future<bool> changePermission(String userId, String permission, bool enabled) async =>
-      _run(() async {
+  Future<bool> changePermission(
+    String userId,
+    String permission,
+    bool enabled,
+  ) async {
+    final previous = _userById(userId);
+    if (previous == null) return false;
+    final overrides = Map<String, bool>.from(previous.permissionOverrides)
+      ..[permission] = enabled;
+    final optimistic = previous.copyWith(permissionOverrides: overrides);
+    _replaceUser(optimistic);
+    return _runMutation(
+      () async {
         final storeId = await _requiredStoreId();
         await service.setPermissionOverride(
           storeId: storeId,
@@ -139,41 +174,108 @@ class CloudAccessProvider extends ChangeNotifier {
           permission: permission,
           enabled: enabled,
         );
-      });
+      },
+      rollback: () => _replaceUser(previous, notify: true),
+    );
+  }
 
-  Future<bool> resetPermission(String userId, String permission) async =>
-      _run(() async {
+  Future<bool> resetPermission(String userId, String permission) async {
+    final previous = _userById(userId);
+    if (previous == null) return false;
+    final overrides = Map<String, bool>.from(previous.permissionOverrides)
+      ..remove(permission);
+    final optimistic = previous.copyWith(permissionOverrides: overrides);
+    _replaceUser(optimistic);
+    return _runMutation(
+      () async {
         final storeId = await _requiredStoreId();
         await service.clearPermissionOverride(
           storeId: storeId,
           userId: userId,
           permission: permission,
         );
-      });
+      },
+      rollback: () => _replaceUser(previous, notify: true),
+    );
+  }
 
-  Future<bool> revokeDevice(String deviceId) async =>
-      _run(() async {
+  Future<bool> revokeDevice(String deviceId) async {
+    StoreDeviceRecord? previous;
+    for (final device in _snapshot.devices) {
+      if (device.deviceId == deviceId) {
+        previous = device;
+        break;
+      }
+    }
+    if (previous == null) return false;
+
+    _replaceDevice(previous.copyWith(active: false), notify: true);
+    return _runMutation(
+      () async {
         final storeId = await _requiredStoreId();
-        await service.revokeDevice(storeId: storeId, deviceId: deviceId);
-      });
+        await service.revokeDevice(
+          storeId: storeId,
+          deviceId: deviceId,
+        );
+      },
+      rollback: () => _replaceDevice(previous!, notify: true),
+    );
+  }
 
   Future<String> _requiredStoreId() async =>
       (await storeService.getStoreId()) ??
       (throw StateError('No hay una tienda configurada.'));
 
-  Future<bool> _run(Future<void> Function() action) async {
+  StoreUserRecord? _userById(String userId) {
+    for (final user in _snapshot.users) {
+      if (user.userId == userId) return user;
+    }
+    return null;
+  }
+
+  void _replaceUser(StoreUserRecord user, {bool notify = true}) {
+    final users = List<StoreUserRecord>.from(_snapshot.users);
+    final index = users.indexWhere((item) => item.userId == user.userId);
+    if (index < 0) return;
+    users[index] = user;
+    _snapshot = StoreAccessSnapshot(
+      users: users,
+      devices: _snapshot.devices,
+      roles: _snapshot.roles,
+    );
+    if (notify) notifyListeners();
+  }
+
+  void _replaceDevice(StoreDeviceRecord device, {bool notify = true}) {
+    final devices = List<StoreDeviceRecord>.from(_snapshot.devices);
+    final index = devices.indexWhere((item) => item.deviceId == device.deviceId);
+    if (index < 0) return;
+    devices[index] = device;
+    _snapshot = StoreAccessSnapshot(
+      users: _snapshot.users,
+      devices: devices,
+      roles: _snapshot.roles,
+    );
+    if (notify) notifyListeners();
+  }
+
+  Future<bool> _runMutation(
+    Future<void> Function() action, {
+    required VoidCallback rollback,
+  }) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       await action();
-      await load();
       return true;
     } catch (error) {
       _error = error.toString();
+      rollback();
+      return false;
+    } finally {
       _loading = false;
       notifyListeners();
-      return false;
     }
   }
 }
