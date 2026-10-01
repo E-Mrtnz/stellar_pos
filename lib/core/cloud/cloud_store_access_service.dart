@@ -199,7 +199,7 @@ class CloudStoreAccessService {
     required String userId,
     required String roleId,
   }) async {
-    if (roleId == 'owner') {
+    if (!StoreAccessDefaults.all.any((role) => role.id == roleId) || roleId == 'owner') {
       throw StateError('El rol de propietario no se puede asignar desde esta pantalla.');
     }
     await _users(storeId).doc(userId).update({
@@ -225,8 +225,24 @@ class CloudStoreAccessService {
     required String permission,
     required bool enabled,
   }) async {
+    if (!StorePermissions.all.contains(permission)) {
+      throw ArgumentError.value(permission, 'permission', 'Permiso no válido.');
+    }
     await _users(storeId).doc(userId).update({
       'permissionOverrides.$permission': enabled,
+    });
+  }
+
+  Future<void> clearPermissionOverride({
+    required String storeId,
+    required String userId,
+    required String permission,
+  }) async {
+    if (!StorePermissions.all.contains(permission)) {
+      throw ArgumentError.value(permission, 'permission', 'Permiso no válido.');
+    }
+    await _users(storeId).doc(userId).update({
+      'permissionOverrides.$permission': FieldValue.delete(),
     });
   }
 
