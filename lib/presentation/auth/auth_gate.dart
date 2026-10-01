@@ -11,7 +11,7 @@ class AuthGate extends StatelessWidget {
   final AuthService authService;
 
   const AuthGate({super.key, AuthService? authService})
-      : authService = authService ?? const AuthService();
+      : authService = authService ?? AuthService();
 
   @override
   Widget build(BuildContext context) {
