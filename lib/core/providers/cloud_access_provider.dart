@@ -53,12 +53,11 @@ class CloudAccessProvider extends ChangeNotifier {
   bool hasPermission(String permission) {
     final user = currentUser;
 
-    // Cloud access controls are not the security boundary; Firestore rules
-    // are. The POS is local-first, so a temporary Auth/access loading failure
-    // must not blank the entire application. Until the access snapshot is
-    // resolved, keep the local UI available. Once a valid user record is
-    // loaded, enforce that user's permissions normally.
-    if (!_accessResolved || _loadedStoreId == null) return true;
+    // When no cloud store is configured, local-only mode keeps the existing
+    // POS UI available. Once a store is configured, unresolved access must
+    // fail closed so stale permissions are never treated as current.
+    if (_loadedStoreId == null) return true;
+    if (!_accessResolved) return false;
     if (user == null) return false;
 
     if (user.roleId == 'owner') return true;
