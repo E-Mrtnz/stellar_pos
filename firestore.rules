@@ -67,6 +67,22 @@ service cloud.firestore {
         ).data.ownerUid == request.auth.uid;
     }
 
+    // A join is only valid when the invitation exists, points to the same
+    // store and that store document still exists.
+    function validStoreInvitation(storeId, inviteCode) {
+      return signedIn() &&
+        inviteCode is string &&
+        exists(
+          /databases/$(database)/documents/stores/$(storeId)
+        ) &&
+        exists(
+          /databases/$(database)/documents/store_invites/$(inviteCode)
+        ) &&
+        get(
+          /databases/$(database)/documents/store_invites/$(inviteCode)
+        ).data.storeId == storeId;
+    }
+
     function validApplicationCollection(collection) {
       return collection in [
         'products',
@@ -218,13 +234,10 @@ service cloud.firestore {
             request.resource.data.uid == request.auth.uid &&
             request.resource.data.storeId == storeId &&
             request.resource.data.role == 'member' &&
-            request.resource.data.inviteCode is string &&
-            exists(
-              /databases/$(database)/documents/store_invites/$(request.resource.data.inviteCode)
-            ) &&
-            get(
-              /databases/$(database)/documents/store_invites/$(request.resource.data.inviteCode)
-            ).data.storeId == storeId
+            validStoreInvitation(
+              storeId,
+              request.resource.data.inviteCode
+            )
           )
         );
 
