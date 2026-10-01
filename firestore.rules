@@ -242,7 +242,7 @@ service cloud.firestore {
         );
 
       allow update: if ownerOf(storeId) && uid != request.auth.uid;
-      allow delete: if ownerOf(storeId) && uid != request.auth.uid;
+      allow delete: if (ownerOf(storeId) || hasPermission(storeId, 'users.manage')) && uid != request.auth.uid;
     }
 
     match /stores/{storeId}/users/{userId} {
