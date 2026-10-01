@@ -116,22 +116,28 @@ class CloudStoreAccessService {
     final existing = await ref.get();
     final existingData = existing.data() ?? <String, dynamic>{};
 
-    await ref.set({
-      'userId': userId,
-      'authUid': uid,
-      'storeId': storeId,
-      'displayName': displayName.trim(),
-      'roleId': existing.exists ? (existingData['roleId'] ?? 'employee') : 'employee',
-      'status': existing.exists ? (existingData['status'] ?? 'active') : 'active',
-      'inviteCode': invitationCode.trim().toUpperCase(),
-      'createdAt': existing.exists
-          ? existingData['createdAt']
-          : FieldValue.serverTimestamp(),
-      'lastSeenAt': FieldValue.serverTimestamp(),
-      'permissionOverrides': existing.exists
-          ? (existingData['permissionOverrides'] ?? <String, bool>{})
-          : <String, bool>{},
-    }, SetOptions(merge: true));
+    if (existing.exists) {
+      // Once the user document exists, a member is only allowed to update
+      // their own display name and activity timestamp. Do not try to rewrite
+      // role/status/permissions from the join flow.
+      await ref.update({
+        'displayName': displayName.trim(),
+        'lastSeenAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await ref.create({
+        'userId': userId,
+        'authUid': uid,
+        'storeId': storeId,
+        'displayName': displayName.trim(),
+        'roleId': 'employee',
+        'status': 'active',
+        'inviteCode': invitationCode.trim().toUpperCase(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastSeenAt': FieldValue.serverTimestamp(),
+        'permissionOverrides': <String, bool>{},
+      });
+    }
 
     await registerCurrentDevice(storeId: storeId, userId: userId);
     return userId;
@@ -151,8 +157,11 @@ class CloudStoreAccessService {
   }) async {
     final descriptor = await deviceRegistry.describeCurrentDevice();
     final ref = _devices(storeId).doc(descriptor.deviceId);
-    final snapshot = await ref.get();
 
+    // Do not read a missing device document before creating it. The previous
+    // read was denied by the security rule because resource.data is not
+    // available for a non-existent document. Create first, then update only
+    // the fields that an already registered device is allowed to change.
     final data = <String, dynamic>{
       'deviceId': descriptor.deviceId,
       'userId': userId,
@@ -164,13 +173,25 @@ class CloudStoreAccessService {
       'appVersion': descriptor.appVersion,
       'lastSeenAt': FieldValue.serverTimestamp(),
       'active': true,
+      'firstSeenAt': FieldValue.serverTimestamp(),
     };
 
-    if (!snapshot.exists) {
-      data['firstSeenAt'] = FieldValue.serverTimestamp();
-    }
+    try {
+      await ref.create(data);
+    } on FirebaseException catch (error) {
+      if (error.code != 'already-exists') {
+        rethrow;
+      }
 
-    await ref.set(data, SetOptions(merge: true));
+      await ref.update({
+        'lastSeenAt': FieldValue.serverTimestamp(),
+        'appVersion': descriptor.appVersion,
+        'osVersion': descriptor.osVersion,
+        'manufacturer': descriptor.manufacturer,
+        'model': descriptor.model,
+        'platform': descriptor.platform,
+      });
+    }
     await _users(storeId).doc(userId).set(
       {'lastSeenAt': FieldValue.serverTimestamp()},
       SetOptions(merge: true),
