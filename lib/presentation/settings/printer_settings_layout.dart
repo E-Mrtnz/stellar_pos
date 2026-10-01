@@ -801,6 +801,10 @@ class _CloudStoreSettingsContent extends StatelessWidget {
     CloudStoreProvider cloudStore,
     CloudAccessProvider access,
   ) {
+    if (access.accessResolved && !access.hasStoreAccess) {
+      return _buildConfiguredWithoutAccess(context, cloudStore);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -900,6 +904,55 @@ class _CloudStoreSettingsContent extends StatelessWidget {
             style: const TextStyle(fontSize: 11, color: AppColors.dangerRed),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildConfiguredWithoutAccess(
+    BuildContext context,
+    CloudStoreProvider cloudStore,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _cloudHero(
+          icon: Icons.storefront_outlined,
+          title: cloudStore.storeName ?? 'Tienda configurada',
+          subtitle:
+              'Esta instalación conserva los datos locales de esta tienda, pero la cuenta actual todavía no tiene acceso.',
+        ),
+        const SizedBox(height: 18),
+        _cloudSectionCard(
+          icon: Icons.lock_outline_rounded,
+          title: 'Acceso pendiente',
+          subtitle:
+              'Inicia sesión con una cuenta que ya pertenezca a esta tienda o únete con el código de invitación del propietario.',
+          children: [
+            _cloudActionRow(
+              icon: Icons.link_outlined,
+              title: 'Unirse a esta tienda',
+              subtitle:
+                  'Tu cuenta quedará vinculada una sola vez mediante su Firebase UID. Volver a usar el código no creará otro usuario.',
+              label: 'Usar código',
+              onPressed: cloudStore.isSaving
+                  ? null
+                  : () => _openStoreDialog(
+                        context,
+                        initialCreateMode: false,
+                      ),
+            ),
+            const SizedBox(height: 6),
+            _cloudActionRow(
+              icon: Icons.logout_rounded,
+              title: 'Cerrar sesión',
+              subtitle: 'Cambiar a otra cuenta de Stellar POS.',
+              label: 'Cerrar sesión',
+              onPressed: cloudStore.isSaving
+                  ? null
+                  : () => _signOut(context),
+            ),
+          ],
+        ),
       ],
     );
   }
