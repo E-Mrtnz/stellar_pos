@@ -44,6 +44,7 @@ class CloudStoreAccessService {
         currentUser.roleId == 'owner' || currentUser.roleId == 'administrator';
 
     if (!canManage) {
+      await registerCurrentDevice(storeId: storeId, userId: uid);
       return StoreAccessSnapshot(
         users: [currentUser],
         devices: const [],
@@ -74,6 +75,7 @@ class CloudStoreAccessService {
       roles = StoreAccessDefaults.all;
     }
 
+    await registerCurrentDevice(storeId: storeId, userId: uid);
     return StoreAccessSnapshot(users: users, devices: devices, roles: roles);
   }
 
