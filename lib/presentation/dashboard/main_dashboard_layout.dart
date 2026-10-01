@@ -1019,6 +1019,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Widget _buildMainContent() {
     final access = context.watch<CloudAccessProvider>();
+    if (!access.accessResolved) {
+      return const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      );
+    }
     if (_selectedNavIndex == AppNavigation.home &&
         !access.hasPermission(StorePermissions.dashboardView)) {
       return const _EmptySectionPanel();
