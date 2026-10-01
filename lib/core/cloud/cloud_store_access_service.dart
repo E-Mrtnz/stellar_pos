@@ -257,4 +257,38 @@ class CloudStoreAccessService {
       'lastSeenAt': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<void> deleteUser({
+    required String storeId,
+    required String userId,
+  }) async {
+    final currentUid = auth.currentUser?.uid;
+    if (currentUid == null) {
+      throw StateError('No hay una sesión de Firebase activa.');
+    }
+    if (currentUid == userId) {
+      throw StateError('No puedes eliminar tu propio usuario.');
+    }
+
+    final userRef = _users(storeId).doc(userId);
+    final userSnapshot = await userRef.get();
+    if (!userSnapshot.exists) {
+      return;
+    }
+
+    final userData = userSnapshot.data() ?? <String, dynamic>{};
+    if (userData['roleId']?.toString() == 'owner') {
+      throw StateError('El propietario de la tienda no se puede eliminar.');
+    }
+
+    final devicesSnapshot =
+        await _devices(storeId).where('userId', isEqualTo: userId).get();
+    final batch = firestore.batch();
+    for (final device in devicesSnapshot.docs) {
+      batch.delete(device.reference);
+    }
+    batch.delete(userRef);
+    await batch.commit();
+  }
+
 }
