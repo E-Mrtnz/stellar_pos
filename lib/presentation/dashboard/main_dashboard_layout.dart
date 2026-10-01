@@ -1019,46 +1019,55 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Widget _buildMainContent() {
     final access = context.watch<CloudAccessProvider>();
-    if (!access.accessResolved) {
-      return const Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.5),
-        ),
-      );
+
+    // Keep the local-first POS shell visible while Firebase access resolves.
+    // Cloud synchronization can catch up in the background; it must never
+    // replace the whole workspace with a spinner or blank area.
+    if (_selectedNavIndex != AppNavigation.home && !access.accessResolved) {
+      return const _AccessLoadingPanel();
     }
-    if (_selectedNavIndex == AppNavigation.home &&
-        !access.hasPermission(StorePermissions.dashboardView)) {
-      return const _EmptySectionPanel();
+
+    if (_selectedNavIndex == AppNavigation.home) {
+      return _buildHomeContent();
+    }
+
+    if (_selectedNavIndex == AppNavigation.electronicBalance &&
+        access.accessResolved &&
+        !access.hasPermission(StorePermissions.salesView)) {
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.electronicBalance &&
         !access.hasPermission(StorePermissions.salesView)) {
       return const _EmptySectionPanel();
     }
     if (_selectedNavIndex == AppNavigation.purchases &&
+        access.accessResolved &&
         !access.hasPermission(StorePermissions.purchasesView)) {
-      return const _EmptySectionPanel();
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.providers &&
+        access.accessResolved &&
         !access.hasPermission(StorePermissions.providersView)) {
-      return const _EmptySectionPanel();
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.stats &&
         !access.hasPermission(StorePermissions.statisticsView)) {
       return const _EmptySectionPanel();
     }
     if (_selectedNavIndex == AppNavigation.inventory &&
+        access.accessResolved &&
         !access.hasPermission(StorePermissions.inventoryView)) {
-      return const _EmptySectionPanel();
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.debts &&
+        access.accessResolved &&
         !access.hasPermission(StorePermissions.debtsView)) {
-      return const _EmptySectionPanel();
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.settings &&
+        access.accessResolved &&
         !access.hasPermission(StorePermissions.settingsView)) {
-      return const _EmptySectionPanel();
+      return const _AccessDeniedPanel();
     }
     if (_selectedNavIndex == AppNavigation.inventory)
       return const InventoryLayout();
@@ -1183,6 +1192,67 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       ),
         );
       },
+    );
+  }
+}
+
+class _AccessLoadingPanel extends StatelessWidget {
+  const _AccessLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator(strokeWidth: 2.5),
+      ),
+    );
+  }
+}
+
+class _AccessDeniedPanel extends StatelessWidget {
+  const _AccessDeniedPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final access = context.watch<CloudAccessProvider>();
+    final error = access.errorMessage?.trim();
+    final message = error != null && error.isNotEmpty
+        ? 'No se pudo resolver el acceso a la tienda.\n\n$error'
+        : 'Tu cuenta no tiene permiso para abrir esta sección.';
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 48,
+                color: AppColors.primary,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Acceso no disponible',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
