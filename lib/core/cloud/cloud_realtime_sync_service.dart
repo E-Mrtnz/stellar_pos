@@ -200,16 +200,6 @@ class CloudRealtimeSyncService extends ChangeNotifier
               _pendingDeletes.containsKey(collection)));
     } finally {
       _applying.remove(collection);
-      if (_active &&
-          _storeId != null &&
-          (_pendingDocuments.containsKey(collection) ||
-              _pendingDeletes.containsKey(collection))) {
-        _scheduleRemoteChanges(
-          collection,
-          documents: const <Map<String, dynamic>>[],
-          deletedIds: const <String>[],
-        );
-      }
     }
   }
 
