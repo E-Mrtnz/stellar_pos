@@ -172,7 +172,10 @@ class CloudStoreService {
     final user = await _ensureAuthenticated();
     final inviteRef =
         firestore.collection(CloudCollection.storeInvites).doc(normalizedCode);
-    final inviteSnapshot = await inviteRef.get();
+    final inviteSnapshot = await _runJoinStep(
+      'consultar la invitación',
+      inviteRef.get,
+    );
 
     if (!inviteSnapshot.exists) {
       throw StateError('El código de invitación no es válido.');
@@ -190,21 +193,43 @@ class CloudStoreService {
         firestore.collection(CloudCollection.stores).doc(storeId);
     final memberRef =
         storeRef.collection(CloudCollection.members).doc(user.uid);
-    final existingMember = await memberRef.get();
+    final existingMember = await _runJoinStep(
+      'comprobar la membresía',
+      memberRef.get,
+    );
 
     if (!existingMember.exists) {
-      await memberRef.set(<String, dynamic>{
-        'storeId': storeId,
-        'uid': user.uid,
-        'role': 'member',
-        'inviteCode': normalizedCode,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await _runJoinStep(
+        'registrar la membresía de la tienda',
+        () => memberRef.set(<String, dynamic>{
+          'storeId': storeId,
+          'uid': user.uid,
+          'role': 'member',
+          'inviteCode': normalizedCode,
+          'createdAt': FieldValue.serverTimestamp(),
+        }),
+      );
+    }
+
+    // Verify the membership before continuing. This keeps a failed join from
+    // being reported as successful and makes rule/configuration errors
+    // visible at the exact step that failed.
+    final verifiedMember = await _runJoinStep(
+      'verificar la membresía creada',
+      memberRef.get,
+    );
+    if (!verifiedMember.exists) {
+      throw StateError(
+        'Firebase no confirmó la membresía de este usuario en la tienda.',
+      );
     }
 
     // Membership now exists, so the authenticated user can safely read the
     // store metadata protected by the Firestore rules.
-    final storeSnapshot = await storeRef.get();
+    final storeSnapshot = await _runJoinStep(
+      'consultar los datos de la tienda',
+      storeRef.get,
+    );
     if (!storeSnapshot.exists) {
       throw StateError('La tienda asociada a esta invitación no existe.');
     }
@@ -215,10 +240,13 @@ class CloudStoreService {
       throw StateError('La tienda no tiene un nombre válido.');
     }
 
-    await accessService.joinAsUser(
-      storeId: storeId,
-      displayName: normalizedName,
-      invitationCode: normalizedCode,
+    await _runJoinStep(
+      'crear el usuario de la tienda',
+      () => accessService.joinAsUser(
+        storeId: storeId,
+        displayName: normalizedName,
+        invitationCode: normalizedCode,
+      ),
     );
 
     await identityStore.setStoreIdentity(
@@ -338,6 +366,23 @@ class CloudStoreService {
       'No se pudo generar un nuevo código de invitación. '
       'Inténtalo nuevamente.',
     );
+  }
+
+  Future<T> _runJoinStep<T>(
+    String step,
+    Future<T> Function() operation,
+  ) async {
+    try {
+      return await operation();
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') {
+        throw StateError(
+          'Firestore rechazó el paso "$step" por sus reglas de seguridad. '
+          'Publica las reglas actuales del proyecto stellar-pos-8384.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<CloudSyncResult> sync() => syncService.syncAll();
