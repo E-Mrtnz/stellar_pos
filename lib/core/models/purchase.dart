@@ -69,6 +69,7 @@ class PurchaseItemRecord implements SyncableEntity {
         metadata = metadata ?? SyncMetadata.initial();
 
   @override
+  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'productId': productId,
@@ -207,6 +208,8 @@ class PurchaseRecord implements SyncableEntity {
     total: total ?? this.total,
     metadata: metadata ?? this.metadata.touch(),
   );
+
+  @override
 
   Map<String, dynamic> toMap() => {
     'id': id,
