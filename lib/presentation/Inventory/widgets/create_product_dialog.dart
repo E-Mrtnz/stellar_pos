@@ -144,7 +144,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     node.addListener(() {
       if (!node.hasFocus) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (node.hasFocus && mounted)
+        if (node.hasFocus && mounted) {
           controller.selection = TextSelection(
             baseOffset: 0,
             extentOffset: controller.text.length,
@@ -170,20 +170,24 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       final groupQuantity = _readInt(_groupQuantityController.text);
       final groupPrice = _price(_groupPriceController.text);
       if (groupQuantity <= 0) invalid.add('groupQuantity');
-      if (_groupPriceController.text.trim().isEmpty || groupPrice < 0)
+      if (_groupPriceController.text.trim().isEmpty || groupPrice < 0) {
         invalid.add('groupPrice');
+      }
     }
     if (_allowPreparedSale) {
       final preparationExtra = _price(_preparationExtraController.text);
-      if (_preparationExtraController.text.trim().isEmpty || preparationExtra < 0)
+      if (_preparationExtraController.text.trim().isEmpty || preparationExtra < 0) {
         invalid.add('preparationExtra');
+      }
     }
     setState(() {
       _invalidFields
         ..clear()
         ..addAll(invalid);
     });
-    if (invalid.isEmpty) return true;
+    if (invalid.isEmpty) {
+      return true;
+    }
     _showValidation('Completa los campos obligatorios.');
     return false;
   }
@@ -203,8 +207,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   }
 
   void _clearError(String field) {
-    if (_invalidFields.contains(field))
+    if (_invalidFields.contains(field)) {
       setState(() => _invalidFields.remove(field));
+    }
   }
 
   bool _invalid(String field) => _invalidFields.contains(field);
