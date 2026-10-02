@@ -51,7 +51,9 @@ class ElectronicBalanceAdminLayout extends StatelessWidget {
 
   Future<void> _delete(BuildContext context, ElectronicBalanceAccount account) async {
     final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(title: const Text('Eliminar compañía'), content: Text('¿Deseas eliminar ${account.companyName}?'), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Eliminar'))]));
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
     final removed = context.read<ElectronicBalanceProvider>().removeAccount(account.id);
     if (!removed) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se puede eliminar una compañía con movimientos registrados.')));
   }
@@ -281,7 +283,9 @@ class _AccountDialogState extends State<_AccountDialog> {
   }
 
   Future<void> _pickImage() async {
-    if (_isPickingImage) return;
+    if (_isPickingImage) {
+      return;
+    }
     setState(() => _isPickingImage = true);
     try {
       List<int>? bytes;
@@ -295,14 +299,20 @@ class _AccountDialogState extends State<_AccountDialog> {
           allowMultiple: false,
           withData: true,
         );
-        if (result == null || result.files.isEmpty) return;
+        if (result == null || result.files.isEmpty) {
+          return;
+        }
         bytes = result.files.single.bytes;
       } else {
         final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, requestFullMetadata: false);
-        if (image == null) return;
+        if (image == null) {
+          return;
+        }
         bytes = await image.readAsBytes();
       }
-      if (bytes == null || bytes.isEmpty || !mounted) return;
+      if (bytes == null || bytes.isEmpty || !mounted) {
+        return;
+      }
       setState(() => _imageData = base64Encode(bytes!));
     } finally {
       if (mounted) setState(() => _isPickingImage = false);
