@@ -375,7 +375,7 @@ class _ClientCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onHistory,
                     icon: const Icon(Icons.receipt_long_outlined, size: 15),
-                    label: Text(purchaseCount.toString() + ' compras'),
+                    label: Text('$purchaseCount compras'),
                     style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 10)),
                   ),
                 IconButton(
@@ -390,11 +390,11 @@ class _ClientCard extends StatelessWidget {
             const SizedBox(height: 9),
             Row(
               children: [
-                Expanded(child: _AmountBox('Deuda', '\$' + account.totalDebt.toStringAsFixed(2), AppColors.dangerRed)),
+                Expanded(child: _AmountBox('Deuda', '\${account.totalDebt.toStringAsFixed(2)}', AppColors.dangerRed)),
                 const SizedBox(width: 7),
-                Expanded(child: _AmountBox('Abonado', '\$' + account.totalPaid.toStringAsFixed(2), AppColors.successGreen)),
+                Expanded(child: _AmountBox('Abonado', '\${account.totalPaid.toStringAsFixed(2)}', AppColors.successGreen)),
                 const SizedBox(width: 7),
-                Expanded(child: _AmountBox('Restante', '\$' + account.remaining.toStringAsFixed(2), account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
+                Expanded(child: _AmountBox('Restante', '\${account.remaining.toStringAsFixed(2)}', account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
               ],
             ),
             if (onPayment != null || onReminder != null)
@@ -487,9 +487,7 @@ class _MovementTile extends StatelessWidget {
             ),
           ),
           Text(
-            (isPayment ? '+' : '') +
-                '\$' +
-                movement.amount.toStringAsFixed(2),
+            '${isPayment ? '+' : ''}\${movement.amount.toStringAsFixed(2)}',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
