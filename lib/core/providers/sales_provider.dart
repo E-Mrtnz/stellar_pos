@@ -461,7 +461,9 @@ class SalesProvider extends ChangeNotifier {
     );
     final byProduct = <String, SaleItemRecord>{};
     void add(SaleItemRecord item, int sign) {
-      if (item.isElectronicBalance) return;
+      if (item.isElectronicBalance) {
+        return;
+      }
       final quantity = item.quantity * sign;
       final current = byProduct[item.productId];
       final nextQuantity = (current?.quantity ?? 0) + quantity;
@@ -602,7 +604,9 @@ class SalesProvider extends ChangeNotifier {
   }
 
   void clearSales() {
-    if (_sales.isEmpty && _nextTicketNumber == 1) return;
+    if (_sales.isEmpty && _nextTicketNumber == 1) {
+      return;
+    }
     final ids = _sales.map((sale) => sale.id).toList(growable: false);
     _sales.clear();
     _nextTicketNumber = 1;
