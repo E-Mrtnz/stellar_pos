@@ -79,8 +79,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   KeyEventResult _handleBarcodeKey(FocusNode node, KeyEvent event) {
-    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent)
+    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent) {
       return KeyEventResult.ignored;
+    }
     final isEnter =
         event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter;
@@ -95,8 +96,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return KeyEventResult.ignored;
     }
     final character = event.character;
-    if (character == null || character.isEmpty || character.trim().isEmpty)
+    if (character == null || character.isEmpty || character.trim().isEmpty) {
       return KeyEventResult.ignored;
+    }
     final now = DateTime.now();
     final elapsed = _lastBarcodeInputAt == null
         ? null
@@ -150,8 +152,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       if (entry.mounted) {
         entry.remove();
       }
-      if (identical(_productNotFoundOverlay, entry))
+      if (identical(_productNotFoundOverlay, entry)) {
         _productNotFoundOverlay = null;
+      }
     });
   }
 
@@ -199,10 +202,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         return;
       }
       final item = _electronicBalanceSelection[index];
-      if (item.quantity <= 1)
+      if (item.quantity <= 1) {
         _removeElectronicItem(productId);
-      else
+      } else {
         _setElectronicQuantity(productId, item.quantity - 1);
+      }
       return;
     }
     setState(() {
@@ -210,9 +214,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       if (quantity == null) {
         return;
       }
-      if (quantity > 1)
+      if (quantity > 1) {
         _cartQuantities[productId] = quantity - 1;
-      else {
+      } else {
         _cartQuantities.remove(productId);
         _preparedProductIds.remove(productId);
       }
@@ -272,8 +276,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Map<String, int> get _combinedCartQuantities {
     final result = Map<String, int>.from(_cartQuantities);
-    for (final item in _electronicBalanceSelection)
+    for (final item in _electronicBalanceSelection) {
       result[item.key] = item.quantity;
+    }
     return result;
   }
 
@@ -308,8 +313,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           ? (product.price + product.preparationExtra) * entry.value
           : product.priceForQuantity(entry.value);
     }
-    for (final item in _electronicBalanceSelection)
+    for (final item in _electronicBalanceSelection) {
       total += item.amount * item.quantity;
+    }
     return total;
   }
 
@@ -562,8 +568,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   double _operationUnitPrice(SaleRecord sale, String productId) {
     for (final item in sale.items) {
-      if (item.productId == productId && item.quantity > 0)
+      if (item.productId == productId && item.quantity > 0) {
         return item.lineTotal / item.quantity;
+      }
     }
     return 0;
   }
@@ -670,10 +677,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           prepared: _preparedProductIds.contains(input.key),
           productProvider: context.read<ProductProvider>(),
         );
-        if (out.value > quantity)
+        if (out.value > quantity) {
           outs.insert(0, MapEntry(out.key, out.value - quantity));
-        if (input.value > quantity)
+        }
+        if (input.value > quantity) {
           ins.insert(0, MapEntry(input.key, input.value - quantity));
+        }
       }
       final difference = _operationDifference;
       final updated = sales.sales.firstWhere((item) => item.id == sale.id);
@@ -740,13 +749,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     final catalog = context.read<CatalogProvider>();
     String? clientId;
-    if (_selectedDebtor != null)
+    if (_selectedDebtor != null) {
       for (final client in catalog.clients) {
         if (client.name == _selectedDebtor) {
           clientId = client.id;
           break;
         }
       }
+    }
     final received =
         double.tryParse(_cashReceivedController.text.replaceAll(',', '.')) ?? 0;
     final effectiveReceived = _selectedPaymentMethod == AppPaymentMethods.credit
