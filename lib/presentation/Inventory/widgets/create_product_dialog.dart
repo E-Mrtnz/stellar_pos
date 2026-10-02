@@ -944,9 +944,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.10),
+          color: Colors.white.withValues(alpha: 0.10),
           borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: Colors.white.withOpacity(0.25)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1005,7 +1005,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: invalid ? Colors.red.shade400 : Colors.white.withOpacity(0.5),
+        color: invalid ? Colors.red.shade400 : Colors.white.withValues(alpha: 0.5),
         width: invalid ? 1.8 : 1.2,
       ),
     ),
@@ -1099,7 +1099,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       suffixIcon: suffix,
       filled: true,
       fillColor: invalid
-          ? Colors.red.withOpacity(0.06)
+          ? Colors.red.withValues(alpha: 0.06)
           : AppColors.inputBackground,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
