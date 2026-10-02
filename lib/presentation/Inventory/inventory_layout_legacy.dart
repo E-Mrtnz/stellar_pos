@@ -156,7 +156,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
 
     final duplicate = Map<String, dynamic>.from(product)
       ..['id'] = ''
@@ -167,14 +169,18 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _importInventory() async {
-    if (_isImporting) return;
+    if (_isImporting) {
+      return;
+    }
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['xlsx', 'xlsm'],
       allowMultiple: false,
       withData: true,
     );
-    if (result == null || result.files.isEmpty || !mounted) return;
+    if (result == null || result.files.isEmpty || !mounted) {
+      return;
+    }
 
     final file = result.files.single;
     final bytes = file.bytes;
@@ -189,7 +195,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
         Uint8List.fromList(bytes),
         _fileExtension(file.name),
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (parsed.products.isEmpty) {
         _showFileMessage(
           parsed.errors.isEmpty
@@ -273,7 +281,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _exportExcel() async {
-    if (_isExporting) return;
+    if (_isExporting) {
+      return;
+    }
     setState(() => _isExporting = true);
     try {
       await InventoryFileService.saveExcel(context.read<ProductProvider>().products);
@@ -292,7 +302,9 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   }
 
   Future<void> _exportPdf() async {
-    if (_isExporting) return;
+    if (_isExporting) {
+      return;
+    }
     setState(() => _isExporting = true);
     try {
       await InventoryFileService.savePdf(context.read<ProductProvider>().products);
