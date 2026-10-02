@@ -58,6 +58,8 @@ class SidebarDrawer extends StatelessWidget {
                     // CloudAccessProvider. Once access is resolved, entries
                     // are filtered normally by the user's permissions.
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.dashboardView))
                       _buildSidebarItem(
                         AppNavigation.home,
@@ -65,6 +67,8 @@ class SidebarDrawer extends StatelessWidget {
                         AppStrings.navHome,
                       ),
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.salesView))
                       _buildSidebarItem(
                         AppNavigation.electronicBalance,
@@ -72,6 +76,8 @@ class SidebarDrawer extends StatelessWidget {
                         AppStrings.navSales,
                       ),
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.purchasesView))
                       _buildSidebarItem(
                         AppNavigation.purchases,
@@ -79,6 +85,8 @@ class SidebarDrawer extends StatelessWidget {
                         AppStrings.navPurchases,
                       ),
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.debtsView))
                       _buildSidebarItem(
                         AppNavigation.debts,
@@ -86,6 +94,8 @@ class SidebarDrawer extends StatelessWidget {
                         AppStrings.navDebts,
                       ),
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.statisticsView))
                       _buildSidebarItem(
                         AppNavigation.stats,
@@ -93,6 +103,8 @@ class SidebarDrawer extends StatelessWidget {
                         AppStrings.navStats,
                       ),
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.providersView))
                       _buildSidebarItem(
                         AppNavigation.providers,
@@ -100,6 +112,8 @@ class SidebarDrawer extends StatelessWidget {
                         AppStrings.navProviders,
                       ),
                     if (!access.accessResolved ||
+                        access.currentUser == null ||
+                        access.errorMessage != null ||
                         access.hasPermission(StorePermissions.inventoryView))
                       _buildSidebarItem(
                         AppNavigation.inventory,
@@ -116,6 +130,8 @@ class SidebarDrawer extends StatelessWidget {
                 color: AppColors.border,
               ),
               if (!access.accessResolved ||
+                  access.currentUser == null ||
+                  access.errorMessage != null ||
                   access.hasPermission(StorePermissions.settingsView))
                 _buildSidebarItem(
                   AppNavigation.settings,
