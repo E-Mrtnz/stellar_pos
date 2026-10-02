@@ -59,9 +59,13 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
   Future<void> _pickDate() async {
     if (_period == _StatsPeriod.custom) {
       final s = await showDatePicker(context: context, initialDate: _customStart ?? _anchor, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
-      if (s == null || !mounted) return;
+      if (s == null || !mounted) {
+        return;
+      }
       final e = await showDatePicker(context: context, initialDate: _customEnd ?? s, firstDate: s, lastDate: DateTime.now().add(const Duration(days: 365)));
-      if (e == null) return;
+      if (e == null) {
+        return;
+      }
       setState(() { _customStart = s; _customEnd = e; });
     } else {
       final d = await showDatePicker(context: context, initialDate: _anchor, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
@@ -209,7 +213,9 @@ class _Snapshot {
   factory _Snapshot.from(List<SaleRecord> sales, List purchases) {
     var s = 0.0, p = 0.0, c = 0.0, n = 0;
     for (final x in sales) {
-      if (x.isAnnulled) continue;
+      if (x.isAnnulled) {
+        continue;
+      }
       n++; s += x.effectiveTotal; p += x.effectiveProfit; c += _saleCost(x);
     }
     return _Snapshot(s, p, c, purchases.fold<double>(0, (v, x) => v + x.total), n);
@@ -387,7 +393,9 @@ class _BarTrendPainter extends CustomPainter {
     final maxValue =
         points.fold<double>(0, (max, point) => math.max(max, point.value));
 
-    if (maxValue <= 0) return;
+    if (maxValue <= 0) {
+      return;
+    }
 
     final gridPaint = Paint()..color = AppColors.border..strokeWidth = 1;
     for (var i = 0; i < 4; i++) {
