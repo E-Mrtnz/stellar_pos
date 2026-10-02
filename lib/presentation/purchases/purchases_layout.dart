@@ -104,8 +104,9 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     final query = _searchController.text.trim().toLowerCase();
     return all.where((purchase) {
       if (purchase.arrivalAt.isBefore(range.start) ||
-          !purchase.arrivalAt.isBefore(range.end))
+          !purchase.arrivalAt.isBefore(range.end)) {
         return false;
+      }
       if (query.isEmpty) {
         return true;
       }
@@ -484,8 +485,8 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             Expanded(
               child: Text(
                 purchase.isElectronicBalancePurchase
-                    ? '\$' + purchase.total.toStringAsFixed(2) + ' de saldo'
-                    : purchase.itemCount.toString() + ' unidades',
+                    ? '\${purchase.total.toStringAsFixed(2)} de saldo'
+                    : '${purchase.itemCount} unidades',
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
@@ -594,14 +595,11 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
   const _ElectronicBalancePurchaseDetailDialog(this.purchase);
 
-  String _money(double value) => '\$' + value.toStringAsFixed(2);
+  String _money(double value) => '\${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
-      value.day.toString().padLeft(2, '0') +
-      '/' + value.month.toString().padLeft(2, '0') +
-      '/' + value.year.toString();
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   String _time(DateTime value) =>
-      value.hour.toString().padLeft(2, '0') +
-      ':' + value.minute.toString().padLeft(2, '0');
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 
   Future<void> _modify(BuildContext context) async {
     final updated = await showDialog<bool>(
