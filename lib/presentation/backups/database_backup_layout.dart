@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/app.dart';
+import 'package:stellar_pos/core/app/app_providers.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/services/database_backup_service.dart';
 
