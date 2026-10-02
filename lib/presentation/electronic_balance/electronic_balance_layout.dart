@@ -73,7 +73,9 @@ class ElectronicBalanceLayout extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
     final removed = context.read<ElectronicBalanceProvider>().removeAccount(account.id);
     if (!removed) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se puede eliminar una compañía con movimientos registrados.')));
   }
