@@ -1070,7 +1070,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
     if (_selectedNavIndex == AppNavigation.stats) return const StatisticsLayout();
     if (_selectedNavIndex == AppNavigation.settings)
-      return const PrinterSettingsLayout();
+      return PrinterSettingsLayout(
+        onReturnToHome: () {
+          if (!mounted) return;
+          setState(() => _selectedNavIndex = AppNavigation.home);
+        },
+      );
     if (_selectedNavIndex != AppNavigation.home)
       return const _EmptySectionPanel();
     return _buildHomeContent();
