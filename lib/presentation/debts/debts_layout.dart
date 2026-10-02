@@ -185,7 +185,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
                     Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.primary.withAlpha(28), borderRadius: BorderRadius.circular(5)), child: const Text('GRUPO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .4, color: AppColors.primary))),
                   ]),
                   const SizedBox(height: 2),
-                  Text('${members.length} integrantes', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  Text('$members.length integrantes', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
                 ])),
                 Text(_money(remaining), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: remaining > .005 ? AppColors.dangerRed : AppColors.successGreen)),
                 const SizedBox(width: 5),
@@ -201,7 +201,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
             decoration: const BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.vertical(bottom: Radius.circular(13))),
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Padding(padding: const EdgeInsets.fromLTRB(5, 0, 5, 4), child: Row(children: [const Icon(Icons.people_outline, size: 14, color: AppColors.primary), const SizedBox(width: 5), const Text('INTEGRANTES DEL GRUPO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .45, color: AppColors.primary)), const Spacer(), Text('${members.length}', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
+              Padding(padding: const EdgeInsets.fromLTRB(5, 0, 5, 4), child: Row(children: [const Icon(Icons.people_outline, size: 14, color: AppColors.primary), const SizedBox(width: 5), const Text('INTEGRANTES DEL GRUPO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .45, color: AppColors.primary)), const Spacer(), Text('$members.length', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
               const Divider(height: 8, color: AppColors.border),
               ...members.map((c) => Padding(padding: const EdgeInsets.only(bottom: 7), child: _clientCard(c, debts, sales, compact: true))),
               if (members.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Center(child: Text('Este grupo no tiene clientes asignados.', style: TextStyle(color: AppColors.textMuted, fontSize: 11)))),
@@ -251,7 +251,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   }
 
   Widget _historyPanel(DebtProvider p) => _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-    Row(children: [const Icon(Icons.history, size: 18, color: AppColors.textSecondary), const SizedBox(width: 7), const Text('Historial', style: AppTextStyles.sectionTitle), const Spacer(), Text('${p.movements.length}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11))]),
+    Row(children: [const Icon(Icons.history, size: 18, color: AppColors.textSecondary), const SizedBox(width: 7), const Text('Historial', style: AppTextStyles.sectionTitle), const Spacer(), Text('$p.movements.length', style: const TextStyle(color: AppColors.textMuted, fontSize: 11))]),
     const SizedBox(height: 10),
     Expanded(child: p.movements.isEmpty ? const _EmptyState('Todavía no hay movimientos.', Icons.receipt_long_outlined) : ListView.separated(itemCount: p.movements.length, separatorBuilder: (_, __) => const SizedBox(height: 7), itemBuilder: (_, i) => _MovementTile(p.movements[i]))),
   ]));
@@ -259,11 +259,19 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   List<Client> _filteredClients(List<Client> source, DebtProvider p, Set<String> grouped) {
     final q = _searchQuery.trim().toLowerCase();
     return source.where((c) {
-      if (grouped.contains(c.id)) return false;
-      if (q.isNotEmpty && !c.name.toLowerCase().contains(q) && !c.phone.toLowerCase().contains(q)) return false;
+      if (grouped.contains(c.id)) {
+        return false;
+      }
+      if (q.isNotEmpty && !c.name.toLowerCase().contains(q) && !c.phone.toLowerCase().contains(q)) {
+        return false;
+      }
       final remaining = p.accountFor(c.id)?.remaining ?? 0;
-      if (_filter == _DebtFilter.pending && remaining <= .005) return false;
-      if (_filter == _DebtFilter.paid && remaining > .005) return false;
+      if (_filter == _DebtFilter.pending && remaining <= .005) {
+        return false;
+      }
+      if (_filter == _DebtFilter.paid && remaining > .005) {
+        return false;
+      }
       return true;
     }).toList()..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
@@ -274,9 +282,15 @@ class _DebtsLayoutState extends State<DebtsLayout> {
     return source.where((g) {
       final members = g.clientIds.map((id) => byId[id]).whereType<Client>().toList();
       final remaining = members.fold<double>(0, (s, c) => s + (p.accountFor(c.id)?.remaining ?? 0));
-      if (q.isNotEmpty && !g.name.toLowerCase().contains(q) && !members.any((c) => c.name.toLowerCase().contains(q))) return false;
-      if (_filter == _DebtFilter.pending && remaining <= .005) return false;
-      if (_filter == _DebtFilter.paid && remaining > .005) return false;
+      if (q.isNotEmpty && !g.name.toLowerCase().contains(q) && !members.any((c) => c.name.toLowerCase().contains(q))) {
+        return false;
+      }
+      if (_filter == _DebtFilter.pending && remaining <= .005) {
+        return false;
+      }
+      if (_filter == _DebtFilter.paid && remaining > .005) {
+        return false;
+      }
       return true;
     }).toList()..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
@@ -461,7 +475,7 @@ class _MovementTile extends StatelessWidget {
                 Text(
                   '${movement.createdAt.day.toString().padLeft(2, '0')}/'
                   '${movement.createdAt.month.toString().padLeft(2, '0')}/'
-                  '${movement.createdAt.year} · '
+                  '$movement.createdAt.year · '
                   '${movement.createdAt.hour.toString().padLeft(2, '0')}:'
                   '${movement.createdAt.minute.toString().padLeft(2, '0')}',
                   style: const TextStyle(
