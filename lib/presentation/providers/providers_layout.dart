@@ -193,9 +193,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: color.withOpacity(0.65)),
+        border: Border.all(color: color.withValues(alpha: 0.65)),
       ),
       child: Row(
         children: [
@@ -303,9 +303,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
@@ -313,7 +313,7 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.16),
+              color: color.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 17),
