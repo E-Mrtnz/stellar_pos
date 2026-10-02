@@ -41,11 +41,15 @@ class _SalesHistoryEntry {
       _SalesHistoryEntry._(sale: sale, createdAt: sale.createdAt);
 
   factory _SalesHistoryEntry.payment(DebtMovement payment) =>
-      _SalesHistoryEntry._(payment: payment, createdAt: payment.createdAt);
+      _SalesHistoryEntry._(
+        payment: payment,
+        createdAt: payment.createdAt,
+      );
 }
 
 class _SalesLayoutState extends State<SalesLayout> {
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController =
+      TextEditingController();
   _SalesPeriod _period = _SalesPeriod.daily;
   _SalesPaymentFilter _paymentFilter = _SalesPaymentFilter.all;
   _SalesTypeFilter _typeFilter = _SalesTypeFilter.all;
@@ -70,10 +74,17 @@ class _SalesLayoutState extends State<SalesLayout> {
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   DateTimeRange _range() {
-    final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+    final day = DateTime(
+      _anchorDate.year,
+      _anchorDate.month,
+      _anchorDate.day,
+    );
     switch (_period) {
       case _SalesPeriod.daily:
-        return DateTimeRange(start: day, end: day.add(const Duration(days: 1)));
+        return DateTimeRange(
+          start: day,
+          end: day.add(const Duration(days: 1)),
+        );
       case _SalesPeriod.weekly:
         final start = day.subtract(Duration(days: day.weekday - 1));
         return DateTimeRange(
@@ -190,8 +201,12 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   bool _typeMatches(SaleRecord sale) {
-    final hasElectronic = sale.items.any((item) => item.isElectronicBalance);
-    final hasProducts = sale.items.any((item) => !item.isElectronicBalance);
+    final hasElectronic = sale.items.any(
+      (item) => item.isElectronicBalance,
+    );
+    final hasProducts = sale.items.any(
+      (item) => !item.isElectronicBalance,
+    );
     switch (_typeFilter) {
       case _SalesTypeFilter.all:
         return true;
@@ -215,10 +230,14 @@ class _SalesLayoutState extends State<SalesLayout> {
             )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    final paid = <String, double>{for (final sale in credits) sale.id: 0};
+    final paid = <String, double>{
+      for (final sale in credits) sale.id: 0,
+    };
     final payments =
         movements
-            .where((movement) => movement.type == DebtMovementType.payment)
+            .where(
+              (movement) => movement.type == DebtMovementType.payment,
+            )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     for (final payment in payments) {
@@ -230,7 +249,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         if (outstanding <= 0.005) {
           continue;
         }
-        final applied = remaining > outstanding ? outstanding : remaining;
+        final applied = remaining > outstanding
+            ? outstanding
+            : remaining;
         paid[sale.id] = (paid[sale.id] ?? 0) + applied;
         remaining -= applied;
         if (remaining <= 0.005) {
@@ -279,7 +300,8 @@ class _SalesLayoutState extends State<SalesLayout> {
           final valid = reference != null && reference.isNotEmpty
               ? byId[reference]?.clientId == movement.clientId
               : byClient[movement.clientId]?.any(
-                      (sale) => !sale.createdAt.isAfter(movement.createdAt),
+                      (sale) =>
+                          !sale.createdAt.isAfter(movement.createdAt),
                     ) ??
                     false;
           return valid ? sum + movement.amount : sum;
@@ -290,7 +312,10 @@ class _SalesLayoutState extends State<SalesLayout> {
     if (sale.isAnnulled) {
       return 0;
     }
-    var count = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    var count = sale.items.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
     for (final operation in sale.operations) {
       count -= operation.itemsOut.fold<int>(
         0,
@@ -305,7 +330,9 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   @override
-  Widget build(BuildContext context) => Consumer2<SalesProvider, DebtProvider>(
+  Widget build(
+    BuildContext context,
+  ) => Consumer2<SalesProvider, DebtProvider>(
     builder: (context, salesProvider, debtProvider, _) {
       final sales = _filterSales(salesProvider.sales);
       final payments = _filterPayments(debtProvider.movements);
@@ -327,7 +354,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         (sum, sale) => sum + _collectedFromSale(sale),
       );
       final credit = sales
-          .where((sale) => sale.paymentMethod == AppStrings.creditPayment)
+          .where(
+            (sale) => sale.paymentMethod == AppStrings.creditPayment,
+          )
           .fold(
             0.0,
             (sum, sale) =>
@@ -339,7 +368,10 @@ class _SalesLayoutState extends State<SalesLayout> {
         range,
       );
       final cashIn = collected + laterPayments;
-      final profit = sales.fold(0.0, (sum, sale) => sum + sale.effectiveProfit);
+      final profit = sales.fold(
+        0.0,
+        (sum, sale) => sum + sale.effectiveProfit,
+      );
       final itemCount = sales.fold<int>(
         0,
         (sum, sale) => sum + _effectiveItemCount(sale),
@@ -372,8 +404,8 @@ class _SalesLayoutState extends State<SalesLayout> {
           valueColor: AppColors.successGreen,
         ),
         PeriodSummaryMetric('Cantidad de ventas', '${sales.length}'),
-        PeriodSummaryMetric('Artículos vendidos', '${itemCount}'),
-        PeriodSummaryMetric('Clientes', '${clientCount}'),
+        PeriodSummaryMetric('Artículos vendidos', '$itemCount'),
+        PeriodSummaryMetric('Clientes', '$clientCount'),
       ];
       return Padding(
         padding: const EdgeInsets.all(AppDimensions.pagePadding),
@@ -382,7 +414,13 @@ class _SalesLayoutState extends State<SalesLayout> {
           children: [
             _buildHeader(),
             const SizedBox(height: 10),
-            _buildMetrics(totalSold, collected, credit, laterPayments, cashIn),
+            _buildMetrics(
+              totalSold,
+              collected,
+              credit,
+              laterPayments,
+              cashIn,
+            ),
             const SizedBox(height: 12),
             _buildFilters(),
             const SizedBox(height: 12),
@@ -428,7 +466,10 @@ class _SalesLayoutState extends State<SalesLayout> {
             SizedBox(height: 3),
             Text(
               'Historial y registro de las ventas realizadas.',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -437,7 +478,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         onPressed: _pickDate,
         icon: const Icon(Icons.calendar_today_outlined, size: 16),
         label: Text(
-          _period == _SalesPeriod.custom ? 'Elegir rango' : _dateLabel(),
+          _period == _SalesPeriod.custom
+              ? 'Elegir rango'
+              : _dateLabel(),
         ),
       ),
       const SizedBox(width: 8),
@@ -446,10 +489,22 @@ class _SalesLayoutState extends State<SalesLayout> {
             ? _pickRange()
             : setState(() => _period = value),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: _SalesPeriod.daily, child: Text('Diario')),
-          PopupMenuItem(value: _SalesPeriod.weekly, child: Text('Semanal')),
-          PopupMenuItem(value: _SalesPeriod.monthly, child: Text('Mensual')),
-          PopupMenuItem(value: _SalesPeriod.yearly, child: Text('Anual')),
+          PopupMenuItem(
+            value: _SalesPeriod.daily,
+            child: Text('Diario'),
+          ),
+          PopupMenuItem(
+            value: _SalesPeriod.weekly,
+            child: Text('Semanal'),
+          ),
+          PopupMenuItem(
+            value: _SalesPeriod.monthly,
+            child: Text('Mensual'),
+          ),
+          PopupMenuItem(
+            value: _SalesPeriod.yearly,
+            child: Text('Anual'),
+          ),
           PopupMenuItem(
             value: _SalesPeriod.custom,
             child: Text('Rango personalizado'),
@@ -551,51 +606,55 @@ class _SalesLayoutState extends State<SalesLayout> {
       ),
     ],
   );
-  Widget _metric(String label, double amount, IconData icon, Color color) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowColor,
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
-          ],
+  Widget _metric(
+    String label,
+    double amount,
+    IconData icon,
+    Color color,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+      border: Border.all(color: AppColors.border),
+      boxShadow: const [
+        BoxShadow(
+          color: AppColors.shadowColor,
+          blurRadius: 8,
+          offset: Offset(0, 3),
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _money(amount),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+      ],
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                _money(amount),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
   Widget _buildFilters() => Row(
     children: [
       Expanded(
@@ -609,7 +668,10 @@ class _SalesLayoutState extends State<SalesLayout> {
       PopupMenuButton<_SalesTypeFilter>(
         onSelected: (value) => setState(() => _typeFilter = value),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: _SalesTypeFilter.all, child: Text('Todas')),
+          PopupMenuItem(
+            value: _SalesTypeFilter.all,
+            child: Text('Todas'),
+          ),
           PopupMenuItem(
             value: _SalesTypeFilter.products,
             child: Text('Productos'),
@@ -624,7 +686,10 @@ class _SalesLayoutState extends State<SalesLayout> {
       PopupMenuButton<_SalesPaymentFilter>(
         onSelected: (value) => setState(() => _paymentFilter = value),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: _SalesPaymentFilter.all, child: Text('Todos')),
+          PopupMenuItem(
+            value: _SalesPaymentFilter.all,
+            child: Text('Todos'),
+          ),
           PopupMenuItem(
             value: _SalesPaymentFilter.cash,
             child: Text('Efectivo'),
@@ -712,41 +777,43 @@ class _SalesLayoutState extends State<SalesLayout> {
   Widget _buildList(
     List<_SalesHistoryEntry> entries,
     Map<String, double> paidBySale,
-  ) =>
-      HistoryTablePanel(
-        title: 'Historial de ventas',
-        icon: Icons.receipt_long_outlined,
-        itemCount: entries.length,
-        header: _buildListHeader(),
-        emptyState: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 40,
-                color: AppColors.textMuted,
-              ),
-              SizedBox(height: 10),
-              Text(
-                'No hay ventas ni abonos en este período.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
+  ) => HistoryTablePanel(
+    title: 'Historial de ventas',
+    icon: Icons.receipt_long_outlined,
+    itemCount: entries.length,
+    header: _buildListHeader(),
+    emptyState: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 40,
+            color: AppColors.textMuted,
           ),
-        ),
-        itemBuilder: (_, index) {
-          final entry = entries[index];
-          if (entry.payment != null) {
-            return _paymentRow(entry.payment!);
-          }
-          final sale = entry.sale!;
-          return _saleRow(
-            sale,
-            paidBySale[sale.id] ?? sale.effectiveCollected,
-          );
-        },
+          SizedBox(height: 10),
+          Text(
+            'No hay ventas ni abonos en este período.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    ),
+    itemBuilder: (_, index) {
+      final entry = entries[index];
+      if (entry.payment != null) {
+        return _paymentRow(entry.payment!);
+      }
+      final sale = entry.sale!;
+      return _saleRow(
+        sale,
+        paidBySale[sale.id] ?? sale.effectiveCollected,
       );
+    },
+  );
   Widget _buildListHeader() => Container(
     padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
     decoration: const BoxDecoration(
@@ -777,7 +844,10 @@ class _SalesLayoutState extends State<SalesLayout> {
         ),
         Expanded(
           flex: 18,
-          child: Text('Estado / operación', style: AppTextStyles.ticketLabel),
+          child: Text(
+            'Estado / operación',
+            style: AppTextStyles.ticketLabel,
+          ),
         ),
         Expanded(
           flex: 10,
@@ -794,7 +864,9 @@ class _SalesLayoutState extends State<SalesLayout> {
   Widget _saleRow(SaleRecord sale, double paid) {
     final credit = sale.paymentMethod == AppStrings.creditPayment;
     final pending = credit
-        ? (sale.effectiveTotal - paid).clamp(0, double.infinity).toDouble()
+        ? (sale.effectiveTotal - paid)
+              .clamp(0, double.infinity)
+              .toDouble()
         : 0.0;
     final items = _effectiveItemCount(sale);
     final time =
@@ -802,7 +874,10 @@ class _SalesLayoutState extends State<SalesLayout> {
     return InkWell(
       onTap: () => _showDetails(sale, paid),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -858,10 +933,7 @@ class _SalesLayoutState extends State<SalesLayout> {
               flex: 10,
               child: _paymentBadge(sale.paymentMethod),
             ),
-            Expanded(
-              flex: 18,
-              child: _statusOperationBadges(sale),
-            ),
+            Expanded(flex: 18, child: _statusOperationBadges(sale)),
             Expanded(
               flex: 10,
               child: Column(
@@ -920,14 +992,20 @@ class _SalesLayoutState extends State<SalesLayout> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
         child: Row(
           children: [
             const Expanded(
               flex: 10,
               child: Text(
                 '—',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
             Expanded(
@@ -966,10 +1044,7 @@ class _SalesLayoutState extends State<SalesLayout> {
                 ),
               ),
             ),
-            Expanded(
-              flex: 10,
-              child: _paymentBadge('Abono'),
-            ),
+            Expanded(flex: 10, child: _paymentBadge('Abono')),
             const Expanded(
               flex: 18,
               child: Align(
@@ -1051,7 +1126,10 @@ class _SalesLayoutState extends State<SalesLayout> {
             padding: EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               '—',
-              style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
         );
@@ -1080,7 +1158,11 @@ class _SalesLayoutState extends State<SalesLayout> {
     ),
     child: Text(
       label,
-      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
     ),
   );
   Widget _paymentBadge(String method) => Align(
