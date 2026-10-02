@@ -20,6 +20,7 @@ class ElectronicBalanceSaleOption implements SyncableEntity {
       : id = id ?? IdGenerator.newId(), metadata = metadata ?? SyncMetadata.initial();
 
   @override
+  @override
   Map<String, dynamic> toMap() => {'id': id, 'category': category, 'amount': amount, 'commissionRate': commissionRate, 'metadata': metadata.toMap()};
 
   factory ElectronicBalanceSaleOption.fromMap(Map<String, dynamic> map) => ElectronicBalanceSaleOption(
@@ -60,6 +61,8 @@ class ElectronicBalanceAccount implements SyncableEntity {
     id: id ?? this.id, companyName: companyName ?? this.companyName, commissionRate: commissionRate ?? this.commissionRate, balance: balance ?? this.balance, imageData: imageData ?? this.imageData, saleOptions: saleOptions ?? this.saleOptions,
     metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
 
+  @override
+
   Map<String, dynamic> toMap() => {'id': id, 'companyName': companyName, 'commissionRate': commissionRate, 'balance': balance, 'imageData': imageData, 'saleOptions': saleOptions.map((option) => option.toMap()).toList(), 'metadata': metadata.toMap()};
 
   factory ElectronicBalanceAccount.fromMap(Map<String, dynamic> map) => ElectronicBalanceAccount(
@@ -87,6 +90,8 @@ class ElectronicBalanceTransaction implements SyncableEntity {
 
   ElectronicBalanceTransaction({required this.id, required this.accountId, required this.type, required this.amount, required this.providerCost, required this.profit, required this.category, required this.description, required this.createdAt, this.saleId, this.purchaseId, SyncMetadata? metadata})
       : metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
+
+  @override
 
   Map<String, dynamic> toMap() => {'id': id, 'accountId': accountId, 'type': type.name, 'amount': amount, 'providerCost': providerCost, 'profit': profit, 'category': category, 'description': description, 'createdAt': createdAt.toIso8601String(), 'saleId': saleId, 'purchaseId': purchaseId, 'metadata': metadata.toMap()};
 
