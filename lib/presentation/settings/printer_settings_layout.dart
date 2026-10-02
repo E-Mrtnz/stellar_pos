@@ -13,7 +13,9 @@ import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
 import 'printer_settings_layout_legacy.dart' as legacy;
 
 class PrinterSettingsLayout extends StatefulWidget {
-  const PrinterSettingsLayout({super.key});
+  final VoidCallback? onReturnToHome;
+
+  const PrinterSettingsLayout({super.key, this.onReturnToHome});
 
   @override
   State<PrinterSettingsLayout> createState() => _PrinterSettingsLayoutState();
@@ -215,9 +217,18 @@ class _CloudStoreSettingsContent extends StatelessWidget {
               if (!dialogContext.mounted) return;
 
               if (success) {
-                await context.read<CloudAccessProvider>().load();
+                // The join flow changes the authenticated user's access record
+                // without changing the store id. Force a fresh access snapshot
+                // so the previous account's permissions cannot leak into the
+                // newly joined session.
+                await context
+                    .read<CloudAccessProvider>()
+                    .loadForStore(provider.storeId, force: true);
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop(true);
+                }
+                if (!createMode && context.mounted) {
+                  widget.onReturnToHome?.call();
                 }
                 return;
               }
