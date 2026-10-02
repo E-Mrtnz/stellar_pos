@@ -49,10 +49,14 @@ class ElectronicBalanceAccount implements SyncableEntity {
   List<String> get saleCategories {
     final result = <String>[];
     const standard = ['Saldo', 'Internet', 'Llamada'];
-    for (final category in standard) result.add(category);
+    for (final category in standard) {
+      result.add(category);
+    }
     for (final option in saleOptions) {
       final category = option.category.trim();
-      if (category.isNotEmpty && !result.contains(category)) result.add(category);
+      if (category.isNotEmpty && !result.contains(category)) {
+        result.add(category);
+      }
     }
     return List.unmodifiable(result);
   }
