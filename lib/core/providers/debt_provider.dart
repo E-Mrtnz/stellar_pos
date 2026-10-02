@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/app/app_dependencies.dart';
-import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/domain/services/debt_service.dart';
 import 'package:stellar_pos/core/models/debt.dart';
