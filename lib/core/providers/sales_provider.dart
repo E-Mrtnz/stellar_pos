@@ -9,7 +9,6 @@ import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart
 import 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';
 import 'package:stellar_pos/core/domain/services/sale_lifecycle_service.dart';
 import 'package:stellar_pos/core/models/electronic_balance.dart';
-import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
