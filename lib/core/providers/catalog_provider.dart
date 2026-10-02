@@ -79,8 +79,12 @@ class CatalogProvider extends ChangeNotifier
   @override
   void registerBrandValue(String brand) {
     final value = brand.trim();
-    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
-    if (_service.containsIgnoreCase(_externalBrands, value)) return;
+    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) {
+      return;
+    }
+    if (_service.containsIgnoreCase(_externalBrands, value)) {
+      return;
+    }
     _externalBrands.add(value);
     notifyListeners();
   }
@@ -88,7 +92,9 @@ class CatalogProvider extends ChangeNotifier
   @override
   void registerCategoryValue(String category) {
     final value = _service.normalizeName(category);
-    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) return;
+    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) {
+      return;
+    }
     _tags.add(value);
     _persistCatalog();
     notifyListeners();
@@ -282,7 +288,9 @@ class CatalogProvider extends ChangeNotifier
   void addClient(Client client) {
     final name = _service.normalizeName(client.name);
     final phone = client.phone.trim();
-    if (name.isEmpty || _containsClientName(name)) return;
+    if (name.isEmpty || _containsClientName(name)) {
+      return;
+    }
     final id = client.id.isEmpty ? IdGenerator.newId() : client.id;
     final normalized = client.copyWith(
       id: id,
@@ -313,7 +321,9 @@ class CatalogProvider extends ChangeNotifier
   void removeClient(String clientId) {
     final before = _clients.length;
     _clients.removeWhere((client) => client.id == clientId);
-    if (before == _clients.length) return;
+    if (before == _clients.length) {
+      return;
+    }
     notifyListeners();
     _persist(() => _clientRepository?.delete(clientId));
   }
@@ -359,7 +369,9 @@ class CatalogProvider extends ChangeNotifier
     }
 
     void mergeState(ProviderCatalogState? state) {
-      if (state == null) return;
+      if (state == null) {
+        return;
+      }
       for (final tag in state.tags) addUnique(mergedTags, tag);
       for (final brand in state.brands) addUnique(mergedBrands, brand);
       for (final distributor in state.distributors) {
@@ -403,7 +415,9 @@ class CatalogProvider extends ChangeNotifier
 
   void _persistCatalog() {
     final repository = _catalogRepository;
-    if (repository == null) return;
+    if (repository == null) {
+      return;
+    }
     final state = ProviderCatalogState(
       id: _catalogStateId,
       distributors: _distributors,
