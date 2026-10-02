@@ -25,6 +25,7 @@ class CloudAccessProvider extends ChangeNotifier {
   bool _accessResolved = false;
   String? _error;
   String? _loadedStoreId;
+  String? _loadedAuthUid;
 
   CloudAccessProvider({
     CloudStoreAccessService? service,
@@ -93,13 +94,21 @@ class CloudAccessProvider extends ChangeNotifier {
       await _cancelAccessListener();
       ++_accessGeneration;
       _loadedStoreId = null;
+      _loadedAuthUid = null;
       _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
       _accessResolved = true;
       notifyListeners();
       return;
     }
-    if (!force && _loadedStoreId == normalizedStoreId && _accessResolved) return;
+    final authUid = auth.currentUser?.uid;
+    if (!force &&
+        _loadedStoreId == normalizedStoreId &&
+        _loadedAuthUid == authUid &&
+        _accessResolved) {
+      return;
+    }
     _loadedStoreId = normalizedStoreId;
+    _loadedAuthUid = authUid;
     _accessResolved = false;
 
     _loading = true;
@@ -110,8 +119,10 @@ class CloudAccessProvider extends ChangeNotifier {
       final user = auth.currentUser;
       if (user == null) {
         _snapshot = const StoreAccessSnapshot(users: [], devices: [], roles: []);
+        _loadedAuthUid = null;
         return;
       }
+      _loadedAuthUid = user.uid;
 
       _snapshot = await service.load(normalizedStoreId);
       if (generation == _accessGeneration) {
