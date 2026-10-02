@@ -117,7 +117,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   void _showProductNotFoundAlert() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     _productNotFoundTimer?.cancel();
     _productNotFoundOverlay?.remove();
     final overlay = Overlay.of(context, rootOverlay: true);
@@ -151,7 +153,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   void _addToCart(String productId) {
     final product = context.read<ProductProvider>().findById(productId);
-    if (product == null) return;
+    if (product == null) {
+      return;
+    }
     setState(
       () => _cartQuantities[productId] = (_cartQuantities[productId] ?? 0) + 1,
     );
@@ -159,7 +163,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   void _togglePrepared(String productId, bool prepared) {
     final product = context.read<ProductProvider>().findById(productId);
-    if (product == null || !product.allowPreparedSale) return;
+    if (product == null || !product.allowPreparedSale) {
+      return;
+    }
     setState(() {
       if (prepared) {
         _preparedProductIds.add(productId);
@@ -174,7 +180,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _setElectronicQuantity(productId, quantity);
       return;
     }
-    if (quantity <= 0) return;
+    if (quantity <= 0) {
+      return;
+    }
     setState(() => _cartQuantities[productId] = quantity);
   }
 
@@ -183,7 +191,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       final index = _electronicBalanceSelection.indexWhere(
         (item) => item.key == productId,
       );
-      if (index < 0) return;
+      if (index < 0) {
+        return;
+      }
       final item = _electronicBalanceSelection[index];
       if (item.quantity <= 1)
         _removeElectronicItem(productId);
@@ -193,7 +203,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     setState(() {
       final quantity = _cartQuantities[productId];
-      if (quantity == null) return;
+      if (quantity == null) {
+        return;
+      }
       if (quantity > 1)
         _cartQuantities[productId] = quantity - 1;
       else {
@@ -233,7 +245,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final index = _electronicBalanceSelection.indexWhere(
       (item) => item.key == key,
     );
-    if (index < 0) return;
+    if (index < 0) {
+      return;
+    }
     if (quantity <= 0) {
       _removeElectronicItem(key);
       return;
@@ -281,7 +295,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     double total = 0;
     for (final entry in _cartQuantities.entries) {
       final product = provider.findById(entry.key);
-      if (product == null) continue;
+      if (product == null) {
+        continue;
+      }
       total += _preparedProductIds.contains(entry.key)
           ? (product.price + product.preparationExtra) * entry.value
           : product.priceForQuantity(entry.value);
@@ -361,11 +377,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final item in sale.items) {
       if (item.isElectronicBalance) {
         final accountId = item.electronicBalanceAccountId;
-        if (accountId == null) continue;
+        if (accountId == null) {
+          continue;
+        }
         final account = context.read<ElectronicBalanceProvider>().findAccount(
           accountId,
         );
-        if (account == null) continue;
+        if (account == null) {
+          continue;
+        }
         electronic.add(
           ElectronicBalanceCartItem(
             accountId: accountId,
@@ -440,7 +460,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final physical = <String, int>{};
     final prepared = <String>{};
     for (final item in sale.items) {
-      if (item.isElectronicBalance) continue;
+      if (item.isElectronicBalance) {
+        continue;
+      }
       physical[item.productId] =
           (physical[item.productId] ?? 0) + item.quantity;
       if (item.isPrepared) prepared.add(item.productId);
@@ -545,7 +567,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Future<void> _processReturnOperation() async {
     final sale = _editingSale;
-    if (sale == null) return;
+    if (sale == null) {
+      return;
+    }
     final returned = _operationRemovedQuantities();
     if (returned.isEmpty || _operationAddedQuantities().isNotEmpty) {
       AppAlert.show(
@@ -588,7 +612,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Future<void> _processChangeOperation() async {
     final sale = _editingSale;
-    if (sale == null) return;
+    if (sale == null) {
+      return;
+    }
     final outgoing = _operationRemovedQuantities();
     final incoming = _operationAddedQuantities();
     final outCount = outgoing.values.fold<int>(0, (a, b) => a + b);
@@ -655,7 +681,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Future<void> _updateSale() async {
     final editing = _editingSale;
-    if (editing == null) return;
+    if (editing == null) {
+      return;
+    }
     if (_cartQuantities.isEmpty && _electronicBalanceSelection.isEmpty) {
       AppAlert.show(
         context,
@@ -837,7 +865,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       builder: (_) => ElectronicBalanceSaleDialog(
         initialSelection: _electronicBalanceSelection,
         onSelectionChanged: (selection) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           setState(() => _electronicBalanceSelection = selection);
         },
       ),
@@ -962,7 +992,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _selectedPaymentMethod = AppPaymentMethods.cash;
       _searchQuery = '';
     });
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     await SaleSuccessDialog.show(
       context,
       sale: sale,
@@ -1028,7 +1060,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex == AppNavigation.settings) {
       return PrinterSettingsLayout(
         onReturnToHome: () {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           setState(() => _selectedNavIndex = AppNavigation.home);
         },
       );
