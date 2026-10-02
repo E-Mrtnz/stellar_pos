@@ -93,7 +93,9 @@ class _CentralProductGridState extends State<CentralProductGrid> {
     if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
       return KeyEventResult.ignored;
     }
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
 
     final focusedWidget = FocusManager.instance.primaryFocus?.context;
     if (focusedWidget?.findAncestorWidgetOfExactType<EditableText>() != null) {
@@ -144,13 +146,17 @@ class _CentralProductGridState extends State<CentralProductGrid> {
   Map<String, dynamic>? _findProductByBarcode(String barcode) {
     for (final product in widget.products) {
       final productBarcode = ProductUtils.asString(product['barcode']).trim();
-      if (productBarcode == barcode) return product;
+      if (productBarcode == barcode) {
+        return product;
+      }
     }
     return null;
   }
 
   void _clearSearchForScanner() {
-    if (_searchController.text.isEmpty) return;
+    if (_searchController.text.isEmpty) {
+      return;
+    }
     _searchController.clear();
     widget.onSearchChanged?.call('');
     FocusManager.instance.primaryFocus?.unfocus();
