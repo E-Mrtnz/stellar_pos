@@ -32,6 +32,7 @@ class DebtMovement implements SyncableEntity {
              updatedAt: createdAt.toUtc(),
            );
 
+  @override
   Map<String, dynamic> toMap() => {
     'id': id,
     'clientId': clientId,
