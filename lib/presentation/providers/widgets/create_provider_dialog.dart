@@ -76,7 +76,9 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   }
 
   String get _weekdayLabel {
-    if (_selectedType == 'Repartidor') return 'Días de entrega';
+    if (_selectedType == 'Repartidor') {
+      return 'Días de entrega';
+    }
     return 'Días de visita';
   }
 
@@ -88,8 +90,12 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   }
 
   IconData? get _selectedTypeIcon {
-    if (_selectedType == 'Repartidor') return Icons.local_shipping_outlined;
-    if (_selectedType == 'Vendedor') return Icons.storefront_outlined;
+    if (_selectedType == 'Repartidor') {
+      return Icons.local_shipping_outlined;
+    }
+    if (_selectedType == 'Vendedor') {
+      return Icons.storefront_outlined;
+    }
     return null;
   }
 
@@ -131,7 +137,9 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   void _rememberRecentColor(Color color) {
     _recentColors.removeWhere((item) => item.value == color.value);
     _recentColors.insert(0, color);
-    if (_recentColors.length > 8) _recentColors.removeLast();
+    if (_recentColors.length > 8) {
+      _recentColors.removeLast();
+    }
   }
 
   void _toggleWeekday(int weekday) {
@@ -163,7 +171,9 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
         context,
         itemName: 'esta ruta',
       );
-      if (!confirmed || !mounted) return;
+      if (!confirmed || !mounted) {
+        return;
+      }
 
       final success = provider.updateRoute(
         id: widget.route!.id,
