@@ -23,6 +23,7 @@ import 'package:stellar_pos/presentation/sales/sales_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
 import 'package:stellar_pos/presentation/settings/printer_settings_layout.dart';
+import 'package:stellar_pos/presentation/statistics/statistics_layout.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 enum _SaleOperationMode { none, edit, returnItem, change }
@@ -40,6 +41,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   String _searchQuery = '';
   bool _isSidebarExpanded = true;
   final Map<String, int> _cartQuantities = {};
+  final Set<String> _preparedProductIds = {};
   List<ElectronicBalanceCartItem> _electronicBalanceSelection = [];
   String _barcodeBuffer = '';
   DateTime? _lastBarcodeInputAt;
@@ -55,12 +57,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   final TextEditingController _discountPercentController =
       TextEditingController();
   final TextEditingController _cashReceivedController = TextEditingController();
-  List<String> get _tags => context.watch<CatalogProvider>().tags;
-  List<String> get _debtors => context
-      .watch<CatalogProvider>()
-      .clients
-      .map((client) => client.name)
-      .toList();
   @override
   void initState() {
     super.initState();
@@ -83,8 +79,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   KeyEventResult _handleBarcodeKey(FocusNode node, KeyEvent event) {
-    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent)
+    if (_selectedNavIndex != AppNavigation.home || event is! KeyDownEvent) {
       return KeyEventResult.ignored;
+    }
     final isEnter =
         event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter;
@@ -99,13 +96,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return KeyEventResult.ignored;
     }
     final character = event.character;
-    if (character == null || character.isEmpty || character.trim().isEmpty)
+    if (character == null || character.isEmpty || character.trim().isEmpty) {
       return KeyEventResult.ignored;
+    }
     final now = DateTime.now();
     final elapsed = _lastBarcodeInputAt == null
         ? null
         : now.difference(_lastBarcodeInputAt!).inMilliseconds;
-    if (elapsed != null && elapsed > 200) _barcodeBuffer = '';
+    if (elapsed != null && elapsed > 200) {
+      _barcodeBuffer = '';
+    }
     _barcodeBuffer += character;
     _lastBarcodeInputAt = now;
     return KeyEventResult.ignored;
@@ -121,7 +121,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   void _showProductNotFoundAlert() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     _productNotFoundTimer?.cancel();
     _productNotFoundOverlay?.remove();
     final overlay = Overlay.of(context, rootOverlay: true);
@@ -147,18 +149,37 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     _productNotFoundOverlay = entry;
     overlay.insert(entry);
     _productNotFoundTimer = Timer(const Duration(seconds: 4), () {
-      if (entry.mounted) entry.remove();
-      if (identical(_productNotFoundOverlay, entry))
+      if (entry.mounted) {
+        entry.remove();
+      }
+      if (identical(_productNotFoundOverlay, entry)) {
         _productNotFoundOverlay = null;
+      }
     });
   }
 
   void _addToCart(String productId) {
     final product = context.read<ProductProvider>().findById(productId);
-    if (product == null) return;
+    if (product == null) {
+      return;
+    }
     setState(
       () => _cartQuantities[productId] = (_cartQuantities[productId] ?? 0) + 1,
     );
+  }
+
+  void _togglePrepared(String productId, bool prepared) {
+    final product = context.read<ProductProvider>().findById(productId);
+    if (product == null || !product.allowPreparedSale) {
+      return;
+    }
+    setState(() {
+      if (prepared) {
+        _preparedProductIds.add(productId);
+      } else {
+        _preparedProductIds.remove(productId);
+      }
+    });
   }
 
   void _setCartQuantity(String productId, int quantity) {
@@ -166,7 +187,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _setElectronicQuantity(productId, quantity);
       return;
     }
-    if (quantity <= 0) return;
+    if (quantity <= 0) {
+      return;
+    }
     setState(() => _cartQuantities[productId] = quantity);
   }
 
@@ -175,21 +198,28 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       final index = _electronicBalanceSelection.indexWhere(
         (item) => item.key == productId,
       );
-      if (index < 0) return;
+      if (index < 0) {
+        return;
+      }
       final item = _electronicBalanceSelection[index];
-      if (item.quantity <= 1)
+      if (item.quantity <= 1) {
         _removeElectronicItem(productId);
-      else
+      } else {
         _setElectronicQuantity(productId, item.quantity - 1);
+      }
       return;
     }
     setState(() {
       final quantity = _cartQuantities[productId];
-      if (quantity == null) return;
-      if (quantity > 1)
+      if (quantity == null) {
+        return;
+      }
+      if (quantity > 1) {
         _cartQuantities[productId] = quantity - 1;
-      else
+      } else {
         _cartQuantities.remove(productId);
+        _preparedProductIds.remove(productId);
+      }
     });
   }
 
@@ -198,12 +228,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _removeElectronicItem(productId);
       return;
     }
-    setState(() => _cartQuantities.remove(productId));
+    setState(() {
+      _cartQuantities.remove(productId);
+      _preparedProductIds.remove(productId);
+    });
   }
 
   void _clearCart() {
     setState(() {
       _cartQuantities.clear();
+      _preparedProductIds.clear();
       _electronicBalanceSelection = [];
       _discountAmountController.clear();
       _discountPercentController.clear();
@@ -219,7 +253,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final index = _electronicBalanceSelection.indexWhere(
       (item) => item.key == key,
     );
-    if (index < 0) return;
+    if (index < 0) {
+      return;
+    }
     if (quantity <= 0) {
       _removeElectronicItem(key);
       return;
@@ -240,23 +276,28 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Map<String, int> get _combinedCartQuantities {
     final result = Map<String, int>.from(_cartQuantities);
-    for (final item in _electronicBalanceSelection)
+    for (final item in _electronicBalanceSelection) {
       result[item.key] = item.quantity;
+    }
     return result;
   }
 
   List<Map<String, dynamic>> get _salesCatalog {
-    final products = List<Map<String, dynamic>>.from(
-      context.read<ProductProvider>().productMaps,
-    );
-    for (final item in _electronicBalanceSelection)
+    final baseProducts = context.read<ProductProvider>().productMaps;
+    if (_electronicBalanceSelection.isEmpty) {
+      return baseProducts;
+    }
+
+    final products = List<Map<String, dynamic>>.from(baseProducts);
+    for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
-        'name': '${item.companyName} · ${item.category}',
+        'name': '$item.companyName · $item.category',
         'unit': 'Recarga',
         'price': item.amount,
-        'imageData': '',
+        'imageData': item.imageData,
       });
+    }
     return products;
   }
 
@@ -265,10 +306,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     double total = 0;
     for (final entry in _cartQuantities.entries) {
       final product = provider.findById(entry.key);
-      if (product != null) total += product.priceForQuantity(entry.value);
+      if (product == null) {
+        continue;
+      }
+      total += _preparedProductIds.contains(entry.key)
+          ? (product.price + product.preparationExtra) * entry.value
+          : product.priceForQuantity(entry.value);
     }
-    for (final item in _electronicBalanceSelection)
+    for (final item in _electronicBalanceSelection) {
       total += item.amount * item.quantity;
+    }
     return total;
   }
 
@@ -278,9 +325,13 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       double.tryParse(_discountPercentController.text.replaceAll(',', '.')) ??
       0;
   double get _cardFeeAmount {
-    if (_selectedPaymentMethod != AppPaymentMethods.card) return 0;
+    if (_selectedPaymentMethod != AppPaymentMethods.card) {
+      return 0;
+    }
     final amount = _subtotal - _discountAmount;
-    if (amount <= 0) return 0;
+    if (amount <= 0) {
+      return 0;
+    }
     return amount * AppInventory.cardFeePercentage;
   }
 
@@ -328,24 +379,35 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   int _paymentMethodIndex(String method) {
-    if (method == AppStrings.cardPayment) return AppPaymentMethods.card;
-    if (method == AppStrings.transferPayment) return AppPaymentMethods.transfer;
-    if (method == AppStrings.creditPayment) return AppPaymentMethods.credit;
+    if (method == AppStrings.cardPayment) {
+      return AppPaymentMethods.card;
+    }
+    if (method == AppStrings.transferPayment) {
+      return AppPaymentMethods.transfer;
+    }
+    if (method == AppStrings.creditPayment) {
+      return AppPaymentMethods.credit;
+    }
     return AppPaymentMethods.cash;
   }
 
   void _startEditingSale(SaleRecord sale) {
     final catalog = context.read<CatalogProvider>();
     final physical = <String, int>{};
+    final prepared = <String>{};
     final electronic = <ElectronicBalanceCartItem>[];
     for (final item in sale.items) {
       if (item.isElectronicBalance) {
         final accountId = item.electronicBalanceAccountId;
-        if (accountId == null) continue;
+        if (accountId == null) {
+          continue;
+        }
         final account = context.read<ElectronicBalanceProvider>().findAccount(
           accountId,
         );
-        if (account == null) continue;
+        if (account == null) {
+          continue;
+        }
         electronic.add(
           ElectronicBalanceCartItem(
             accountId: accountId,
@@ -353,11 +415,18 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             category: item.electronicBalanceCategory ?? item.unit,
             amount: item.unitPrice,
             quantity: item.quantity,
+            imageData: item.imageData.isNotEmpty
+                ? item.imageData
+                : account.imageData,
           ),
         );
-      } else
+      } else {
         physical[item.productId] =
             (physical[item.productId] ?? 0) + item.quantity;
+        if (item.isPrepared) {
+          prepared.add(item.productId);
+        }
+      }
     }
     setState(() {
       _editingSale = sale;
@@ -368,6 +437,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _cartQuantities
         ..clear()
         ..addAll(physical);
+      _preparedProductIds
+        ..clear()
+        ..addAll(prepared);
       _electronicBalanceSelection = electronic;
       _selectedPaymentMethod = _paymentMethodIndex(sale.paymentMethod);
       _selectedDebtor = sale.clientId == null
@@ -410,10 +482,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return;
     }
     final physical = <String, int>{};
+    final prepared = <String>{};
     for (final item in sale.items) {
-      if (item.isElectronicBalance) continue;
+      if (item.isElectronicBalance) {
+        continue;
+      }
       physical[item.productId] =
           (physical[item.productId] ?? 0) + item.quantity;
+      if (item.isPrepared) {
+        prepared.add(item.productId);
+      }
     }
     if (physical.isEmpty) {
       AppAlert.show(
@@ -433,6 +511,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       _cartQuantities
         ..clear()
         ..addAll(physical);
+      _preparedProductIds
+        ..clear()
+        ..addAll(prepared);
       _electronicBalanceSelection = [];
       _discountAmountController.clear();
       _discountPercentController.clear();
@@ -462,7 +543,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final id in ids) {
       final value =
           (_operationOriginalQuantities[id] ?? 0) - (_cartQuantities[id] ?? 0);
-      if (value > 0) result[id] = value;
+      if (value > 0) {
+        result[id] = value;
+      }
     }
     return result;
   }
@@ -476,29 +559,39 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final id in ids) {
       final value =
           (_cartQuantities[id] ?? 0) - (_operationOriginalQuantities[id] ?? 0);
-      if (value > 0) result[id] = value;
+      if (value > 0) {
+        result[id] = value;
+      }
     }
     return result;
   }
 
   double _operationUnitPrice(SaleRecord sale, String productId) {
     for (final item in sale.items) {
-      if (item.productId == productId && item.quantity > 0)
+      if (item.productId == productId && item.quantity > 0) {
         return item.lineTotal / item.quantity;
+      }
     }
     return 0;
   }
 
   double get _operationDifference {
     final sale = _editingSale;
-    if (sale == null || _saleOperationMode == _SaleOperationMode.edit) return 0;
+    if (sale == null || _saleOperationMode == _SaleOperationMode.edit) {
+      return 0;
+    }
     var value = 0.0;
     for (final entry in _operationRemovedQuantities().entries) {
       value -= _operationUnitPrice(sale, entry.key) * entry.value;
     }
     for (final entry in _operationAddedQuantities().entries) {
       final product = context.read<ProductProvider>().findById(entry.key);
-      if (product != null) value += product.priceForQuantity(1) * entry.value;
+      if (product != null) {
+        value += (_preparedProductIds.contains(entry.key)
+                ? product.price + product.preparationExtra
+                : product.price) *
+            entry.value;
+      }
     }
     return value;
   }
@@ -507,7 +600,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Future<void> _processReturnOperation() async {
     final sale = _editingSale;
-    if (sale == null) return;
+    if (sale == null) {
+      return;
+    }
     final returned = _operationRemovedQuantities();
     if (returned.isEmpty || _operationAddedQuantities().isNotEmpty) {
       AppAlert.show(
@@ -550,7 +645,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Future<void> _processChangeOperation() async {
     final sale = _editingSale;
-    if (sale == null) return;
+    if (sale == null) {
+      return;
+    }
     final outgoing = _operationRemovedQuantities();
     final incoming = _operationAddedQuantities();
     final outCount = outgoing.values.fold<int>(0, (a, b) => a + b);
@@ -577,12 +674,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           sourceProductId: out.key,
           quantity: quantity,
           replacementProductId: input.key,
+          prepared: _preparedProductIds.contains(input.key),
           productProvider: context.read<ProductProvider>(),
         );
-        if (out.value > quantity)
+        if (out.value > quantity) {
           outs.insert(0, MapEntry(out.key, out.value - quantity));
-        if (input.value > quantity)
+        }
+        if (input.value > quantity) {
           ins.insert(0, MapEntry(input.key, input.value - quantity));
+        }
       }
       final difference = _operationDifference;
       final updated = sales.sales.firstWhere((item) => item.id == sale.id);
@@ -616,7 +716,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   Future<void> _updateSale() async {
     final editing = _editingSale;
-    if (editing == null) return;
+    if (editing == null) {
+      return;
+    }
     if (_cartQuantities.isEmpty && _electronicBalanceSelection.isEmpty) {
       AppAlert.show(
         context,
@@ -647,13 +749,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     final catalog = context.read<CatalogProvider>();
     String? clientId;
-    if (_selectedDebtor != null)
+    if (_selectedDebtor != null) {
       for (final client in catalog.clients) {
         if (client.name == _selectedDebtor) {
           clientId = client.id;
           break;
         }
       }
+    }
     final received =
         double.tryParse(_cashReceivedController.text.replaceAll(',', '.')) ?? 0;
     final effectiveReceived = _selectedPaymentMethod == AppPaymentMethods.credit
@@ -674,19 +777,29 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               brand: product.brand,
               barcode: product.barcode,
               cost: product.cost,
-              unitPrice: product.price,
+              unitPrice: _preparedProductIds.contains(entry.key)
+                  ? product.price + product.preparationExtra
+                  : product.price,
               quantity: entry.value,
-              lineSubtotal: product.priceForQuantity(entry.value),
+              lineSubtotal: _preparedProductIds.contains(entry.key)
+                  ? (product.price + product.preparationExtra) * entry.value
+                  : product.priceForQuantity(entry.value),
               discount: 0,
-              lineTotal: product.priceForQuantity(entry.value),
+              lineTotal: _preparedProductIds.contains(entry.key)
+                  ? (product.price + product.preparationExtra) * entry.value
+                  : product.priceForQuantity(entry.value),
               imageData: product.imageData,
+              isPrepared: _preparedProductIds.contains(entry.key),
+              preparationExtra: _preparedProductIds.contains(entry.key)
+                  ? product.preparationExtra
+                  : 0,
             );
           }),
           ..._electronicBalanceSelection.map(
             (item) => SaleItemRecord(
               productId:
-                  'electronic:${item.accountId}:${item.category}:${item.amount.toStringAsFixed(4)}',
-              productName: '${item.companyName} · ${item.category}',
+                  'electronic:$item.accountId:$item.category:${item.amount.toStringAsFixed(4)}',
+              productName: '$item.companyName · $item.category',
               unit: item.category,
               barcode: '',
               cost: item.amount,
@@ -695,6 +808,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               lineSubtotal: item.amount * item.quantity,
               discount: 0,
               lineTotal: item.amount * item.quantity,
+              imageData: item.imageData,
               isElectronicBalance: true,
               electronicBalanceAccountId: item.accountId,
               electronicBalanceCategory: item.category,
@@ -727,6 +841,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               lineTotal: lineSubtotal - lineDiscount,
               imageData: item.imageData,
               isElectronicBalance: item.isElectronicBalance,
+              hasGroupPricing: item.hasGroupPricing,
+              isPrepared: item.isPrepared,
+              preparationExtra: item.preparationExtra,
               electronicBalanceAccountId: item.electronicBalanceAccountId,
               electronicBalanceCategory: item.electronicBalanceCategory,
             );
@@ -764,7 +881,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       });
       AppAlert.show(
         context,
-        'La venta #${updated.ticketNumber} fue actualizada correctamente.',
+        'La venta #$updated.ticketNumber fue actualizada correctamente.',
         title: 'Venta actualizada',
         type: AppAlertType.success,
       );
@@ -784,7 +901,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       builder: (_) => ElectronicBalanceSaleDialog(
         initialSelection: _electronicBalanceSelection,
         onSelectionChanged: (selection) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           setState(() => _electronicBalanceSelection = selection);
         },
       ),
@@ -830,13 +949,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     final catalog = context.read<CatalogProvider>();
     String? clientId;
-    if (_selectedDebtor != null)
+    if (_selectedDebtor != null) {
       for (final client in catalog.clients) {
         if (client.name == _selectedDebtor) {
           clientId = client.id;
           break;
         }
       }
+    }
     final electronicSales = _electronicBalanceSelection
         .map(
           (item) => ElectronicBalanceCartSale(
@@ -871,12 +991,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             ? received
             : initialCreditPayment,
         change: _selectedPaymentMethod == AppPaymentMethods.cash ? _change : 0,
+        preparedProductIds: _preparedProductIds,
         electronicSales: electronicSales,
         electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
       );
       if (_selectedPaymentMethod == AppPaymentMethods.credit &&
           initialCreditPayment > 0) {
-        final saved = context.read<DebtProvider>().recordPayment(
+        final saved = context.read<DebtProvider>().recordInitialPayment(
+          saleId: sale.id,
           clientId: clientId!,
           clientName: _selectedDebtor!,
           amount: initialCreditPayment,
@@ -903,8 +1025,13 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       return;
     }
     _clearCart();
-    setState(() => _selectedPaymentMethod = AppPaymentMethods.cash);
-    if (!mounted) return;
+    setState(() {
+      _selectedPaymentMethod = AppPaymentMethods.cash;
+      _searchQuery = '';
+    });
+    if (!mounted) {
+      return;
+    }
     await SaleSuccessDialog.show(
       context,
       sale: sale,
@@ -915,7 +1042,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Future<bool> _printSale(SaleRecord sale) async {
     final printerProvider = context.read<PrinterProvider>();
     final printed = await printerProvider.printSaleTicket(sale);
-    if (!mounted) return printed;
+    if (!mounted) {
+      return printed;
+    }
     AppAlert.show(
       context,
       printed
@@ -934,7 +1063,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       setState(() => _selectedFilter = filter);
   @override
   Widget build(BuildContext context) {
-    final products = context.watch<ProductProvider>().productMaps;
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
@@ -950,7 +1078,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                 onItemSelected: _onNavigationChanged,
               ),
-              Expanded(child: _buildMainContent(products)),
+              Expanded(child: _buildMainContent()),
             ],
           ),
         ),
@@ -958,124 +1086,154 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     );
   }
 
-  Widget _buildMainContent(List<Map<String, dynamic>> products) {
-    if (_selectedNavIndex == AppNavigation.inventory)
+  Widget _buildMainContent() {
+    if (_selectedNavIndex == AppNavigation.home) {
+      return _buildHomeContent();
+    }
+    if (_selectedNavIndex == AppNavigation.inventory) {
       return const InventoryLayout();
-    if (_selectedNavIndex == AppNavigation.electronicBalance)
+    }
+    if (_selectedNavIndex == AppNavigation.electronicBalance) {
       return const SalesLayout();
-    if (_selectedNavIndex == AppNavigation.purchases)
+    }
+    if (_selectedNavIndex == AppNavigation.purchases) {
       return const PurchasesLayout();
-    if (_selectedNavIndex == AppNavigation.providers)
+    }
+    if (_selectedNavIndex == AppNavigation.providers) {
       return const ProvidersLayout();
-    if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
-    if (_selectedNavIndex == AppNavigation.settings)
-      return const PrinterSettingsLayout();
-    if (_selectedNavIndex != AppNavigation.home)
-      return const _EmptySectionPanel();
-    final salesCatalog = _salesCatalog;
-    final combinedCart = _combinedCartQuantities;
-    return Padding(
-      padding: const EdgeInsets.all(AppDimensions.pagePadding),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: CentralProductGrid(
-              products: products,
-              cartQuantities: combinedCart,
-              tags: _tags,
-              selectedTagIndex: _selectedTagIndex,
-              onTagSelected: _onTagChanged,
-              selectedFilter: _selectedFilter,
-              onFilterChanged: _onFilterChanged,
-              onAddToCart: _addToCart,
-              onRemoveFromCart: _removeFromCart,
-              onElectronicBalanceTap: _openElectronicBalanceSelector,
-              onElectronicBalanceManage: _openElectronicBalanceManagement,
-              electronicBalanceSelection: _electronicBalanceSelection,
-              onSearchChanged: (value) => setState(() => _searchQuery = value),
-              searchQuery: _searchQuery,
-            ),
-          ),
-          const SizedBox(width: AppDimensions.productGridSpacing),
-          Expanded(
-            flex: 1,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                SalesSummaryWithKeypad(
-                  cartQuantities: combinedCart,
-                  products: salesCatalog,
-                  selectedPaymentMethod: _selectedPaymentMethod,
-                  onPaymentMethodChanged: (method) =>
-                      setState(() => _selectedPaymentMethod = method),
-                  selectedDebtor: _selectedDebtor,
-                  debtorsList: _debtors,
-                  onDebtorChanged: (debtor) =>
-                      setState(() => _selectedDebtor = debtor),
-                  discountAmountController: _discountAmountController,
-                  discountPercentController: _discountPercentController,
-                  cashReceivedController: _cashReceivedController,
-                  onDiscountAmountChanged: _onDiscountAmountChanged,
-                  onDiscountPercentChanged: _onDiscountPercentChanged,
-                  onCashReceivedChanged: (_) => setState(() {}),
-                  subtotal: _subtotal,
-                  cardFeeAmount: _cardFeeAmount,
-                  total: _total,
-                  change: _change,
-                  onAddToCart: _addToCart,
-                  onDecrementQuantity: _decrementQuantity,
-                  onQuantityChanged: _setCartQuantity,
-                  onRemoveFromCart: _removeFromCart,
-                  onClearCart: _clearCart,
-                  onCreateSale: _editingSale == null
-                      ? _createSale
-                      : _saleOperationMode == _SaleOperationMode.edit
-                      ? _updateSale
-                      : _saleOperationMode == _SaleOperationMode.returnItem
-                      ? _processReturnOperation
-                      : _processChangeOperation,
-                  isEditing: _editingSale != null,
-                  operationLabel: _saleOperationMode == _SaleOperationMode.edit
-                      ? 'Actualizar venta'
-                      : _saleOperationMode == _SaleOperationMode.returnItem
-                      ? 'Registrar devolución'
-                      : _saleOperationMode == _SaleOperationMode.change
-                      ? 'Registrar cambio'
-                      : null,
-                  operationDifference:
-                      _saleOperationMode == _SaleOperationMode.none ||
-                          _saleOperationMode == _SaleOperationMode.edit
-                      ? null
-                      : _operationDifference,
-                  operationDifferenceLabel:
-                      _saleOperationMode == _SaleOperationMode.returnItem
-                      ? 'Devolución al cliente'
-                      : _operationDifference < -0.005
-                      ? 'Devolver al cliente'
-                      : _operationDifference > 0.005
-                      ? 'Cobrar al cliente'
-                      : 'Diferencia',
-                  onCancelOperation: _editingSale == null
-                      ? null
-                      : _cancelSaleOperation,
-                  ticketNumber:
-                      _editingSale?.ticketNumber ??
-                      context.watch<SalesProvider>().nextTicketNumberPreview,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    }
+    if (_selectedNavIndex == AppNavigation.debts) {
+      return const DebtsLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.stats) {
+      return const StatisticsLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.settings) {
+      return PrinterSettingsLayout(
+        onReturnToHome: () {
+          if (!mounted) {
+            return;
+          }
+          setState(() => _selectedNavIndex = AppNavigation.home);
+        },
+      );
+    }
+    return const SizedBox.shrink();
   }
-}
 
-class _EmptySectionPanel extends StatelessWidget {
-  const _EmptySectionPanel();
-  @override
-  Widget build(BuildContext context) => const SizedBox.expand();
+  Widget _buildHomeContent() {
+    return Builder(
+    builder: (homeContext) {
+      final productProvider = homeContext.watch<ProductProvider>();
+      final products = productProvider.productMaps;
+      final catalog = homeContext.watch<CatalogProvider>();
+      final tags = catalog.tags;
+      final debtors = catalog.clients.map((client) => client.name).toList();
+      final salesCatalog = _salesCatalog;
+      final combinedCart = _combinedCartQuantities;
+      return Padding(
+    padding: const EdgeInsets.all(AppDimensions.pagePadding),
+    child: Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: CentralProductGrid(
+            products: products,
+            isLoading: productProvider.isLoading,
+            cartQuantities: combinedCart,
+            preparedProductIds: _preparedProductIds,
+            tags: tags,
+            selectedTagIndex: _selectedTagIndex,
+            onTagSelected: _onTagChanged,
+            selectedFilter: _selectedFilter,
+            onFilterChanged: _onFilterChanged,
+            onAddToCart: _addToCart,
+            onRemoveFromCart: _removeFromCart,
+            onPreparedChanged: _togglePrepared,
+            onElectronicBalanceTap: _openElectronicBalanceSelector,
+            onElectronicBalanceManage: _openElectronicBalanceManagement,
+            electronicBalanceSelection: _electronicBalanceSelection,
+            onSearchChanged: (value) => setState(() => _searchQuery = value),
+            searchQuery: _searchQuery,
+          ),
+        ),
+        const SizedBox(width: AppDimensions.productGridSpacing),
+        Expanded(
+          flex: 1,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              SalesSummaryWithKeypad(
+                cartQuantities: combinedCart,
+                preparedProductIds: _preparedProductIds,
+                products: salesCatalog,
+                selectedPaymentMethod: _selectedPaymentMethod,
+                onPaymentMethodChanged: (method) =>
+                    setState(() => _selectedPaymentMethod = method),
+                selectedDebtor: _selectedDebtor,
+                debtorsList: debtors,
+                onDebtorChanged: (debtor) =>
+                    setState(() => _selectedDebtor = debtor),
+                discountAmountController: _discountAmountController,
+                discountPercentController: _discountPercentController,
+                cashReceivedController: _cashReceivedController,
+                onDiscountAmountChanged: _onDiscountAmountChanged,
+                onDiscountPercentChanged: _onDiscountPercentChanged,
+                onCashReceivedChanged: (_) => setState(() {}),
+                subtotal: _subtotal,
+                cardFeeAmount: _cardFeeAmount,
+                total: _total,
+                change: _change,
+                onAddToCart: _addToCart,
+                onDecrementQuantity: _decrementQuantity,
+                onQuantityChanged: _setCartQuantity,
+                onRemoveFromCart: _removeFromCart,
+                onClearCart: _clearCart,
+                onCreateSale: _editingSale == null
+                    ? _createSale
+                    : _saleOperationMode == _SaleOperationMode.edit
+                    ? _updateSale
+                    : _saleOperationMode == _SaleOperationMode.returnItem
+                    ? _processReturnOperation
+                    : _processChangeOperation,
+                isEditing: _editingSale != null,
+                operationLabel: _saleOperationMode == _SaleOperationMode.edit
+                    ? 'Actualizar venta'
+                    : _saleOperationMode == _SaleOperationMode.returnItem
+                    ? 'Registrar devolución'
+                    : _saleOperationMode == _SaleOperationMode.change
+                    ? 'Registrar cambio'
+                    : null,
+                operationDifference:
+                    _saleOperationMode == _SaleOperationMode.none ||
+                        _saleOperationMode == _SaleOperationMode.edit
+                    ? null
+                    : _operationDifference,
+                operationDifferenceLabel:
+                    _saleOperationMode == _SaleOperationMode.returnItem
+                    ? 'Devolución al cliente'
+                    : _operationDifference < -0.005
+                    ? 'Devolver al cliente'
+                    : _operationDifference > 0.005
+                    ? 'Cobrar al cliente'
+                    : 'Diferencia',
+                onCancelOperation: _editingSale == null
+                    ? null
+                    : _cancelSaleOperation,
+                ticketNumber:
+                    _editingSale?.ticketNumber ??
+                    context.watch<SalesProvider>().nextTicketNumberPreview,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+      );
+    },
+  );
+
+  }
 }
 
 class _ProductNotFoundAlert extends StatelessWidget {

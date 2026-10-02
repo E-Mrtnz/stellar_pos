@@ -41,6 +41,7 @@ class ProviderRoute implements SyncableEntity {
             (touchMetadata ? this.metadata.touch() : this.metadata),
       );
 
+  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'type': type,

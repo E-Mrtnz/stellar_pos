@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
+import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
-class CentralProductGrid extends StatelessWidget {
+class CentralProductGrid extends StatefulWidget {
   final List<Map<String, dynamic>> products;
   final Map<String, int> cartQuantities;
+  final Set<String> preparedProductIds;
   final List<String> tags;
   final int selectedTagIndex;
   final ValueChanged<int> onTagSelected;
@@ -17,16 +20,19 @@ class CentralProductGrid extends StatelessWidget {
   final ValueChanged<String?> onFilterChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onRemoveFromCart;
+  final void Function(String productId, bool prepared)? onPreparedChanged;
   final List<ElectronicBalanceCartItem> electronicBalanceSelection;
   final VoidCallback? onElectronicBalanceTap;
   final VoidCallback? onElectronicBalanceManage;
   final ValueChanged<String>? onSearchChanged;
   final String searchQuery;
+  final bool isLoading;
 
   const CentralProductGrid({
     super.key,
     required this.products,
     required this.cartQuantities,
+    this.preparedProductIds = const <String>{},
     required this.tags,
     required this.selectedTagIndex,
     required this.onTagSelected,
@@ -34,22 +40,153 @@ class CentralProductGrid extends StatelessWidget {
     required this.onFilterChanged,
     required this.onAddToCart,
     required this.onRemoveFromCart,
+    this.onPreparedChanged,
     this.electronicBalanceSelection = const [],
     this.onElectronicBalanceTap,
     this.onElectronicBalanceManage,
     this.onSearchChanged,
     this.searchQuery = '',
+    this.isLoading = false,
   });
 
   @override
+  State<CentralProductGrid> createState() => _CentralProductGridState();
+}
+
+class _CentralProductGridState extends State<CentralProductGrid> {
+  static const _scannerTimeout = Duration(milliseconds: 120);
+  static const _minimumBarcodeLength = 6;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _barcodeBuffer = '';
+  DateTime? _lastBarcodeInputAt;
+  List<Map<String, dynamic>>? _sortedProductsCache;
+  int? _productsIdentity;
+  String? _filterCacheKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.text = widget.searchQuery;
+    FocusManager.instance.addEarlyKeyEventHandler(_handleBarcodeKey);
+  }
+
+  @override
+  void didUpdateWidget(covariant CentralProductGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.searchQuery != _searchController.text) {
+      _searchController.value = TextEditingValue(
+        text: widget.searchQuery,
+        selection: TextSelection.collapsed(offset: widget.searchQuery.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeEarlyKeyEventHandler(_handleBarcodeKey);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _handleBarcodeKey(KeyEvent event) {
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
+      return KeyEventResult.ignored;
+    }
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final focusedWidget = FocusManager.instance.primaryFocus?.context;
+    if (focusedWidget?.findAncestorWidgetOfExactType<EditableText>() != null) {
+      return KeyEventResult.ignored;
+    }
+
+    final isEnter =
+        event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+
+    if (isEnter) {
+      final barcode = _barcodeBuffer;
+      _barcodeBuffer = '';
+      _lastBarcodeInputAt = null;
+
+      if (barcode.length >= _minimumBarcodeLength) {
+        final product = _findProductByBarcode(barcode);
+        if (product != null) {
+          _clearSearchForScanner();
+          widget.onAddToCart(product['id'].toString());
+          return KeyEventResult.handled;
+        }
+      }
+
+      return KeyEventResult.ignored;
+    }
+
+    final character = event.character;
+    if (character == null || character.isEmpty || character.trim().isEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    final now = DateTime.now();
+    final elapsed = _lastBarcodeInputAt == null
+        ? null
+        : now.difference(_lastBarcodeInputAt!);
+
+    if (elapsed == null || elapsed > _scannerTimeout) {
+      _barcodeBuffer = character;
+    } else {
+      _barcodeBuffer += character;
+    }
+    _lastBarcodeInputAt = now;
+
+    return KeyEventResult.handled;
+  }
+
+  Map<String, dynamic>? _findProductByBarcode(String barcode) {
+    for (final product in widget.products) {
+      final productBarcode = ProductUtils.asString(product['barcode']).trim();
+      if (productBarcode == barcode) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  void _clearSearchForScanner() {
+    if (_searchController.text.isEmpty) {
+      return;
+    }
+    _searchController.clear();
+    widget.onSearchChanged?.call('');
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final filteredProducts = ProductFilterUtils.apply(
-      products: products,
-      searchQuery: searchQuery,
-      selectedFilter: selectedFilter,
-      tags: tags,
-      selectedTagIndex: selectedTagIndex,
-    );
+    final selectedTag = widget.selectedTagIndex >= 0 &&
+            widget.selectedTagIndex < widget.tags.length
+        ? widget.tags[widget.selectedTagIndex]
+        : '';
+    final cacheKey =
+        '${widget.searchQuery}|${widget.selectedFilter ?? ''}|${widget.selectedTagIndex}|$selectedTag';
+    final productsIdentity = identityHashCode(widget.products);
+    final cacheValid = _sortedProductsCache != null &&
+        _productsIdentity == productsIdentity &&
+        _filterCacheKey == cacheKey;
+
+    final sortedProducts = cacheValid
+        ? _sortedProductsCache!
+        : _buildSortedProducts(cacheKey, productsIdentity);
+
+    if (widget.isLoading && widget.products.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -61,26 +198,57 @@ class CentralProductGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProductSearchBar(onChanged: onSearchChanged ?? (_) {}),
+          ProductSearchBar(
+            controller: _searchController,
+            onChanged: widget.onSearchChanged ?? (_) {},
+          ),
           const SizedBox(height: 12),
           ProductFilterBar(
-            tags: tags,
-            selectedFilter: selectedFilter,
-            onFilterChanged: onFilterChanged,
-            selectedTagIndex: selectedTagIndex,
-            onTagSelected: onTagSelected,
+            tags: widget.tags,
+            selectedFilter: widget.selectedFilter,
+            onFilterChanged: widget.onFilterChanged,
+            selectedTagIndex: widget.selectedTagIndex,
+            onTagSelected: widget.onTagSelected,
           ),
           const SizedBox(height: 12),
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 12),
           Expanded(
-            child: filteredProducts.isEmpty && onElectronicBalanceTap == null
+            child: sortedProducts.isEmpty && widget.onElectronicBalanceTap == null
                 ? _buildEmptyState()
-                : _buildProductGrid(filteredProducts),
+                : _buildProductGrid(sortedProducts),
           ),
         ],
       ),
     );
+  }
+
+  List<Map<String, dynamic>> _buildSortedProducts(
+    String cacheKey,
+    int productsIdentity,
+  ) {
+    final filteredProducts = ProductFilterUtils.apply(
+      products: widget.products,
+      searchQuery: widget.searchQuery,
+      selectedFilter: widget.selectedFilter,
+      tags: widget.tags,
+      selectedTagIndex: widget.selectedTagIndex,
+    );
+
+    final sortedProducts = List<Map<String, dynamic>>.from(filteredProducts)
+      ..sort(
+        (a, b) => ProductUtils.asString(a['name'])
+            .trim()
+            .toLowerCase()
+            .compareTo(
+              ProductUtils.asString(b['name']).trim().toLowerCase(),
+            ),
+      );
+
+    _productsIdentity = productsIdentity;
+    _filterCacheKey = cacheKey;
+    _sortedProductsCache = sortedProducts;
+    return sortedProducts;
   }
 
   Widget _buildEmptyState() {
@@ -104,9 +272,9 @@ class CentralProductGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         if (index == 0) {
           return _ElectronicBalanceCard(
-            selection: electronicBalanceSelection,
-            onTap: onElectronicBalanceTap,
-            onManage: onElectronicBalanceManage,
+            selection: widget.electronicBalanceSelection,
+            onTap: widget.onElectronicBalanceTap,
+            onManage: widget.onElectronicBalanceManage,
           );
         }
 
@@ -115,9 +283,12 @@ class CentralProductGrid extends StatelessWidget {
 
         return ProductCard(
           product: product,
-          quantityInCart: cartQuantities[productId] ?? 0,
-          onAdd: () => onAddToCart(productId),
-          onRemove: () => onRemoveFromCart(productId),
+          quantityInCart: widget.cartQuantities[productId] ?? 0,
+          preparedSelected: widget.preparedProductIds.contains(productId),
+          onAdd: () => widget.onAddToCart(productId),
+          onRemove: () => widget.onRemoveFromCart(productId),
+          onPreparedChanged: (value) =>
+              widget.onPreparedChanged?.call(productId, value),
         );
       },
     );

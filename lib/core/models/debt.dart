@@ -32,6 +32,8 @@ class DebtMovement implements SyncableEntity {
              updatedAt: createdAt.toUtc(),
            );
 
+  @override
+  @override
   Map<String, dynamic> toMap() => {
     'id': id,
     'clientId': clientId,
@@ -120,6 +122,8 @@ class DebtAccount implements SyncableEntity {
     metadata:
         metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata),
   );
+
+  @override
 
   Map<String, dynamic> toMap() => {
     'id': id,

@@ -5,9 +5,10 @@ class SaleTicketItem {
   final String unit;
   final double unitPrice;
   final double discount;
+  final double preparationExtra;
   final double total;
 
-  const SaleTicketItem({required this.quantity, required this.description, this.brand = '', this.unit = '', required this.unitPrice, required this.discount, required this.total});
+  const SaleTicketItem({required this.quantity, required this.description, this.brand = '', this.unit = '', required this.unitPrice, required this.discount, this.preparationExtra = 0, required this.total});
 }
 
 class SaleTicketOperation {

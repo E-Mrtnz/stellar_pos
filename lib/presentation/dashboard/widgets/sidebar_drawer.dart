@@ -7,7 +7,13 @@ class SidebarDrawer extends StatelessWidget {
   final VoidCallback onToggleExpand;
   final ValueChanged<int> onItemSelected;
 
-  const SidebarDrawer({super.key, required this.isExpanded, required this.selectedIndex, required this.onToggleExpand, required this.onItemSelected});
+  const SidebarDrawer({
+    super.key,
+    required this.isExpanded,
+    required this.selectedIndex,
+    required this.onToggleExpand,
+    required this.onItemSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +21,13 @@ class SidebarDrawer extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       width: isExpanded ? 220 : 72,
-      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4)),
+        ],
+      ),
       child: Stack(
         children: [
           Column(
@@ -23,16 +35,33 @@ class SidebarDrawer extends StatelessWidget {
             children: [
               const SizedBox(height: 20),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(children: [
-                  Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withAlpha(25), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24)),
-                  if (isExpanded) ...[const SizedBox(width: 12), const Text(AppStrings.appName, style: AppTextStyles.brandTitle)],
-                ]),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24),
+                    ),
+                    if (isExpanded) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          AppStrings.appName,
+                          style: AppTextStyles.brandTitle,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: 30),
               Expanded(
                 child: ListView(
-                  scrollDirection: Axis.vertical,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
                   children: [
@@ -59,8 +88,16 @@ class SidebarDrawer extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: AppColors.inputBackground, shape: BoxShape.circle, border: Border.all(color: AppColors.border, width: 0.5)),
-                child: Icon(isExpanded ? Icons.chevron_left_rounded : Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
+                decoration: BoxDecoration(
+                  color: AppColors.inputBackground,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border, width: 0.5),
+                ),
+                child: Icon(
+                  isExpanded ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ),
@@ -76,17 +113,35 @@ class SidebarDrawer extends StatelessWidget {
       child: Container(
         height: 50,
         margin: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(children: [
-          const SizedBox(width: 20),
-          Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 22),
-          if (isExpanded) ...[
-            const SizedBox(width: 14),
-            Expanded(child: Text(label, style: AppTextStyles.sidebarItem.copyWith(fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: isSelected ? AppColors.primary : AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
-          ] else
-            const Spacer(),
-          if (isSelected)
-            Container(width: 4, height: 28, decoration: const BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.only(topLeft: Radius.circular(4), bottomLeft: Radius.circular(4)))),
-        ]),
+        child: Row(
+          children: [
+            const SizedBox(width: 20),
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 22),
+            if (isExpanded) ...[
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTextStyles.sidebarItem.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ] else
+              const Spacer(),
+            if (isSelected)
+              Container(
+                width: 4,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(4), bottomLeft: Radius.circular(4)),
+                ),
+              ),
+          ],
+        ),
       ),
     );
     return isExpanded ? item : Tooltip(message: label, waitDuration: const Duration(milliseconds: 350), child: item);

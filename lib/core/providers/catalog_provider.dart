@@ -18,7 +18,7 @@ import 'package:stellar_pos/core/utils/id_generator.dart';
 ///
 /// Categories, brands and distributors have one source of truth here. The
 /// catalog is persisted as a single state record so every UI that needs a
-/// distributor reads the same collection.
+/// catalog value reads the same collection.
 class CatalogProvider extends ChangeNotifier
     implements CatalogRegistrar, DistributorCatalog {
   static final Set<String> _externalBrands = <String>{};
@@ -59,18 +59,26 @@ class CatalogProvider extends ChangeNotifier
   List<Client> get clients => List.unmodifiable(_clients);
 
   Future<void> load() {
-    if (_catalogLoaded) return Future.value();
+    if (_catalogLoaded) {
+      return Future.value();
+    }
     final existing = _loadCatalogFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadCatalogFromRepository();
     _loadCatalogFuture = future;
     return future;
   }
 
   Future<void> loadClients() {
-    if (_clientsLoaded) return Future.value();
+    if (_clientsLoaded) {
+      return Future.value();
+    }
     final existing = _loadClientsFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadClientsFromRepository();
     _loadClientsFuture = future;
     return future;
@@ -79,8 +87,12 @@ class CatalogProvider extends ChangeNotifier
   @override
   void registerBrandValue(String brand) {
     final value = brand.trim();
-    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
-    if (_service.containsIgnoreCase(_externalBrands, value)) return;
+    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) {
+      return;
+    }
+    if (_service.containsIgnoreCase(_externalBrands, value)) {
+      return;
+    }
     _externalBrands.add(value);
     notifyListeners();
   }
@@ -88,7 +100,9 @@ class CatalogProvider extends ChangeNotifier
   @override
   void registerCategoryValue(String category) {
     final value = _service.normalizeName(category);
-    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) return;
+    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) {
+      return;
+    }
     _tags.add(value);
     _persistCatalog();
     notifyListeners();
@@ -107,41 +121,144 @@ class CatalogProvider extends ChangeNotifier
 
   static void registerBrand(String brand) {
     final value = brand.trim();
-    if (value.isNotEmpty) _externalBrands.add(value);
+    if (value.isNotEmpty) {
+      _externalBrands.add(value);
+    }
   }
 
-  void addTag(String tag) {
+  bool addTag(String tag) {
     final value = _service.normalizeName(tag);
-    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) return;
+    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) {
+      return false;
+    }
     _tags.add(value);
     _persistCatalog();
     notifyListeners();
+    return true;
   }
 
-  void removeTag(String tag) {
-    _tags.removeWhere((item) =>
-        _service.normalizeName(item).toLowerCase() ==
-        _service.normalizeName(tag).toLowerCase());
+  bool updateTag(String oldTag, String newTag) {
+    final oldValue = _service.normalizeName(oldTag);
+    final newValue = _service.normalizeName(newTag);
+    if (oldValue.isEmpty || newValue.isEmpty) {
+      return false;
+    }
+
+    final index = _tags.indexWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
+    );
+    if (index < 0) {
+      return false;
+    }
+
+    final duplicate = _tags.asMap().entries.any(
+      (entry) =>
+          entry.key != index &&
+          _service.normalizeName(entry.value).toLowerCase() ==
+              newValue.toLowerCase(),
+    );
+    if (duplicate) {
+      return false;
+    }
+
+    _tags[index] = newValue;
     _persistCatalog();
     notifyListeners();
+    return true;
   }
 
-  void addBrand(String brand) {
+  bool removeTag(String tag) {
+    final normalized = _service.normalizeName(tag).toLowerCase();
+    final before = _tags.length;
+    _tags.removeWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == normalized,
+    );
+    if (_tags.length == before) {
+      return false;
+    }
+    _persistCatalog();
+    notifyListeners();
+    return true;
+  }
+
+  bool addBrand(String brand) {
     final value = _service.normalizeName(brand);
-    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return;
-    _externalBrands.removeWhere((item) =>
-        _service.normalizeName(item).toLowerCase() == value.toLowerCase());
+    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) {
+      return false;
+    }
+    if (_service.containsIgnoreCase(_externalBrands, value)) {
+      _externalBrands.removeWhere(
+        (item) => _service.normalizeName(item).toLowerCase() == value.toLowerCase(),
+      );
+    }
     _brands.add(value);
+    _persistCatalog();
     notifyListeners();
+    return true;
   }
 
-  void removeBrand(String brand) {
-    final normalized = _service.normalizeName(brand).toLowerCase();
-    _brands.removeWhere((item) =>
-        _service.normalizeName(item).toLowerCase() == normalized);
-    _externalBrands.removeWhere((item) =>
-        _service.normalizeName(item).toLowerCase() == normalized);
+  bool updateBrand(String oldBrand, String newBrand) {
+    final oldValue = _service.normalizeName(oldBrand);
+    final newValue = _service.normalizeName(newBrand);
+    if (oldValue.isEmpty || newValue.isEmpty) {
+      return false;
+    }
+
+    final index = _brands.indexWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
+    );
+    if (index < 0) {
+      final externalMatch = _externalBrands.firstWhere(
+        (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
+        orElse: () => '',
+      );
+      if (externalMatch.isEmpty) {
+        return false;
+      }
+      _externalBrands.remove(externalMatch);
+      if (_service.containsIgnoreCase(_brands, newValue)) {
+        return false;
+      }
+      _brands.add(newValue);
+      _persistCatalog();
+      notifyListeners();
+      return true;
+    }
+
+    final duplicate = _brands.asMap().entries.any(
+      (entry) =>
+          entry.key != index &&
+          _service.normalizeName(entry.value).toLowerCase() ==
+              newValue.toLowerCase(),
+    );
+    if (duplicate) {
+      return false;
+    }
+
+    _brands[index] = newValue;
+    _externalBrands.removeWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
+    );
+    _persistCatalog();
     notifyListeners();
+    return true;
+  }
+
+  bool removeBrand(String brand) {
+    final normalized = _service.normalizeName(brand).toLowerCase();
+    final before = _brands.length;
+    _brands.removeWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == normalized,
+    );
+    _externalBrands.removeWhere(
+      (item) => _service.normalizeName(item).toLowerCase() == normalized,
+    );
+    if (_brands.length == before) {
+      return false;
+    }
+    _persistCatalog();
+    notifyListeners();
+    return true;
   }
 
   bool addDistributor(String distributor) {
@@ -158,13 +275,17 @@ class CatalogProvider extends ChangeNotifier
   bool updateDistributor(String oldDistributor, String newDistributor) {
     final oldValue = _service.normalizeName(oldDistributor);
     final newValue = _service.normalizeName(newDistributor);
-    if (oldValue.isEmpty || newValue.isEmpty) return false;
+    if (oldValue.isEmpty || newValue.isEmpty) {
+      return false;
+    }
 
     final index = _distributors.indexWhere(
       (item) =>
           _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
     );
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
 
     final duplicate = _distributors.asMap().entries.any(
       (entry) =>
@@ -172,7 +293,9 @@ class CatalogProvider extends ChangeNotifier
           _service.normalizeName(entry.value).toLowerCase() ==
               newValue.toLowerCase(),
     );
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
 
     _distributors[index] = newValue;
     _persistCatalog();
@@ -186,7 +309,9 @@ class CatalogProvider extends ChangeNotifier
     _distributors.removeWhere(
       (item) => _service.normalizeName(item).toLowerCase() == normalized,
     );
-    if (_distributors.length == before) return false;
+    if (_distributors.length == before) {
+      return false;
+    }
     _persistCatalog();
     notifyListeners();
     return true;
@@ -203,7 +328,9 @@ class CatalogProvider extends ChangeNotifier
   void addClient(Client client) {
     final name = _service.normalizeName(client.name);
     final phone = client.phone.trim();
-    if (name.isEmpty || _containsClientName(name)) return;
+    if (name.isEmpty || _containsClientName(name)) {
+      return;
+    }
     final id = client.id.isEmpty ? IdGenerator.newId() : client.id;
     final normalized = client.copyWith(
       id: id,
@@ -218,12 +345,18 @@ class CatalogProvider extends ChangeNotifier
 
   bool updateClient(Client client) {
     final index = _clients.indexWhere((item) => item.id == client.id);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final name = _service.normalizeName(client.name);
-    if (name.isEmpty) return false;
+    if (name.isEmpty) {
+      return false;
+    }
     final duplicate = _clients.any((item) =>
         item.id != client.id && item.name.toLowerCase() == name.toLowerCase());
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
     final updated = client.copyWith(name: name, phone: client.phone.trim());
     _clients[index] = updated;
     notifyListeners();
@@ -234,16 +367,28 @@ class CatalogProvider extends ChangeNotifier
   void removeClient(String clientId) {
     final before = _clients.length;
     _clients.removeWhere((client) => client.id == clientId);
-    if (before == _clients.length) return;
+    if (before == _clients.length) {
+      return;
+    }
     notifyListeners();
     _persist(() => _clientRepository?.delete(clientId));
   }
 
   Client? findClientById(String id) {
     for (final client in _clients) {
-      if (client.id == id) return client;
+      if (client.id == id) {
+        return client;
+      }
     }
     return null;
+  }
+
+  Future<void> refreshFromRepository() async {
+    await Future.wait<void>([
+      _loadCatalogFromRepository(),
+      _loadClientsFromRepository(),
+    ]);
+    notifyListeners();
   }
 
   Future<void> _loadCatalogFromRepository() async {
@@ -261,6 +406,7 @@ class CatalogProvider extends ChangeNotifier
         await _routeRepository?.getAll() ?? const <ProviderRoute>[];
 
     final mergedTags = <String>[];
+    final mergedBrands = <String>[];
     final mergedDistributors = <String>[];
 
     void addUnique(List<String> target, String raw) {
@@ -271,8 +417,15 @@ class CatalogProvider extends ChangeNotifier
     }
 
     void mergeState(ProviderCatalogState? state) {
-      if (state == null) return;
-      for (final tag in state.tags) addUnique(mergedTags, tag);
+      if (state == null) {
+        return;
+      }
+      for (final tag in state.tags) {
+        addUnique(mergedTags, tag);
+      }
+      for (final brand in state.brands) {
+        addUnique(mergedBrands, brand);
+      }
       for (final distributor in state.distributors) {
         addUnique(mergedDistributors, distributor);
       }
@@ -281,20 +434,22 @@ class CatalogProvider extends ChangeNotifier
     mergeState(current);
     mergeState(legacy);
 
-    // Recover distributors that were already persisted as part of routes.
     for (final route in routes) {
       addUnique(mergedDistributors, route.distributorName);
     }
 
-    // Recover distributors from existing products as an additional migration
-    // path for versions that never persisted the distributor catalog.
     for (final product in products) {
+      addUnique(mergedBrands, product.brand);
       addUnique(mergedDistributors, product.department);
+      addUnique(mergedTags, product.category);
     }
 
     _tags
       ..clear()
       ..addAll(mergedTags);
+    _brands
+      ..clear()
+      ..addAll(mergedBrands);
     _distributors
       ..clear()
       ..addAll(mergedDistributors);
@@ -312,11 +467,14 @@ class CatalogProvider extends ChangeNotifier
 
   void _persistCatalog() {
     final repository = _catalogRepository;
-    if (repository == null) return;
+    if (repository == null) {
+      return;
+    }
     final state = ProviderCatalogState(
       id: _catalogStateId,
       distributors: _distributors,
       tags: _tags,
+      brands: _brands,
     );
     unawaited(repository.save(state).catchError((_) {}));
   }
@@ -332,14 +490,18 @@ class CatalogProvider extends ChangeNotifier
       _clients
         ..clear()
         ..addAll(byId.values);
-      if (stored.isNotEmpty) notifyListeners();
+      if (stored.isNotEmpty) {
+        notifyListeners();
+      }
     }
     _clientsLoaded = true;
   }
 
   void _persist(Future<void>? Function()? operation) {
     final future = operation?.call();
-    if (future != null) unawaited(future.catchError((_) {}));
+    if (future != null) {
+      unawaited(future.catchError((_) {}));
+    }
   }
 
   bool _containsClientName(String name) =>

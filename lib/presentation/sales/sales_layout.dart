@@ -8,6 +8,7 @@ import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_detail_dialog.dart';
+import 'package:stellar_pos/presentation/debts/debt_payment_actions.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 import 'package:stellar_pos/presentation/widgets/history_table_panel.dart';
 import 'package:stellar_pos/presentation/widgets/period_summary_panel.dart';
@@ -21,12 +22,34 @@ class SalesLayout extends StatefulWidget {
 
 enum _SalesPeriod { daily, weekly, monthly, yearly, custom }
 
-enum _SalesPaymentFilter { all, cash, card, transfer, credit }
+enum _SalesPaymentFilter { all, cash, card, transfer, credit, payment }
 
 enum _SalesTypeFilter { all, products, electronic }
 
+class _SalesHistoryEntry {
+  final SaleRecord? sale;
+  final DebtMovement? payment;
+  final DateTime createdAt;
+
+  const _SalesHistoryEntry._({
+    this.sale,
+    this.payment,
+    required this.createdAt,
+  });
+
+  factory _SalesHistoryEntry.sale(SaleRecord sale) =>
+      _SalesHistoryEntry._(sale: sale, createdAt: sale.createdAt);
+
+  factory _SalesHistoryEntry.payment(DebtMovement payment) =>
+      _SalesHistoryEntry._(
+        payment: payment,
+        createdAt: payment.createdAt,
+      );
+}
+
 class _SalesLayoutState extends State<SalesLayout> {
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController =
+      TextEditingController();
   _SalesPeriod _period = _SalesPeriod.daily;
   _SalesPaymentFilter _paymentFilter = _SalesPaymentFilter.all;
   _SalesTypeFilter _typeFilter = _SalesTypeFilter.all;
@@ -51,10 +74,17 @@ class _SalesLayoutState extends State<SalesLayout> {
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   DateTimeRange _range() {
-    final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+    final day = DateTime(
+      _anchorDate.year,
+      _anchorDate.month,
+      _anchorDate.day,
+    );
     switch (_period) {
       case _SalesPeriod.daily:
-        return DateTimeRange(start: day, end: day.add(const Duration(days: 1)));
+        return DateTimeRange(
+          start: day,
+          end: day.add(const Duration(days: 1)),
+        );
       case _SalesPeriod.weekly:
         final start = day.subtract(Duration(days: day.weekday - 1));
         return DateTimeRange(
@@ -108,10 +138,15 @@ class _SalesLayoutState extends State<SalesLayout> {
     final query = _searchController.text.trim().toLowerCase();
     return sales.where((sale) {
       if (sale.createdAt.isBefore(range.start) ||
-          !sale.createdAt.isBefore(range.end))
+          !sale.createdAt.isBefore(range.end)) {
         return false;
-      if (!_paymentMatches(sale) || !_typeMatches(sale)) return false;
-      if (query.isEmpty) return true;
+      }
+      if (!_paymentMatches(sale) || !_typeMatches(sale)) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
       return sale.ticketNumber.toLowerCase().contains(query) ||
           sale.clientName.toLowerCase().contains(query) ||
           sale.items.any(
@@ -119,6 +154,32 @@ class _SalesLayoutState extends State<SalesLayout> {
                 item.productName.toLowerCase().contains(query) ||
                 item.barcode.toLowerCase().contains(query),
           );
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  List<DebtMovement> _filterPayments(List<DebtMovement> movements) {
+    final range = _range();
+    final query = _searchController.text.trim().toLowerCase();
+    return movements.where((movement) {
+      if (movement.type != DebtMovementType.payment ||
+          movement.isInitialPayment) {
+        return false;
+      }
+      if (movement.createdAt.isBefore(range.start) ||
+          !movement.createdAt.isBefore(range.end)) {
+        return false;
+      }
+      if (_typeFilter != _SalesTypeFilter.all) {
+        return false;
+      }
+      if (_paymentFilter != _SalesPaymentFilter.all &&
+          _paymentFilter != _SalesPaymentFilter.payment) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
+      return movement.clientName.toLowerCase().contains(query);
     }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
@@ -134,12 +195,18 @@ class _SalesLayoutState extends State<SalesLayout> {
         return sale.paymentMethod == AppStrings.transferPayment;
       case _SalesPaymentFilter.credit:
         return sale.paymentMethod == AppStrings.creditPayment;
+      case _SalesPaymentFilter.payment:
+        return false;
     }
   }
 
   bool _typeMatches(SaleRecord sale) {
-    final hasElectronic = sale.items.any((item) => item.isElectronicBalance);
-    final hasProducts = sale.items.any((item) => !item.isElectronicBalance);
+    final hasElectronic = sale.items.any(
+      (item) => item.isElectronicBalance,
+    );
+    final hasProducts = sale.items.any(
+      (item) => !item.isElectronicBalance,
+    );
     switch (_typeFilter) {
       case _SalesTypeFilter.all:
         return true;
@@ -163,10 +230,14 @@ class _SalesLayoutState extends State<SalesLayout> {
             )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    final paid = <String, double>{for (final sale in credits) sale.id: 0};
+    final paid = <String, double>{
+      for (final sale in credits) sale.id: 0,
+    };
     final payments =
         movements
-            .where((movement) => movement.type == DebtMovementType.payment)
+            .where(
+              (movement) => movement.type == DebtMovementType.payment,
+            )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     for (final payment in payments) {
@@ -175,11 +246,17 @@ class _SalesLayoutState extends State<SalesLayout> {
         (sale) => sale.clientId == payment.clientId,
       )) {
         final outstanding = sale.effectiveTotal - (paid[sale.id] ?? 0);
-        if (outstanding <= 0.005) continue;
-        final applied = remaining > outstanding ? outstanding : remaining;
+        if (outstanding <= 0.005) {
+          continue;
+        }
+        final applied = remaining > outstanding
+            ? outstanding
+            : remaining;
         paid[sale.id] = (paid[sale.id] ?? 0) + applied;
         remaining -= applied;
-        if (remaining <= 0.005) break;
+        if (remaining <= 0.005) {
+          break;
+        }
       }
     }
     return paid;
@@ -205,7 +282,9 @@ class _SalesLayoutState extends State<SalesLayout> {
     final byClient = <String, List<SaleRecord>>{};
     for (final sale in activeCredits) {
       final clientId = sale.clientId;
-      if (clientId != null) byClient.putIfAbsent(clientId, () => []).add(sale);
+      if (clientId != null) {
+        byClient.putIfAbsent(clientId, () => []).add(sale);
+      }
     }
 
     return movements
@@ -221,7 +300,8 @@ class _SalesLayoutState extends State<SalesLayout> {
           final valid = reference != null && reference.isNotEmpty
               ? byId[reference]?.clientId == movement.clientId
               : byClient[movement.clientId]?.any(
-                      (sale) => !sale.createdAt.isAfter(movement.createdAt),
+                      (sale) =>
+                          !sale.createdAt.isAfter(movement.createdAt),
                     ) ??
                     false;
           return valid ? sum + movement.amount : sum;
@@ -229,8 +309,13 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   int _effectiveItemCount(SaleRecord sale) {
-    if (sale.isAnnulled) return 0;
-    var count = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    if (sale.isAnnulled) {
+      return 0;
+    }
+    var count = sale.items.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
     for (final operation in sale.operations) {
       count -= operation.itemsOut.fold<int>(
         0,
@@ -245,9 +330,16 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   @override
-  Widget build(BuildContext context) => Consumer2<SalesProvider, DebtProvider>(
+  Widget build(
+    BuildContext context,
+  ) => Consumer2<SalesProvider, DebtProvider>(
     builder: (context, salesProvider, debtProvider, _) {
       final sales = _filterSales(salesProvider.sales);
+      final payments = _filterPayments(debtProvider.movements);
+      final history = <_SalesHistoryEntry>[
+        ...sales.map(_SalesHistoryEntry.sale),
+        ...payments.map(_SalesHistoryEntry.payment),
+      ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final paidBySale = _paidBySale(
         salesProvider.sales,
         debtProvider.movements,
@@ -262,7 +354,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         (sum, sale) => sum + _collectedFromSale(sale),
       );
       final credit = sales
-          .where((sale) => sale.paymentMethod == AppStrings.creditPayment)
+          .where(
+            (sale) => sale.paymentMethod == AppStrings.creditPayment,
+          )
           .fold(
             0.0,
             (sum, sale) =>
@@ -273,7 +367,11 @@ class _SalesLayoutState extends State<SalesLayout> {
         debtProvider.movements,
         range,
       );
-      final profit = sales.fold(0.0, (sum, sale) => sum + sale.effectiveProfit);
+      final cashIn = collected + laterPayments;
+      final profit = sales.fold(
+        0.0,
+        (sum, sale) => sum + sale.effectiveProfit,
+      );
       final itemCount = sales.fold<int>(
         0,
         (sum, sale) => sum + _effectiveItemCount(sale),
@@ -295,6 +393,16 @@ class _SalesLayoutState extends State<SalesLayout> {
           _money(laterPayments),
           valueColor: AppColors.warningOrange,
         ),
+        PeriodSummaryMetric(
+          'Total cobrado',
+          _money(cashIn),
+          valueColor: AppColors.successGreen,
+        ),
+        PeriodSummaryMetric(
+          'Ganancia estimada',
+          _money(profit),
+          valueColor: AppColors.successGreen,
+        ),
         PeriodSummaryMetric('Cantidad de ventas', '${sales.length}'),
         PeriodSummaryMetric('Artículos vendidos', '$itemCount'),
         PeriodSummaryMetric('Clientes', '$clientCount'),
@@ -306,14 +414,23 @@ class _SalesLayoutState extends State<SalesLayout> {
           children: [
             _buildHeader(),
             const SizedBox(height: 10),
-            _buildMetrics(totalSold, collected, credit, laterPayments),
+            _buildMetrics(
+              totalSold,
+              collected,
+              credit,
+              laterPayments,
+              cashIn,
+            ),
             const SizedBox(height: 12),
             _buildFilters(),
             const SizedBox(height: 12),
             Expanded(
               child: Row(
                 children: [
-                  Expanded(flex: 3, child: _buildList(sales, paidBySale)),
+                  Expanded(
+                    flex: 3,
+                    child: _buildList(history, paidBySale),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: PeriodSummaryPanel(
@@ -326,25 +443,12 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
             ),
             const SizedBox(height: 7),
-            Row(
-              children: [
-                Text(
-                  '${sales.length} venta${sales.length == 1 ? '' : 's'} en ${_periodLabel()}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Ganancia estimada: ${_money(profit)}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.successGreen,
-                  ),
-                ),
-              ],
+            Text(
+              '${sales.length} venta${sales.length == 1 ? '' : 's'} · ${payments.length} abono${payments.length == 1 ? '' : 's'} en ${_periodLabel()}',
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -362,7 +466,10 @@ class _SalesLayoutState extends State<SalesLayout> {
             SizedBox(height: 3),
             Text(
               'Historial y registro de las ventas realizadas.',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -371,7 +478,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         onPressed: _pickDate,
         icon: const Icon(Icons.calendar_today_outlined, size: 16),
         label: Text(
-          _period == _SalesPeriod.custom ? 'Elegir rango' : _dateLabel(),
+          _period == _SalesPeriod.custom
+              ? 'Elegir rango'
+              : _dateLabel(),
         ),
       ),
       const SizedBox(width: 8),
@@ -380,10 +489,22 @@ class _SalesLayoutState extends State<SalesLayout> {
             ? _pickRange()
             : setState(() => _period = value),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: _SalesPeriod.daily, child: Text('Diario')),
-          PopupMenuItem(value: _SalesPeriod.weekly, child: Text('Semanal')),
-          PopupMenuItem(value: _SalesPeriod.monthly, child: Text('Mensual')),
-          PopupMenuItem(value: _SalesPeriod.yearly, child: Text('Anual')),
+          PopupMenuItem(
+            value: _SalesPeriod.daily,
+            child: Text('Diario'),
+          ),
+          PopupMenuItem(
+            value: _SalesPeriod.weekly,
+            child: Text('Semanal'),
+          ),
+          PopupMenuItem(
+            value: _SalesPeriod.monthly,
+            child: Text('Mensual'),
+          ),
+          PopupMenuItem(
+            value: _SalesPeriod.yearly,
+            child: Text('Anual'),
+          ),
           PopupMenuItem(
             value: _SalesPeriod.custom,
             child: Text('Rango personalizado'),
@@ -394,14 +515,18 @@ class _SalesLayoutState extends State<SalesLayout> {
     ],
   );
   Future<void> _pickDate() async {
-    if (_period == _SalesPeriod.custom) return _pickRange();
+    if (_period == _SalesPeriod.custom) {
+      return _pickRange();
+    }
     final picked = await showDatePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       initialDate: _anchorDate,
     );
-    if (picked != null) setState(() => _anchorDate = picked);
+    if (picked != null) {
+      setState(() => _anchorDate = picked);
+    }
   }
 
   Future<void> _pickRange() async {
@@ -416,7 +541,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         end: end.isBefore(start) ? start : end,
       ),
     );
-    if (picked == null) return;
+    if (picked == null) {
+      return;
+    }
     setState(() {
       _period = _SalesPeriod.custom;
       _customStart = picked.start;
@@ -430,6 +557,7 @@ class _SalesLayoutState extends State<SalesLayout> {
     double collected,
     double credit,
     double laterPayments,
+    double cashIn,
   ) => Row(
     children: [
       Expanded(
@@ -438,6 +566,15 @@ class _SalesLayoutState extends State<SalesLayout> {
           sold,
           Icons.receipt_long_outlined,
           AppColors.primary,
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _metric(
+          'Fiado',
+          credit,
+          Icons.account_balance_wallet_outlined,
+          AppColors.dangerRed,
         ),
       ),
       const SizedBox(width: 8),
@@ -452,68 +589,72 @@ class _SalesLayoutState extends State<SalesLayout> {
       const SizedBox(width: 8),
       Expanded(
         child: _metric(
-          'Fiado generado',
-          credit,
-          Icons.account_balance_wallet_outlined,
-          AppColors.dangerRed,
-        ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: _metric(
           'Abonos cobrados',
           laterPayments,
           Icons.savings_outlined,
           AppColors.warningOrange,
         ),
       ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _metric(
+          'En caja',
+          cashIn,
+          Icons.account_balance_wallet_outlined,
+          AppColors.successGreen,
+        ),
+      ),
     ],
   );
-  Widget _metric(String label, double amount, IconData icon, Color color) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowColor,
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
-          ],
+  Widget _metric(
+    String label,
+    double amount,
+    IconData icon,
+    Color color,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+      border: Border.all(color: AppColors.border),
+      boxShadow: const [
+        BoxShadow(
+          color: AppColors.shadowColor,
+          blurRadius: 8,
+          offset: Offset(0, 3),
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _money(amount),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+      ],
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                _money(amount),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
   Widget _buildFilters() => Row(
     children: [
       Expanded(
@@ -527,7 +668,10 @@ class _SalesLayoutState extends State<SalesLayout> {
       PopupMenuButton<_SalesTypeFilter>(
         onSelected: (value) => setState(() => _typeFilter = value),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: _SalesTypeFilter.all, child: Text('Todas')),
+          PopupMenuItem(
+            value: _SalesTypeFilter.all,
+            child: Text('Todas'),
+          ),
           PopupMenuItem(
             value: _SalesTypeFilter.products,
             child: Text('Productos'),
@@ -542,7 +686,10 @@ class _SalesLayoutState extends State<SalesLayout> {
       PopupMenuButton<_SalesPaymentFilter>(
         onSelected: (value) => setState(() => _paymentFilter = value),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: _SalesPaymentFilter.all, child: Text('Todos')),
+          PopupMenuItem(
+            value: _SalesPaymentFilter.all,
+            child: Text('Todos'),
+          ),
           PopupMenuItem(
             value: _SalesPaymentFilter.cash,
             child: Text('Efectivo'),
@@ -558,6 +705,10 @@ class _SalesLayoutState extends State<SalesLayout> {
           PopupMenuItem(
             value: _SalesPaymentFilter.credit,
             child: Text('Fiado'),
+          ),
+          PopupMenuItem(
+            value: _SalesPaymentFilter.payment,
+            child: Text('Abonos'),
           ),
         ],
         child: _menuSurface(Icons.filter_alt_outlined, _paymentLabel()),
@@ -587,6 +738,8 @@ class _SalesLayoutState extends State<SalesLayout> {
         return 'Transferencia';
       case _SalesPaymentFilter.credit:
         return 'Fiado';
+      case _SalesPaymentFilter.payment:
+        return 'Abonos';
     }
   }
 
@@ -621,79 +774,99 @@ class _SalesLayoutState extends State<SalesLayout> {
       ],
     ),
   );
-  Widget _buildList(List<SaleRecord> sales, Map<String, double> paidBySale) =>
-      HistoryTablePanel(
-        title: 'Historial de ventas',
-        icon: Icons.receipt_long_outlined,
-        itemCount: sales.length,
-        header: _buildListHeader(),
-        emptyState: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 40,
-                color: AppColors.textMuted,
-              ),
-              SizedBox(height: 10),
-              Text(
-                'No hay ventas en este período.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
+  Widget _buildList(
+    List<_SalesHistoryEntry> entries,
+    Map<String, double> paidBySale,
+  ) => HistoryTablePanel(
+    title: 'Historial de ventas',
+    icon: Icons.receipt_long_outlined,
+    itemCount: entries.length,
+    header: _buildListHeader(),
+    emptyState: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 40,
+            color: AppColors.textMuted,
           ),
-        ),
-        itemBuilder: (_, index) => _saleRow(
-          sales[index],
-          paidBySale[sales[index].id] ?? sales[index].effectiveCollected,
-        ),
+          SizedBox(height: 10),
+          Text(
+            'No hay ventas ni abonos en este período.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    ),
+    itemBuilder: (_, index) {
+      final entry = entries[index];
+      if (entry.payment != null) {
+        return _paymentRow(entry.payment!);
+      }
+      final sale = entry.sale!;
+      return _saleRow(
+        sale,
+        paidBySale[sale.id] ?? sale.effectiveCollected,
       );
+    },
+  );
   Widget _buildListHeader() => Container(
-    padding: const EdgeInsets.fromLTRB(14, 10, 14, 9),
+    padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
     decoration: const BoxDecoration(
       color: AppColors.inputBackground,
       border: Border(bottom: BorderSide(color: AppColors.border)),
     ),
     child: const Row(
       children: [
-        SizedBox(
-          width: 78,
+        Expanded(
+          flex: 10,
           child: Text('Ticket', style: AppTextStyles.ticketLabel),
         ),
-        SizedBox(
-          width: 105,
+        Expanded(
+          flex: 12,
           child: Text('Fecha / hora', style: AppTextStyles.ticketLabel),
         ),
         Expanded(
-          flex: 2,
+          flex: 18,
           child: Text('Cliente', style: AppTextStyles.ticketLabel),
         ),
-        Expanded(child: Text('Artículos', style: AppTextStyles.ticketLabel)),
-        SizedBox(
-          width: 100,
+        Expanded(
+          flex: 10,
+          child: Text('Artículos', style: AppTextStyles.ticketLabel),
+        ),
+        Expanded(
+          flex: 10,
           child: Text('Pago', style: AppTextStyles.ticketLabel),
         ),
-        SizedBox(
-          width: 185,
-          child: Text('Estado / operación', style: AppTextStyles.ticketLabel),
+        Expanded(
+          flex: 18,
+          child: Text(
+            'Estado / operación',
+            style: AppTextStyles.ticketLabel,
+          ),
         ),
-        SizedBox(
-          width: 100,
+        Expanded(
+          flex: 10,
           child: Text(
             'Total',
             textAlign: TextAlign.right,
             style: AppTextStyles.ticketLabel,
           ),
         ),
-        SizedBox(width: 26),
+        SizedBox(width: 66),
       ],
     ),
   );
   Widget _saleRow(SaleRecord sale, double paid) {
     final credit = sale.paymentMethod == AppStrings.creditPayment;
     final pending = credit
-        ? (sale.effectiveTotal - paid).clamp(0, double.infinity).toDouble()
+        ? (sale.effectiveTotal - paid)
+              .clamp(0, double.infinity)
+              .toDouble()
         : 0.0;
     final items = _effectiveItemCount(sale);
     final time =
@@ -701,61 +874,75 @@ class _SalesLayoutState extends State<SalesLayout> {
     return InkWell(
       onTap: () => _showDetails(sale, paid),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
         child: Row(
           children: [
-            SizedBox(
-              width: 78,
+            Expanded(
+              flex: 10,
               child: Text(
                 '#${sale.ticketNumber}',
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),
               ),
             ),
-            SizedBox(
-              width: 105,
+            Expanded(
+              flex: 12,
               child: Text(
                 '${_date(sale.createdAt)}\n$time',
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
+                  height: 1.25,
                   color: AppColors.textSecondary,
                 ),
               ),
             ),
             Expanded(
-              flex: 2,
+              flex: 18,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  sale.clientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 10,
               child: Text(
-                sale.clientName,
+                '$items art.',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                '$items artículo${items == 1 ? '' : 's'}',
-                style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   color: AppColors.textSecondary,
                 ),
               ),
             ),
-            SizedBox(width: 100, child: _paymentBadge(sale.paymentMethod)),
-            SizedBox(width: 185, child: _statusOperationBadges(sale)),
-            SizedBox(
-              width: 100,
+            Expanded(
+              flex: 10,
+              child: _paymentBadge(sale.paymentMethod),
+            ),
+            Expanded(flex: 18, child: _statusOperationBadges(sale)),
+            Expanded(
+              flex: 10,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     _money(sale.effectiveTotal),
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -763,9 +950,11 @@ class _SalesLayoutState extends State<SalesLayout> {
                     Text(
                       pending <= .005
                           ? 'Pagada'
-                          : 'Pendiente ${_money(pending)}',
+                          : 'Pend. ${_money(pending)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 8,
                         fontWeight: FontWeight.w600,
                         color: pending <= .005
                             ? AppColors.successGreen
@@ -775,11 +964,146 @@ class _SalesLayoutState extends State<SalesLayout> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AppColors.textMuted,
+            SizedBox(
+              width: 66,
+              child: const Align(
+                alignment: Alignment.centerRight,
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentRow(DebtMovement movement) {
+    final time =
+        '${movement.createdAt.hour.toString().padLeft(2, '0')}:${movement.createdAt.minute.toString().padLeft(2, '0')}';
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.successGreen.withAlpha(7),
+        border: const Border(
+          bottom: BorderSide(color: AppColors.border),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              flex: 10,
+              child: Text(
+                '—',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 12,
+              child: Text(
+                '${_date(movement.createdAt)}\n$time',
+                style: const TextStyle(
+                  fontSize: 9,
+                  height: 1.25,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 18,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  movement.clientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const Expanded(
+              flex: 10,
+              child: Text(
+                '—',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+            Expanded(flex: 10, child: _paymentBadge('Abono')),
+            const Expanded(
+              flex: 18,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'COBRADO',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.successGreen,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 10,
+              child: Text(
+                _money(movement.amount),
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.successGreen,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 66,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    tooltip: 'Editar abono',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    onPressed: () =>
+                        DebtPaymentActions.edit(context, movement),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    color: AppColors.textSecondary,
+                  ),
+                  IconButton(
+                    tooltip: 'Eliminar abono',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    onPressed: () =>
+                        DebtPaymentActions.delete(context, movement),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    color: AppColors.dangerRed,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -802,7 +1126,10 @@ class _SalesLayoutState extends State<SalesLayout> {
             padding: EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               '—',
-              style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
         );
@@ -825,13 +1152,17 @@ class _SalesLayoutState extends State<SalesLayout> {
   Widget _saleBadge(String label, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
     decoration: BoxDecoration(
-      color: color.withOpacity(.10),
-      border: Border.all(color: color.withOpacity(.35)),
+      color: color.withValues(alpha: .10),
+      border: Border.all(color: color.withValues(alpha: .35)),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
       label,
-      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
     ),
   );
   Widget _paymentBadge(String method) => Align(
@@ -862,7 +1193,9 @@ class _SalesLayoutState extends State<SalesLayout> {
   Future<void> _printSale(SaleRecord sale) async {
     final printer = context.read<PrinterProvider>();
     final printed = await printer.printSaleTicket(sale);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     AppAlert.show(
       context,
       printed

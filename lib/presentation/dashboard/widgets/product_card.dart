@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class ProductCard extends StatelessWidget {
@@ -9,6 +8,8 @@ class ProductCard extends StatelessWidget {
   final int quantityInCart;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
+  final bool preparedSelected;
+  final ValueChanged<bool> onPreparedChanged;
 
   const ProductCard({
     super.key,
@@ -16,6 +17,8 @@ class ProductCard extends StatelessWidget {
     required this.quantityInCart,
     required this.onAdd,
     required this.onRemove,
+    this.preparedSelected = false,
+    required this.onPreparedChanged,
   });
 
   @override
@@ -72,39 +75,29 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildProductImage() {
     final imageData = product['imageData']?.toString().trim() ?? '';
-    if (imageData.isNotEmpty) {
-      try {
-        return ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(15),
-            topRight: Radius.circular(15),
-          ),
-          child: Image.memory(
-            base64Decode(imageData),
-            width: double.infinity,
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
-            gaplessPlayback: true,
-          ),
-        );
-      } catch (_) {}
-    }
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(15),
-          topRight: Radius.circular(15),
-        ),
-      ),
-      child: const Center(
-        child: Icon(
+    final productId = product['id']?.toString() ?? '';
+
+    if (imageData.isEmpty) {
+      return Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(color: AppColors.cardBackground),
+        child: const Icon(
           Icons.inventory_2_outlined,
           color: AppColors.textMuted,
-          size: AppDimensions.productImageSize,
         ),
+      );
+    }
+
+    return ProductImage(
+      productId: productId,
+      imageData: imageData,
+      width: double.infinity,
+      fit: BoxFit.contain,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(15),
+        topRight: Radius.circular(15),
       ),
+      placeholderIcon: Icons.inventory_2_outlined,
     );
   }
 
@@ -112,7 +105,9 @@ class ProductCard extends StatelessWidget {
     final name = ProductUtils.cleanName(product);
     final unit = ProductUtils.unit(product);
     final brand = ProductUtils.brand(product);
-    final price = ProductUtils.price(product);
+    final price = preparedSelected
+        ? ProductUtils.price(product) + ProductUtils.asDouble(product['preparationExtra'])
+        : ProductUtils.price(product);
     final metadata = brand.isEmpty ? unit : '$unit | $brand';
 
     return Column(
@@ -133,6 +128,10 @@ class ProductCard extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         _buildStockBadge(stock: stock, color: stockColor),
+        if (ProductUtils.asBool(product['allowPreparedSale'])) ...[
+          const SizedBox(height: 5),
+          _buildPreparedToggle(),
+        ],
         const SizedBox(height: 7),
         _buildPriceRow(price),
       ],
@@ -166,8 +165,44 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  Widget _buildPreparedToggle() {
+    return InkWell(
+      onTap: () => onPreparedChanged(!preparedSelected),
+      borderRadius: BorderRadius.circular(6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: preparedSelected,
+              onChanged: (value) {
+                if (value != null) onPreparedChanged(value);
+              },
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Preparada',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: preparedSelected
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPriceRow(double price) {
     final hasGroupPricing =
+        !preparedSelected &&
         ProductUtils.asBool(product['hasGroupPricing']) &&
         ProductUtils.asInt(product['groupQuantity']) > 0;
     final groupQuantity = ProductUtils.asInt(product['groupQuantity']);

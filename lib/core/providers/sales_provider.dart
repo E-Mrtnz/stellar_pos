@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/app/app_dependencies.dart';
@@ -7,7 +9,6 @@ import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart
 import 'package:stellar_pos/core/domain/services/inventory_stock_service.dart';
 import 'package:stellar_pos/core/domain/services/sale_lifecycle_service.dart';
 import 'package:stellar_pos/core/models/electronic_balance.dart';
-import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
@@ -52,9 +53,13 @@ class SalesProvider extends ChangeNotifier {
       _nextTicketNumber.toString().padLeft(8, '0');
 
   Future<void> load() {
-    if (_loaded) return Future.value();
+    if (_loaded) {
+      return Future.value();
+    }
     final existing = _loadFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadFromRepository();
     _loadFuture = future;
     return future;
@@ -73,24 +78,33 @@ class SalesProvider extends ChangeNotifier {
     required double total,
     required double received,
     required double change,
+    Set<String> preparedProductIds = const <String>{},
     List<ElectronicBalanceCartSale> electronicSales = const [],
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
-    if (cartQuantities.isEmpty && electronicSales.isEmpty)
+    if (cartQuantities.isEmpty && electronicSales.isEmpty) {
       throw StateError('No hay productos seleccionados.');
-    if (electronicSales.isNotEmpty && electronicBalanceProvider == null)
+    }
+    if (electronicSales.isNotEmpty && electronicBalanceProvider == null) {
       throw StateError('No se pudo acceder al saldo electrónico.');
+    }
     final ticketNumber = nextTicketNumberPreview;
     final saleId = _lifecycle.newSaleId();
     final items = <SaleItemRecord>[];
     for (final entry in cartQuantities.entries) {
       final product = productProvider.findById(entry.key);
-      if (product == null)
+      if (product == null) {
         throw StateError('Uno de los productos de la venta ya no existe.');
+      }
       final quantity = entry.value;
-      if (!_pricing.canPrice(product, quantity))
+      if (!_pricing.canPrice(product, quantity)) {
         throw StateError('La cantidad de un producto debe ser mayor que cero.');
-      final item = _lines.physicalItem(product, quantity);
+      }
+      final item = _lines.physicalItem(
+        product,
+        quantity,
+        prepared: preparedProductIds.contains(product.id),
+      );
       final lineDiscount = _totals.proportionalDiscount(
         lineSubtotal: item.lineSubtotal,
         subtotal: subtotal,
@@ -100,27 +114,32 @@ class SalesProvider extends ChangeNotifier {
     }
     final balanceProvider = electronicBalanceProvider;
     final balanceAccounts = <String, ElectronicBalanceAccount>{};
-    if (balanceProvider != null)
+    if (balanceProvider != null) {
       for (final electronicSale in electronicSales) {
         final account = balanceProvider.findAccount(electronicSale.accountId);
-        if (account == null)
+        if (account == null) {
           throw StateError('La compañía de una recarga ya no existe.');
-        if (electronicSale.quantity <= 0 || electronicSale.amount <= 0)
+        }
+        if (electronicSale.quantity <= 0 || electronicSale.amount <= 0) {
           throw StateError(
             'La cantidad de una recarga debe ser mayor que cero.',
           );
-        if (!_electronicBalance.isValidCategory(electronicSale.category))
+        }
+        if (!_electronicBalance.isValidCategory(electronicSale.category)) {
           throw StateError('El tipo de recarga no es válido.');
+        }
         if (!_electronicBalance.supportsAmount(
           account,
           electronicSale.category,
           electronicSale.amount,
-        ))
+        )) {
           throw StateError(
-            'El monto de una recarga ya no está configurado para ${account.companyName}.',
+            'El monto de una recarga ya no está configurado para $account.companyName.',
           );
+        }
         balanceAccounts[electronicSale.accountId] = account;
       }
+    }
     for (final electronicSale in electronicSales) {
       final account = balanceAccounts[electronicSale.accountId]!;
       final lineSubtotal = electronicSale.amount * electronicSale.quantity;
@@ -129,14 +148,15 @@ class SalesProvider extends ChangeNotifier {
         subtotal: subtotal,
         discountAmount: discountAmount,
       );
-      final providerCost = _electronicBalance.providerCost(
+      final providerCost = _electronicBalance.providerCostForSale(
+        account: account,
+        category: electronicSale.category,
         amount: electronicSale.amount,
-        commissionRate: account.commissionRate,
       );
       items.add(
         SaleItemRecord(
           productId:
-              'electronic:${electronicSale.accountId}:${electronicSale.category}:${electronicSale.amount.toStringAsFixed(4)}',
+              'electronic:$electronicSale.accountId:$electronicSale.category:${electronicSale.amount.toStringAsFixed(4)}',
           productName: electronicSale.description,
           unit: electronicSale.category,
           barcode: '',
@@ -146,6 +166,7 @@ class SalesProvider extends ChangeNotifier {
           lineSubtotal: lineSubtotal,
           discount: lineDiscount,
           lineTotal: lineSubtotal - lineDiscount,
+          imageData: account.imageData,
           isElectronicBalance: true,
           electronicBalanceAccountId: electronicSale.accountId,
           electronicBalanceCategory: electronicSale.category,
@@ -170,10 +191,11 @@ class SalesProvider extends ChangeNotifier {
     );
     for (final entry in cartQuantities.entries) {
       final product = productProvider.findById(entry.key);
-      if (product != null)
+      if (product != null) {
         productProvider.updateProduct(_stock.decrease(product, entry.value));
+      }
     }
-    if (balanceProvider != null && electronicSales.isNotEmpty)
+    if (balanceProvider != null && electronicSales.isNotEmpty) {
       for (final accountId in electronicSales.map((e) => e.accountId).toSet()) {
         final accountSales = electronicSales
             .where((sale) => sale.accountId == accountId)
@@ -190,9 +212,11 @@ class SalesProvider extends ChangeNotifier {
           accountId: accountId,
           sales: accountSales,
           saleId: sale.id,
-        ))
+        )) {
           throw StateError('No se pudo registrar una de las ventas de saldo.');
+        }
       }
+    }
     _sales.add(sale);
     _nextTicketNumber++;
     notifyListeners();
@@ -207,35 +231,45 @@ class SalesProvider extends ChangeNotifier {
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0)
+    if (index < 0) {
       throw StateError('La venta que intentas editar ya no existe.');
-    if (updatedItems.isEmpty)
+    }
+    if (updatedItems.isEmpty) {
       throw StateError('La venta debe conservar al menos un producto.');
+    }
     final oldSale = _sales[index];
-    if (oldSale.operations.isNotEmpty)
+    if (oldSale.operations.isNotEmpty) {
       throw StateError(
         'Una venta con devolución o cambio no puede modificarse.',
       );
+    }
     final oldPhysical = <String, int>{};
-    for (final item in oldSale.items)
-      if (!item.isElectronicBalance)
+    for (final item in oldSale.items) {
+      if (!item.isElectronicBalance) {
         oldPhysical[item.productId] =
             (oldPhysical[item.productId] ?? 0) + item.quantity;
+      }
+    }
     final newPhysical = <String, int>{};
     for (final item in updatedItems) {
-      if (item.isElectronicBalance) continue;
+      if (item.isElectronicBalance) {
+        continue;
+      }
       final product = productProvider.findById(item.productId);
-      if (product == null)
+      if (product == null) {
         throw StateError('Uno de los productos seleccionados ya no existe.');
-      if (!_pricing.canPrice(product, item.quantity))
+      }
+      if (!_pricing.canPrice(product, item.quantity)) {
         throw StateError('La cantidad de un producto debe ser mayor que cero.');
+      }
       newPhysical[item.productId] =
           (newPhysical[item.productId] ?? 0) + item.quantity;
     }
     final hasElectronic = updatedItems.any((item) => item.isElectronicBalance);
-    if (hasElectronic && electronicBalanceProvider == null)
+    if (hasElectronic && electronicBalanceProvider == null) {
       throw StateError('No se pudo acceder al saldo electrónico.');
-    if (hasElectronic)
+    }
+    if (hasElectronic) {
       for (final item in updatedItems.where(
         (item) => item.isElectronicBalance,
       )) {
@@ -244,35 +278,47 @@ class SalesProvider extends ChangeNotifier {
         final account = accountId == null
             ? null
             : electronicBalanceProvider!.findAccount(accountId);
-        if (account == null || category == null)
+        if (account == null || category == null) {
           throw StateError('Una recarga de la venta ya no está disponible.');
+        }
         if (!_electronicBalance.supportsAmount(
           account,
           category,
           item.unitPrice,
-        ))
+        )) {
           throw StateError(
             'Uno de los montos de recarga ya no está configurado.',
           );
+        }
       }
-    if (oldSale.items.any((item) => item.isElectronicBalance))
+    }
+    if (oldSale.items.any((item) => item.isElectronicBalance)) {
       if (electronicBalanceProvider == null ||
-          !electronicBalanceProvider.reverseSale(oldSale.id))
+          !electronicBalanceProvider.reverseSale(oldSale.id)) {
         throw StateError(
           'No se pudo revertir el saldo electrónico de la venta.',
         );
+      }
+    }
     for (final entry in oldPhysical.entries) {
       final product = productProvider.findById(entry.key);
-      if (product != null)
+      if (product != null) {
         productProvider.updateProduct(_stock.increase(product, entry.value));
+      }
     }
     final newSubtotal = updatedItems.fold<double>(0, (sum, item) {
-      if (item.isElectronicBalance) return sum + item.unitPrice * item.quantity;
+      if (item.isElectronicBalance) {
+        return sum + item.unitPrice * item.quantity;
+      }
       final product = productProvider.findById(item.productId);
       return sum +
           (product == null
               ? item.unitPrice * item.quantity
-              : _pricing.lineSubtotal(product, item.quantity));
+              : _pricing.lineSubtotal(
+                  product,
+                  item.quantity,
+                  prepared: item.isPrepared,
+                ));
     });
     final oldDiscountRate = oldSale.subtotal <= 0
         ? 0.0
@@ -317,16 +363,18 @@ class SalesProvider extends ChangeNotifier {
           product?.cost ??
           (account == null
               ? item.cost
-              : _electronicBalance.providerCost(
+              : _electronicBalance.providerCostForSale(
+                  account: account,
+                  category: item.electronicBalanceCategory ?? item.unit,
                   amount: item.unitPrice,
-                  commissionRate: account.commissionRate,
                 ));
       final name = isElectronic && account != null
-          ? '${account.companyName} · ${item.electronicBalanceCategory ?? item.unit}'
+          ? '$account.companyName · ${item.electronicBalanceCategory ?? item.unit}'
           : (product?.name ?? item.productName);
       final hasGroupPricing =
           !isElectronic &&
           product != null &&
+          !item.isPrepared &&
           product.hasGroupPricing &&
           product.groupQuantity > 0;
       finalItems.add(
@@ -338,14 +386,24 @@ class SalesProvider extends ChangeNotifier {
           brand: product?.brand ?? item.brand,
           barcode: product?.barcode ?? item.barcode,
           cost: cost,
-          unitPrice: product?.price ?? item.unitPrice,
+          unitPrice: product == null
+              ? item.unitPrice
+              : item.isPrepared
+              ? product.price + product.preparationExtra
+              : product.price,
           quantity: item.quantity,
           lineSubtotal: lineSubtotal,
           discount: lineDiscount,
           lineTotal: lineSubtotal - lineDiscount,
-          imageData: product?.imageData ?? item.imageData,
+          imageData: isElectronic && account != null
+              ? account.imageData
+              : (product?.imageData ?? item.imageData),
           isElectronicBalance: isElectronic,
           hasGroupPricing: hasGroupPricing,
+          isPrepared: item.isPrepared,
+          preparationExtra: item.isPrepared
+              ? product?.preparationExtra ?? item.preparationExtra
+              : 0,
           electronicBalanceAccountId: item.electronicBalanceAccountId,
           electronicBalanceCategory: item.electronicBalanceCategory,
           metadata: item.metadata,
@@ -354,15 +412,17 @@ class SalesProvider extends ChangeNotifier {
     }
     for (final entry in newPhysical.entries) {
       final product = productProvider.findById(entry.key);
-      if (product != null)
+      if (product != null) {
         productProvider.updateProduct(_stock.decrease(product, entry.value));
+      }
     }
     if (hasElectronic) {
       final groups = <String, List<SaleItemRecord>>{};
       for (final item in finalItems.where((item) => item.isElectronicBalance)) {
         final accountId = item.electronicBalanceAccountId;
-        if (accountId != null)
+        if (accountId != null) {
           groups.putIfAbsent(accountId, () => []).add(item);
+        }
       }
       for (final entry in groups.entries) {
         final registered = electronicBalanceProvider!.registerSales(
@@ -379,10 +439,11 @@ class SalesProvider extends ChangeNotifier {
               )
               .toList(growable: false),
         );
-        if (!registered)
+        if (!registered) {
           throw StateError(
             'No se pudo registrar una de las recargas modificadas.',
           );
+        }
       }
     }
     final updated = _lifecycle.touchForUpdate(
@@ -408,17 +469,24 @@ class SalesProvider extends ChangeNotifier {
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final sale = _sales[index];
-    if (sale.isAnnulled || sale.operations.isNotEmpty) return false;
-    if (sale.items.any((item) => item.isElectronicBalance))
+    if (sale.isAnnulled || sale.operations.isNotEmpty) {
+      return false;
+    }
+    if (sale.items.any((item) => item.isElectronicBalance)) {
       if (electronicBalanceProvider == null ||
-          !electronicBalanceProvider.reverseSale(sale.id))
+          !electronicBalanceProvider.reverseSale(sale.id)) {
         return false;
+      }
+    }
     for (final item in sale.items.where((item) => !item.isElectronicBalance)) {
       final product = productProvider.findById(item.productId);
-      if (product != null)
+      if (product != null) {
         productProvider.updateProduct(_stock.increase(product, item.quantity));
+      }
     }
     final updated = sale.copyWith(
       status: SaleStatus.annulled,
@@ -437,7 +505,9 @@ class SalesProvider extends ChangeNotifier {
     );
     final byProduct = <String, SaleItemRecord>{};
     void add(SaleItemRecord item, int sign) {
-      if (item.isElectronicBalance) return;
+      if (item.isElectronicBalance) {
+        return;
+      }
       final quantity = item.quantity * sign;
       final current = byProduct[item.productId];
       final nextQuantity = (current?.quantity ?? 0) + quantity;
@@ -449,10 +519,16 @@ class SalesProvider extends ChangeNotifier {
       byProduct[item.productId] = _withQuantity(source, nextQuantity);
     }
 
-    for (final item in sale.items) add(item, 1);
+    for (final item in sale.items) {
+      add(item, 1);
+    }
     for (final operation in sale.operations) {
-      for (final item in operation.itemsOut) add(item, -1);
-      for (final item in operation.itemsIn) add(item, 1);
+      for (final item in operation.itemsOut) {
+        add(item, -1);
+      }
+      for (final item in operation.itemsIn) {
+        add(item, 1);
+      }
     }
     return byProduct.values.toList(growable: false);
   }
@@ -463,11 +539,14 @@ class SalesProvider extends ChangeNotifier {
     required ProductProvider productProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0) throw StateError('La venta no existe.');
+    if (index < 0) {
+      throw StateError('La venta no existe.');
+    }
     final sale = _sales[index];
     _ensureOperationAllowed(sale);
-    if (quantitiesByProduct.isEmpty)
+    if (quantitiesByProduct.isEmpty) {
       throw StateError('Selecciona al menos un producto para devolver.');
+    }
     final available = {
       for (final item in availableItemsForOperation(saleId))
         item.productId: item,
@@ -476,14 +555,16 @@ class SalesProvider extends ChangeNotifier {
     for (final entry in quantitiesByProduct.entries) {
       final item = available[entry.key];
       final quantity = entry.value;
-      if (item == null || quantity <= 0 || quantity > item.quantity)
+      if (item == null || quantity <= 0 || quantity > item.quantity) {
         throw StateError(
           'La cantidad a devolver no es válida para ${item?.productName ?? entry.key}.',
         );
-      if (productProvider.findById(item.productId) == null)
+      }
+      if (productProvider.findById(item.productId) == null) {
         throw StateError(
-          'El producto ${item.productName} ya no existe en el inventario.',
+          'El producto $item.productName ya no existe en el inventario.',
         );
+      }
       returned.add(_withQuantity(item, quantity));
     }
     final amount = returned.fold(0.0, (sum, item) => sum + item.lineTotal);
@@ -521,32 +602,43 @@ class SalesProvider extends ChangeNotifier {
     required String sourceProductId,
     required int quantity,
     required String replacementProductId,
+    bool prepared = false,
     required ProductProvider productProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0) throw StateError('La venta no existe.');
+    if (index < 0) {
+      throw StateError('La venta no existe.');
+    }
     final sale = _sales[index];
     _ensureOperationAllowed(sale);
-    if (sourceProductId == replacementProductId)
+    if (sourceProductId == replacementProductId) {
       throw StateError(
         'El producto nuevo debe ser diferente al producto cambiado.',
       );
+    }
     final available = availableItemsForOperation(saleId).firstWhere(
       (item) => item.productId == sourceProductId,
       orElse: () =>
           throw StateError('El producto a cambiar ya no está disponible.'),
     );
-    if (quantity <= 0 || quantity > available.quantity)
+    if (quantity <= 0 || quantity > available.quantity) {
       throw StateError('La cantidad a cambiar no es válida.');
+    }
     final replacement = productProvider.findById(replacementProductId);
-    if (replacement == null)
+    if (replacement == null) {
       throw StateError('El producto nuevo ya no existe.');
+    }
     final outgoing = _withQuantity(available, quantity);
-    final incoming = _lines.physicalItem(replacement, quantity);
+    final incoming = _lines.physicalItem(
+      replacement,
+      quantity,
+      prepared: prepared,
+    );
     final amountDelta = incoming.lineSubtotal - outgoing.lineTotal;
     final oldProduct = productProvider.findById(sourceProductId);
-    if (oldProduct != null)
+    if (oldProduct != null) {
       productProvider.updateProduct(_stock.increase(oldProduct, quantity));
+    }
     productProvider.updateProduct(_stock.decrease(replacement, quantity));
     final operation = SaleOperationRecord(
       type: SaleOperationType.change,
@@ -567,18 +659,33 @@ class SalesProvider extends ChangeNotifier {
 
   SaleRecord? findByTicketNumber(String ticketNumber) {
     final normalized = ticketNumber.trim().replaceFirst('#', '');
-    if (normalized.isEmpty) return null;
-    for (final sale in _sales) if (sale.ticketNumber == normalized) return sale;
+    if (normalized.isEmpty) {
+      return null;
+    }
+    for (final sale in _sales) {
+      if (sale.ticketNumber == normalized) {
+        return sale;
+      }
+    }
     return null;
   }
 
   void clearSales() {
-    if (_sales.isEmpty && _nextTicketNumber == 1) return;
+    if (_sales.isEmpty && _nextTicketNumber == 1) {
+      return;
+    }
     final ids = _sales.map((sale) => sale.id).toList(growable: false);
     _sales.clear();
     _nextTicketNumber = 1;
     notifyListeners();
-    for (final id in ids) _persistDelete(id);
+    for (final id in ids) {
+      _persistDelete(id);
+    }
+  }
+
+  Future<void> refreshFromRepository() async {
+    await _loadFromRepository();
+    notifyListeners();
   }
 
   Future<void> _loadFromRepository() async {
@@ -588,6 +695,10 @@ class SalesProvider extends ChangeNotifier {
       return;
     }
     final stored = await repository.getAll();
+    developer.log(
+      'Ventas locales cargadas desde el repositorio: ${stored.length.toString()}',
+      name: 'STELLAR_POS.sales',
+    );
     stored.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     _sales
       ..clear()
@@ -599,20 +710,26 @@ class SalesProvider extends ChangeNotifier {
       _nextTicketNumber = maxTicket + 1;
     }
     _loaded = true;
-    if (_sales.isNotEmpty) notifyListeners();
+    if (_sales.isNotEmpty) {
+      notifyListeners();
+    }
   }
 
   void _ensureOperationAllowed(SaleRecord sale) {
-    if (sale.isAnnulled) throw StateError('La venta ya está anulada.');
-    if (!sale.canOperateToday)
+    if (sale.isAnnulled) {
+      throw StateError('La venta ya está anulada.');
+    }
+    if (!sale.canOperateToday) {
       throw StateError(
         'Los cambios y devoluciones solo pueden realizarse el mismo día de la venta.',
       );
+    }
     if (sale.items.any((item) => item.isElectronicBalance) &&
-        sale.items.every((item) => item.isElectronicBalance))
+        sale.items.every((item) => item.isElectronicBalance)) {
       throw StateError(
         'Las recargas de saldo electrónico no admiten cambios ni devoluciones desde este módulo.',
       );
+    }
   }
 
   SaleItemRecord _withQuantity(SaleItemRecord item, int quantity) {
@@ -633,6 +750,8 @@ class SalesProvider extends ChangeNotifier {
       imageData: item.imageData,
       isElectronicBalance: item.isElectronicBalance,
       hasGroupPricing: item.hasGroupPricing,
+      isPrepared: item.isPrepared,
+      preparationExtra: item.preparationExtra,
       electronicBalanceAccountId: item.electronicBalanceAccountId,
       electronicBalanceCategory: item.electronicBalanceCategory,
       metadata: item.metadata,

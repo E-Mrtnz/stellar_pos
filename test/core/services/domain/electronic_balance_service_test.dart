@@ -5,14 +5,15 @@ import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart
 void main() {
   const service = ElectronicBalanceService();
 
-  test('validates configured electronic balance categories', () {
+  test('accepts standard and custom electronic balance categories', () {
     expect(service.isValidCategory('Saldo'), isTrue);
     expect(service.isValidCategory('Internet'), isTrue);
     expect(service.isValidCategory('Llamada'), isTrue);
-    expect(service.isValidCategory('Otro'), isFalse);
+    expect(service.isValidCategory('Súper paquetes'), isTrue);
+    expect(service.isValidCategory(''), isFalse);
   });
 
-  test('keeps a stable category order for presentation', () {
+  test('keeps a stable standard category order for presentation', () {
     expect(
       ElectronicBalanceService.validCategoryOrder,
       ['Saldo', 'Internet', 'Llamada'],

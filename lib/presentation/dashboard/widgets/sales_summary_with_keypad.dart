@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/date_aware_sales_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_client_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/numeric_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_panel.dart';
 
 class SalesSummaryWithKeypad extends StatefulWidget {
   final Map<String, int> cartQuantities;
+  final Set<String> preparedProductIds;
   final List<Map<String, dynamic>> products;
   final int selectedPaymentMethod;
   final ValueChanged<int> onPaymentMethodChanged;
@@ -41,6 +44,7 @@ class SalesSummaryWithKeypad extends StatefulWidget {
   const SalesSummaryWithKeypad({
     super.key,
     required this.cartQuantities,
+    this.preparedProductIds = const <String>{},
     required this.products,
     required this.selectedPaymentMethod,
     required this.onPaymentMethodChanged,
@@ -109,10 +113,11 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _updateKeypadPosition();
-      if (_keypadOverlayEntry == null)
+      if (_keypadOverlayEntry == null) {
         _showKeypadOverlay();
-      else
+      } else {
         _keypadOverlayEntry!.markNeedsBuild();
+      }
     });
   }
 
@@ -139,8 +144,9 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   }
 
   void _showKeypadOverlay() {
-    if (!mounted || _activeController == null || _keypadOverlayEntry != null)
+    if (!mounted || _activeController == null || _keypadOverlayEntry != null) {
       return;
+    }
     final overlay = Overlay.of(context, rootOverlay: true);
     _keypadOverlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -180,6 +186,21 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
   void _createSaleAndCloseKeypad() {
     _closeKeypad();
     widget.onCreateSale();
+  }
+
+  Future<void> _selectSaleDate(DateAwareSalesProvider sales) async {
+    if (widget.isEditing) return;
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: sales.selectedSaleDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year, now.month, now.day),
+      helpText: 'Seleccionar fecha de venta',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+    if (selected != null && mounted) sales.setSelectedSaleDate(selected);
   }
 
   void _setText(String value) {
@@ -222,6 +243,9 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
 
   @override
   Widget build(BuildContext context) {
+    final salesProvider = context.watch<SalesProvider>();
+    final dateAwareSales = salesProvider as DateAwareSalesProvider;
+
     return TapRegion(
       groupId: _keypadGroup,
       onTapOutside: (_) => _closeKeypad(),
@@ -229,6 +253,7 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
         key: _panelKey,
         child: SalesSummaryPanel(
           cartQuantities: widget.cartQuantities,
+          preparedProductIds: widget.preparedProductIds,
           products: widget.products,
           selectedPaymentMethod: widget.selectedPaymentMethod,
           onPaymentMethodChanged: (value) {
@@ -246,12 +271,13 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onDiscountPercentChanged: widget.onDiscountPercentChanged,
           onCashReceivedChanged: widget.onCashReceivedChanged,
           onPaymentInputFocused: (controller) {
-            if (controller == widget.discountPercentController)
+            if (controller == widget.discountPercentController) {
               _activate(controller, widget.onDiscountPercentChanged);
-            else if (controller == widget.discountAmountController)
+            } else if (controller == widget.discountAmountController) {
               _activate(controller, widget.onDiscountAmountChanged);
-            else if (controller == widget.cashReceivedController)
+            } else if (controller == widget.cashReceivedController) {
               _activate(controller, widget.onCashReceivedChanged);
+            }
           },
           subtotal: widget.subtotal,
           cardFeeAmount: widget.cardFeeAmount,
@@ -264,6 +290,10 @@ class _SalesSummaryWithKeypadState extends State<SalesSummaryWithKeypad> {
           onClearCart: widget.onClearCart,
           onCreateSale: _createSaleAndCloseKeypad,
           ticketNumber: widget.ticketNumber,
+          saleDate: dateAwareSales.selectedSaleDate,
+          onSaleDateTap: widget.isEditing
+              ? null
+              : () => _selectSaleDate(dateAwareSales),
           isEditing: widget.isEditing,
           operationLabel: widget.operationLabel,
           operationDifference: widget.operationDifference,

@@ -9,7 +9,6 @@ import 'package:stellar_pos/core/providers/debt_provider.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
-import 'package:stellar_pos/presentation/debts/edit_credit_sale_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
 
 class ClientPurchaseHistoryDialog extends StatelessWidget {
@@ -36,18 +35,8 @@ class ClientPurchaseHistoryDialog extends StatelessWidget {
   );
 
   Map<String, double> _paidBySale(DebtProvider provider) {
-    final oldestFirst = [...sales]
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    var paymentPool = provider.paidForClient(
-      oldestFirst.isEmpty ? '' : oldestFirst.first.clientId ?? '',
-    );
-    final result = <String, double>{};
-    for (final sale in oldestFirst) {
-      final paid = paymentPool.clamp(0, sale.total).toDouble();
-      result[sale.id] = paid;
-      paymentPool = (paymentPool - paid).clamp(0, double.infinity).toDouble();
-    }
-    return result;
+    final clientId = sales.isEmpty ? '' : sales.first.clientId ?? '';
+    return provider.paidBySaleForClient(clientId);
   }
 
   @override
@@ -137,35 +126,6 @@ class _SaleHistoryCard extends StatefulWidget {
 class _SaleHistoryCardState extends State<_SaleHistoryCard> {
   bool _expanded = false;
 
-  Future<void> _edit() async {
-    final updatedItems = await EditCreditSaleDialog.show(
-      context,
-      sale: widget.sale,
-    );
-    if (updatedItems == null || !mounted) return;
-    try {
-      context.read<SalesProvider>().updateSale(
-        saleId: widget.sale.id,
-        updatedItems: updatedItems,
-        productProvider: context.read<ProductProvider>(),
-        electronicBalanceProvider: context.read<ElectronicBalanceProvider>(),
-      );
-      AppAlert.show(
-        context,
-        'La venta fue actualizada correctamente.',
-        title: 'Venta actualizada',
-        type: AppAlertType.success,
-      );
-    } catch (error) {
-      AppAlert.show(
-        context,
-        error is StateError ? error.message : 'No se pudo actualizar la venta.',
-        title: 'Error al actualizar',
-        type: AppAlertType.error,
-      );
-    }
-  }
-
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -205,7 +165,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
   @override
   Widget build(BuildContext context) {
     final sale = widget.sale;
-    final remaining = (sale.total - widget.paidAmount)
+    final remaining = (sale.effectiveTotal - widget.paidAmount)
         .clamp(0, double.infinity)
         .toDouble();
     final isPaid = remaining <= 0.005;
@@ -296,7 +256,7 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
                   ),
                 ),
                 Text(
-                  '\$${sale.total.toStringAsFixed(2)}',
+                  '\$${sale.effectiveTotal.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -304,12 +264,6 @@ class _SaleHistoryCardState extends State<_SaleHistoryCard> {
                         ? AppColors.successGreen
                         : AppColors.dangerRed,
                   ),
-                ),
-                IconButton(
-                  tooltip: isPaid ? 'Venta pagada' : 'Editar venta',
-                  onPressed: isPaid ? null : _edit,
-                  icon: const Icon(Icons.edit_outlined, size: 17),
-                  visualDensity: VisualDensity.compact,
                 ),
                 IconButton(
                   tooltip: 'Eliminar venta',

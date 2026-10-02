@@ -21,7 +21,9 @@ class PeriodSummaryPanel extends StatelessWidget {
   List<PeriodSummaryMetric> _displayMetrics() {
     final pendingIndex = metrics.indexWhere((metric) => metric.label == 'Fiado pendiente');
     final paymentsIndex = metrics.indexWhere((metric) => metric.label == 'Abonos cobrados');
-    if (pendingIndex < 0 || paymentsIndex < 0) return metrics;
+    if (pendingIndex < 0 || paymentsIndex < 0) {
+      return metrics;
+    }
 
     final pending = _number(metrics[pendingIndex].value);
     final payments = _number(metrics[paymentsIndex].value);

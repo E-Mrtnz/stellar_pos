@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/models/sale_ticket.dart';
 import 'package:stellar_pos/core/services/printer/thermal_printer_service.dart';
@@ -148,6 +149,7 @@ class PrinterProvider extends ChangeNotifier {
 
       final bytes = await _ticketGenerator.generate(
         sale.toTicketData(),
+        storeName: AppStrings.appName,
         openCashDrawer: openCashDrawer,
       );
       final printed = await _service.printBytes(bytes);
@@ -187,7 +189,10 @@ class PrinterProvider extends ChangeNotifier {
       }
 
       final ticket = _buildTestTicket();
-      final bytes = await _ticketGenerator.generate(ticket);
+      final bytes = await _ticketGenerator.generate(
+        ticket,
+        storeName: AppStrings.appName,
+      );
       final printed = await _service.printBytes(bytes);
 
       if (!printed) {

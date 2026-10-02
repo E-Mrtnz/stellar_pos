@@ -85,16 +85,51 @@ class SaleItemRecord implements SyncableEntity {
   final String imageData;
   final bool isElectronicBalance;
   final bool hasGroupPricing;
+  final bool isPrepared;
+  final double preparationExtra;
   final String? electronicBalanceAccountId;
   final String? electronicBalanceCategory;
   @override
   final SyncMetadata metadata;
 
-  SaleItemRecord({String? id, required this.productId, required this.productName, required this.unit, this.brand = '', required this.barcode, required this.cost, required this.unitPrice, required this.quantity, required this.lineSubtotal, required this.discount, required this.lineTotal, this.imageData = '', this.isElectronicBalance = false, this.hasGroupPricing = false, this.electronicBalanceAccountId, this.electronicBalanceCategory, SyncMetadata? metadata}) : id = id ?? IdGenerator.newId(), metadata = metadata ?? SyncMetadata.initial();
+  SaleItemRecord({
+    String? id,
+    required this.productId,
+    required String productName,
+    required this.unit,
+    this.brand = '',
+    required this.barcode,
+    required this.cost,
+    required this.unitPrice,
+    required this.quantity,
+    required this.lineSubtotal,
+    required this.discount,
+    required this.lineTotal,
+    this.imageData = '',
+    this.isElectronicBalance = false,
+    this.hasGroupPricing = false,
+    this.isPrepared = false,
+    this.preparationExtra = 0,
+    this.electronicBalanceAccountId,
+    this.electronicBalanceCategory,
+    SyncMetadata? metadata,
+  })  : id = id ?? IdGenerator.newId(),
+        productName = _normalizeElectronicProductName(productName, isElectronicBalance, electronicBalanceCategory),
+        metadata = metadata ?? SyncMetadata.initial();
 
-  Map<String, dynamic> toMap() => {'id': id, 'productId': productId, 'productName': productName, 'unit': unit, 'brand': brand, 'barcode': barcode, 'cost': cost, 'unitPrice': unitPrice, 'quantity': quantity, 'lineSubtotal': lineSubtotal, 'discount': discount, 'lineTotal': lineTotal, 'imageData': imageData, 'isElectronicBalance': isElectronicBalance, 'hasGroupPricing': hasGroupPricing, 'electronicBalanceAccountId': electronicBalanceAccountId, 'electronicBalanceCategory': electronicBalanceCategory, 'metadata': metadata.toMap()};
+  static String _normalizeElectronicProductName(String value, bool electronic, String? category) {
+    final name = value.trim();
+    final type = category?.trim() ?? '';
+    if (!electronic || type.isEmpty || name.isEmpty) return name;
+    if (name == type || name.endsWith(' · $type')) return name;
+    return '$name · $type';
+  }
 
-  factory SaleItemRecord.fromMap(Map<String, dynamic> map) => SaleItemRecord(id: map['id']?.toString(), productId: map['productId']?.toString() ?? '', productName: map['productName']?.toString() ?? '', unit: map['unit']?.toString() ?? '', brand: map['brand']?.toString() ?? '', barcode: map['barcode']?.toString() ?? '', cost: _double(map['cost']), unitPrice: _double(map['unitPrice']), quantity: _int(map['quantity']), lineSubtotal: _double(map['lineSubtotal']), discount: _double(map['discount']), lineTotal: _double(map['lineTotal']), imageData: map['imageData']?.toString() ?? '', isElectronicBalance: _bool(map['isElectronicBalance']), hasGroupPricing: _bool(map['hasGroupPricing']), electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(), electronicBalanceCategory: map['electronicBalanceCategory']?.toString(), metadata: _metadata(map['metadata']));
+  @override
+
+  Map<String, dynamic> toMap() => {'id': id, 'productId': productId, 'productName': productName, 'unit': unit, 'brand': brand, 'barcode': barcode, 'cost': cost, 'unitPrice': unitPrice, 'quantity': quantity, 'lineSubtotal': lineSubtotal, 'discount': discount, 'lineTotal': lineTotal, 'imageData': imageData, 'isElectronicBalance': isElectronicBalance, 'hasGroupPricing': hasGroupPricing, 'isPrepared': isPrepared, 'preparationExtra': preparationExtra, 'electronicBalanceAccountId': electronicBalanceAccountId, 'electronicBalanceCategory': electronicBalanceCategory, 'metadata': metadata.toMap()};
+
+  factory SaleItemRecord.fromMap(Map<String, dynamic> map) => SaleItemRecord(id: map['id']?.toString(), productId: map['productId']?.toString() ?? '', productName: map['productName']?.toString() ?? '', unit: map['unit']?.toString() ?? '', brand: map['brand']?.toString() ?? '', barcode: map['barcode']?.toString() ?? '', cost: _double(map['cost']), unitPrice: _double(map['unitPrice']), quantity: _int(map['quantity']), lineSubtotal: _double(map['lineSubtotal']), discount: _double(map['discount']), lineTotal: _double(map['lineTotal']), imageData: map['imageData']?.toString() ?? '', isElectronicBalance: _bool(map['isElectronicBalance']), hasGroupPricing: _bool(map['hasGroupPricing']), isPrepared: _bool(map['isPrepared']), preparationExtra: _double(map['preparationExtra']), electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(), electronicBalanceCategory: map['electronicBalanceCategory']?.toString(), metadata: _metadata(map['metadata']));
 
   static double _double(dynamic v) => v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
   static int _int(dynamic v) => v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
@@ -103,6 +138,16 @@ class SaleItemRecord implements SyncableEntity {
 }
 
 class SaleRecord implements SyncableEntity {
+  static DateTime? _creationDateOverride;
+
+  static void setCreationDateOverride(DateTime date) {
+    _creationDateOverride = date;
+  }
+
+  static void clearCreationDateOverride() {
+    _creationDateOverride = null;
+  }
+
   @override String id;
   String ticketNumber;
   DateTime createdAt;
@@ -121,7 +166,16 @@ class SaleRecord implements SyncableEntity {
   List<SaleOperationRecord> operations;
   @override SyncMetadata metadata;
 
-  SaleRecord({required this.id, required this.ticketNumber, required this.createdAt, required this.clientId, required this.clientName, required this.paymentMethod, required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent, required this.discountAmount, required this.cardFeeAmount, required this.total, required this.received, required this.change, this.status = SaleStatus.completed, List<SaleOperationRecord> operations = const [], SyncMetadata? metadata}) : items = List.unmodifiable(items), operations = List.unmodifiable(operations), metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
+  SaleRecord({required this.id, required this.ticketNumber, required this.createdAt, required this.clientId, required this.clientName, required this.paymentMethod, required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent, required this.discountAmount, required this.cardFeeAmount, required this.total, required this.received, required this.change, this.status = SaleStatus.completed, List<SaleOperationRecord> operations = const [], SyncMetadata? metadata}) : items = List.unmodifiable(items), operations = List.unmodifiable(operations), metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc()) {
+    final override = _creationDateOverride;
+    if (override != null) {
+      final original = createdAt;
+      createdAt = DateTime(override.year, override.month, override.day, original.hour, original.minute, original.second, original.millisecond, original.microsecond);
+      if (metadata == null) {
+        this.metadata = SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc());
+      }
+    }
+  }
 
   bool get isCompleted => status == SaleStatus.completed;
   bool get isAnnulled => status == SaleStatus.annulled;
@@ -131,9 +185,7 @@ class SaleRecord implements SyncableEntity {
   }
   double get operationDelta => operations.fold(0, (sum, operation) => sum + operation.amountDelta);
   double get effectiveTotal => isAnnulled ? 0 : (total + operationDelta).clamp(0, double.infinity).toDouble();
-  double get effectiveCollected => paymentMethod == 'Fiado'
-      ? (received + operationDelta).clamp(0, effectiveTotal).toDouble()
-      : effectiveTotal;
+  double get effectiveCollected => paymentMethod == 'Fiado' ? (received + operationDelta).clamp(0, effectiveTotal).toDouble() : effectiveTotal;
   double get effectiveProfit {
     if (isAnnulled) return 0;
     var profit = items.fold<double>(0, (sum, item) => sum + (item.unitPrice * item.quantity - item.discount - item.cost * item.quantity));
@@ -144,7 +196,14 @@ class SaleRecord implements SyncableEntity {
     return profit;
   }
 
+  void updateCreatedAt(DateTime value) {
+    createdAt = value;
+    metadata = metadata.touch();
+  }
+
   SaleRecord copyWith({String? id, String? ticketNumber, DateTime? createdAt, String? clientId, String? clientName, String? paymentMethod, List<SaleItemRecord>? items, double? subtotal, double? discountPercent, double? discountAmount, double? cardFeeAmount, double? total, double? received, double? change, SaleStatus? status, List<SaleOperationRecord>? operations, SyncMetadata? metadata, bool touchMetadata = false}) => SaleRecord(id: id ?? this.id, ticketNumber: ticketNumber ?? this.ticketNumber, createdAt: createdAt ?? this.createdAt, clientId: clientId ?? this.clientId, clientName: clientName ?? this.clientName, paymentMethod: paymentMethod ?? this.paymentMethod, items: items ?? this.items, subtotal: subtotal ?? this.subtotal, discountPercent: discountPercent ?? this.discountPercent, discountAmount: discountAmount ?? this.discountAmount, cardFeeAmount: cardFeeAmount ?? this.cardFeeAmount, total: total ?? this.total, received: received ?? this.received, change: change ?? this.change, status: status ?? this.status, operations: operations ?? this.operations, metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
+
+  @override
 
   Map<String, dynamic> toMap() => {'id': id, 'ticketNumber': ticketNumber, 'createdAt': createdAt.toIso8601String(), 'clientId': clientId, 'clientName': clientName, 'paymentMethod': paymentMethod, 'items': items.map((item) => item.toMap()).toList(), 'subtotal': subtotal, 'discountPercent': discountPercent, 'discountAmount': discountAmount, 'cardFeeAmount': cardFeeAmount, 'total': total, 'received': received, 'change': change, 'status': status.name, 'operations': operations.map((operation) => operation.toMap()).toList(growable: false), 'metadata': metadata.toMap()};
 
@@ -155,7 +214,7 @@ class SaleRecord implements SyncableEntity {
     final hour = createdAt.hour % 12 == 0 ? 12 : createdAt.hour % 12;
     final period = createdAt.hour >= 12 ? 'PM' : 'AM';
     final time = '${hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} $period';
-    return SaleTicketData(ticketNumber: ticketNumber, date: date, time: time, client: clientName, status: isAnnulled ? 'ANULADA' : 'COMPLETADA', operations: operations.map((operation) => SaleTicketOperation(label: operation.label, amountDelta: operation.amountDelta, details: _ticketOperationDetails(operation))).toList(growable: false), items: items.map((item) => SaleTicketItem(quantity: item.quantity, description: item.productName, brand: item.brand, unit: item.unit, unitPrice: item.hasGroupPricing ? item.lineTotal : item.unitPrice, discount: item.discount, total: item.lineTotal)).toList(growable: false), subtotal: subtotal, discount: discountAmount, cardFee: cardFeeAmount, total: effectiveTotal, paymentMethod: paymentMethod, received: effectiveCollected, change: change);
+    return SaleTicketData(ticketNumber: ticketNumber, date: date, time: time, client: clientName, status: isAnnulled ? 'ANULADA' : 'COMPLETADA', operations: operations.map((operation) => SaleTicketOperation(label: operation.label, amountDelta: operation.amountDelta, details: _ticketOperationDetails(operation))).toList(growable: false), items: items.map((item) => SaleTicketItem(quantity: item.quantity, description: item.productName, brand: item.brand, unit: item.isElectronicBalance ? '' : item.unit, unitPrice: item.isPrepared ? (item.unitPrice - item.preparationExtra).clamp(0, double.infinity).toDouble() : (item.hasGroupPricing ? item.lineTotal : item.unitPrice), discount: item.discount, preparationExtra: item.preparationExtra, total: item.lineTotal)).toList(growable: false), subtotal: subtotal, discount: discountAmount, cardFee: cardFeeAmount, total: effectiveTotal, paymentMethod: paymentMethod, received: effectiveCollected, change: change);
   }
 
   static String _ticketOperationDetails(SaleOperationRecord operation) {

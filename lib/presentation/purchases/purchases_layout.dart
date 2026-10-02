@@ -7,8 +7,11 @@ import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/purchase.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/providers/product_provider.dart';
+import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
+import 'package:stellar_pos/presentation/purchases/purchase_creation_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/history_table_panel.dart';
 import 'package:stellar_pos/presentation/widgets/period_summary_panel.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
@@ -22,35 +25,35 @@ class PurchasesLayout extends StatefulWidget {
 enum _PurchasePeriod { daily, weekly, monthly, yearly, custom }
 
 class _PurchasesLayoutState extends State<PurchasesLayout> {
-  final TextEditingController _searchController =
-      TextEditingController();
+  final _searchController = TextEditingController();
   _PurchasePeriod _period = _PurchasePeriod.monthly;
   DateTime _anchorDate = DateTime.now();
   DateTime? _customStart;
   DateTime? _customEnd;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_refresh);
+  }
+
+  @override
   void dispose() {
+    _searchController.removeListener(_refresh);
     _searchController.dispose();
     super.dispose();
   }
 
+  void _refresh() => setState(() {});
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
   DateTimeRange _range() {
-    final day = DateTime(
-      _anchorDate.year,
-      _anchorDate.month,
-      _anchorDate.day,
-    );
+    final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
     switch (_period) {
       case _PurchasePeriod.daily:
-        return DateTimeRange(
-          start: day,
-          end: day.add(const Duration(days: 1)),
-        );
+        return DateTimeRange(start: day, end: day.add(const Duration(days: 1)));
       case _PurchasePeriod.weekly:
         final start = day.subtract(Duration(days: day.weekday - 1));
         return DateTimeRange(
@@ -96,24 +99,20 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     }
   }
 
-  String _dateLabel() => _period == _PurchasePeriod.monthly
-      ? '${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}'
-      : _date(_anchorDate);
-
-  List<PurchaseRecord> _filterPurchases(
-    List<PurchaseRecord> purchases,
-  ) {
+  List<PurchaseRecord> _filter(List<PurchaseRecord> all) {
     final range = _range();
     final query = _searchController.text.trim().toLowerCase();
-    final result = purchases.where((purchase) {
+    return all.where((purchase) {
       if (purchase.arrivalAt.isBefore(range.start) ||
-          !purchase.arrivalAt.isBefore(range.end))
+          !purchase.arrivalAt.isBefore(range.end)) {
         return false;
-      if (query.isEmpty) return true;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
       return purchase.distributorName.toLowerCase().contains(query) ||
           purchase.invoiceNumber.toLowerCase().contains(query);
     }).toList()..sort((a, b) => b.arrivalAt.compareTo(a.arrivalAt));
-    return result;
   }
 
   List<SaleRecord> _sales(SalesProvider provider) {
@@ -129,51 +128,54 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final purchaseProvider = context.watch<PurchasesProvider>();
+    final purchasesProvider = context.watch<PurchasesProvider>();
     final salesProvider = context.watch<SalesProvider>();
-    final purchases = _filterPurchases(purchaseProvider.purchases);
+    final purchases = _filter(purchasesProvider.purchases);
     final sales = _sales(salesProvider);
-    final range = _range();
-    final purchaseTotal = purchases.fold<double>(
-      0,
+    final purchaseTotal = purchases.fold(
+      0.0,
       (sum, purchase) => sum + purchase.total,
     );
-    final salesTotal = sales.fold<double>(
-      0,
-      (sum, sale) => sum + sale.total,
-    );
-    final grossProfit = sales.fold<double>(
-      0,
+    final salesTotal = sales.fold(0.0, (sum, sale) => sum + sale.total);
+    final profit = sales.fold(
+      0.0,
       (sum, sale) =>
           sum +
-          sale.items.fold<double>(
-            0,
+          sale.items.fold(
+            0.0,
             (inner, item) =>
                 inner +
                 ((item.unitPrice - item.cost) * item.quantity) -
                 item.discount,
           ),
     );
-    final itemCount = purchases.fold<int>(
+    final itemCount = purchases.fold(
       0,
       (sum, purchase) => sum + purchase.itemCount,
     );
+    final bonusCount = purchases.fold(
+      0,
+      (sum, purchase) =>
+          sum +
+          purchase.items.fold(0, (inner, item) => inner + item.bonusQuantity),
+    );
     final supplierCount = purchases
-        .map((purchase) => purchase.distributorName.toLowerCase())
+        .map((p) => p.distributorName.toLowerCase())
         .toSet()
         .length;
-
-    final summaryMetrics = <PeriodSummaryMetric>[
+    final range = _range();
+    final metrics = <PeriodSummaryMetric>[
       PeriodSummaryMetric('Compras', _money(purchaseTotal)),
       PeriodSummaryMetric('Ventas', _money(salesTotal)),
       PeriodSummaryMetric(
         'Ganancia bruta',
-        _money(grossProfit),
+        _money(profit),
         valueColor: AppColors.successGreen,
       ),
-      PeriodSummaryMetric('Cantidad de compras', '${purchases.length}'),
-      PeriodSummaryMetric('Productos comprados', '$itemCount'),
-      PeriodSummaryMetric('Proveedores', '$supplierCount'),
+      PeriodSummaryMetric('Compras registradas', '${purchases.length}'),
+      PeriodSummaryMetric('Unidades recibidas', '$itemCount'),
+      PeriodSummaryMetric('Bonificaciones', '$bonusCount'),
+      PeriodSummaryMetric('Distribuidoras', '$supplierCount'),
     ];
 
     return Padding(
@@ -183,20 +185,104 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Compras', style: AppTextStyles.brandTitle),
+                        SizedBox(height: 3),
+                        Text(
+                          'Historial y registro de las compras realizadas.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _pickDate,
+                    icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                    label: Text(
+                      _period == _PurchasePeriod.custom
+                          ? 'Elegir rango'
+                          : _periodLabel(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  PopupMenuButton<_PurchasePeriod>(
+                    onSelected: (value) => value == _PurchasePeriod.custom
+                        ? _pickRange()
+                        : setState(() => _period = value),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _PurchasePeriod.daily,
+                        child: Text('Diario'),
+                      ),
+                      PopupMenuItem(
+                        value: _PurchasePeriod.weekly,
+                        child: Text('Semanal'),
+                      ),
+                      PopupMenuItem(
+                        value: _PurchasePeriod.monthly,
+                        child: Text('Mensual'),
+                      ),
+                      PopupMenuItem(
+                        value: _PurchasePeriod.yearly,
+                        child: Text('Anual'),
+                      ),
+                      PopupMenuItem(
+                        value: _PurchasePeriod.custom,
+                        child: Text('Rango personalizado'),
+                      ),
+                    ],
+                    child: _menuSurface(Icons.tune_outlined, _periodLabel()),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
-              _buildMetrics(purchaseTotal, salesTotal, grossProfit),
+              Row(
+                children: [
+                  _metric(
+                    'Compras',
+                    purchaseTotal,
+                    Icons.shopping_bag_outlined,
+                    AppColors.dangerRed,
+                  ),
+                  const SizedBox(width: 8),
+                  _metric(
+                    'Ventas',
+                    salesTotal,
+                    Icons.point_of_sale_outlined,
+                    AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  _metric(
+                    'Ganancia bruta',
+                    profit,
+                    Icons.trending_up_outlined,
+                    AppColors.successGreen,
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
-              _buildFilters(),
+              ProductSearchBar(
+                controller: _searchController,
+                hintText: 'Buscar proveedor o factura...',
+                onChanged: (_) => setState(() {}),
+              ),
               const SizedBox(height: 12),
               Expanded(
                 child: Row(
                   children: [
-                    Expanded(flex: 3, child: _buildList(purchases)),
+                    Expanded(flex: 3, child: _list(purchases)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: PeriodSummaryPanel(
-                        metrics: summaryMetrics,
+                        metrics: metrics,
                         rangeLabel:
                             '${_date(range.start)} → ${_date(range.end.subtract(const Duration(days: 1)))}',
                       ),
@@ -210,10 +296,10 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             right: 0,
             bottom: 0,
             child: FloatingActionButton(
-              shape: const CircleBorder(),
-              backgroundColor: AppColors.primary,
-              tooltip: 'Nueva compra',
               onPressed: _newPurchase,
+              tooltip: 'Nueva compra',
+              backgroundColor: AppColors.primary,
+              shape: const CircleBorder(),
               child: const Icon(
                 Icons.add_shopping_cart_outlined,
                 color: Colors.white,
@@ -225,218 +311,51 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     );
   }
 
-  Widget _buildHeader() => Row(
-    children: [
-      const Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _metric(String label, double amount, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadowColor,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            Text('Compras', style: AppTextStyles.brandTitle),
-            SizedBox(height: 3),
-            Text(
-              'Historial y registro de las compras realizadas.',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 9),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _money(amount),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      OutlinedButton.icon(
-        onPressed: _pickDate,
-        icon: const Icon(Icons.calendar_today_outlined, size: 16),
-        label: Text(
-          _period == _PurchasePeriod.custom
-              ? 'Elegir rango'
-              : _dateLabel(),
-        ),
-      ),
-      const SizedBox(width: 8),
-      PopupMenuButton<_PurchasePeriod>(
-        onSelected: (value) => value == _PurchasePeriod.custom
-            ? _pickRange()
-            : setState(() => _period = value),
-        itemBuilder: (_) => const [
-          PopupMenuItem(
-            value: _PurchasePeriod.daily,
-            child: Text('Diario'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.weekly,
-            child: Text('Semanal'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.monthly,
-            child: Text('Mensual'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.yearly,
-            child: Text('Anual'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.custom,
-            child: Text('Rango personalizado'),
-          ),
-        ],
-        child: _menuSurface(Icons.tune_outlined, _periodLabel()),
-      ),
-    ],
-  );
-
-  Future<void> _pickDate() async {
-    if (_period == _PurchasePeriod.custom) return _pickRange();
-    final picked = await showDatePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      initialDate: _anchorDate,
     );
-    if (picked != null) setState(() => _anchorDate = picked);
   }
-
-  Future<void> _pickRange() async {
-    final start = _customStart ?? _anchorDate;
-    final end = _customEnd ?? start;
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      initialDateRange: DateTimeRange(
-        start: start,
-        end: end.isBefore(start) ? start : end,
-      ),
-    );
-    if (picked == null) return;
-    setState(() {
-      _period = _PurchasePeriod.custom;
-      _customStart = picked.start;
-      _customEnd = picked.end;
-      _anchorDate = picked.start;
-    });
-  }
-
-  Widget _buildMetrics(double purchases, double sales, double profit) =>
-      Row(
-        children: [
-          Expanded(
-            child: _metric(
-              'Compras',
-              purchases,
-              Icons.shopping_bag_outlined,
-              AppColors.dangerRed,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _metric(
-              'Ventas',
-              sales,
-              Icons.point_of_sale_outlined,
-              AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _metric(
-              'Ganancia bruta',
-              profit,
-              Icons.trending_up_outlined,
-              AppColors.successGreen,
-            ),
-          ),
-        ],
-      );
-
-  Widget _metric(
-    String label,
-    double amount,
-    IconData icon,
-    Color color,
-  ) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    decoration: BoxDecoration(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-      border: Border.all(color: AppColors.border),
-      boxShadow: const [
-        BoxShadow(
-          color: AppColors.shadowColor,
-          blurRadius: 8,
-          offset: Offset(0, 3),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Icon(icon, size: 20, color: color),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _money(amount),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildFilters() => Row(
-    children: [
-      Expanded(
-        child: ProductSearchBar(
-          controller: _searchController,
-          hintText: 'Buscar proveedor o factura...',
-          onChanged: (_) => setState(() {}),
-        ),
-      ),
-      const SizedBox(width: 8),
-      PopupMenuButton<_PurchasePeriod>(
-        onSelected: (value) => value == _PurchasePeriod.custom
-            ? _pickRange()
-            : setState(() => _period = value),
-        itemBuilder: (_) => const [
-          PopupMenuItem(
-            value: _PurchasePeriod.daily,
-            child: Text('Diario'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.weekly,
-            child: Text('Semanal'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.monthly,
-            child: Text('Mensual'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.yearly,
-            child: Text('Anual'),
-          ),
-          PopupMenuItem(
-            value: _PurchasePeriod.custom,
-            child: Text('Rango personalizado'),
-          ),
-        ],
-        child: _menuSurface(Icons.tune_outlined, _periodLabel()),
-      ),
-    ],
-  );
 
   Widget _menuSurface(IconData icon, String label) => Container(
     constraints: const BoxConstraints(minHeight: 42),
@@ -445,13 +364,6 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: AppColors.border),
-      boxShadow: const [
-        BoxShadow(
-          color: AppColors.shadowColor,
-          blurRadius: 7,
-          offset: Offset(0, 2),
-        ),
-      ],
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -460,93 +372,76 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
         const SizedBox(width: 7),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ],
     ),
   );
 
-  Widget _buildList(List<PurchaseRecord> purchases) =>
-      HistoryTablePanel(
-        title: 'Historial de compras',
-        icon: Icons.receipt_long_outlined,
-        itemCount: purchases.length,
-        header: _buildListHeader(),
-        emptyState: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.shopping_bag_outlined,
-                size: 40,
-                color: AppColors.textMuted,
-              ),
-              SizedBox(height: 10),
-              Text(
-                'No hay compras registradas en este período.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        itemBuilder: (_, index) => _purchaseRow(purchases[index]),
-      );
-
-  Widget _buildListHeader() => Container(
-    padding: const EdgeInsets.fromLTRB(14, 10, 14, 9),
-    decoration: const BoxDecoration(
+  Widget _list(List<PurchaseRecord> purchases) => HistoryTablePanel(
+    title: 'Historial de compras',
+    icon: Icons.receipt_long_outlined,
+    itemCount: purchases.length,
+    header: Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 9),
       color: AppColors.inputBackground,
-      border: Border(bottom: BorderSide(color: AppColors.border)),
-    ),
-    child: const Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: Text(
-            'Proveedor / factura',
-            style: AppTextStyles.ticketLabel,
+      child: const Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              'Distribuidora / factura',
+              style: AppTextStyles.ticketLabel,
+            ),
           ),
-        ),
-        SizedBox(
-          width: 105,
-          child: Text('Fecha / hora', style: AppTextStyles.ticketLabel),
-        ),
-        Expanded(
-          child: Text('Artículos', style: AppTextStyles.ticketLabel),
-        ),
-        SizedBox(
-          width: 90,
-          child: Text('Pago', style: AppTextStyles.ticketLabel),
-        ),
-        SizedBox(
-          width: 95,
-          child: Text(
-            'Total',
-            textAlign: TextAlign.right,
-            style: AppTextStyles.ticketLabel,
+          SizedBox(
+            width: 105,
+            child: Text('Fecha / hora', style: AppTextStyles.ticketLabel),
           ),
-        ),
-        SizedBox(width: 26),
-      ],
+          Expanded(child: Text('Artículos', style: AppTextStyles.ticketLabel)),
+          SizedBox(
+            width: 90,
+            child: Text('Pago', style: AppTextStyles.ticketLabel),
+          ),
+          SizedBox(
+            width: 95,
+            child: Text(
+              'Total',
+              textAlign: TextAlign.right,
+              style: AppTextStyles.ticketLabel,
+            ),
+          ),
+          SizedBox(width: 26),
+        ],
+      ),
     ),
+    emptyState: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.shopping_bag_outlined,
+            size: 40,
+            color: AppColors.textMuted,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'No hay compras registradas en este período.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    ),
+    itemBuilder: (_, index) => _row(purchases[index]),
   );
 
-  Widget _purchaseRow(PurchaseRecord purchase) {
+  Widget _row(PurchaseRecord purchase) {
     final time =
         '${purchase.arrivalAt.hour.toString().padLeft(2, '0')}:${purchase.arrivalAt.minute.toString().padLeft(2, '0')}';
     return InkWell(
-      onTap: () => _showDetail(purchase),
+      onTap: () => _detail(purchase),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
             Expanded(
@@ -564,9 +459,11 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    purchase.invoiceNumber.isEmpty
-                        ? 'Sin número de factura'
-                        : 'Factura ${purchase.invoiceNumber}',
+                    purchase.isElectronicBalancePurchase
+                        ? 'Compra de saldo'
+                        : purchase.invoiceNumber.isEmpty
+                            ? 'Sin número de factura'
+                            : 'Factura ${purchase.invoiceNumber}',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.textMuted,
@@ -587,7 +484,9 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             ),
             Expanded(
               child: Text(
-                '${purchase.itemCount} artículo${purchase.itemCount == 1 ? '' : 's'}',
+                purchase.isElectronicBalancePurchase
+                    ? '\${purchase.total.toStringAsFixed(2)} de saldo'
+                    : '${purchase.itemCount} unidades',
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
@@ -596,7 +495,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             ),
             SizedBox(
               width: 90,
-              child: _paymentBadge(purchase.paymentMethod),
+              child: _payment(purchase.paymentMethod),
             ),
             SizedBox(
               width: 95,
@@ -621,7 +520,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     );
   }
 
-  Widget _paymentBadge(String method) => Align(
+  Widget _payment(String method) => Align(
     alignment: Alignment.centerLeft,
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -630,7 +529,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        method,
+        method.isEmpty ? 'Contado' : method,
         style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w600,
@@ -640,61 +539,178 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     ),
   );
 
-  void _newPurchase() {
-    showDialog<void>(
+  Future<void> _newPurchase() async {
+    final created = await PurchaseCreationDialog.show(context);
+    if (created == true && mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _pickDate() async {
+    if (_period == _PurchasePeriod.custom) {
+      return _pickRange();
+    }
+    final picked = await showDatePicker(
       context: context,
-      builder: (_) => const AlertDialog(
-        title: Text('Nueva compra'),
-        content: Text(
-          'Aquí conectaremos el formulario de ingreso cuando definamos el segundo boceto.',
-        ),
-        actions: [],
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      initialDate: _anchorDate,
+    );
+    if (picked != null && mounted) {
+      setState(() => _anchorDate = picked);
+    }
+  }
+
+  Future<void> _pickRange() async {
+    final start = _customStart ?? _anchorDate;
+    final end = _customEnd ?? start;
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      initialDateRange: DateTimeRange(
+        start: start,
+        end: end.isBefore(start) ? start : end,
       ),
     );
+    if (picked == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _period = _PurchasePeriod.custom;
+      _customStart = picked.start;
+      _customEnd = picked.end;
+      _anchorDate = picked.start;
+    });
   }
 
-  void _showDetail(PurchaseRecord purchase) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => _PurchaseDetailDialog(purchase),
-    );
-  }
+  void _detail(PurchaseRecord purchase) => showDialog<void>(
+    context: context,
+    builder: (_) => purchase.isElectronicBalancePurchase
+        ? _ElectronicBalancePurchaseDetailDialog(purchase)
+        : _PurchaseDetailDialog(purchase),
+  );
 }
-
-class _PurchaseDetailDialog extends StatelessWidget {
+class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
-  const _PurchaseDetailDialog(this.purchase);
+  const _ElectronicBalancePurchaseDetailDialog(this.purchase);
 
+  String _money(double value) => '\${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  String _time(DateTime value) =>
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _modify(BuildContext context) async {
+    final updated = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _ElectronicBalancePurchaseEditDialog(purchase),
+    );
+    if (updated == true && context.mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar compra de saldo'),
+        content: Text(
+          'Se eliminará la compra de ${_money(purchase.total)} de ${purchase.distributorName} y se descontará ese monto del saldo disponible. ¿Deseas continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.dangerRed,
+            ),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final balanceProvider = context.read<ElectronicBalanceProvider>();
+    final deletedFromBalance = balanceProvider.deletePurchase(purchase.id);
+    if (!deletedFromBalance) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo eliminar la compra de saldo.'),
+        ),
+      );
+      return;
+    }
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final category = purchase.electronicBalanceCategory ?? 'Saldo';
+
     return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 720,
-          maxHeight: 700,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: 620,
+        constraints: const BoxConstraints(maxHeight: 620),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadowColor,
+              blurRadius: 26,
+              offset: Offset(0, 12),
+            ),
+          ],
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+              padding: const EdgeInsets.fromLTRB(22, 18, 14, 15),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.receipt_long_outlined,
-                    color: AppColors.primary,
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Detalle de compra',
-                          style: AppTextStyles.sectionTitle,
+                          'Detalle de compra de saldo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           purchase.distributorName,
                           style: const TextStyle(
@@ -706,66 +722,144 @@ class _PurchaseDetailDialog extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Cerrar',
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
               ),
             ),
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _info(
-                      'Factura',
-                      purchase.invoiceNumber.isEmpty
-                          ? '—'
-                          : purchase.invoiceNumber,
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(15, 14, 15, 13),
+                decoration: BoxDecoration(
+                  color: AppColors.inputBackground,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: _info('Compañía', purchase.distributorName)),
+                        Expanded(child: _info('Tipo', category)),
+                        Expanded(child: _info('Fecha', _date(purchase.arrivalAt))),
+                      ],
                     ),
-                  ),
-                  Expanded(
-                    child: _info(
-                      'Fecha de llegada',
-                      _date(purchase.arrivalAt),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: [
+                        Expanded(child: _info('Hora', _time(purchase.arrivalAt))),
+                        Expanded(
+                          child: _info(
+                            'Forma de pago',
+                            purchase.paymentMethod.isEmpty
+                                ? 'Contado'
+                                : purchase.paymentMethod,
+                          ),
+                        ),
+                        Expanded(
+                          child: _info(
+                            'Monto',
+                            _money(purchase.total),
+                            strong: true,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Expanded(
-                    child: _info(
-                      'Forma de pago',
-                      purchase.paymentMethod,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const Divider(height: 1),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: purchase.items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 7),
-                itemBuilder: (_, index) =>
-                    _purchaseItem(purchase.items[index]),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(18),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_wallet_rounded,
+                          size: 34,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 13),
+                      const Text(
+                        'Compra de saldo',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _money(purchase.total),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Esta compra no modifica el inventario físico.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
+            const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(18, 13, 18, 16),
               child: Row(
                 children: [
-                  const Spacer(),
-                  const Text(
-                    'Total',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _modify(context),
+                      icon: const Icon(Icons.edit_outlined, size: 17),
+                      label: const Text('Modificar compra'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withAlpha(80)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 28),
-                  Text(
-                    '\$${purchase.total.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _delete(context),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                      label: const Text('Eliminar compra'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        foregroundColor: AppColors.dangerRed,
+                        side: BorderSide(color: AppColors.dangerRed.withAlpha(85)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -777,116 +871,714 @@ class _PurchaseDetailDialog extends StatelessWidget {
     );
   }
 
-  Widget _info(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
-      ),
-      const SizedBox(height: 3),
-      Text(
-        value,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+  Widget _info(String label, String value, {bool strong = false}) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
+              color: strong ? AppColors.primary : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      );
+}
+
+class _ElectronicBalancePurchaseEditDialog extends StatefulWidget {
+  final PurchaseRecord purchase;
+  const _ElectronicBalancePurchaseEditDialog(this.purchase);
+  @override
+  State<_ElectronicBalancePurchaseEditDialog> createState() => _ElectronicBalancePurchaseEditDialogState();
+}
+
+class _ElectronicBalancePurchaseEditDialogState extends State<_ElectronicBalancePurchaseEditDialog> {
+  late final TextEditingController _amount;
+  @override
+  void initState() { super.initState(); _amount = TextEditingController(text: widget.purchase.total.toStringAsFixed(2)); }
+  @override
+  void dispose() { _amount.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Modificar compra de saldo'),
+    content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(widget.purchase.distributorName, style: const TextStyle(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 4),
+      Text(widget.purchase.electronicBalanceCategory ?? 'Saldo', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+      const SizedBox(height: 16),
+      TextField(controller: _amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Monto comprado', prefixText: '\$')),
+    ])),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+      FilledButton(onPressed: _save, child: const Text('Guardar')),
     ],
   );
 
-  Widget _purchaseItem(PurchaseItemRecord item) {
-    final bytes = item.imageData.trim().isEmpty
-        ? null
-        : _decode(item.imageData);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: AppColors.border),
+  Future<void> _save() async {
+    final amount = double.tryParse(_amount.text.replaceAll(',', '.'));
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ingresa un monto válido mayor que cero.')));
+      return;
+    }
+    final balanceProvider = context.read<ElectronicBalanceProvider>();
+    final updated = balanceProvider.updatePurchase(
+      purchaseId: widget.purchase.id,
+      amount: amount,
+    );
+    if (!updated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo modificar la compra de saldo.')),
+      );
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    Navigator.pop(context, true);
+  }
+}
+
+class _PurchaseDetailDialog extends StatelessWidget {
+  final PurchaseRecord purchase;
+  const _PurchaseDetailDialog(this.purchase);
+
+  String _money(double value) => '\${value.toStringAsFixed(2)}';
+  String _date(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  String _time(DateTime value) =>
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _modify(BuildContext context) async {
+    final updated = await PurchaseCreationDialog.show(
+      context,
+      purchase: purchase,
+    );
+    if (updated == true && context.mounted) {
+      Navigator.pop(context, true);
+    }
+  }
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: AppColors.overlayBackground,
+      builder: (_) => const _PurchaseDeleteConfirmationDialog(),
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final deleted = await context.read<PurchasesProvider>().deletePurchase(
+          purchase,
+          context.read<ProductProvider>(),
+        );
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.pop(context, deleted);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: 760,
+        constraints: const BoxConstraints(maxHeight: 720),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadowColor,
+              blurRadius: 26,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 18, 14, 15),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_outlined,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Detalle de compra',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          purchase.distributorName,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 13),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(15, 14, 15, 13),
+                decoration: BoxDecoration(
+                  color: AppColors.inputBackground,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _info(
+                        'Factura',
+                        purchase.invoiceNumber.isEmpty
+                            ? '—'
+                            : purchase.invoiceNumber,
+                      ),
+                    ),
+                    Expanded(child: _info('Fecha', _date(purchase.arrivalAt))),
+                    Expanded(child: _info('Hora', _time(purchase.arrivalAt))),
+                    Expanded(
+                      child: _info(
+                        'Pago',
+                        purchase.paymentMethod.isEmpty
+                            ? 'Contado'
+                            : purchase.paymentMethod,
+                      ),
+                    ),
+                    Expanded(
+                      child: _info(
+                        'Total',
+                        _money(purchase.total),
+                        strong: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 2, 18, 14),
+                children: [
+                  const Text(
+                    'Productos recibidos',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.inputBackground,
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                          color: AppColors.chipBackground,
+                          child: const Row(
+                            children: [
+                              SizedBox(
+                                width: 44,
+                                child: Text(
+                                  'Img.',
+                                  style: AppTextStyles.ticketLabel,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'Descripción',
+                                  style: AppTextStyles.ticketLabel,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 58,
+                                child: Text(
+                                  'Cant.',
+                                  textAlign: TextAlign.right,
+                                  style: AppTextStyles.ticketLabel,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 78,
+                                child: Text(
+                                  'P. Unit.',
+                                  textAlign: TextAlign.right,
+                                  style: AppTextStyles.ticketLabel,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 78,
+                                child: Text(
+                                  'Dcto.',
+                                  textAlign: TextAlign.right,
+                                  style: AppTextStyles.ticketLabel,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 82,
+                                child: Text(
+                                  'Total',
+                                  textAlign: TextAlign.right,
+                                  style: AppTextStyles.ticketLabel,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        for (var i = 0; i < purchase.items.length; i++) ...[
+                          if (i > 0) const Divider(height: 1),
+                          _item(purchase.items[i]),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 250,
+                      child: Column(
+                        children: [
+                          _summaryLine(
+                            'Subtotal',
+                            _money(
+                              purchase.items.fold(
+                                0.0,
+                                (sum, item) => sum + item.total,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          _summaryLine('Descuento', _money(0)),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 11,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.inputBackground,
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  _money(purchase.total),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.successGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Forma de pago',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                purchase.paymentMethod.isEmpty
+                                    ? 'Contado'
+                                    : purchase.paymentMethod,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 13, 18, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _modify(context),
+                      icon: const Icon(Icons.edit_outlined, size: 17),
+                      label: const Text('Modificar compra'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withAlpha(80)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _delete(context),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                      label: const Text('Eliminar compra'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        foregroundColor: AppColors.dangerRed,
+                        side: BorderSide(color: AppColors.dangerRed.withAlpha(85)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _info(String label, String value, {bool strong = false}) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
+              color: strong ? AppColors.primary : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      );
+
+  Widget _summaryLine(String label, String value) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+
+  Widget _item(PurchaseItemRecord item) {
+    Uint8List? bytes;
+    if (item.imageData.trim().isNotEmpty) {
+      try {
+        bytes = base64Decode(
+          item.imageData.contains(',')
+              ? item.imageData.split(',').last
+              : item.imageData,
+        );
+      } catch (_) {}
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
+          SizedBox(
+            width: 44,
+            height: 44,
             child: bytes == null
                 ? const Icon(
                     Icons.image_outlined,
                     color: AppColors.textMuted,
+                    size: 23,
                   )
-                : Image.memory(bytes, fit: BoxFit.cover),
+                : Image.memory(bytes, fit: BoxFit.contain),
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 45,
-            child: Text(
-              '${item.quantity}x',
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.productName,
-                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 3),
                 Text(
-                  item.unit,
+                  '${item.totalQuantity} recibidas · ${item.bonusQuantity} bonificadas',
                   style: const TextStyle(
                     fontSize: 9,
-                    color: AppColors.textMuted,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          Text(
-            _money(item.unitCost),
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textSecondary,
+          SizedBox(
+            width: 58,
+            child: Text(
+              item.totalQuantity.toString(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 10),
             ),
           ),
-          const SizedBox(width: 18),
-          Text(
-            _money(item.total),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+          SizedBox(
+            width: 78,
+            child: Text(
+              _money(item.unitCost),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 78,
+            child: Text(
+              _money(item.discount),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 82,
+            child: Text(
+              _money(item.total),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Uint8List? _decode(String value) {
-    try {
-      return base64Decode(
-        value.contains(',') ? value.split(',').last : value,
-      );
-    } catch (_) {
-      return null;
-    }
+class _PurchaseDeleteConfirmationDialog extends StatelessWidget {
+  const _PurchaseDeleteConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: 430,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadowColor,
+              blurRadius: 24,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: AppColors.dangerRed.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.delete_forever_rounded,
+                color: AppColors.dangerRed,
+                size: 31,
+              ),
+            ),
+            const SizedBox(height: 15),
+            const Text(
+              'Eliminar compra',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta compra se eliminará del historial y se revertirán las unidades que agregó al inventario.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.dangerRed.withAlpha(10),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: AppColors.dangerRed.withAlpha(45)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.dangerRed,
+                    size: 19,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta acción no se puede deshacer.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dangerRed,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.dangerRed,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                    ),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text(
+                      'Eliminar compra',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  String _money(double value) => '\$${value.toStringAsFixed(2)}';
 }

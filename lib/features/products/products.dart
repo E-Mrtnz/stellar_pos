@@ -2,6 +2,7 @@
 ///
 /// Existing models/providers remain available from core while the application
 /// is migrated incrementally. New product code should import this entry point.
+library;
 export 'package:stellar_pos/core/models/product.dart';
 export 'package:stellar_pos/core/providers/product_provider.dart';
 export 'package:stellar_pos/core/services/domain/product_pricing_service.dart';

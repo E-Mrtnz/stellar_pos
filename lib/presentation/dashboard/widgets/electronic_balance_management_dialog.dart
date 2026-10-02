@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_layout.dart';
+import 'package:stellar_pos/presentation/electronic_balance/electronic_balance_admin_layout.dart';
 
 class ElectronicBalanceManagementDialog extends StatelessWidget {
   const ElectronicBalanceManagementDialog({super.key});
@@ -51,7 +51,7 @@ class ElectronicBalanceManagementDialog extends StatelessWidget {
               ),
             ),
             const Divider(height: 1, color: AppColors.border),
-            const Expanded(child: ElectronicBalanceLayout()),
+            const Expanded(child: ElectronicBalanceAdminLayout()),
           ],
         ),
       ),

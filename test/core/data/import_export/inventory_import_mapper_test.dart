@@ -4,45 +4,45 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/data/import_export/inventory_import_mapper.dart';
 
 void main() {
-  dynamic _text(String value) => TextCellValue(value);
-  dynamic _number(double value) => DoubleCellValue(value);
-  dynamic _integer(int value) => IntCellValue(value);
+  dynamic textCell(String value) => TextCellValue(value);
+  dynamic numberCell(double value) => DoubleCellValue(value);
+  dynamic integerCell(int value) => IntCellValue(value);
 
   test('maps exported inventory columns into products', () {
     final rows = <List<dynamic>>[
       [
-        _text('ID'),
-        _text('Producto'),
-        _text('Cant.'),
-        _text('Categoría'),
-        _text('Marca'),
-        _text('Distribuidora'),
-        _text('Precio de compra'),
-        _text('Precio de venta'),
-        _text('Stock'),
-        _text('Stock mínimo'),
-        _text('Stock máximo'),
-        _text('Código de barras'),
-        _text('Venta por grupos'),
-        _text('Unidades por grupo'),
-        _text('Precio por grupo'),
+        textCell('ID'),
+        textCell('Producto'),
+        textCell('Cant.'),
+        textCell('Categoría'),
+        textCell('Marca'),
+        textCell('Distribuidora'),
+        textCell('Precio de compra'),
+        textCell('Precio de venta'),
+        textCell('Stock'),
+        textCell('Stock mínimo'),
+        textCell('Stock máximo'),
+        textCell('Código de barras'),
+        textCell('Venta por grupos'),
+        textCell('Unidades por grupo'),
+        textCell('Precio por grupo'),
       ],
       [
-        _text('p1'),
-        _text('Coca-Cola'),
-        _text('354 ml'),
-        _text('Bebidas'),
-        _text('Coca-Cola'),
-        _text('Distribuidora A'),
-        _number(0.55),
-        _number(0.75),
-        _integer(12),
-        _integer(3),
-        _integer(30),
-        _text('750123'),
-        _text('Sí'),
-        _integer(3),
-        _number(2.00),
+        textCell('p1'),
+        textCell('Coca-Cola'),
+        textCell('354 ml'),
+        textCell('Bebidas'),
+        textCell('Coca-Cola'),
+        textCell('Distribuidora A'),
+        numberCell(0.55),
+        numberCell(0.75),
+        integerCell(12),
+        integerCell(3),
+        integerCell(30),
+        textCell('750123'),
+        textCell('Sí'),
+        integerCell(3),
+        numberCell(2.00),
       ],
     ];
 
@@ -61,8 +61,8 @@ void main() {
 
   test('reports missing product names instead of creating invalid rows', () {
     final rows = <List<dynamic>>[
-      [_text('Producto'), _text('Stock')],
-      [_text(''), _integer(5)],
+      [textCell('Producto'), textCell('Stock')],
+      [textCell(''), integerCell(5)],
     ];
 
     final result = InventoryImportMapper.mapRows(rows);
@@ -73,8 +73,8 @@ void main() {
 
   test('accepts legacy aliases for inventory columns', () {
     final rows = <List<dynamic>>[
-      [_text('Nombre'), _text('Cantidad'), _text('Costo'), _text('Precio venta')],
-      [_text('Arroz'), _text('1 kg'), _number(0.80), _number(1.10)],
+      [textCell('Nombre'), textCell('Cantidad'), textCell('Costo'), textCell('Precio venta')],
+      [textCell('Arroz'), textCell('1 kg'), numberCell(0.80), numberCell(1.10)],
     ];
 
     final result = InventoryImportMapper.mapRows(rows);

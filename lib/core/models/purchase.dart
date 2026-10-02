@@ -9,9 +9,25 @@ class PurchaseItemRecord implements SyncableEntity {
   final String unit;
   final String barcode;
   final String imageData;
+  /// Cost of one inventory unit, based on the pre-discount product value.
   final double unitCost;
   final int quantity;
+  final int bonusQuantity;
+  /// Number of inventory units contained in one purchased presentation.
+  final int unitsPerPresentation;
+  final int totalQuantity;
+  final double salePrice;
+  final double? previousCost;
+  final double? previousSalePrice;
+  /// Total monetary discount applied to the purchased quantity.
+  final double discount;
+  /// Percentage shown on the supplier invoice, when provided.
+  final double? discountPercent;
+  /// VAT amount shown on the supplier invoice. Null means the entered price
+  /// already includes VAT (or the invoice did not provide a separate VAT).
+  final double? iva;
   final double total;
+  final double effectiveUnitCost;
   @override
   final SyncMetadata metadata;
 
@@ -24,11 +40,36 @@ class PurchaseItemRecord implements SyncableEntity {
     this.imageData = '',
     required this.unitCost,
     required this.quantity,
+    this.bonusQuantity = 0,
+    int? unitsPerPresentation,
+    int? totalQuantity,
+    this.salePrice = 0,
+    this.previousCost,
+    this.previousSalePrice,
+    this.discount = 0,
+    this.discountPercent,
+    this.iva,
     required this.total,
+    double? effectiveUnitCost,
     SyncMetadata? metadata,
   })  : id = id ?? IdGenerator.newId(),
+        unitsPerPresentation = (unitsPerPresentation == null || unitsPerPresentation <= 0)
+            ? 1
+            : unitsPerPresentation,
+        totalQuantity = totalQuantity ??
+            quantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation) +
+                bonusQuantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation),
+        effectiveUnitCost = effectiveUnitCost ??
+            ((totalQuantity ??
+                        quantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation) +
+                            bonusQuantity * ((unitsPerPresentation == null || unitsPerPresentation <= 0) ? 1 : unitsPerPresentation)) <=
+                    0
+                ? 0
+                : unitCost),
         metadata = metadata ?? SyncMetadata.initial();
 
+  @override
+  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'productId': productId,
@@ -38,7 +79,17 @@ class PurchaseItemRecord implements SyncableEntity {
         'imageData': imageData,
         'unitCost': unitCost,
         'quantity': quantity,
+        'bonusQuantity': bonusQuantity,
+        'unitsPerPresentation': unitsPerPresentation,
+        'totalQuantity': totalQuantity,
+        'salePrice': salePrice,
+        'previousCost': previousCost,
+        'previousSalePrice': previousSalePrice,
+        'discount': discount,
+        'discountPercent': discountPercent,
+        'iva': iva,
         'total': total,
+        'effectiveUnitCost': effectiveUnitCost,
         'metadata': metadata.toMap(),
       };
 
@@ -52,13 +103,27 @@ class PurchaseItemRecord implements SyncableEntity {
         imageData: map['imageData']?.toString() ?? '',
         unitCost: _double(map['unitCost']),
         quantity: _int(map['quantity']),
+        bonusQuantity: _int(map['bonusQuantity']),
+        unitsPerPresentation: map.containsKey('unitsPerPresentation')
+            ? _int(map['unitsPerPresentation'])
+            : 1,
+        totalQuantity: map.containsKey('totalQuantity')
+            ? _int(map['totalQuantity'])
+            : null,
+        salePrice: _double(map['salePrice']),
+        previousCost: map['previousCost'] == null ? null : _double(map['previousCost']),
+        previousSalePrice: map['previousSalePrice'] == null ? null : _double(map['previousSalePrice']),
+        discount: _double(map['discount']),
+        discountPercent: map['discountPercent'] == null ? null : _double(map['discountPercent']),
+        iva: map['iva'] == null ? null : _double(map['iva']),
         total: _double(map['total']),
+        effectiveUnitCost: map.containsKey('effectiveUnitCost') ? _double(map['effectiveUnitCost']) : null,
         metadata: _metadata(map['metadata']),
       );
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()
-      : double.tryParse(value?.toString() ?? '') ?? 0;
+      : double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ?? 0;
 
   static int _int(dynamic value) => value is num
       ? value.toInt()
@@ -76,8 +141,14 @@ class PurchaseRecord implements SyncableEntity {
   final String distributorName;
   final DateTime arrivalAt;
   final String paymentMethod;
+  /// Identifies purchases that originate outside physical inventory.
+  final String purchaseType;
+  final String? electronicBalanceAccountId;
+  final String? electronicBalanceTransactionId;
+  final String? electronicBalanceCategory;
   final List<PurchaseItemRecord> items;
   final double subtotal;
+  final double discount;
   final double total;
   @override
   final SyncMetadata metadata;
@@ -88,50 +159,94 @@ class PurchaseRecord implements SyncableEntity {
     required this.distributorName,
     required this.arrivalAt,
     required this.paymentMethod,
+    this.purchaseType = 'product',
+    this.electronicBalanceAccountId,
+    this.electronicBalanceTransactionId,
+    this.electronicBalanceCategory,
     required List<PurchaseItemRecord> items,
     required this.subtotal,
+    this.discount = 0,
     required this.total,
     SyncMetadata? metadata,
   }) : items = List.unmodifiable(items),
-       metadata = metadata ??
-            SyncMetadata(
-              createdAt: arrivalAt.toUtc(),
-              updatedAt: arrivalAt.toUtc(),
-            );
+       metadata = metadata ?? SyncMetadata(
+         createdAt: arrivalAt.toUtc(),
+         updatedAt: arrivalAt.toUtc(),
+       );
 
-  int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
+  bool get isElectronicBalancePurchase => purchaseType == 'electronic_balance';
+  int get itemCount => isElectronicBalancePurchase ? 0 : items.fold(0, (sum, item) => sum + item.totalQuantity);
+
+  PurchaseRecord copyWith({
+    String? id,
+    String? invoiceNumber,
+    String? distributorName,
+    DateTime? arrivalAt,
+    String? paymentMethod,
+    String? purchaseType,
+    String? electronicBalanceAccountId,
+    String? electronicBalanceTransactionId,
+    String? electronicBalanceCategory,
+    List<PurchaseItemRecord>? items,
+    double? subtotal,
+    double? discount,
+    double? total,
+    SyncMetadata? metadata,
+  }) => PurchaseRecord(
+    id: id ?? this.id,
+    invoiceNumber: invoiceNumber ?? this.invoiceNumber,
+    distributorName: distributorName ?? this.distributorName,
+    arrivalAt: arrivalAt ?? this.arrivalAt,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    purchaseType: purchaseType ?? this.purchaseType,
+    electronicBalanceAccountId: electronicBalanceAccountId ?? this.electronicBalanceAccountId,
+    electronicBalanceTransactionId: electronicBalanceTransactionId ?? this.electronicBalanceTransactionId,
+    electronicBalanceCategory: electronicBalanceCategory ?? this.electronicBalanceCategory,
+    items: items ?? this.items,
+    subtotal: subtotal ?? this.subtotal,
+    discount: discount ?? this.discount,
+    total: total ?? this.total,
+    metadata: metadata ?? this.metadata.touch(),
+  );
+
+  @override
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'invoiceNumber': invoiceNumber,
-        'distributorName': distributorName,
-        'arrivalAt': arrivalAt.toIso8601String(),
-        'paymentMethod': paymentMethod,
-        'items': items.map((item) => item.toMap()).toList(),
-        'subtotal': subtotal,
-        'total': total,
-        'metadata': metadata.toMap(),
-      };
+    'id': id,
+    'invoiceNumber': invoiceNumber,
+    'distributorName': distributorName,
+    'arrivalAt': arrivalAt.toIso8601String(),
+    'paymentMethod': paymentMethod,
+    'purchaseType': purchaseType,
+    'electronicBalanceAccountId': electronicBalanceAccountId,
+    'electronicBalanceTransactionId': electronicBalanceTransactionId,
+    'electronicBalanceCategory': electronicBalanceCategory,
+    'items': items.map((item) => item.toMap()).toList(),
+    'subtotal': subtotal,
+    'discount': discount,
+    'total': total,
+    'metadata': metadata.toMap(),
+  };
 
   factory PurchaseRecord.fromMap(Map<String, dynamic> map) => PurchaseRecord(
-        id: map['id']?.toString() ?? '',
-        invoiceNumber: map['invoiceNumber']?.toString() ?? '',
-        distributorName: map['distributorName']?.toString() ?? '',
-        arrivalAt: _date(map['arrivalAt']),
-        paymentMethod: map['paymentMethod']?.toString() ?? '',
-        items: _items(map['items']),
-        subtotal: _double(map['subtotal']),
-        total: _double(map['total']),
-        metadata: _metadata(map['metadata']),
-      );
+    id: map['id']?.toString() ?? '',
+    invoiceNumber: map['invoiceNumber']?.toString() ?? '',
+    distributorName: map['distributorName']?.toString() ?? '',
+    arrivalAt: _date(map['arrivalAt']),
+    paymentMethod: map['paymentMethod']?.toString() ?? 'Contado',
+    purchaseType: map['purchaseType']?.toString() ?? 'product',
+    electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(),
+    electronicBalanceTransactionId: map['electronicBalanceTransactionId']?.toString(),
+    electronicBalanceCategory: map['electronicBalanceCategory']?.toString(),
+    items: _items(map['items']),
+    subtotal: _double(map['subtotal']),
+    discount: _double(map['discount']),
+    total: _double(map['total']),
+    metadata: _metadata(map['metadata']),
+  );
 
   static List<PurchaseItemRecord> _items(dynamic value) => value is Iterable
-      ? value
-          .whereType<Map>()
-          .map((item) => PurchaseItemRecord.fromMap(
-                Map<String, dynamic>.from(item),
-              ))
-          .toList()
+      ? value.whereType<Map>().map((item) => PurchaseItemRecord.fromMap(Map<String, dynamic>.from(item))).toList()
       : const [];
 
   static DateTime _date(dynamic value) => value is DateTime
@@ -140,7 +255,7 @@ class PurchaseRecord implements SyncableEntity {
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()
-      : double.tryParse(value?.toString() ?? '') ?? 0;
+      : double.tryParse(value?.toString().replaceAll(',', '.') ?? '') ?? 0;
 
   static SyncMetadata _metadata(dynamic value) => value is Map
       ? SyncMetadata.fromMap(Map<String, dynamic>.from(value))

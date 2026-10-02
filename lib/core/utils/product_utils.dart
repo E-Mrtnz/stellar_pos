@@ -1,5 +1,4 @@
 import 'package:stellar_pos/core/data/mappers/product_map_mapper.dart';
-import 'package:stellar_pos/core/models/product.dart';
 import 'package:stellar_pos/core/services/domain/product_pricing_service.dart';
 
 class ProductUtils {

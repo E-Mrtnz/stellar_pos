@@ -11,10 +11,12 @@ import 'package:stellar_pos/core/data/repositories/provider_route_repository.dar
 import 'package:stellar_pos/core/data/repositories/purchase_repository.dart';
 import 'package:stellar_pos/core/data/repositories/sale_repository.dart';
 import 'package:stellar_pos/core/providers/catalog_provider.dart';
+import 'package:stellar_pos/core/providers/date_aware_sales_provider.dart';
 import 'package:stellar_pos/core/providers/electronic_balance_provider.dart';
 import 'package:stellar_pos/core/providers/printer_provider.dart';
 import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/providers_provider.dart';
+import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/features/debts/debts.dart';
 import 'package:stellar_pos/features/purchases/purchases.dart';
 import 'package:stellar_pos/features/sales/sales.dart';
@@ -27,6 +29,7 @@ class AppProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+
         ChangeNotifierProvider(
           create: (_) => CatalogProvider(
             clientRepository: ClientRepository(),
@@ -67,20 +70,24 @@ class AppProviders extends StatelessWidget {
           create: (_) => PurchasesProvider(repository: PurchaseRepository())..load(),
         ),
         ChangeNotifierProvider(
-          create: (_) => ElectronicBalanceProvider(
+          create: (context) => ElectronicBalanceProvider(
             accountRepository: ElectronicBalanceAccountRepository(),
             transactionRepository: ElectronicBalanceTransactionRepository(),
+            purchasesProvider: context.read<PurchasesProvider>(),
           )..load(),
         ),
         ChangeNotifierProvider(create: (_) => PrinterProvider()),
-        ChangeNotifierProvider(
-          create: (_) => SalesProvider(repository: SaleRepository())..load(),
+        ChangeNotifierProvider<SalesProvider>(
+          create: (_) => DateAwareSalesProvider(repository: SaleRepository())..load(),
         ),
         ChangeNotifierProvider(
           create: (context) => DebtProvider(
             context.read<SalesProvider>(),
             movementRepository: DebtMovementRepository(),
           )..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ClientGroupProvider()..load(),
         ),
       ],
       child: child,

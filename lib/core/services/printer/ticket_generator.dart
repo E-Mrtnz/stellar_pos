@@ -4,12 +4,24 @@ import 'package:stellar_pos/core/models/sale_ticket.dart';
 class TicketGenerator {
   const TicketGenerator();
 
-  Future<List<int>> generate(SaleTicketData ticket, {bool openCashDrawer = false}) async {
-    final profile = await CapabilityProfile.load(); final generator = Generator(PaperSize.mm80, profile, spaceBetweenRows: 4); final bytes = <int>[];
+  Future<List<int>> generate(
+    SaleTicketData ticket, {
+    bool openCashDrawer = false,
+    String? storeName,
+  }) async {
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(
+      PaperSize.mm80,
+      profile,
+      spaceBetweenRows: 4,
+    );
+    final bytes = <int>[];
+    final businessName = storeName?.trim().isNotEmpty == true
+        ? storeName!.trim()
+        : 'Stellar POS';
     bytes.addAll(generator.reset());
-    bytes.addAll(generator.text('STELLAR POS', styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2, width: PosTextSize.size2, codeTable: 'CP1252')));
-    bytes.addAll(generator.text('MI TIENDA', styles: const PosStyles(align: PosAlign.center, bold: true, codeTable: 'CP1252')));
-    bytes.addAll(generator.text('Direccion de la tienda', styles: const PosStyles(align: PosAlign.center, codeTable: 'CP1252')));
+    bytes.addAll(generator.text(businessName, styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2, width: PosTextSize.size2, codeTable: 'CP1252')));
+        bytes.addAll(generator.text('Direccion de la tienda', styles: const PosStyles(align: PosAlign.center, codeTable: 'CP1252')));
     bytes.addAll(generator.text('Tel: 0000-0000', styles: const PosStyles(align: PosAlign.center, codeTable: 'CP1252')));
     bytes.addAll(generator.feed(1));
     bytes.addAll(generator.text('COMPROBANTE DE VENTA', styles: const PosStyles(align: PosAlign.center, bold: true, codeTable: 'CP1252')));
@@ -25,6 +37,12 @@ class TicketGenerator {
     for (final item in ticket.items) {
       bytes.addAll(generator.row([_left(item.description, 4), _center('${item.quantity}', 2), _right(_money(item.unitPrice), 2), _right(_money(item.discount), 2), _right(_money(item.total), 2)]));
       if (item.unit.trim().isNotEmpty) bytes.addAll(generator.text(item.unit.trim(), styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252')));
+      if (item.preparationExtra > 0.005) {
+        bytes.addAll(generator.row([
+          _left('Preparada', 8),
+          _right(_money(item.preparationExtra * item.quantity), 4),
+        ]));
+      }
     }
     bytes.addAll(generator.hr(ch: '-'));
     bytes.addAll(_summary(generator, 'Subtotal', ticket.subtotal));

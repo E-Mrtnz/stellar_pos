@@ -6,6 +6,7 @@ import 'package:stellar_pos/core/utils/product_utils.dart';
 
 class SalesSummaryPanel extends StatelessWidget {
   final Map<String, int> cartQuantities;
+  final Set<String> preparedProductIds;
   final List<Map<String, dynamic>> products;
   final int selectedPaymentMethod;
   final ValueChanged<int> onPaymentMethodChanged;
@@ -31,6 +32,8 @@ class SalesSummaryPanel extends StatelessWidget {
   final VoidCallback onClearCart;
   final VoidCallback onCreateSale;
   final String ticketNumber;
+  final DateTime saleDate;
+  final VoidCallback? onSaleDateTap;
   final bool isEditing;
   final String? operationLabel;
   final double? operationDifference;
@@ -40,6 +43,7 @@ class SalesSummaryPanel extends StatelessWidget {
   const SalesSummaryPanel({
     super.key,
     required this.cartQuantities,
+    this.preparedProductIds = const <String>{},
     required this.products,
     required this.selectedPaymentMethod,
     required this.onPaymentMethodChanged,
@@ -65,6 +69,8 @@ class SalesSummaryPanel extends StatelessWidget {
     required this.onClearCart,
     required this.onCreateSale,
     required this.ticketNumber,
+    required this.saleDate,
+    this.onSaleDateTap,
     this.isEditing = false,
     this.operationLabel,
     this.operationDifference,
@@ -126,42 +132,19 @@ class SalesSummaryPanel extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (cartQuantities.isNotEmpty)
-                        SizedBox(
-                          height: 26,
-                          child: OutlinedButton.icon(
-                            onPressed: onClearCart,
-                            icon: const Icon(
-                              Icons.delete_sweep_outlined,
-                              size: 14,
-                              color: AppColors.dangerRed,
-                            ),
-                            label: const Text(
-                              'Borrar todo',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.dangerRed,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 0,
-                              ),
-                              side: BorderSide(
-                                color: AppColors.dangerRed.withAlpha(120),
-                                width: 1,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              backgroundColor: Colors.transparent,
-                            ),
-                          ),
-                        ),
+                      if (cartQuantities.isEmpty) _buildSaleDate(),
                     ],
                   ),
+                  if (cartQuantities.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildClearCartButton(),
+                        _buildSaleDate(),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   const Divider(color: AppColors.border, height: 1),
                   const SizedBox(height: 6),
@@ -191,6 +174,7 @@ class SalesSummaryPanel extends StatelessWidget {
                                     product['imageData']?.toString() ?? '',
                                 quantity: entry.value,
                                 product: product,
+                                prepared: preparedProductIds.contains(product['id']),
                               );
                             }).toList(),
                           ),
@@ -202,6 +186,62 @@ class SalesSummaryPanel extends StatelessWidget {
           ),
           _buildPaymentSection(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSaleDate() {
+    final enabled = onSaleDateTap != null;
+    final text =
+        '${saleDate.day.toString().padLeft(2, '0')}/${saleDate.month.toString().padLeft(2, '0')}/${saleDate.year}';
+    return InkWell(
+      onTap: onSaleDateTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+            decoration: enabled ? TextDecoration.underline : null,
+            decorationThickness: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClearCartButton() {
+    return SizedBox(
+      height: 26,
+      child: OutlinedButton.icon(
+        onPressed: onClearCart,
+        icon: const Icon(
+          Icons.delete_sweep_outlined,
+          size: 14,
+          color: AppColors.dangerRed,
+        ),
+        label: const Text(
+          'Borrar todo',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.dangerRed,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          side: BorderSide(
+            color: AppColors.dangerRed.withAlpha(120),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          backgroundColor: Colors.transparent,
+        ),
       ),
     );
   }
@@ -415,7 +455,9 @@ class SalesSummaryPanel extends StatelessWidget {
   }
 
   double get _displayTotal {
-    if (selectedPaymentMethod != AppPaymentMethods.credit) return total;
+    if (selectedPaymentMethod != AppPaymentMethods.credit) {
+      return total;
+    }
     final received =
         double.tryParse(cashReceivedController.text.replaceAll(',', '.')) ?? 0;
     final applied = received.clamp(0, total).toDouble();
@@ -598,13 +640,12 @@ class SalesSummaryPanel extends StatelessWidget {
     required String imageData,
     required int quantity,
     required Map<String, dynamic> product,
+    required bool prepared,
   }) {
-    final subtotalItem = ProductUtils.priceForQuantity(product, quantity);
-    final hasGroupPricing =
-        ProductUtils.asBool(product['hasGroupPricing']) &&
-        ProductUtils.asInt(product['groupQuantity']) > 0;
-    final groupQuantity = ProductUtils.asInt(product['groupQuantity']);
-    final groupPrice = ProductUtils.asDouble(product['groupPrice']);
+    final preparationExtra = ProductUtils.asDouble(product['preparationExtra']);
+    final subtotalItem = prepared
+        ? (ProductUtils.price(product) + preparationExtra) * quantity
+        : ProductUtils.priceForQuantity(product, quantity);
     return Container(
       height: 76,
       margin: const EdgeInsets.only(bottom: 8.0),
@@ -647,9 +688,11 @@ class SalesSummaryPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  hasGroupPricing
-                      ? '$unit | C/U \$${unitPrice.toStringAsFixed(2)} · $groupQuantity X \$${groupPrice.toStringAsFixed(2)}'
-                      : '$unit | C/U \$${unitPrice.toStringAsFixed(2)}',
+                  unit.trim().isEmpty
+                      ? product['brand']?.toString() ?? ''
+                      : product['brand']?.toString().trim().isEmpty ?? true
+                          ? unit
+                          : '$unit | ${product['brand']}',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
@@ -810,7 +853,9 @@ class _QuantityInputState extends State<_QuantityInput> {
 
   void _handleChanged(String value) {
     final quantity = int.tryParse(value);
-    if (quantity != null && quantity > 0) widget.onChanged(quantity);
+    if (quantity != null && quantity > 0) {
+      widget.onChanged(quantity);
+    }
   }
 
   @override
