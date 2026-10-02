@@ -41,16 +41,22 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   List<ElectronicBalanceTransaction> get transactions => List.unmodifiable(_transactions);
 
   Future<void> load() {
-    if (_loaded) return Future.value();
+    if (_loaded) {
+      return Future.value();
+    }
     final existing = _loadFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadFromRepository();
     _loadFuture = future;
     return future;
   }
 
   ElectronicBalanceAccount? findAccount(String id) {
-    for (final account in _accounts) if (account.id == id) return account;
+    for (final account in _accounts) {
+      if (account.id == id) return account;
+    }
     return null;
   }
 
@@ -60,8 +66,12 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     String imageData = '',
   }) {
     final name = companyName.trim();
-    if (name.isEmpty || commissionRate < 0 || commissionRate > 100) return false;
-    if (_accounts.any((a) => a.companyName.toLowerCase() == name.toLowerCase())) return false;
+    if (name.isEmpty || commissionRate < 0 || commissionRate > 100) {
+      return false;
+    }
+    if (_accounts.any((a) => a.companyName.toLowerCase() == name.toLowerCase())) {
+      return false;
+    }
     final account = ElectronicBalanceAccount(
       id: IdGenerator.newId(),
       companyName: name,
@@ -83,8 +93,12 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   }) {
     final index = _accounts.indexWhere((a) => a.id == id);
     final name = companyName.trim();
-    if (index < 0 || name.isEmpty || commissionRate < 0 || commissionRate > 100) return false;
-    if (_accounts.asMap().entries.any((e) => e.key != index && e.value.companyName.toLowerCase() == name.toLowerCase())) return false;
+    if (index < 0 || name.isEmpty || commissionRate < 0 || commissionRate > 100) {
+      return false;
+    }
+    if (_accounts.asMap().entries.any((e) => e.key != index && e.value.companyName.toLowerCase() == name.toLowerCase())) {
+      return false;
+    }
     final account = _accounts[index].copyWith(
       companyName: name,
       commissionRate: commissionRate,
@@ -97,10 +111,14 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   }
 
   bool removeAccount(String id) {
-    if (_transactions.any((t) => t.accountId == id)) return false;
+    if (_transactions.any((t) => t.accountId == id)) {
+      return false;
+    }
     final before = _accounts.length;
     _accounts.removeWhere((a) => a.id == id);
-    if (_accounts.length == before) return false;
+    if (_accounts.length == before) {
+      return false;
+    }
     notifyListeners();
     _persistDeleteAccount(id);
     return true;
@@ -108,7 +126,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
 
   bool setSaleOptions({required String accountId, required List<ElectronicBalanceSaleOption> options}) {
     final index = _accounts.indexWhere((a) => a.id == accountId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final normalized = <ElectronicBalanceSaleOption>[];
     final seen = <String>{};
     for (final option in options) {
@@ -160,9 +180,13 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   }
 
   bool registerPurchase({required String accountId, required double amount, String category = 'Saldo'}) {
-    if (amount <= 0) return false;
+    if (amount <= 0) {
+      return false;
+    }
     final index = _accounts.indexWhere((a) => a.id == accountId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final account = _accounts[index];
     final purchaseId = IdGenerator.newId();
     final transactionId = IdGenerator.newId();
@@ -218,12 +242,18 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   }
 
   bool updatePurchase({required String purchaseId, required double amount, String? category}) {
-    if (amount <= 0) return false;
+    if (amount <= 0) {
+      return false;
+    }
     final transactionIndex = _transactions.indexWhere((t) => t.purchaseId == purchaseId && t.type == ElectronicBalanceTransactionType.purchase);
-    if (transactionIndex < 0) return false;
+    if (transactionIndex < 0) {
+      return false;
+    }
     final transaction = _transactions[transactionIndex];
     final accountIndex = _accounts.indexWhere((a) => a.id == transaction.accountId);
-    if (accountIndex < 0) return false;
+    if (accountIndex < 0) {
+      return false;
+    }
     final account = _accounts[accountIndex];
     final nextCategory = category?.trim().isNotEmpty == true ? category!.trim() : transaction.category;
     final updatedTransaction = ElectronicBalanceTransaction(
@@ -301,10 +331,14 @@ class ElectronicBalanceProvider extends ChangeNotifier {
 
   bool deletePurchase(String purchaseId) {
     final index = _transactions.indexWhere((t) => t.purchaseId == purchaseId && t.type == ElectronicBalanceTransactionType.purchase);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final transaction = _transactions[index];
     final accountIndex = _accounts.indexWhere((a) => a.id == transaction.accountId);
-    if (accountIndex < 0) return false;
+    if (accountIndex < 0) {
+      return false;
+    }
     _accounts[accountIndex] = _accounts[accountIndex].copyWith(
       balance: _fromCents(
         _toCents(_accounts[accountIndex].balance) - _toCents(transaction.amount),
@@ -319,15 +353,21 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   }
 
   bool setAvailableBalance({required String accountId, required double balance}) {
-    if (balance < 0) return false;
+    if (balance < 0) {
+      return false;
+    }
     final index = _accounts.indexWhere((a) => a.id == accountId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
 
     final account = _accounts[index];
     final currentCents = _toCents(account.balance);
     final nextCents = _toCents(balance);
     final differenceCents = nextCents - currentCents;
-    if (differenceCents == 0) return true;
+    if (differenceCents == 0) {
+      return true;
+    }
 
     final now = DateTime.now();
     final adjustment = ElectronicBalanceTransaction(
@@ -356,16 +396,22 @@ class ElectronicBalanceProvider extends ChangeNotifier {
   bool registerSale({required String accountId, required double amount, required String category, String description = ''}) => registerSales(accountId: accountId, sales: [ElectronicBalanceSale(amount: amount, quantity: 1, category: category, description: description)]);
 
   bool registerSales({required String accountId, required List<ElectronicBalanceSale> sales, String? saleId}) {
-    if (sales.isEmpty) return false;
+    if (sales.isEmpty) {
+      return false;
+    }
     final index = _accounts.indexWhere((a) => a.id == accountId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final account = _accounts[index];
     final now = DateTime.now();
     final pending = <ElectronicBalanceTransaction>[];
     var totalBalanceDeductionCents = 0;
     for (final sale in sales) {
       final category = sale.category.trim();
-      if (sale.amount <= 0 || sale.quantity <= 0 || !_service.isValidCategory(category)) return false;
+      if (sale.amount <= 0 || sale.quantity <= 0 || !_service.isValidCategory(category)) {
+        return false;
+      }
       final amount = sale.amount * sale.quantity;
       pending.add(
         ElectronicBalanceTransaction(
@@ -400,13 +446,17 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     _transactions.addAll(pending);
     notifyListeners();
     _persistAccount(updatedAccount);
-    for (final transaction in pending) _persistTransaction(transaction);
+    for (final transaction in pending) {
+      _persistTransaction(transaction);
+    }
     return true;
   }
 
   bool reverseSale(String saleId) {
     final matching = _transactions.where((t) => t.saleId == saleId && t.type == ElectronicBalanceTransactionType.sale).toList();
-    if (matching.isEmpty) return false;
+    if (matching.isEmpty) {
+      return false;
+    }
     final byAccountCents = <String, int>{};
     for (final transaction in matching) {
       byAccountCents[transaction.accountId] =
@@ -414,7 +464,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     }
     for (final entry in byAccountCents.entries) {
       final index = _accounts.indexWhere((a) => a.id == entry.key);
-      if (index < 0) return false;
+      if (index < 0) {
+        return false;
+      }
       final account = _accounts[index].copyWith(
         balance: _fromCents(_toCents(_accounts[index].balance) + entry.value),
       );
@@ -422,7 +474,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       _persistAccount(account);
     }
     _transactions.removeWhere((t) => t.saleId == saleId && t.type == ElectronicBalanceTransactionType.sale);
-    for (final transaction in matching) _persistDeleteTransaction(transaction.id);
+    for (final transaction in matching) {
+      _persistDeleteTransaction(transaction.id);
+    }
     notifyListeners();
     return true;
   }
@@ -480,7 +534,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     }
 
     _loaded = true;
-    if (_accounts.isNotEmpty || _transactions.isNotEmpty) notifyListeners();
+    if (_accounts.isNotEmpty || _transactions.isNotEmpty) {
+      notifyListeners();
+    }
   }
 
   static int _toCents(double amount) => (amount * 100).round();
