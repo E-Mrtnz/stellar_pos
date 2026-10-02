@@ -54,7 +54,9 @@ class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialo
   void initState() {
     super.initState();
     _initialSelection = List<ElectronicBalanceCartItem>.from(widget.initialSelection);
-    for (final item in _initialSelection) _selected[item.key] = item;
+    for (final item in _initialSelection) {
+      _selected[item.key] = item;
+    }
     if (_initialSelection.isNotEmpty) {
       _accountId = _initialSelection.first.accountId;
       _category = _initialSelection.first.category;
@@ -151,7 +153,7 @@ class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialo
                               spacing: 9,
                               runSpacing: 9,
                               children: options.map((amount) {
-                                final key = '${account.id}|$_category|${amount.toStringAsFixed(4)}';
+                                final key = '$account.id|$_category|${amount.toStringAsFixed(4)}';
                                 final item = _selected[key];
                                 return _AmountTile(width: width, amount: amount, quantity: item?.quantity ?? 0, onTap: () => _increment(account, _category, amount), onLongPress: item == null ? null : () => _remove(key));
                               }).toList(),
@@ -178,7 +180,7 @@ class _ElectronicBalanceSaleDialogState extends State<ElectronicBalanceSaleDialo
   }
 
   void _increment(ElectronicBalanceAccount account, String category, double amount) {
-    final key = '${account.id}|$category|${amount.toStringAsFixed(4)}';
+    final key = '$account.id|$category|${amount.toStringAsFixed(4)}';
     final current = _selected[key];
     setState(() => _selected[key] = current == null
         ? ElectronicBalanceCartItem(
