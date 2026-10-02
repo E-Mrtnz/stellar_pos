@@ -655,7 +655,7 @@ class SalesProvider extends ChangeNotifier {
     }
     final stored = await repository.getAll();
     developer.log(
-      'Ventas locales cargadas desde el repositorio: ' + stored.length.toString(),
+      'Ventas locales cargadas desde el repositorio: ${stored.length.toString}'(),
       name: 'STELLAR_POS.sales',
     );
     stored.sort((a, b) => a.createdAt.compareTo(b.createdAt));
