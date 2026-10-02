@@ -4,7 +4,6 @@ import 'package:stellar_pos/core/app/app_dependencies.dart';
 import 'package:stellar_pos/core/data/repositories/electronic_balance_account_repository.dart';
 import 'package:stellar_pos/core/data/repositories/electronic_balance_transaction_repository.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
-import 'package:stellar_pos/core/models/electronic_balance_sale.dart';
 import 'package:stellar_pos/core/models/purchase.dart';
 import 'package:stellar_pos/core/providers/purchases_provider.dart';
 import 'package:stellar_pos/core/domain/services/electronic_balance_service.dart';
