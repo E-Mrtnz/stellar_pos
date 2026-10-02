@@ -49,8 +49,7 @@ class SalesProvider extends ChangeNotifier {
 
   List<SaleRecord> get sales => List.unmodifiable(_sales);
   SaleRecord? get latestSale => _sales.isEmpty ? null : _sales.last;
-  String get nextTicketNumberPreview =>
-      _nextTicketNumber.toString().padLeft(8, '0');
+  String get nextTicketNumberPreview => 'PENDIENTE';
 
   Future<void> load() {
     if (_loaded) {
@@ -88,7 +87,9 @@ class SalesProvider extends ChangeNotifier {
     if (electronicSales.isNotEmpty && electronicBalanceProvider == null) {
       throw StateError('No se pudo acceder al saldo electrónico.');
     }
-    final ticketNumber = nextTicketNumberPreview;
+    // A global sequential number is assigned only by the cloud in the future.
+    // The sale itself is completed locally with its immutable saleId.
+    const ticketNumber = '';
     final saleId = _lifecycle.newSaleId();
     final items = <SaleItemRecord>[];
     for (final entry in cartQuantities.entries) {
@@ -218,7 +219,6 @@ class SalesProvider extends ChangeNotifier {
       }
     }
     _sales.add(sale);
-    _nextTicketNumber++;
     notifyListeners();
     _persist(sale);
     return sale;
