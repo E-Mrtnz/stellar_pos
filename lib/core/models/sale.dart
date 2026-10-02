@@ -34,8 +34,6 @@ class SaleOperationRecord {
 
   String get label => type == SaleOperationType.change ? 'CAMBIO' : 'DEVOLUCIÓN';
 
-  @override
-  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'type': type.name,
