@@ -231,7 +231,9 @@ class SalesProvider extends ChangeNotifier {
             (oldPhysical[item.productId] ?? 0) + item.quantity;
     final newPhysical = <String, int>{};
     for (final item in updatedItems) {
-      if (item.isElectronicBalance) continue;
+      if (item.isElectronicBalance) {
+        continue;
+      }
       final product = productProvider.findById(item.productId);
       if (product == null)
         throw StateError('Uno de los productos seleccionados ya no existe.');
