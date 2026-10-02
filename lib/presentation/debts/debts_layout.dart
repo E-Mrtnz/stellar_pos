@@ -68,9 +68,13 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   }
 
   Future<void> _addPayment(Client client, DebtAccount account) async {
-    if (account.remaining <= 0.005) return;
+    if (account.remaining <= 0.005) {
+      return;
+    }
     final received = await DebtPaymentDialog.show(context, clientName: client.name, debt: account.remaining);
-    if (received == null || !mounted) return;
+    if (received == null || !mounted) {
+      return;
+    }
     if (!context.read<DebtProvider>().recordPayment(clientId: client.id, clientName: client.name, amount: received)) {
       AppAlert.show(context, 'No se pudo registrar el abono.', title: 'Error al registrar', type: AppAlertType.error);
       return;
