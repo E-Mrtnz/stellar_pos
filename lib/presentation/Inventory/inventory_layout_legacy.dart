@@ -50,17 +50,8 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     final selectedTag = _selectedTagIndex >= 0 && _selectedTagIndex < _tags.length
         ? _tags[_selectedTagIndex]
         : '';
-    final cacheKey = _searchQuery +
-        '|' +
-        (_selectedFilter ?? '') +
-        '|' +
-        _selectedTagIndex.toString() +
-        '|' +
-        _sortColumn +
-        '|' +
-        _sortAscending.toString() +
-        '|' +
-        selectedTag;
+    final cacheKey =
+        '$_searchQuery|${_selectedFilter ?? ''}|$_selectedTagIndex|$_sortColumn|$_sortAscending|$selectedTag';
     if (_filteredProductsCache != null &&
         _productsIdentity == productsIdentity &&
         _filterCacheKey == cacheKey) {
@@ -264,18 +255,24 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   Product? _findExistingProduct(List<Product> products, Product incoming) {
     if (incoming.id.trim().isNotEmpty) {
       for (final product in products) {
-        if (product.id == incoming.id.trim()) return product;
+        if (product.id == incoming.id.trim()) {
+          return product;
+        }
       }
     }
     final barcode = incoming.barcode.trim();
     if (barcode.isNotEmpty) {
       for (final product in products) {
-        if (product.barcode.trim() == barcode) return product;
+        if (product.barcode.trim() == barcode) {
+          return product;
+        }
       }
     }
     final name = incoming.name.trim().toLowerCase();
     for (final product in products) {
-      if (product.name.trim().toLowerCase() == name) return product;
+      if (product.name.trim().toLowerCase() == name) {
+        return product;
+      }
     }
     return null;
   }
