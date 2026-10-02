@@ -69,7 +69,9 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
       setState(() { _customStart = s; _customEnd = e; });
     } else {
       final d = await showDatePicker(context: context, initialDate: _anchor, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
-      if (d != null) setState(() => _anchor = d);
+      if (d != null) {
+        setState(() => _anchor = d);
+      }
     }
   }
 
