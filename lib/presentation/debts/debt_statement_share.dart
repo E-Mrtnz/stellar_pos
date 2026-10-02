@@ -141,7 +141,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         return;
       }
       Navigator.of(context).pop();
-      AppAlert.show(context, 'No se pudo generar el estado de cuenta: ' + error.toString(), title: 'Error al generar estado de cuenta', type: AppAlertType.error);
+      AppAlert.show(context, 'No se pudo generar el estado de cuenta: $error', title: 'Error al generar estado de cuenta', type: AppAlertType.error);
     }
   }
 
@@ -208,8 +208,8 @@ class _DebtStatementImage extends StatelessWidget {
   final int pageCount;
   const _DebtStatementImage({required this.clientName, required this.sales, required this.account, required this.groups, required this.pageNumber, required this.pageCount});
 
-  String _money(double value) => '\u0024' + value.toStringAsFixed(2);
-  String _date(DateTime value) => value.day.toString().padLeft(2, '0') + '/' + value.month.toString().padLeft(2, '0') + '/' + value.year.toString();
+  String _money(double value) => '\u0024${value.toStringAsFixed(2)}';
+  String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
   @override Widget build(BuildContext context) {
     final subtotal = sales.fold<double>(
@@ -286,7 +286,7 @@ class _DebtStatementImage extends StatelessWidget {
               const SizedBox(height: 24),
               const Divider(color: Color(0xFFE2E2E2)),
               const SizedBox(height: 10),
-              Center(child: Text(pageNumber.toString() + 'D ' + pageCount.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54))),
+              Center(child: Text('$pageNumber D $pageCount', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54))),
             ],
           ),
         ),
