@@ -149,7 +149,10 @@ class SaleRecord implements SyncableEntity {
   }
 
   @override String id;
+  /// Legacy human-facing sequence. Empty for sales created while offline.
   String ticketNumber;
+  /// Cloud-assigned sequential number. Null until a sale is accepted by cloud.
+  String? saleNumber;
   DateTime createdAt;
   String? clientId;
   String clientName;
@@ -166,7 +169,7 @@ class SaleRecord implements SyncableEntity {
   List<SaleOperationRecord> operations;
   @override SyncMetadata metadata;
 
-  SaleRecord({required this.id, required this.ticketNumber, required this.createdAt, required this.clientId, required this.clientName, required this.paymentMethod, required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent, required this.discountAmount, required this.cardFeeAmount, required this.total, required this.received, required this.change, this.status = SaleStatus.completed, List<SaleOperationRecord> operations = const [], SyncMetadata? metadata}) : items = List.unmodifiable(items), operations = List.unmodifiable(operations), metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc()) {
+  SaleRecord({required this.id, required this.ticketNumber, this.saleNumber, required this.createdAt, required this.clientId, required this.clientName, required this.paymentMethod, required List<SaleItemRecord> items, required this.subtotal, required this.discountPercent, required this.discountAmount, required this.cardFeeAmount, required this.total, required this.received, required this.change, this.status = SaleStatus.completed, List<SaleOperationRecord> operations = const [], SyncMetadata? metadata}) : items = List.unmodifiable(items), operations = List.unmodifiable(operations), metadata = metadata ?? SyncMetadata(createdAt: createdAt.toUtc(), updatedAt: createdAt.toUtc()) {
     final override = _creationDateOverride;
     if (override != null) {
       final original = createdAt;
@@ -176,6 +179,8 @@ class SaleRecord implements SyncableEntity {
       }
     }
   }
+
+  String get saleId => id;
 
   bool get isCompleted => status == SaleStatus.completed;
   bool get isAnnulled => status == SaleStatus.annulled;
@@ -201,13 +206,13 @@ class SaleRecord implements SyncableEntity {
     metadata = metadata.touch();
   }
 
-  SaleRecord copyWith({String? id, String? ticketNumber, DateTime? createdAt, String? clientId, String? clientName, String? paymentMethod, List<SaleItemRecord>? items, double? subtotal, double? discountPercent, double? discountAmount, double? cardFeeAmount, double? total, double? received, double? change, SaleStatus? status, List<SaleOperationRecord>? operations, SyncMetadata? metadata, bool touchMetadata = false}) => SaleRecord(id: id ?? this.id, ticketNumber: ticketNumber ?? this.ticketNumber, createdAt: createdAt ?? this.createdAt, clientId: clientId ?? this.clientId, clientName: clientName ?? this.clientName, paymentMethod: paymentMethod ?? this.paymentMethod, items: items ?? this.items, subtotal: subtotal ?? this.subtotal, discountPercent: discountPercent ?? this.discountPercent, discountAmount: discountAmount ?? this.discountAmount, cardFeeAmount: cardFeeAmount ?? this.cardFeeAmount, total: total ?? this.total, received: received ?? this.received, change: change ?? this.change, status: status ?? this.status, operations: operations ?? this.operations, metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
+  SaleRecord copyWith({String? id, String? ticketNumber, String? saleNumber, DateTime? createdAt, String? clientId, String? clientName, String? paymentMethod, List<SaleItemRecord>? items, double? subtotal, double? discountPercent, double? discountAmount, double? cardFeeAmount, double? total, double? received, double? change, SaleStatus? status, List<SaleOperationRecord>? operations, SyncMetadata? metadata, bool touchMetadata = false}) => SaleRecord(id: id ?? this.id, ticketNumber: ticketNumber ?? this.ticketNumber, saleNumber: saleNumber ?? this.saleNumber, createdAt: createdAt ?? this.createdAt, clientId: clientId ?? this.clientId, clientName: clientName ?? this.clientName, paymentMethod: paymentMethod ?? this.paymentMethod, items: items ?? this.items, subtotal: subtotal ?? this.subtotal, discountPercent: discountPercent ?? this.discountPercent, discountAmount: discountAmount ?? this.discountAmount, cardFeeAmount: cardFeeAmount ?? this.cardFeeAmount, total: total ?? this.total, received: received ?? this.received, change: change ?? this.change, status: status ?? this.status, operations: operations ?? this.operations, metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
 
   @override
 
-  Map<String, dynamic> toMap() => {'id': id, 'ticketNumber': ticketNumber, 'createdAt': createdAt.toIso8601String(), 'clientId': clientId, 'clientName': clientName, 'paymentMethod': paymentMethod, 'items': items.map((item) => item.toMap()).toList(), 'subtotal': subtotal, 'discountPercent': discountPercent, 'discountAmount': discountAmount, 'cardFeeAmount': cardFeeAmount, 'total': total, 'received': received, 'change': change, 'status': status.name, 'operations': operations.map((operation) => operation.toMap()).toList(growable: false), 'metadata': metadata.toMap()};
+  Map<String, dynamic> toMap() => {'id': id, 'ticketNumber': ticketNumber, 'saleNumber': saleNumber, 'createdAt': createdAt.toIso8601String(), 'clientId': clientId, 'clientName': clientName, 'paymentMethod': paymentMethod, 'items': items.map((item) => item.toMap()).toList(), 'subtotal': subtotal, 'discountPercent': discountPercent, 'discountAmount': discountAmount, 'cardFeeAmount': cardFeeAmount, 'total': total, 'received': received, 'change': change, 'status': status.name, 'operations': operations.map((operation) => operation.toMap()).toList(growable: false), 'metadata': metadata.toMap()};
 
-  factory SaleRecord.fromMap(Map<String, dynamic> map) => SaleRecord(id: map['id']?.toString() ?? IdGenerator.newId(), ticketNumber: map['ticketNumber']?.toString() ?? '', createdAt: _date(map['createdAt']), clientId: map['clientId']?.toString(), clientName: map['clientName']?.toString() ?? '', paymentMethod: map['paymentMethod']?.toString() ?? '', items: _items(map['items']), subtotal: _double(map['subtotal']), discountPercent: _double(map['discountPercent']), discountAmount: _double(map['discountAmount']), cardFeeAmount: _double(map['cardFeeAmount']), total: _double(map['total']), received: _double(map['received']), change: _double(map['change']), status: map['status']?.toString() == SaleStatus.annulled.name ? SaleStatus.annulled : SaleStatus.completed, operations: _operations(map['operations']), metadata: _metadata(map['metadata']));
+  factory SaleRecord.fromMap(Map<String, dynamic> map) => SaleRecord(id: map['id']?.toString() ?? IdGenerator.newId(), ticketNumber: map['ticketNumber']?.toString() ?? '', saleNumber: map['saleNumber']?.toString() ?? (map['ticketNumber']?.toString().trim().isEmpty == true ? null : map['ticketNumber']?.toString()), createdAt: _date(map['createdAt']), clientId: map['clientId']?.toString(), clientName: map['clientName']?.toString() ?? '', paymentMethod: map['paymentMethod']?.toString() ?? '', items: _items(map['items']), subtotal: _double(map['subtotal']), discountPercent: _double(map['discountPercent']), discountAmount: _double(map['discountAmount']), cardFeeAmount: _double(map['cardFeeAmount']), total: _double(map['total']), received: _double(map['received']), change: _double(map['change']), status: map['status']?.toString() == SaleStatus.annulled.name ? SaleStatus.annulled : SaleStatus.completed, operations: _operations(map['operations']), metadata: _metadata(map['metadata']));
 
   SaleTicketData toTicketData() {
     final date = '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
