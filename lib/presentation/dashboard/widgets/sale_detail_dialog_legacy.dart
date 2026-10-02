@@ -486,8 +486,8 @@ class SaleDetailDialog extends StatelessWidget {
   Widget _saleBadge(String label, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
     decoration: BoxDecoration(
-      color: color.withOpacity(.10),
-      border: Border.all(color: color.withOpacity(.35)),
+      color: color.withValues(alpha: .10),
+      border: Border.all(color: color.withValues(alpha: .35)),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
@@ -722,7 +722,7 @@ class SaleDetailDialog extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(.25)),
+        border: Border.all(color: color.withValues(alpha: .25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
