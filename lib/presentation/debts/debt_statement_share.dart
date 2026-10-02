@@ -64,7 +64,9 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
     var current = <_StatementGroup>[];
     var rows = 0;
     void flush() {
-      if (current.isEmpty) return;
+      if (current.isEmpty) {
+        return;
+      }
       pages.add(_StatementPage(groups: current));
       current = <_StatementGroup>[];
       rows = 0;
@@ -87,7 +89,9 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
   }
 
   Future<void> _share() async {
-    if (!mounted || _sharing) return;
+    if (!mounted || _sharing) {
+      return;
+    }
     setState(() => _sharing = true);
     try {
       final files = <XFile>[];
@@ -106,7 +110,9 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
 
       final originBox = context.findRenderObject() as RenderBox?;
       final origin = originBox == null ? null : originBox.localToGlobal(Offset.zero) & originBox.size;
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop();
       AppAlert.show(
         context,
@@ -114,13 +120,16 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         title: 'Estado de cuenta generado',
         type: AppAlertType.success,
       );
+      if (!mounted) return;
       await Share.shareXFiles(
         files,
         subject: 'Estado de cuenta - ' + widget.clientName,
         sharePositionOrigin: origin,
       );
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop();
       AppAlert.show(context, 'No se pudo generar el estado de cuenta: ' + error.toString(), title: 'Error al generar estado de cuenta', type: AppAlertType.error);
     }
