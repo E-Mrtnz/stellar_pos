@@ -21,6 +21,7 @@ class ProviderCatalogState implements SyncableEntity {
         brands = List.unmodifiable(brands),
         metadata = metadata ?? SyncMetadata.initial();
 
+  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'distributors': distributors,
