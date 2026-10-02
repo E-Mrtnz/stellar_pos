@@ -1,4 +1,5 @@
 /// Public entry point for pure domain services.
+library;
 export 'catalog_value_service.dart';
 export 'debt_service.dart';
 export 'electronic_balance_service.dart';
