@@ -1,6 +1,4 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
@@ -126,11 +124,6 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       Navigator.of(context).pop();
       AppAlert.show(context, 'No se pudo generar el estado de cuenta: ' + error.toString(), title: 'Error al generar estado de cuenta', type: AppAlertType.error);
     }
-  }
-
-  String _safeFileName(String value) {
-    final normalized = value.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '_');
-    return normalized.isEmpty ? 'cliente' : normalized;
   }
 
   @override Widget build(BuildContext context) => Dialog(
