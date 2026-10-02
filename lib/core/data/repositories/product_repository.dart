@@ -1,164 +1,27 @@
-import 'dart:developer' as developer;
-
-import 'dart:async';
-
-import 'package:stellar_pos/core/cloud/cloud_collection.dart';
-import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
-import 'package:stellar_pos/core/cloud/cloud_repository.dart';
-import 'package:stellar_pos/core/cloud/cloud_sync_scope.dart';
-import 'package:stellar_pos/core/cloud/cloud_sync_engine.dart';
-import 'package:stellar_pos/core/cloud/cloud_sync_coordinator.dart';
-import 'package:stellar_pos/core/cloud/firestore_data_source.dart';
 import 'package:stellar_pos/core/data/datasources/hive_data_source.dart';
 import 'package:stellar_pos/core/data/storage/storage_boxes.dart';
 import 'package:stellar_pos/core/domain/repositories/repository.dart';
 import 'package:stellar_pos/core/models/product.dart';
 
-/// Product repository with local-first persistence and optional cloud sync.
+/// Local Hive repository for Product.
 ///
-/// Hive remains the local source of truth for normal POS operation. When a
-/// store has been configured for cloud synchronization, Firestore is used
-/// through [CloudRepository] and never exposed to the presentation layer.
+/// Cloud synchronization is intentionally not part of the repository layer.
+/// It will be reintroduced through a new, explicit cloud architecture later.
 class ProductRepository implements Repository<Product> {
   final HiveDataSource<Product> _local = HiveDataSource<Product>(
     boxName: StorageBoxes.products,
     fromMap: Product.fromMap,
   );
-  final CloudIdentityStore _identityStore;
-  final CloudSyncCoordinator _syncCoordinator;
-
-  CloudRepository<Product>? _cloud;
-  String? _cloudStoreId;
-  String? _cloudDeviceId;
-
-  ProductRepository({
-    CloudIdentityStore? identityStore,
-    CloudSyncCoordinator? syncCoordinator,
-  })  : _identityStore = identityStore ?? CloudIdentityStore(),
-        _syncCoordinator = syncCoordinator ?? CloudSyncCoordinator.instance;
 
   @override
-  Future<List<Product>> getAll() async {
-    // Local-first: never block the UI waiting for Firestore.
-    unawaited(_trySync());
-    return _local.getAll();
-  }
+  Future<List<Product>> getAll() => _local.getAll();
 
   @override
   Future<Product?> getById(String id) => _local.getById(id);
 
   @override
-  Future<void> save(Product entity) async {
-    final cloud = await _getCloudRepository();
-    if (cloud == null) {
-      await _local.save(entity);
-      return;
-    }
-
-    await cloud.save(entity);
-    unawaited(_trySync(cloud));
-  }
+  Future<void> save(Product entity) => _local.save(entity);
 
   @override
-  Future<void> delete(String id) async {
-    final cloud = await _getCloudRepository();
-    if (cloud == null) {
-      await _local.delete(id);
-      return;
-    }
-
-    await cloud.delete(id);
-    unawaited(_trySync(cloud));
-  }
-
-  Future<CloudSyncResult?> sync() => _trySync();
-
-  Future<CloudSyncResult?> restoreFromCloud() async {
-    final cloud = await _getCloudRepository();
-    if (cloud == null) return null;
-    try {
-      final storeId = await _identityStore.getStoreId();
-      if (storeId == null || storeId.isEmpty) return null;
-      return await _syncCoordinator.run<CloudSyncResult>(
-        key: '$storeId:products:restore',
-        operation: cloud.restoreFromCloud,
-      );
-    } catch (error, stackTrace) {
-      developer.log(
-        'Falló la restauración de Firestore.',
-        name: 'STELLAR_POS.cloud_sync',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      return null;
-    }
-  }
-
-  Future<CloudSyncResult?> _trySync([CloudRepository<Product>? existing]) async {
-    final cloud = existing ?? await _getCloudRepository();
-    if (cloud == null) return null;
-
-    try {
-      final storeId = await _identityStore.getStoreId();
-      if (storeId == null || storeId.isEmpty) return null;
-
-      return await _syncCoordinator.run<CloudSyncResult>(
-        key: '$storeId:${CloudCollection.products}',
-        operation: cloud.sync,
-      );
-    } catch (error, stackTrace) {
-      developer.log(
-        'Falló la sincronización de Firestore.',
-        name: 'STELLAR_POS.cloud_sync',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      return null;
-    }
-  }
-
-  Future<CloudRepository<Product>?> _getCloudRepository() async {
-    final storeId = await _identityStore.getStoreId();
-    if (storeId == null || storeId.isEmpty) return null;
-
-    final deviceId = await _identityStore.getOrCreateDeviceId();
-    if (_cloud != null &&
-        _cloudStoreId == storeId &&
-        _cloudDeviceId == deviceId) {
-      return _cloud;
-    }
-
-    _cloudStoreId = storeId;
-    _cloudDeviceId = deviceId;
-    _cloud = CloudRepository<Product>(
-      local: _local,
-      cloud: FirestoreDataSource<Product>(
-        storeId: storeId,
-        collectionName: CloudCollection.products,
-        fromMap: Product.fromMap,
-      ),
-      scope: CloudSyncScope(
-        storeId: storeId,
-        deviceId: deviceId,
-      ),
-      collection: CloudCollection.products,
-      fromMap: Product.fromMap,
-    );
-    return _cloud;
-  }
-
-  /// Applies a single remote Firestore document to the local Hive cache.
-  Future<bool> applyRemoteData(Map<String, dynamic> data) async {
-    final cloud = await _getCloudRepository();
-    if (cloud == null) return false;
-    return cloud.applyRemoteData(data);
-  }
-
-  /// Applies a single remote Firestore deletion to the local Hive cache.
-  Future<bool> applyRemoteDelete(String id) async {
-    final cloud = await _getCloudRepository();
-    if (cloud == null) return false;
-    return cloud.applyRemoteDelete(id);
-  }
-
+  Future<void> delete(String id) => _local.delete(id);
 }

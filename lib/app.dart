@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/presentation/auth/auth_gate.dart';
+import 'package:stellar_pos/presentation/dashboard/main_dashboard_layout.dart';
 
-/// Backward-compatible export for the application composition root.
-export 'package:stellar_pos/core/app/app_providers.dart';
-
+/// Root application widget.
+///
+/// Cloud authentication and synchronization are intentionally disconnected
+/// while the new cloud architecture is designed from scratch.
 class StellarPosApp extends StatelessWidget {
   const StellarPosApp({super.key});
 
@@ -25,7 +26,7 @@ class StellarPosApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: AuthGate(),
+      home: const MainDashboardLayout(),
     );
   }
 }

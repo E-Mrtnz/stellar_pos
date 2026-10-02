@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
-import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
-import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
-import 'package:stellar_pos/core/cloud/store_access_models.dart';
 
 class SidebarDrawer extends StatelessWidget {
   final bool isExpanded;
@@ -11,18 +7,27 @@ class SidebarDrawer extends StatelessWidget {
   final VoidCallback onToggleExpand;
   final ValueChanged<int> onItemSelected;
 
-  const SidebarDrawer({super.key, required this.isExpanded, required this.selectedIndex, required this.onToggleExpand, required this.onItemSelected});
+  const SidebarDrawer({
+    super.key,
+    required this.isExpanded,
+    required this.selectedIndex,
+    required this.onToggleExpand,
+    required this.onItemSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final storeName = context.watch<CloudStoreProvider>().storeName ?? AppStrings.appName;
-    final access = context.watch<CloudAccessProvider>();
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       width: isExpanded ? 220 : 72,
-      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4)),
+        ],
+      ),
       child: Stack(
         children: [
           Column(
@@ -30,114 +35,48 @@ class SidebarDrawer extends StatelessWidget {
             children: [
               const SizedBox(height: 20),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(children: [
-                  Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withAlpha(25), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24)),
-                  if (isExpanded) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        storeName,
-                        style: AppTextStyles.brandTitle,
-                        overflow: TextOverflow.ellipsis,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24),
                     ),
+                    if (isExpanded) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          AppStrings.appName,
+                          style: AppTextStyles.brandTitle,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ],
-                ]),
+                ),
               ),
               const SizedBox(height: 30),
               Expanded(
                 child: ListView(
-                  scrollDirection: Axis.vertical,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
                   children: [
-                    // The navigation shell must not wait for Firebase. During
-                    // access resolution we keep the full shell visible; the
-                    // selected destination itself remains gated by
-                    // CloudAccessProvider. Once access is resolved, entries
-                    // are filtered normally by the user's permissions.
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.dashboardView))
-                      _buildSidebarItem(
-                        AppNavigation.home,
-                        Icons.point_of_sale_rounded,
-                        AppStrings.navHome,
-                      ),
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.salesView))
-                      _buildSidebarItem(
-                        AppNavigation.electronicBalance,
-                        Icons.receipt_long_rounded,
-                        AppStrings.navSales,
-                      ),
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.purchasesView))
-                      _buildSidebarItem(
-                        AppNavigation.purchases,
-                        Icons.shopping_bag_rounded,
-                        AppStrings.navPurchases,
-                      ),
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.debtsView))
-                      _buildSidebarItem(
-                        AppNavigation.debts,
-                        Icons.receipt_long_outlined,
-                        AppStrings.navDebts,
-                      ),
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.statisticsView))
-                      _buildSidebarItem(
-                        AppNavigation.stats,
-                        Icons.bar_chart_rounded,
-                        AppStrings.navStats,
-                      ),
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.providersView))
-                      _buildSidebarItem(
-                        AppNavigation.providers,
-                        Icons.local_shipping_outlined,
-                        AppStrings.navProviders,
-                      ),
-                    if (!access.accessResolved ||
-                        access.currentUser == null ||
-                        access.errorMessage != null ||
-                        access.hasPermission(StorePermissions.inventoryView))
-                      _buildSidebarItem(
-                        AppNavigation.inventory,
-                        Icons.inventory_2_rounded,
-                        AppStrings.navInventory,
-                      ),
+                    _buildSidebarItem(AppNavigation.home, Icons.point_of_sale_rounded, AppStrings.navHome),
+                    _buildSidebarItem(AppNavigation.electronicBalance, Icons.receipt_long_rounded, AppStrings.navSales),
+                    _buildSidebarItem(AppNavigation.purchases, Icons.shopping_bag_rounded, AppStrings.navPurchases),
+                    _buildSidebarItem(AppNavigation.debts, Icons.receipt_long_outlined, AppStrings.navDebts),
+                    _buildSidebarItem(AppNavigation.stats, Icons.bar_chart_rounded, AppStrings.navStats),
+                    _buildSidebarItem(AppNavigation.providers, Icons.local_shipping_outlined, AppStrings.navProviders),
+                    _buildSidebarItem(AppNavigation.inventory, Icons.inventory_2_rounded, AppStrings.navInventory),
                   ],
                 ),
               ),
-              const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: AppColors.border,
-              ),
-              if (!access.accessResolved ||
-                  access.currentUser == null ||
-                  access.errorMessage != null ||
-                  access.hasPermission(StorePermissions.settingsView))
-                _buildSidebarItem(
-                  AppNavigation.settings,
-                  Icons.settings_outlined,
-                  AppStrings.navSettings,
-                ),
+              const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+              _buildSidebarItem(AppNavigation.settings, Icons.settings_outlined, AppStrings.navSettings),
               const SizedBox(height: 16),
             ],
           ),
@@ -149,8 +88,16 @@ class SidebarDrawer extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: AppColors.inputBackground, shape: BoxShape.circle, border: Border.all(color: AppColors.border, width: 0.5)),
-                child: Icon(isExpanded ? Icons.chevron_left_rounded : Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
+                decoration: BoxDecoration(
+                  color: AppColors.inputBackground,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border, width: 0.5),
+                ),
+                child: Icon(
+                  isExpanded ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ),
@@ -166,17 +113,35 @@ class SidebarDrawer extends StatelessWidget {
       child: Container(
         height: 50,
         margin: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(children: [
-          const SizedBox(width: 20),
-          Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 22),
-          if (isExpanded) ...[
-            const SizedBox(width: 14),
-            Expanded(child: Text(label, style: AppTextStyles.sidebarItem.copyWith(fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: isSelected ? AppColors.primary : AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
-          ] else
-            const Spacer(),
-          if (isSelected)
-            Container(width: 4, height: 28, decoration: const BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.only(topLeft: Radius.circular(4), bottomLeft: Radius.circular(4)))),
-        ]),
+        child: Row(
+          children: [
+            const SizedBox(width: 20),
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 22),
+            if (isExpanded) ...[
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTextStyles.sidebarItem.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ] else
+              const Spacer(),
+            if (isSelected)
+              Container(
+                width: 4,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(4), bottomLeft: Radius.circular(4)),
+                ),
+              ),
+          ],
+        ),
       ),
     );
     return isExpanded ? item : Tooltip(message: label, waitDuration: const Duration(milliseconds: 350), child: item);

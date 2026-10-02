@@ -1,14 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:stellar_pos/core/cloud/cloud_auto_sync_service.dart';
-import 'package:stellar_pos/core/cloud/cloud_realtime_sync_service.dart';
-import 'package:stellar_pos/core/cloud/cloud_realtime_ui_bridge.dart';
 import 'package:stellar_pos/core/data/repositories/client_group_repository.dart';
-import 'package:stellar_pos/core/providers/cloud_store_provider.dart';
-import 'package:stellar_pos/core/providers/cloud_access_provider.dart';
 import 'package:stellar_pos/core/data/repositories/client_repository.dart';
 import 'package:stellar_pos/core/data/repositories/debt_movement_repository.dart';
 import 'package:stellar_pos/core/data/repositories/electronic_balance_account_repository.dart';
@@ -38,30 +31,7 @@ class AppProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => CloudStoreProvider()..load(),
-        ),
-        Provider<CloudAutoSyncService>(
-          lazy: false,
-          create: (_) => CloudAutoSyncService()..start(),
-          dispose: (_, service) => service.dispose(),
-        ),
-        ChangeNotifierProxyProvider<CloudStoreProvider, CloudRealtimeSyncService>(
-          create: (_) => CloudRealtimeSyncService()..start(),
-          update: (_, store, realtime) {
-            final service = realtime ?? (CloudRealtimeSyncService()..start());
-            unawaited(service.setStoreId(store.storeId));
-            return service;
-          },
-        ),
-        ChangeNotifierProxyProvider<CloudStoreProvider, CloudAccessProvider>(
-          create: (_) => CloudAccessProvider(),
-          update: (_, store, access) {
-            final provider = access ?? CloudAccessProvider();
-            unawaited(provider.loadForStore(store.storeId));
-            return provider;
-          },
-        ),
+
         ChangeNotifierProvider(
           create: (_) => CatalogProvider(
             clientRepository: ClientRepository(),
@@ -122,7 +92,7 @@ class AppProviders extends StatelessWidget {
           create: (_) => ClientGroupProvider()..load(),
         ),
       ],
-      child: CloudRealtimeUiBridge(child: child),
+      child: child,
     );
   }
 }

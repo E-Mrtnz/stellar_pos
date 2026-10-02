@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:stellar_pos/core/cloud/cloud_identity_store.dart';
+import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/models/sale_ticket.dart';
 import 'package:stellar_pos/core/services/printer/thermal_printer_service.dart';
@@ -16,15 +16,12 @@ class PrinterProvider extends ChangeNotifier {
   final ThermalPrinterService _service;
   final TicketGenerator _ticketGenerator;
   final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
-  final CloudIdentityStore _cloudIdentityStore;
 
   PrinterProvider({
     ThermalPrinterService? service,
     TicketGenerator? ticketGenerator,
-    CloudIdentityStore? cloudIdentityStore,
   })  : _service = service ?? ThermalPrinterService(),
-        _ticketGenerator = ticketGenerator ?? const TicketGenerator(),
-        _cloudIdentityStore = cloudIdentityStore ?? CloudIdentityStore() {
+        _ticketGenerator = ticketGenerator ?? const TicketGenerator() {
     unawaited(_loadPreferences());
   }
 
@@ -152,7 +149,7 @@ class PrinterProvider extends ChangeNotifier {
 
       final bytes = await _ticketGenerator.generate(
         sale.toTicketData(),
-        storeName: await _cloudIdentityStore.getStoreName(),
+        storeName: AppStrings.appName,
         openCashDrawer: openCashDrawer,
       );
       final printed = await _service.printBytes(bytes);
@@ -194,7 +191,7 @@ class PrinterProvider extends ChangeNotifier {
       final ticket = _buildTestTicket();
       final bytes = await _ticketGenerator.generate(
         ticket,
-        storeName: await _cloudIdentityStore.getStoreName(),
+        storeName: AppStrings.appName,
       );
       final printed = await _service.printBytes(bytes);
 
