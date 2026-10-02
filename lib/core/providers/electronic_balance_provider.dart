@@ -216,7 +216,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       electronicBalanceCategory: normalizedCategory,
       items: [
         PurchaseItemRecord(
-          productId: 'electronic-balance:' + account.id,
+          productId: 'electronic-balance:${account.id}',
           productName: 'Saldo electrónico',
           unit: normalizedCategory,
           barcode: '',
@@ -291,7 +291,7 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     }
     if (purchase != null) {
       final updatedItems = purchase.items.map((item) {
-        if (item.productId != 'electronic-balance:' + transaction.accountId) {
+        if (item.productId != 'electronic-balance:${transaction.accountId}') {
           return item;
         }
         return PurchaseItemRecord(
