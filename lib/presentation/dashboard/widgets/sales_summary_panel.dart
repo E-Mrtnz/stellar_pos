@@ -193,7 +193,7 @@ class SalesSummaryPanel extends StatelessWidget {
   Widget _buildSaleDate() {
     final enabled = onSaleDateTap != null;
     final text =
-        '${saleDate.day.toString().padLeft(2, '0')}/${saleDate.month.toString().padLeft(2, '0')}/${saleDate.year}';
+        '${saleDate.day.toString().padLeft(2, '0')}/${saleDate.month.toString().padLeft(2, '0')}/$saleDate.year';
     return InkWell(
       onTap: onSaleDateTap,
       borderRadius: BorderRadius.circular(4),
@@ -455,7 +455,9 @@ class SalesSummaryPanel extends StatelessWidget {
   }
 
   double get _displayTotal {
-    if (selectedPaymentMethod != AppPaymentMethods.credit) return total;
+    if (selectedPaymentMethod != AppPaymentMethods.credit) {
+      return total;
+    }
     final received =
         double.tryParse(cashReceivedController.text.replaceAll(',', '.')) ?? 0;
     final applied = received.clamp(0, total).toDouble();
@@ -851,7 +853,9 @@ class _QuantityInputState extends State<_QuantityInput> {
 
   void _handleChanged(String value) {
     final quantity = int.tryParse(value);
-    if (quantity != null && quantity > 0) widget.onChanged(quantity);
+    if (quantity != null && quantity > 0) {
+      widget.onChanged(quantity);
+    }
   }
 
   @override
