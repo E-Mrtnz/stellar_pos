@@ -1033,7 +1033,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         },
       );
     }
-    return const _EmptySectionPanel();
+    return const SizedBox.shrink();
   }
 
   Widget _buildHomeContent() {
