@@ -391,7 +391,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
               const SizedBox(height: 8),
               const Text(
                 'Protege los datos locales de STELLAR POS con una copia universal que puede restaurarse en cualquier plataforma compatible.',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
@@ -446,7 +446,7 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
                     const SizedBox(height: 14),
                     const Text(
                       'STELLAR POS exportará los datos lógicos de sus cajas de almacenamiento a un formato universal JSON dentro de un archivo ZIP. El mismo formato puede restaurarse en Web, macOS, Windows, Android, iOS o iPadOS.',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.55,
                         color: AppColors.textSecondary,
