@@ -842,8 +842,9 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
               !_editing ||
               old == null ||
               (old.unitCost - unitCost).abs() > 0.0001;
-          if (changedFromOriginal)
+          if (changedFromOriginal) {
             costChanges.add(_CostChange(current, unitCost));
+          }
         }
 
         if (!_editing ||
@@ -1157,47 +1158,55 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     final current = widget.item;
     _item = current;
     if (old.purchasedQuantity != current.purchasedQuantity &&
-        _shouldSync(_purchasedController, current.purchasedQuantity))
+        _shouldSync(_purchasedController, current.purchasedQuantity)) {
       _replace(_purchasedController, '$current.purchasedQuantity');
+    }
     if (old.bonusQuantity != current.bonusQuantity &&
-        _shouldSync(_bonusController, current.bonusQuantity))
+        _shouldSync(_bonusController, current.bonusQuantity)) {
       _replace(_bonusController, '$current.bonusQuantity');
+    }
     if (old.unitsPerPresentation != current.unitsPerPresentation &&
-        _shouldSync(_presentationController, current.unitsPerPresentation))
+        _shouldSync(_presentationController, current.unitsPerPresentation)) {
       _replace(_presentationController, '$current.unitsPerPresentation');
+    }
     if ((old.originalPresentationPrice - current.originalPresentationPrice)
                 .abs() >
             0.0001 &&
-        _shouldSync(_originalController, current.originalPresentationPrice))
+        _shouldSync(_originalController, current.originalPresentationPrice)) {
       _replace(
         _originalController,
         current.originalPresentationPrice.toStringAsFixed(2),
       );
+    }
     if ((old.discountPercent - current.discountPercent).abs() > 0.0001 &&
-        _shouldSync(_discountController, current.discountPercent))
+        _shouldSync(_discountController, current.discountPercent)) {
       _replace(
         _discountController,
         current.discountPercent > 0
             ? current.discountPercent.toStringAsFixed(2)
             : '',
       );
+    }
     if ((old.discountedPresentationPrice - current.discountedPresentationPrice)
                 .abs() >
             0.0001 &&
-        _shouldSync(_discountedController, current.discountedPresentationPrice))
+        _shouldSync(_discountedController, current.discountedPresentationPrice)) {
       _replace(
         _discountedController,
         current.discountedPresentationPrice.toStringAsFixed(2),
       );
+    }
     if (old.ivaPerPresentation != current.ivaPerPresentation &&
-        _shouldSync(_ivaController, current.ivaPerPresentation ?? 0.0))
+        _shouldSync(_ivaController, current.ivaPerPresentation ?? 0.0)) {
       _replace(
         _ivaController,
         current.ivaPerPresentation?.toStringAsFixed(2) ?? '',
       );
+    }
     if ((old.salePrice - current.salePrice).abs() > 0.0001 &&
-        _shouldSync(_saleController, current.salePrice))
+        _shouldSync(_saleController, current.salePrice)) {
       _replace(_saleController, current.salePrice.toStringAsFixed(2));
+    }
   }
 
   void _commit(_DraftPurchaseItem updated) {
@@ -1729,10 +1738,12 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
               hintStyle: const TextStyle(fontWeight: FontWeight.normal),
             ),
             onChanged: (_) {
-              if (controller == _purchasedController)
+              if (controller == _purchasedController) {
                 _purchasedAutofilled = false;
-              if (controller == _presentationController)
+              }
+              if (controller == _presentationController) {
                 _presentationAutofilled = false;
+              }
               _emit();
             },
           ),
