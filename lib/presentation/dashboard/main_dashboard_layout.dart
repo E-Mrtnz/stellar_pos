@@ -1020,13 +1020,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Widget _buildMainContent() {
     final access = context.watch<CloudAccessProvider>();
 
-    // Keep the local-first POS shell visible while Firebase access resolves.
-    // Cloud synchronization can catch up in the background; it must never
-    // replace the whole workspace with a spinner or blank area.
-    if (_selectedNavIndex != AppNavigation.home && !access.accessResolved) {
-      return const _AccessLoadingPanel();
-    }
-
     if (_selectedNavIndex == AppNavigation.home) {
       return _buildHomeContent();
     }
