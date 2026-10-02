@@ -139,6 +139,7 @@ class SalesProvider extends ChangeNotifier {
         }
         balanceAccounts[electronicSale.accountId] = account;
       }
+    }
     for (final electronicSale in electronicSales) {
       final account = balanceAccounts[electronicSale.accountId]!;
       final lineSubtotal = electronicSale.amount * electronicSale.quantity;
