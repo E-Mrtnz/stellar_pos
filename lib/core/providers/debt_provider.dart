@@ -31,7 +31,9 @@ class DebtProvider extends ChangeNotifier {
     final grouped = <String, List<SaleRecord>>{};
     for (final sale in _service.creditSales(_salesProvider.sales)) {
       final clientId = sale.clientId;
-      if (clientId == null) continue;
+      if (clientId == null) {
+        continue;
+      }
       grouped.putIfAbsent(clientId, () => []).add(sale);
     }
 
@@ -90,8 +92,8 @@ class DebtProvider extends ChangeNotifier {
       // records share the same client and timestamp; present them as the
       // single cash movement the customer actually made.
       final key =
-          '${payment.clientId}|${payment.createdAt.microsecondsSinceEpoch}|'
-          '${payment.isInitialPayment}';
+          '$payment.clientId|$payment.createdAt.microsecondsSinceEpoch|'
+          '$payment.isInitialPayment';
       final existing = grouped[key];
       if (existing == null) {
         grouped[key] = payment;
@@ -131,7 +133,9 @@ class DebtProvider extends ChangeNotifier {
         .creditSales(_salesProvider.sales)
         .where((sale) => sale.clientId == clientId)
         .toList(growable: false);
-    if (matching.isEmpty) return null;
+    if (matching.isEmpty) {
+      return null;
+    }
 
     final paidBySale = _allocatedPaidBySale(matching, clientId);
     final openSales = matching
@@ -166,7 +170,9 @@ class DebtProvider extends ChangeNotifier {
         .creditSales(_salesProvider.sales)
         .where((sale) => sale.clientId == clientId)
         .toList(growable: false);
-    if (matching.isEmpty) return 0;
+    if (matching.isEmpty) {
+      return 0;
+    }
 
     final paidBySale = _allocatedPaidBySale(matching, clientId);
     return matching.fold<double>(
@@ -237,9 +243,13 @@ class DebtProvider extends ChangeNotifier {
   }
 
   Future<void> load() {
-    if (_loaded) return Future.value();
+    if (_loaded) {
+      return Future.value();
+    }
     final existing = _loadFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadFromRepository();
     _loadFuture = future;
     return future;
@@ -257,7 +267,9 @@ class DebtProvider extends ChangeNotifier {
       remaining: account?.remaining ?? 0,
       maxAmount: maxAmount,
     );
-    if (clientId.trim().isEmpty || appliedAmount <= 0) return false;
+    if (clientId.trim().isEmpty || appliedAmount <= 0) {
+      return false;
+    }
 
     final creditSales = _service
         .creditSales(_salesProvider.sales)
@@ -266,7 +278,9 @@ class DebtProvider extends ChangeNotifier {
               sale.clientId == clientId && sale.effectiveTotal > 0.005,
         )
         .toList(growable: false);
-    if (creditSales.isEmpty) return false;
+    if (creditSales.isEmpty) {
+      return false;
+    }
 
     final payment = DebtMovement(
       id: IdGenerator.newId(),
@@ -290,7 +304,9 @@ class DebtProvider extends ChangeNotifier {
     required String clientName,
     required double amount,
   }) {
-    if (amount <= 0 || clientId.trim().isEmpty) return false;
+    if (amount <= 0 || clientId.trim().isEmpty) {
+      return false;
+    }
 
     SaleRecord? sale;
     for (final candidate in _salesProvider.sales) {
@@ -317,10 +333,14 @@ class DebtProvider extends ChangeNotifier {
         .clamp(0, double.infinity)
         .toDouble();
     final available = remaining;
-    if (available <= 0.005) return false;
+    if (available <= 0.005) {
+      return false;
+    }
 
     final applied = amount > available ? available : amount;
-    if (applied <= 0.005) return false;
+    if (applied <= 0.005) {
+      return false;
+    }
 
     final payment = DebtMovement(
       id: IdGenerator.newId(),
@@ -342,9 +362,13 @@ class DebtProvider extends ChangeNotifier {
     required String paymentId,
     required double amount,
   }) {
-    if (amount <= 0) return false;
+    if (amount <= 0) {
+      return false;
+    }
     final index = _payments.indexWhere((payment) => payment.id == paymentId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
 
     final current = _payments[index];
     if (current.type != DebtMovementType.payment ||
@@ -358,7 +382,9 @@ class DebtProvider extends ChangeNotifier {
         : (account.remaining + current.amount)
               .clamp(0, double.infinity)
               .toDouble();
-    if (amount > remainingWithoutCurrent + 0.005) return false;
+    if (amount > remainingWithoutCurrent + 0.005) {
+      return false;
+    }
 
     final updated = DebtMovement(
       id: current.id,
@@ -379,7 +405,9 @@ class DebtProvider extends ChangeNotifier {
 
   bool deletePayment(String paymentId) {
     final index = _payments.indexWhere((payment) => payment.id == paymentId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
 
     final payment = _payments[index];
     if (payment.type != DebtMovementType.payment ||
@@ -406,7 +434,9 @@ class DebtProvider extends ChangeNotifier {
         break;
       }
     }
-    if (sale == null || sale.paymentMethod != 'Fiado') return;
+    if (sale == null || sale.paymentMethod != 'Fiado') {
+      return;
+    }
 
     final existing = _payments
         .where(
@@ -462,7 +492,9 @@ class DebtProvider extends ChangeNotifier {
       unawaited(_movementRepository?.save(updated));
       changed = true;
     }
-    if (changed) notifyListeners();
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   Iterable<DebtMovement> get _validPayments {
@@ -473,11 +505,15 @@ class DebtProvider extends ChangeNotifier {
     final byClient = <String, List<SaleRecord>>{};
     for (final sale in activeSales) {
       final clientId = sale.clientId;
-      if (clientId != null) byClient.putIfAbsent(clientId, () => []).add(sale);
+      if (clientId != null) {
+        byClient.putIfAbsent(clientId, () => []).add(sale);
+      }
     }
 
     return _payments.where((payment) {
-      if (payment.type != DebtMovementType.payment) return false;
+      if (payment.type != DebtMovementType.payment) {
+        return false;
+      }
       final reference = payment.reference?.trim();
       if (reference != null && reference.isNotEmpty) {
         final sale = byId[reference];
@@ -522,7 +558,9 @@ class DebtProvider extends ChangeNotifier {
         final outstanding = (sale.effectiveTotal - (paid[reference] ?? 0))
             .clamp(0, double.infinity)
             .toDouble();
-        if (outstanding <= 0.005) continue;
+        if (outstanding <= 0.005) {
+          continue;
+        }
 
         final allocation =
             remaining > outstanding ? outstanding : remaining;
@@ -531,11 +569,15 @@ class DebtProvider extends ChangeNotifier {
       }
 
       for (final sale in sales) {
-        if (remaining <= 0.005) break;
+        if (remaining <= 0.005) {
+          break;
+        }
         final outstanding = (sale.effectiveTotal - (paid[sale.id] ?? 0))
             .clamp(0, double.infinity)
             .toDouble();
-        if (outstanding <= 0.005) continue;
+        if (outstanding <= 0.005) {
+          continue;
+        }
 
         final allocation =
             remaining > outstanding ? outstanding : remaining;
@@ -573,7 +615,9 @@ class DebtProvider extends ChangeNotifier {
       _payments
         ..clear()
         ..addAll(byId.values);
-      if (stored.isNotEmpty) notifyListeners();
+      if (stored.isNotEmpty) {
+        notifyListeners();
+      }
     }
     _loaded = true;
   }
