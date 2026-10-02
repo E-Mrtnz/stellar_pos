@@ -95,7 +95,9 @@ class DatabaseBackupService {
       withData: kIsWeb,
     );
     final file = result?.files.single;
-    if (file == null) return null;
+    if (file == null) {
+      return null;
+    }
 
     if (kIsWeb) {
       final bytes = file.bytes;
@@ -426,7 +428,7 @@ class DatabaseBackupService {
     if (schemaVersion is! num ||
         schemaVersion.toInt() > StorageSchema.currentVersion) {
       throw StateError(
-        'El backup fue creado con una versión de almacenamiento más nueva (${schemaVersion ?? 'desconocida'}) que esta aplicación (${StorageSchema.currentVersion}).',
+        'El backup fue creado con una versión de almacenamiento más nueva (${schemaVersion ?? 'desconocida'}) que esta aplicación ($StorageSchema.currentVersion).',
       );
     }
 
@@ -473,7 +475,7 @@ class DatabaseBackupService {
 
       await report(
         0.18 + ((index + 1) / _backupBoxNames.length) * 0.28,
-        'Validando ${index + 1} de ${_backupBoxNames.length} secciones...',
+        'Validando ${index + 1} de $_backupBoxNames.length secciones...',
       );
     }
 
@@ -505,13 +507,13 @@ class DatabaseBackupService {
 
       await report(
         index / _backupBoxNames.length * 0.10,
-        'Preparando ${boxName}...',
+        'Preparando $boxName...',
       );
 
       await box.clear().timeout(
         operationTimeout,
         onTimeout: () => throw StateError(
-          'La limpieza de la caja ${boxName} está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
+          'La limpieza de la caja $boxName está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
         ),
       );
 
@@ -529,21 +531,21 @@ class DatabaseBackupService {
         await box.putAll(batch).timeout(
           operationTimeout,
           onTimeout: () => throw StateError(
-            'La escritura de la caja ${boxName} está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
+            'La escritura de la caja $boxName está tardando demasiado. La restauración fue detenida para evitar un bloqueo indefinido.',
           ),
         );
 
         final fraction = entries.isEmpty ? 1.0 : end / entries.length;
         await report(
           ((index + fraction) / _backupBoxNames.length) * 0.90,
-          'Restaurando ${boxName}: $end de ${entries.length} registros...',
+          'Restaurando $boxName: $end de $entries.length registros...',
         );
       }
 
       if (entries.isEmpty) {
         await report(
           ((index + 1) / _backupBoxNames.length) * 0.90,
-          'Restaurando ${boxName}: sin registros.',
+          'Restaurando $boxName: sin registros.',
         );
       }
     }
@@ -570,18 +572,30 @@ class DatabaseBackupService {
     }
 
     throw StateError(
-      'Se encontró un tipo de dato no compatible con el formato universal de backup: ${value.runtimeType}.',
+      'Se encontró un tipo de dato no compatible con el formato universal de backup: $value.runtimeType.',
     );
   }
 
   static String _platformName() {
-    if (kIsWeb) return 'web';
+    if (kIsWeb) {
+      return 'web';
+    }
 
-    if (Platform.isMacOS) return 'macos';
-    if (Platform.isWindows) return 'windows';
-    if (Platform.isLinux) return 'linux';
-    if (Platform.isAndroid) return 'android';
-    if (Platform.isIOS) return 'ios';
+    if (Platform.isMacOS) {
+      return 'macos';
+    }
+    if (Platform.isWindows) {
+      return 'windows';
+    }
+    if (Platform.isLinux) {
+      return 'linux';
+    }
+    if (Platform.isAndroid) {
+      return 'android';
+    }
+    if (Platform.isIOS) {
+      return 'ios';
+    }
 
     return 'unknown';
   }
@@ -787,7 +801,9 @@ class DatabaseBackupService {
 
   static bool _containsAsciiSequence(Uint8List data, String value) {
     final needle = utf8.encode(value);
-    if (needle.isEmpty || needle.length > data.length) return false;
+    if (needle.isEmpty || needle.length > data.length) {
+      return false;
+    }
 
     for (var index = 0; index <= data.length - needle.length; index++) {
       var matches = true;
@@ -797,7 +813,9 @@ class DatabaseBackupService {
           break;
         }
       }
-      if (matches) return true;
+      if (matches) {
+        return true;
+      }
     }
     return false;
   }
@@ -826,12 +844,12 @@ class DatabaseBackupService {
         '${now.second.toString().padLeft(2, '0')}';
 
     var file = File(
-      '${destination.path}/$prefix$stamp.zip',
+      '$destination.path/$prefix$stamp.zip',
     );
     var suffix = 1;
     while (await file.exists()) {
       file = File(
-        '${destination.path}/$prefix${stamp}_$suffix.zip',
+        '$destination.path/$prefix$stamp_$suffix.zip',
       );
       suffix++;
     }
@@ -909,7 +927,7 @@ class DatabaseBackupService {
 
     for (final file in restoredFiles) {
       final destination = File(
-        '${databaseDirectory.path}/${file.uri.pathSegments.last}',
+        '$databaseDirectory.path/$file.uri.pathSegments.last',
       );
       await file.copy(destination.path);
     }
