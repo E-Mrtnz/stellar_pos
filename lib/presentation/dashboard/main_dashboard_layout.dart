@@ -101,7 +101,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final elapsed = _lastBarcodeInputAt == null
         ? null
         : now.difference(_lastBarcodeInputAt!).inMilliseconds;
-    if (elapsed != null && elapsed > 200) _barcodeBuffer = '';
+    if (elapsed != null && elapsed > 200) {
+      _barcodeBuffer = '';
+    }
     _barcodeBuffer += character;
     _lastBarcodeInputAt = now;
     return KeyEventResult.ignored;
@@ -145,7 +147,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     _productNotFoundOverlay = entry;
     overlay.insert(entry);
     _productNotFoundTimer = Timer(const Duration(seconds: 4), () {
-      if (entry.mounted) entry.remove();
+      if (entry.mounted) {
+        entry.remove();
+      }
       if (identical(_productNotFoundOverlay, entry))
         _productNotFoundOverlay = null;
     });
@@ -275,13 +279,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   List<Map<String, dynamic>> get _salesCatalog {
     final baseProducts = context.read<ProductProvider>().productMaps;
-    if (_electronicBalanceSelection.isEmpty) return baseProducts;
+    if (_electronicBalanceSelection.isEmpty) {
+      return baseProducts;
+    }
 
     final products = List<Map<String, dynamic>>.from(baseProducts);
     for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
-        'name': '${item.companyName} · ${item.category}',
+        'name': '$item.companyName · $item.category',
         'unit': 'Recarga',
         'price': item.amount,
         'imageData': item.imageData,
@@ -313,9 +319,13 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       double.tryParse(_discountPercentController.text.replaceAll(',', '.')) ??
       0;
   double get _cardFeeAmount {
-    if (_selectedPaymentMethod != AppPaymentMethods.card) return 0;
+    if (_selectedPaymentMethod != AppPaymentMethods.card) {
+      return 0;
+    }
     final amount = _subtotal - _discountAmount;
-    if (amount <= 0) return 0;
+    if (amount <= 0) {
+      return 0;
+    }
     return amount * AppInventory.cardFeePercentage;
   }
 
@@ -363,9 +373,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   int _paymentMethodIndex(String method) {
-    if (method == AppStrings.cardPayment) return AppPaymentMethods.card;
-    if (method == AppStrings.transferPayment) return AppPaymentMethods.transfer;
-    if (method == AppStrings.creditPayment) return AppPaymentMethods.credit;
+    if (method == AppStrings.cardPayment) {
+      return AppPaymentMethods.card;
+    }
+    if (method == AppStrings.transferPayment) {
+      return AppPaymentMethods.transfer;
+    }
+    if (method == AppStrings.creditPayment) {
+      return AppPaymentMethods.credit;
+    }
     return AppPaymentMethods.cash;
   }
 
@@ -401,7 +417,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       } else {
         physical[item.productId] =
             (physical[item.productId] ?? 0) + item.quantity;
-        if (item.isPrepared) prepared.add(item.productId);
+        if (item.isPrepared) {
+          prepared.add(item.productId);
+        }
       }
     }
     setState(() {
@@ -465,7 +483,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       }
       physical[item.productId] =
           (physical[item.productId] ?? 0) + item.quantity;
-      if (item.isPrepared) prepared.add(item.productId);
+      if (item.isPrepared) {
+        prepared.add(item.productId);
+      }
     }
     if (physical.isEmpty) {
       AppAlert.show(
@@ -517,7 +537,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final id in ids) {
       final value =
           (_operationOriginalQuantities[id] ?? 0) - (_cartQuantities[id] ?? 0);
-      if (value > 0) result[id] = value;
+      if (value > 0) {
+        result[id] = value;
+      }
     }
     return result;
   }
@@ -531,7 +553,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final id in ids) {
       final value =
           (_cartQuantities[id] ?? 0) - (_operationOriginalQuantities[id] ?? 0);
-      if (value > 0) result[id] = value;
+      if (value > 0) {
+        result[id] = value;
+      }
     }
     return result;
   }
@@ -546,7 +570,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
   double get _operationDifference {
     final sale = _editingSale;
-    if (sale == null || _saleOperationMode == _SaleOperationMode.edit) return 0;
+    if (sale == null || _saleOperationMode == _SaleOperationMode.edit) {
+      return 0;
+    }
     var value = 0.0;
     for (final entry in _operationRemovedQuantities().entries) {
       value -= _operationUnitPrice(sale, entry.key) * entry.value;
@@ -762,8 +788,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           ..._electronicBalanceSelection.map(
             (item) => SaleItemRecord(
               productId:
-                  'electronic:${item.accountId}:${item.category}:${item.amount.toStringAsFixed(4)}',
-              productName: '${item.companyName} · ${item.category}',
+                  'electronic:$item.accountId:$item.category:${item.amount.toStringAsFixed(4)}',
+              productName: '$item.companyName · $item.category',
               unit: item.category,
               barcode: '',
               cost: item.amount,
@@ -845,7 +871,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       });
       AppAlert.show(
         context,
-        'La venta #${updated.ticketNumber} fue actualizada correctamente.',
+        'La venta #$updated.ticketNumber fue actualizada correctamente.',
         title: 'Venta actualizada',
         type: AppAlertType.success,
       );
@@ -1005,7 +1031,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   Future<bool> _printSale(SaleRecord sale) async {
     final printerProvider = context.read<PrinterProvider>();
     final printed = await printerProvider.printSaleTicket(sale);
-    if (!mounted) return printed;
+    if (!mounted) {
+      return printed;
+    }
     AppAlert.show(
       context,
       printed
@@ -1051,12 +1079,24 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     if (_selectedNavIndex == AppNavigation.home) {
       return _buildHomeContent();
     }
-    if (_selectedNavIndex == AppNavigation.inventory) return const InventoryLayout();
-    if (_selectedNavIndex == AppNavigation.electronicBalance) return const SalesLayout();
-    if (_selectedNavIndex == AppNavigation.purchases) return const PurchasesLayout();
-    if (_selectedNavIndex == AppNavigation.providers) return const ProvidersLayout();
-    if (_selectedNavIndex == AppNavigation.debts) return const DebtsLayout();
-    if (_selectedNavIndex == AppNavigation.stats) return const StatisticsLayout();
+    if (_selectedNavIndex == AppNavigation.inventory) {
+      return const InventoryLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.electronicBalance) {
+      return const SalesLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.purchases) {
+      return const PurchasesLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.providers) {
+      return const ProvidersLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.debts) {
+      return const DebtsLayout();
+    }
+    if (_selectedNavIndex == AppNavigation.stats) {
+      return const StatisticsLayout();
+    }
     if (_selectedNavIndex == AppNavigation.settings) {
       return PrinterSettingsLayout(
         onReturnToHome: () {
