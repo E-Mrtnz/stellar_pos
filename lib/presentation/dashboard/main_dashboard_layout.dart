@@ -949,13 +949,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
     final catalog = context.read<CatalogProvider>();
     String? clientId;
-    if (_selectedDebtor != null)
+    if (_selectedDebtor != null) {
       for (final client in catalog.clients) {
         if (client.name == _selectedDebtor) {
           clientId = client.id;
           break;
         }
       }
+    }
     final electronicSales = _electronicBalanceSelection
         .map(
           (item) => ElectronicBalanceCartSale(
