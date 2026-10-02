@@ -311,17 +311,23 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     setState(() => _isExporting = true);
     try {
       await InventoryFileService.savePdf(context.read<ProductProvider>().products);
-      if (mounted) _showFileMessage(
+      if (mounted) {
+        _showFileMessage(
         'El inventario se exportó correctamente en formato PDF.',
         'Exportación completada',
-      );
+        );
+      }
     } catch (error) {
-      if (mounted) _showFileMessage(
+      if (mounted) {
+        _showFileMessage(
         'No se pudo exportar el inventario.\n$error',
         'Error al exportar',
-      );
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isExporting = false);
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
     }
   }
 
