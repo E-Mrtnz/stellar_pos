@@ -135,7 +135,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   }
 
   void _rememberRecentColor(Color color) {
-    _recentColors.removeWhere((item) => item.value == color.value);
+    _recentColors.removeWhere((item) => item.toARGB32() == color.toARGB32());
     _recentColors.insert(0, color);
     if (_recentColors.length > 8) {
       _recentColors.removeLast();
@@ -180,7 +180,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
         type: _selectedType!,
         distributorName: _selectedDistributor!,
         weekdays: _selectedWeekdays.toList(),
-        colorValue: _selectedColor.value,
+        colorValue: _selectedColor.toARGB32(),
       );
 
       if (!success) {
@@ -204,7 +204,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
       type: _selectedType!,
       distributorName: _selectedDistributor!,
       weekdays: _selectedWeekdays.toList(),
-      colorValue: _selectedColor.value,
+      colorValue: _selectedColor.toARGB32(),
     );
 
     if (!success) {
@@ -476,7 +476,7 @@ class _CreateProviderDialogState extends State<CreateProviderDialog> {
   }
 
   Widget _buildColorOption(Color color) {
-    final selected = _selectedColor.value == color.value;
+    final selected = _selectedColor.toARGB32() == color.toARGB32();
 
     return InkWell(
       onTap: () => setState(() => _selectedColor = color),
