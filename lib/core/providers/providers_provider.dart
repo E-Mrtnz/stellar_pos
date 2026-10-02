@@ -31,7 +31,9 @@ class ProvidersProvider extends ChangeNotifier {
 
   List<String> get distributors {
     final catalog = _catalogProvider;
-    if (catalog != null) return catalog.distributors;
+    if (catalog != null) {
+      return catalog.distributors;
+    }
     return _service.uniqueSorted(_fallbackDistributors);
   }
 
@@ -43,9 +45,13 @@ class ProvidersProvider extends ChangeNotifier {
   }
 
   Future<void> load() {
-    if (_loaded) return Future.value();
+    if (_loaded) {
+      return Future.value();
+    }
     final existing = _loadFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadRoutes();
     _loadFuture = future;
     return future;
@@ -83,15 +89,21 @@ class ProvidersProvider extends ChangeNotifier {
       return _fallbackDistributors.length > before;
     }
     final added = catalog.addDistributor(name);
-    if (added) notifyListeners();
+    if (added) {
+      notifyListeners();
+    }
     return added;
   }
 
   bool updateDistributor(String oldName, String newName) {
     final catalog = _catalogProvider;
-    if (catalog == null) return false;
+    if (catalog == null) {
+      return false;
+    }
     final updated = catalog.updateDistributor(oldName, newName);
-    if (!updated) return false;
+    if (!updated) {
+      return false;
+    }
 
     final normalizedOld = _service.normalizeName(oldName).toLowerCase();
     final normalizedNew = _service.normalizeName(newName);
@@ -106,22 +118,30 @@ class ProvidersProvider extends ChangeNotifier {
       }
     }
     notifyListeners();
-    for (final route in changedRoutes) _persistRoute(route);
+    for (final route in changedRoutes) {
+      _persistRoute(route);
+    }
     return true;
   }
 
   bool removeDistributor(String name) {
     final catalog = _catalogProvider;
-    if (catalog == null) return false;
+    if (catalog == null) {
+      return false;
+    }
     final normalized = _service.normalizeName(name).toLowerCase();
     final inUse = _routes.any(
       (route) =>
           _service.normalizeName(route.distributorName).toLowerCase() ==
           normalized,
     );
-    if (inUse) return false;
+    if (inUse) {
+      return false;
+    }
     final removed = catalog.removeDistributor(name);
-    if (removed) notifyListeners();
+    if (removed) {
+      notifyListeners();
+    }
     return removed;
   }
 
@@ -133,7 +153,9 @@ class ProvidersProvider extends ChangeNotifier {
   }) {
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
-    if (normalizedName.isEmpty || normalizedDays.isEmpty) return false;
+    if (normalizedName.isEmpty || normalizedDays.isEmpty) {
+      return false;
+    }
 
     // A route can introduce a distributor, so register it in the canonical
     // catalog at the same moment the route is created.
@@ -183,7 +205,9 @@ class ProvidersProvider extends ChangeNotifier {
     final index = _routes.indexWhere((route) => route.id == id);
     final normalizedName = _service.normalizeName(distributorName);
     final normalizedDays = _service.normalizeWeekdays(weekdays);
-    if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) return false;
+    if (index < 0 || normalizedName.isEmpty || normalizedDays.isEmpty) {
+      return false;
+    }
 
     registerDistributorValue(normalizedName);
 
@@ -194,7 +218,9 @@ class ProvidersProvider extends ChangeNotifier {
           _service.normalizeName(entry.value.distributorName).toLowerCase() ==
               normalizedName.toLowerCase(),
     );
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
 
     final updated = _routes[index].copyWith(
       type: type,
@@ -230,7 +256,9 @@ class ProvidersProvider extends ChangeNotifier {
       ..clear()
       ..addAll(storedRoutes);
     _loaded = true;
-    if (storedRoutes.isNotEmpty) notifyListeners();
+    if (storedRoutes.isNotEmpty) {
+      notifyListeners();
+    }
   }
 
   void _persistRoute(ProviderRoute route) {
