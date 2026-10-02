@@ -302,11 +302,11 @@ class _CompanyChoice extends StatelessWidget {
 }
 
 class _ChoiceChip extends StatelessWidget {
-  final String label; final IconData? icon; final bool selected; final VoidCallback onTap;
-  const _ChoiceChip({required this.label, this.icon, required this.selected, required this.onTap});
+  final String label; final bool selected; final VoidCallback onTap;
+  const _ChoiceChip({required this.label, required this.selected, required this.onTap});
   @override Widget build(BuildContext context) => InkWell(
     onTap: onTap, borderRadius: BorderRadius.circular(10),
-    child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.4 : 1)), child: Row(mainAxisSize: MainAxisSize.min, children: [if (icon != null) ...[Icon(icon, size: 16, color: selected ? AppColors.primary : AppColors.textSecondary), const SizedBox(width: 7)], Text(label, style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: selected ? AppColors.primary : AppColors.textPrimary))])),
+    child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: selected ? AppColors.primary.withAlpha(15) : AppColors.inputBackground, borderRadius: BorderRadius.circular(10), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.4 : 1)), child: Row(mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: selected ? AppColors.primary : AppColors.textPrimary))])),
   );
 }
 
