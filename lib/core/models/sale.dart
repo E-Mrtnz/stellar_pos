@@ -35,6 +35,7 @@ class SaleOperationRecord {
   String get label => type == SaleOperationType.change ? 'CAMBIO' : 'DEVOLUCIÓN';
 
   @override
+  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'type': type.name,
@@ -129,6 +130,8 @@ class SaleItemRecord implements SyncableEntity {
     return '$name · $type';
   }
 
+  @override
+
   Map<String, dynamic> toMap() => {'id': id, 'productId': productId, 'productName': productName, 'unit': unit, 'brand': brand, 'barcode': barcode, 'cost': cost, 'unitPrice': unitPrice, 'quantity': quantity, 'lineSubtotal': lineSubtotal, 'discount': discount, 'lineTotal': lineTotal, 'imageData': imageData, 'isElectronicBalance': isElectronicBalance, 'hasGroupPricing': hasGroupPricing, 'isPrepared': isPrepared, 'preparationExtra': preparationExtra, 'electronicBalanceAccountId': electronicBalanceAccountId, 'electronicBalanceCategory': electronicBalanceCategory, 'metadata': metadata.toMap()};
 
   factory SaleItemRecord.fromMap(Map<String, dynamic> map) => SaleItemRecord(id: map['id']?.toString(), productId: map['productId']?.toString() ?? '', productName: map['productName']?.toString() ?? '', unit: map['unit']?.toString() ?? '', brand: map['brand']?.toString() ?? '', barcode: map['barcode']?.toString() ?? '', cost: _double(map['cost']), unitPrice: _double(map['unitPrice']), quantity: _int(map['quantity']), lineSubtotal: _double(map['lineSubtotal']), discount: _double(map['discount']), lineTotal: _double(map['lineTotal']), imageData: map['imageData']?.toString() ?? '', isElectronicBalance: _bool(map['isElectronicBalance']), hasGroupPricing: _bool(map['hasGroupPricing']), isPrepared: _bool(map['isPrepared']), preparationExtra: _double(map['preparationExtra']), electronicBalanceAccountId: map['electronicBalanceAccountId']?.toString(), electronicBalanceCategory: map['electronicBalanceCategory']?.toString(), metadata: _metadata(map['metadata']));
@@ -204,6 +207,8 @@ class SaleRecord implements SyncableEntity {
   }
 
   SaleRecord copyWith({String? id, String? ticketNumber, DateTime? createdAt, String? clientId, String? clientName, String? paymentMethod, List<SaleItemRecord>? items, double? subtotal, double? discountPercent, double? discountAmount, double? cardFeeAmount, double? total, double? received, double? change, SaleStatus? status, List<SaleOperationRecord>? operations, SyncMetadata? metadata, bool touchMetadata = false}) => SaleRecord(id: id ?? this.id, ticketNumber: ticketNumber ?? this.ticketNumber, createdAt: createdAt ?? this.createdAt, clientId: clientId ?? this.clientId, clientName: clientName ?? this.clientName, paymentMethod: paymentMethod ?? this.paymentMethod, items: items ?? this.items, subtotal: subtotal ?? this.subtotal, discountPercent: discountPercent ?? this.discountPercent, discountAmount: discountAmount ?? this.discountAmount, cardFeeAmount: cardFeeAmount ?? this.cardFeeAmount, total: total ?? this.total, received: received ?? this.received, change: change ?? this.change, status: status ?? this.status, operations: operations ?? this.operations, metadata: metadata ?? (touchMetadata ? this.metadata.touch() : this.metadata));
+
+  @override
 
   Map<String, dynamic> toMap() => {'id': id, 'ticketNumber': ticketNumber, 'createdAt': createdAt.toIso8601String(), 'clientId': clientId, 'clientName': clientName, 'paymentMethod': paymentMethod, 'items': items.map((item) => item.toMap()).toList(), 'subtotal': subtotal, 'discountPercent': discountPercent, 'discountAmount': discountAmount, 'cardFeeAmount': cardFeeAmount, 'total': total, 'received': received, 'change': change, 'status': status.name, 'operations': operations.map((operation) => operation.toMap()).toList(growable: false), 'metadata': metadata.toMap()};
 
