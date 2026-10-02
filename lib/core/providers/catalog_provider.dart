@@ -59,18 +59,26 @@ class CatalogProvider extends ChangeNotifier
   List<Client> get clients => List.unmodifiable(_clients);
 
   Future<void> load() {
-    if (_catalogLoaded) return Future.value();
+    if (_catalogLoaded) {
+      return Future.value();
+    }
     final existing = _loadCatalogFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadCatalogFromRepository();
     _loadCatalogFuture = future;
     return future;
   }
 
   Future<void> loadClients() {
-    if (_clientsLoaded) return Future.value();
+    if (_clientsLoaded) {
+      return Future.value();
+    }
     final existing = _loadClientsFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadClientsFromRepository();
     _loadClientsFuture = future;
     return future;
@@ -113,12 +121,16 @@ class CatalogProvider extends ChangeNotifier
 
   static void registerBrand(String brand) {
     final value = brand.trim();
-    if (value.isNotEmpty) _externalBrands.add(value);
+    if (value.isNotEmpty) {
+      _externalBrands.add(value);
+    }
   }
 
   bool addTag(String tag) {
     final value = _service.normalizeName(tag);
-    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) return false;
+    if (value.isEmpty || _service.containsIgnoreCase(_tags, value)) {
+      return false;
+    }
     _tags.add(value);
     _persistCatalog();
     notifyListeners();
@@ -128,12 +140,16 @@ class CatalogProvider extends ChangeNotifier
   bool updateTag(String oldTag, String newTag) {
     final oldValue = _service.normalizeName(oldTag);
     final newValue = _service.normalizeName(newTag);
-    if (oldValue.isEmpty || newValue.isEmpty) return false;
+    if (oldValue.isEmpty || newValue.isEmpty) {
+      return false;
+    }
 
     final index = _tags.indexWhere(
       (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
     );
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
 
     final duplicate = _tags.asMap().entries.any(
       (entry) =>
@@ -141,7 +157,9 @@ class CatalogProvider extends ChangeNotifier
           _service.normalizeName(entry.value).toLowerCase() ==
               newValue.toLowerCase(),
     );
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
 
     _tags[index] = newValue;
     _persistCatalog();
@@ -155,7 +173,9 @@ class CatalogProvider extends ChangeNotifier
     _tags.removeWhere(
       (item) => _service.normalizeName(item).toLowerCase() == normalized,
     );
-    if (_tags.length == before) return false;
+    if (_tags.length == before) {
+      return false;
+    }
     _persistCatalog();
     notifyListeners();
     return true;
@@ -163,7 +183,9 @@ class CatalogProvider extends ChangeNotifier
 
   bool addBrand(String brand) {
     final value = _service.normalizeName(brand);
-    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) return false;
+    if (value.isEmpty || _service.containsIgnoreCase(_brands, value)) {
+      return false;
+    }
     if (_service.containsIgnoreCase(_externalBrands, value)) {
       _externalBrands.removeWhere(
         (item) => _service.normalizeName(item).toLowerCase() == value.toLowerCase(),
@@ -178,7 +200,9 @@ class CatalogProvider extends ChangeNotifier
   bool updateBrand(String oldBrand, String newBrand) {
     final oldValue = _service.normalizeName(oldBrand);
     final newValue = _service.normalizeName(newBrand);
-    if (oldValue.isEmpty || newValue.isEmpty) return false;
+    if (oldValue.isEmpty || newValue.isEmpty) {
+      return false;
+    }
 
     final index = _brands.indexWhere(
       (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
@@ -188,9 +212,13 @@ class CatalogProvider extends ChangeNotifier
         (item) => _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
         orElse: () => '',
       );
-      if (externalMatch.isEmpty) return false;
+      if (externalMatch.isEmpty) {
+        return false;
+      }
       _externalBrands.remove(externalMatch);
-      if (_service.containsIgnoreCase(_brands, newValue)) return false;
+      if (_service.containsIgnoreCase(_brands, newValue)) {
+        return false;
+      }
       _brands.add(newValue);
       _persistCatalog();
       notifyListeners();
@@ -203,7 +231,9 @@ class CatalogProvider extends ChangeNotifier
           _service.normalizeName(entry.value).toLowerCase() ==
               newValue.toLowerCase(),
     );
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
 
     _brands[index] = newValue;
     _externalBrands.removeWhere(
@@ -223,7 +253,9 @@ class CatalogProvider extends ChangeNotifier
     _externalBrands.removeWhere(
       (item) => _service.normalizeName(item).toLowerCase() == normalized,
     );
-    if (_brands.length == before) return false;
+    if (_brands.length == before) {
+      return false;
+    }
     _persistCatalog();
     notifyListeners();
     return true;
@@ -243,13 +275,17 @@ class CatalogProvider extends ChangeNotifier
   bool updateDistributor(String oldDistributor, String newDistributor) {
     final oldValue = _service.normalizeName(oldDistributor);
     final newValue = _service.normalizeName(newDistributor);
-    if (oldValue.isEmpty || newValue.isEmpty) return false;
+    if (oldValue.isEmpty || newValue.isEmpty) {
+      return false;
+    }
 
     final index = _distributors.indexWhere(
       (item) =>
           _service.normalizeName(item).toLowerCase() == oldValue.toLowerCase(),
     );
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
 
     final duplicate = _distributors.asMap().entries.any(
       (entry) =>
@@ -257,7 +293,9 @@ class CatalogProvider extends ChangeNotifier
           _service.normalizeName(entry.value).toLowerCase() ==
               newValue.toLowerCase(),
     );
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
 
     _distributors[index] = newValue;
     _persistCatalog();
@@ -271,7 +309,9 @@ class CatalogProvider extends ChangeNotifier
     _distributors.removeWhere(
       (item) => _service.normalizeName(item).toLowerCase() == normalized,
     );
-    if (_distributors.length == before) return false;
+    if (_distributors.length == before) {
+      return false;
+    }
     _persistCatalog();
     notifyListeners();
     return true;
@@ -305,12 +345,18 @@ class CatalogProvider extends ChangeNotifier
 
   bool updateClient(Client client) {
     final index = _clients.indexWhere((item) => item.id == client.id);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final name = _service.normalizeName(client.name);
-    if (name.isEmpty) return false;
+    if (name.isEmpty) {
+      return false;
+    }
     final duplicate = _clients.any((item) =>
         item.id != client.id && item.name.toLowerCase() == name.toLowerCase());
-    if (duplicate) return false;
+    if (duplicate) {
+      return false;
+    }
     final updated = client.copyWith(name: name, phone: client.phone.trim());
     _clients[index] = updated;
     notifyListeners();
@@ -330,7 +376,9 @@ class CatalogProvider extends ChangeNotifier
 
   Client? findClientById(String id) {
     for (final client in _clients) {
-      if (client.id == id) return client;
+      if (client.id == id) {
+        return client;
+      }
     }
     return null;
   }
@@ -372,8 +420,12 @@ class CatalogProvider extends ChangeNotifier
       if (state == null) {
         return;
       }
-      for (final tag in state.tags) addUnique(mergedTags, tag);
-      for (final brand in state.brands) addUnique(mergedBrands, brand);
+      for (final tag in state.tags) {
+        addUnique(mergedTags, tag);
+      }
+      for (final brand in state.brands) {
+        addUnique(mergedBrands, brand);
+      }
       for (final distributor in state.distributors) {
         addUnique(mergedDistributors, distributor);
       }
@@ -438,14 +490,18 @@ class CatalogProvider extends ChangeNotifier
       _clients
         ..clear()
         ..addAll(byId.values);
-      if (stored.isNotEmpty) notifyListeners();
+      if (stored.isNotEmpty) {
+        notifyListeners();
+      }
     }
     _clientsLoaded = true;
   }
 
   void _persist(Future<void>? Function()? operation) {
     final future = operation?.call();
-    if (future != null) unawaited(future.catchError((_) {}));
+    if (future != null) {
+      unawaited(future.catchError((_) {}));
+    }
   }
 
   bool _containsClientName(String name) =>
