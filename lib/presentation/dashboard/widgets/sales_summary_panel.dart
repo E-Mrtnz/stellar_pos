@@ -644,11 +644,6 @@ class SalesSummaryPanel extends StatelessWidget {
     final subtotalItem = prepared
         ? (ProductUtils.price(product) + preparationExtra) * quantity
         : ProductUtils.priceForQuantity(product, quantity);
-    final hasGroupPricing =
-        ProductUtils.asBool(product['hasGroupPricing']) &&
-        ProductUtils.asInt(product['groupQuantity']) > 0;
-    final groupQuantity = ProductUtils.asInt(product['groupQuantity']);
-    final groupPrice = ProductUtils.asDouble(product['groupPrice']);
     return Container(
       height: 76,
       margin: const EdgeInsets.only(bottom: 8.0),
