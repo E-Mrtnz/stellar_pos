@@ -127,8 +127,9 @@ class _SalesLayoutState extends State<SalesLayout> {
     final query = _searchController.text.trim().toLowerCase();
     return sales.where((sale) {
       if (sale.createdAt.isBefore(range.start) ||
-          !sale.createdAt.isBefore(range.end))
+          !sale.createdAt.isBefore(range.end)) {
         return false;
+      }
       if (!_paymentMatches(sale) || !_typeMatches(sale)) {
         return false;
       }
@@ -150,17 +151,20 @@ class _SalesLayoutState extends State<SalesLayout> {
     final query = _searchController.text.trim().toLowerCase();
     return movements.where((movement) {
       if (movement.type != DebtMovementType.payment ||
-          movement.isInitialPayment)
+          movement.isInitialPayment) {
         return false;
+      }
       if (movement.createdAt.isBefore(range.start) ||
-          !movement.createdAt.isBefore(range.end))
+          !movement.createdAt.isBefore(range.end)) {
         return false;
+      }
       if (_typeFilter != _SalesTypeFilter.all) {
         return false;
       }
       if (_paymentFilter != _SalesPaymentFilter.all &&
-          _paymentFilter != _SalesPaymentFilter.payment)
+          _paymentFilter != _SalesPaymentFilter.payment) {
         return false;
+      }
       if (query.isEmpty) {
         return true;
       }
