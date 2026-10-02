@@ -573,7 +573,7 @@ List<_Point> _trend(List<SaleRecord> sales, _StatsRange r) {
 }
 double _saleCost(SaleRecord s){if(s.isAnnulled)return 0;var c=s.items.fold<double>(0,(v,i)=>v+i.cost*i.quantity);for(final o in s.operations){c-=o.itemsOut.fold<double>(0,(v,i)=>v+i.cost*i.quantity);c+=o.itemsIn.fold<double>(0,(v,i)=>v+i.cost*i.quantity);}return math.max(0,c);}
 double? _change(double a,double b)=>b.abs()<.005?null:(a-b)/b;
-String _money(double v)=>'\${v.toStringAsFixed(2)}';
+String _money(double v)=>'\$${v.toStringAsFixed(2)}';
 String _pct(double v)=>'${(v*100).toStringAsFixed(1)}%';
 String _date(DateTime d)=>'${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
 String _shortDate(DateTime d)=>'${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}';
