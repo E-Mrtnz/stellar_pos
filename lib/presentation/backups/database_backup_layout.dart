@@ -21,7 +21,9 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
   String _restoreStatus = 'Preparando la restauración...';
 
   Future<void> _createBackup() async {
-    if (_isCreating || _isRestoring) return;
+    if (_isCreating || _isRestoring) {
+      return;
+    }
 
     String? destination;
     final usesDirectoryPicker =
@@ -31,7 +33,9 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
     if (usesDirectoryPicker) {
       destination =
           await DatabaseBackupService.selectDestinationDirectory();
-      if (!mounted || destination == null || destination.isEmpty) return;
+      if (!mounted || destination == null || destination.isEmpty) {
+        return;
+      }
     }
 
     setState(() {
@@ -44,12 +48,16 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
       final result = await DatabaseBackupService.createBackup(
         destinationDirectory: destination ?? '',
         onProgress: (value) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           setState(() => _progress = value.clamp(0, 1).toDouble());
         },
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isCreating = false;
         _progress = 1;
@@ -57,11 +65,13 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
       });
 
       final message =
-          'Backup universal creado correctamente. Se incluyeron ${result.fileCount} registros (${_formatBytes(result.sizeBytes)}).';
+          'Backup universal creado correctamente. Se incluyeron $result.fileCount registros (${_formatBytes(result.sizeBytes)}).';
 
       _showMessage(message, success: true);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _isCreating = false);
       _showMessage(
         error.toString().replaceFirst('Bad state: ', ''),
@@ -71,13 +81,17 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
   }
 
   Future<void> _restoreBackup() async {
-    if (_isCreating || _isRestoring) return;
+    if (_isCreating || _isRestoring) {
+      return;
+    }
 
     BackupFileSelection? backupFile;
     try {
       backupFile = await DatabaseBackupService.selectBackupFile();
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showMessage(
         error.toString().replaceFirst('Bad state: ', ''),
         success: false,
@@ -85,10 +99,14 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
       return;
     }
 
-    if (!mounted || backupFile == null) return;
+    if (!mounted || backupFile == null) {
+      return;
+    }
 
     final confirmed = await _showRestoreConfirmation(backupFile.name);
-    if (!confirmed || !mounted) return;
+    if (!confirmed || !mounted) {
+      return;
+    }
 
     setState(() {
       _isRestoring = true;
@@ -100,13 +118,17 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
     // Wait for the progress state to reach a rendered frame before starting
     // the validation/decompression work.
     await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     try {
       final result = await DatabaseBackupService.restoreBackup(
         backupFile: backupFile,
         onProgress: (value, status) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           setState(() {
             _progress = value.clamp(0, 1).toDouble();
             _restoreStatus = status;
@@ -114,14 +136,18 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
         },
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showMessage(
-        'Restauración completada. Se recuperaron ${result.fileCount} registros. La aplicación se reiniciará.',
+        'Restauración completada. Se recuperaron $result.fileCount registros. La aplicación se reiniciará.',
         success: true,
       );
 
       await Future<void>.delayed(const Duration(milliseconds: 250));
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       runApp(
         AppProviders(
           key: UniqueKey(),
@@ -129,7 +155,9 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
         ),
       );
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isRestoring = false;
         _progress = 0;
@@ -327,7 +355,9 @@ class _DatabaseBackupLayoutState extends State<DatabaseBackupLayout> {
   }
 
   String _formatBytes(int bytes) {
-    if (bytes < 1024) return '${bytes} B';
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
     if (bytes < 1024 * 1024) {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';
     }
