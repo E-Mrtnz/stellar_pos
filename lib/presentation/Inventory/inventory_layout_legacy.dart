@@ -16,7 +16,7 @@ import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/Inventory/widgets/create_product_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/metric_card.dart';
-import 'package:stellar_pos/presentation/inventory/widgets/create_catalog_dialog.dart';
+import 'package:stellar_pos/presentation/Inventory/widgets/create_catalog_dialog.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
 
