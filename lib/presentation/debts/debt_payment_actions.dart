@@ -101,11 +101,8 @@ class DebtPaymentActions {
                   border: Border.all(color: AppColors.dangerRed.withAlpha(28)),
                 ),
                 child: Text(
-                  '¿Deseas eliminar el abono de \$' +
-                      movement.amount.toStringAsFixed(2) +
-                      ' de ' +
-                      movement.clientName +
-                      '?',
+                  '¿Deseas eliminar el abono de \$${movement.amount.toStringAsFixed}'(2) +
+                      ' de ${movement.clientName}?',
                   style: const TextStyle(
                     fontSize: 11,
                     height: 1.35,
