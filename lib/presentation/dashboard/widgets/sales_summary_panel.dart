@@ -692,7 +692,7 @@ class SalesSummaryPanel extends StatelessWidget {
                       ? product['brand']?.toString() ?? ''
                       : product['brand']?.toString().trim().isEmpty ?? true
                           ? unit
-                          : unit + ' | ' + product['brand'].toString(),
+                          : '$unit | ${product['brand']}',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
