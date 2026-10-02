@@ -106,6 +106,7 @@ class Product implements SyncableEntity {
     return groups * groupPrice + remaining * price;
   }
 
+  @override
   Map<String, dynamic> toMap() => {
     'id': id,
     'name': name,
