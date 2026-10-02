@@ -16,7 +16,9 @@ class CatalogValueService {
     final result = <String>[];
     for (final value in values) {
       final normalized = normalizeName(value);
-      if (normalized.isEmpty || containsIgnoreCase(result, normalized)) continue;
+      if (normalized.isEmpty || containsIgnoreCase(result, normalized)) {
+        continue;
+      }
       result.add(normalized);
     }
     result.sort(compare);
