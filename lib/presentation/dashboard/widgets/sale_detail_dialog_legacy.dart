@@ -915,8 +915,9 @@ class _ChangeDialogState extends State<_ChangeDialog> {
     final quantity = int.tryParse(_quantityController.text.trim()) ?? 0;
     if (quantity <= 0 ||
         quantity > _source.quantity ||
-        _replacement.id == _source.productId)
+        _replacement.id == _source.productId) {
       return;
+    }
     final oldAmount = _source.lineTotal * quantity / _source.quantity;
     final newAmount = _replacement.price * quantity;
     Navigator.pop(
