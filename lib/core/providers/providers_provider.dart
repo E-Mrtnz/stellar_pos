@@ -57,7 +57,9 @@ class ProvidersProvider extends ChangeNotifier {
 
   void registerDistributorValue(String name) {
     final normalized = _service.normalizeName(name);
-    if (normalized.isEmpty) return;
+    if (normalized.isEmpty) {
+      return;
+    }
 
     final catalog = _catalogProvider;
     if (catalog != null) {
@@ -66,7 +68,9 @@ class ProvidersProvider extends ChangeNotifier {
       return;
     }
 
-    if (_service.containsIgnoreCase(_fallbackDistributors, normalized)) return;
+    if (_service.containsIgnoreCase(_fallbackDistributors, normalized)) {
+      return;
+    }
     _fallbackDistributors.add(normalized);
     notifyListeners();
   }
@@ -206,7 +210,9 @@ class ProvidersProvider extends ChangeNotifier {
 
   void removeRoute(String id) {
     final index = _routes.indexWhere((route) => route.id == id);
-    if (index < 0) return;
+    if (index < 0) {
+      return;
+    }
     _routes.removeAt(index);
     notifyListeners();
     unawaited(_routeRepository?.delete(id).catchError((_) {}));
