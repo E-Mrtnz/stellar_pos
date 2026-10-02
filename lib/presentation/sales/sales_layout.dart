@@ -68,7 +68,7 @@ class _SalesLayoutState extends State<SalesLayout> {
   void _refresh() => setState(() {});
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   DateTimeRange _range() {
     final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
     switch (_period) {
@@ -120,7 +120,7 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   String _dateLabel() => _period == _SalesPeriod.monthly
-      ? '${_anchorDate.month.toString().padLeft(2, '0')}/$_anchorDate.year'
+      ? '${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}'
       : _date(_anchorDate);
   List<SaleRecord> _filterSales(List<SaleRecord> sales) {
     final range = _range();
@@ -371,9 +371,9 @@ class _SalesLayoutState extends State<SalesLayout> {
           _money(profit),
           valueColor: AppColors.successGreen,
         ),
-        PeriodSummaryMetric('Cantidad de ventas', '$sales.length'),
-        PeriodSummaryMetric('Artículos vendidos', '$itemCount'),
-        PeriodSummaryMetric('Clientes', '$clientCount'),
+        PeriodSummaryMetric('Cantidad de ventas', '${sales.length}'),
+        PeriodSummaryMetric('Artículos vendidos', '${itemCount}'),
+        PeriodSummaryMetric('Clientes', '${clientCount}'),
       ];
       return Padding(
         padding: const EdgeInsets.all(AppDimensions.pagePadding),
@@ -406,7 +406,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             ),
             const SizedBox(height: 7),
             Text(
-              '$sales.length venta${sales.length == 1 ? '' : 's'} · $payments.length abono${payments.length == 1 ? '' : 's'} en ${_periodLabel()}',
+              '${sales.length} venta${sales.length == 1 ? '' : 's'} · ${payments.length} abono${payments.length == 1 ? '' : 's'} en ${_periodLabel()}',
               style: const TextStyle(
                 fontSize: 10,
                 color: AppColors.textSecondary,
@@ -808,7 +808,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             Expanded(
               flex: 10,
               child: Text(
-                '#$sale.ticketNumber',
+                '#${sale.ticketNumber}',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 11,
