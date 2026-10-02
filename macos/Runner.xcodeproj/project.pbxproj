@@ -20,9 +20,7 @@
 		};
 /* End PBXAggregateTarget section */
 
-/* Begin PBXBuildFile section */
-		7A22F00EBA0E000000000002 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7A22F00EBA0E000000000001 /* GoogleService-Info.plist */; };
-		0BC9893521BCB93CB463B60F /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219982DA6740249B31338B6F /* Pods_RunnerTests.framework */; };
+/* Begin PBXBuildFile section */		0BC9893521BCB93CB463B60F /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219982DA6740249B31338B6F /* Pods_RunnerTests.framework */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F02044A3C60003C045 /* AppDelegate.swift */; };
@@ -62,9 +60,7 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
-/* Begin PBXFileReference section */
-		7A22F00EBA0E000000000001 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Runner/GoogleService-Info.plist; sourceTree = "<group>"; }; 
-		219982DA6740249B31338B6F /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+/* Begin PBXFileReference section */		219982DA6740249B31338B6F /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3184E79A71A0A724A3500686 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C80D7294CF71000263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -154,9 +150,7 @@
 		};
 		33CC11242044D66E0003C045 /* Resources */ = {
 			isa = PBXGroup;
-			children = (
-				7A22F00EBA0E000000000001 /* GoogleService-Info.plist */,
-				33CC10F22044A3C60003C045 /* Assets.xcassets */,
+			children = (				33CC10F22044A3C60003C045 /* Assets.xcassets */,
 				33CC10F42044A3C60003C045 /* MainMenu.xib */,
 				33CC10F72044A3C60003C045 /* Info.plist */,
 			);
@@ -317,9 +311,7 @@
 		33CC10EB2044A3C60003C045 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				7A22F00EBA0E000000000002 /* GoogleService-Info.plist in Resources */,
-				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
+			files = (				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
