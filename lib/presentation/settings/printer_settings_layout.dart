@@ -50,7 +50,7 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                       ? const _PrinterContent()
                       : _selectedIndex == 2
                       ? const DatabaseBackupLayout()
-                      : const _CloudStoreSettingsContent(),
+                      : _CloudStoreSettingsContent(onReturnToHome: widget.onReturnToHome),
               ),
             ),
           ],
@@ -159,7 +159,9 @@ class _PrinterContent extends StatelessWidget {
 }
 
 class _CloudStoreSettingsContent extends StatelessWidget {
-  const _CloudStoreSettingsContent();
+  final VoidCallback? onReturnToHome;
+
+  const _CloudStoreSettingsContent({this.onReturnToHome});
 
   Future<void> _openStoreDialog(BuildContext context, {bool? initialCreateMode}) async {
     final provider = context.read<CloudStoreProvider>();
@@ -228,7 +230,7 @@ class _CloudStoreSettingsContent extends StatelessWidget {
                   Navigator.of(dialogContext).pop(true);
                 }
                 if (!createMode && context.mounted) {
-                  widget.onReturnToHome?.call();
+                  onReturnToHome?.call();
                 }
                 return;
               }
