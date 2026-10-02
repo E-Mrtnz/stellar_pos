@@ -113,13 +113,16 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       if (!mounted) {
         return;
       }
-      final shareContext = context;
       await Share.shareXFiles(
         files,
         subject: 'Estado de cuenta - ' + widget.clientName,
         sharePositionOrigin: origin,
       );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      AppAlert.show(context, _pages.length == 1 ? 'La imagen del estado de cuenta se generó correctamente.' : 'Se generaron ${_pages.length} imágenes del estado de cuenta.', title: 'Estado de cuenta generado', type: AppAlertType.success);
     } catch (error) {
+      if (!mounted) return;
       Navigator.of(context).pop();
       AppAlert.show(context, 'No se pudo generar el estado de cuenta: ' + error.toString(), title: 'Error al generar estado de cuenta', type: AppAlertType.error);
     }
