@@ -120,9 +120,6 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         sharePositionOrigin: origin,
       );
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
       Navigator.of(context).pop();
       AppAlert.show(context, 'No se pudo generar el estado de cuenta: ' + error.toString(), title: 'Error al generar estado de cuenta', type: AppAlertType.error);
     }
