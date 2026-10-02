@@ -120,7 +120,9 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         title: 'Estado de cuenta generado',
         type: AppAlertType.success,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       await Share.shareXFiles(
         files,
         subject: 'Estado de cuenta - ' + widget.clientName,
