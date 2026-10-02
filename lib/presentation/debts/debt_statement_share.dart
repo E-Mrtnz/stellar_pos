@@ -75,13 +75,17 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       final items = grouped[date] ?? const <SaleItemRecord>[];
       var offset = 0;
       while (offset < items.length) {
-        if (rows == maxRowsPerPage) flush();
+        if (rows == maxRowsPerPage) {
+          flush();
+        }
         final available = maxRowsPerPage - rows;
         final take = (items.length - offset).clamp(0, available).toInt();
         current.add(_StatementGroup(date: date, items: items.sublist(offset, offset + take)));
         rows += take;
         offset += take;
-        if (rows == maxRowsPerPage) flush();
+        if (rows == maxRowsPerPage) {
+          flush();
+        }
       }
     }
     flush();
@@ -97,14 +101,20 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       final files = <XFile>[];
       for (var i = 0; i < _pages.length; i++) {
         _pageIndex = i;
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
         await Future<void>.delayed(const Duration(milliseconds: 90));
         final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-        if (boundary == null) throw StateError('No se pudo preparar el estado de cuenta.');
+        if (boundary == null) {
+          throw StateError('No se pudo preparar el estado de cuenta.');
+        }
         final image = await boundary.toImage(pixelRatio: 2.5);
         final data = await image.toByteData(format: ui.ImageByteFormat.png);
         image.dispose();
-        if (data == null) throw StateError('No se pudo generar una de las imágenes.');
+        if (data == null) {
+          throw StateError('No se pudo generar una de las imágenes.');
+        }
         files.add(XFile.fromData(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes), mimeType: 'image/png'));
       }
 
@@ -122,7 +132,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         return;
       }
       Navigator.of(context).pop();
-      AppAlert.show(context, _pages.length == 1 ? 'La imagen del estado de cuenta se generó correctamente.' : 'Se generaron ${_pages.length} imágenes del estado de cuenta.', title: 'Estado de cuenta generado', type: AppAlertType.success);
+      AppAlert.show(context, _pages.length == 1 ? 'La imagen del estado de cuenta se generó correctamente.' : 'Se generaron $_pages.length imágenes del estado de cuenta.', title: 'Estado de cuenta generado', type: AppAlertType.success);
     } catch (error) {
       if (!mounted) {
         return;
