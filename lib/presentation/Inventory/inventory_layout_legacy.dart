@@ -284,17 +284,23 @@ class _InventoryLayoutState extends State<InventoryLayout> {
     setState(() => _isExporting = true);
     try {
       await InventoryFileService.saveExcel(context.read<ProductProvider>().products);
-      if (mounted) _showFileMessage(
-        'El inventario se exportó correctamente en formato Excel.',
-        'Exportación completada',
-      );
+      if (mounted) {
+        _showFileMessage(
+          'El inventario se exportó correctamente en formato Excel.',
+          'Exportación completada',
+        );
+      }
     } catch (error) {
-      if (mounted) _showFileMessage(
-        'No se pudo exportar el inventario.\n$error',
-        'Error al exportar',
-      );
+      if (mounted) {
+        _showFileMessage(
+          'No se pudo exportar el inventario.\n$error',
+          'Error al exportar',
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isExporting = false);
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
     }
   }
 
