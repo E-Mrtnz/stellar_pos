@@ -284,7 +284,7 @@ class _CompanyChoice extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Disponible: \$' + account.balance.toStringAsFixed(2),
+                    'Disponible: \$${account.balance.toStringAsFixed}'(2),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
