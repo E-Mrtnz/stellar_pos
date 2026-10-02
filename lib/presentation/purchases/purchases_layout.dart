@@ -47,7 +47,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
   void _refresh() => setState(() {});
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
 
   DateTimeRange _range() {
     final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
@@ -106,7 +106,9 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
       if (purchase.arrivalAt.isBefore(range.start) ||
           !purchase.arrivalAt.isBefore(range.end))
         return false;
-      if (query.isEmpty) return true;
+      if (query.isEmpty) {
+        return true;
+      }
       return purchase.distributorName.toLowerCase().contains(query) ||
           purchase.invoiceNumber.toLowerCase().contains(query);
     }).toList()..sort((a, b) => b.arrivalAt.compareTo(a.arrivalAt));
@@ -169,7 +171,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
         _money(profit),
         valueColor: AppColors.successGreen,
       ),
-      PeriodSummaryMetric('Compras registradas', '${purchases.length}'),
+      PeriodSummaryMetric('Compras registradas', '$purchases.length'),
       PeriodSummaryMetric('Unidades recibidas', '$itemCount'),
       PeriodSummaryMetric('Bonificaciones', '$bonusCount'),
       PeriodSummaryMetric('Distribuidoras', '$supplierCount'),
@@ -460,7 +462,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
                         ? 'Compra de saldo'
                         : purchase.invoiceNumber.isEmpty
                             ? 'Sin número de factura'
-                            : 'Factura ${purchase.invoiceNumber}',
+                            : 'Factura $purchase.invoiceNumber',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.textMuted,
@@ -538,18 +540,24 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
 
   Future<void> _newPurchase() async {
     final created = await PurchaseCreationDialog.show(context);
-    if (created == true && mounted) setState(() {});
+    if (created == true && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _pickDate() async {
-    if (_period == _PurchasePeriod.custom) return _pickRange();
+    if (_period == _PurchasePeriod.custom) {
+      return _pickRange();
+    }
     final picked = await showDatePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       initialDate: _anchorDate,
     );
-    if (picked != null && mounted) setState(() => _anchorDate = picked);
+    if (picked != null && mounted) {
+      setState(() => _anchorDate = picked);
+    }
   }
 
   Future<void> _pickRange() async {
@@ -564,7 +572,9 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
         end: end.isBefore(start) ? start : end,
       ),
     );
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
     setState(() {
       _period = _PurchasePeriod.custom;
       _customStart = picked.start;
@@ -602,7 +612,9 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
       barrierDismissible: false,
       builder: (_) => _ElectronicBalancePurchaseEditDialog(purchase),
     );
-    if (updated == true && context.mounted) Navigator.pop(context);
+    if (updated == true && context.mounted) {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -632,7 +644,9 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
 
     final balanceProvider = context.read<ElectronicBalanceProvider>();
     final deletedFromBalance = balanceProvider.deletePurchase(purchase.id);
@@ -644,7 +658,9 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
       );
       return;
     }
-    if (!context.mounted) return;
+    if (!context.mounted) {
+      return;
+    }
     Navigator.pop(context);
   }
 
@@ -931,7 +947,9 @@ class _ElectronicBalancePurchaseEditDialogState extends State<_ElectronicBalance
       );
       return;
     }
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     Navigator.pop(context, true);
   }
 }
@@ -957,7 +975,9 @@ class _PurchaseDetailDialog extends StatelessWidget {
       context,
       purchase: purchase,
     );
-    if (updated == true && context.mounted) Navigator.pop(context, true);
+    if (updated == true && context.mounted) {
+      Navigator.pop(context, true);
+    }
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -966,13 +986,17 @@ class _PurchaseDetailDialog extends StatelessWidget {
       barrierColor: AppColors.overlayBackground,
       builder: (_) => const _PurchaseDeleteConfirmationDialog(),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
 
     final deleted = await context.read<PurchasesProvider>().deletePurchase(
           purchase,
           context.read<ProductProvider>(),
         );
-    if (!context.mounted) return;
+    if (!context.mounted) {
+      return;
+    }
     Navigator.pop(context, deleted);
   }
 
