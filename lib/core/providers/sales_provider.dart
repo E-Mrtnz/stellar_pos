@@ -53,9 +53,13 @@ class SalesProvider extends ChangeNotifier {
       _nextTicketNumber.toString().padLeft(8, '0');
 
   Future<void> load() {
-    if (_loaded) return Future.value();
+    if (_loaded) {
+      return Future.value();
+    }
     final existing = _loadFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
     final future = _loadFromRepository();
     _loadFuture = future;
     return future;
@@ -123,7 +127,7 @@ class SalesProvider extends ChangeNotifier {
           electronicSale.amount,
         ))
           throw StateError(
-            'El monto de una recarga ya no está configurado para ${account.companyName}.',
+            'El monto de una recarga ya no está configurado para $account.companyName.',
           );
         balanceAccounts[electronicSale.accountId] = account;
       }
@@ -143,7 +147,7 @@ class SalesProvider extends ChangeNotifier {
       items.add(
         SaleItemRecord(
           productId:
-              'electronic:${electronicSale.accountId}:${electronicSale.category}:${electronicSale.amount.toStringAsFixed(4)}',
+              'electronic:$electronicSale.accountId:$electronicSale.category:${electronicSale.amount.toStringAsFixed(4)}',
           productName: electronicSale.description,
           unit: electronicSale.category,
           barcode: '',
@@ -277,7 +281,9 @@ class SalesProvider extends ChangeNotifier {
         productProvider.updateProduct(_stock.increase(product, entry.value));
     }
     final newSubtotal = updatedItems.fold<double>(0, (sum, item) {
-      if (item.isElectronicBalance) return sum + item.unitPrice * item.quantity;
+      if (item.isElectronicBalance) {
+        return sum + item.unitPrice * item.quantity;
+      }
       final product = productProvider.findById(item.productId);
       return sum +
           (product == null
@@ -337,7 +343,7 @@ class SalesProvider extends ChangeNotifier {
                   amount: item.unitPrice,
                 ));
       final name = isElectronic && account != null
-          ? '${account.companyName} · ${item.electronicBalanceCategory ?? item.unit}'
+          ? '$account.companyName · ${item.electronicBalanceCategory ?? item.unit}'
           : (product?.name ?? item.productName);
       final hasGroupPricing =
           !isElectronic &&
@@ -434,9 +440,13 @@ class SalesProvider extends ChangeNotifier {
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0) return false;
+    if (index < 0) {
+      return false;
+    }
     final sale = _sales[index];
-    if (sale.isAnnulled || sale.operations.isNotEmpty) return false;
+    if (sale.isAnnulled || sale.operations.isNotEmpty) {
+      return false;
+    }
     if (sale.items.any((item) => item.isElectronicBalance))
       if (electronicBalanceProvider == null ||
           !electronicBalanceProvider.reverseSale(sale.id))
@@ -477,10 +487,16 @@ class SalesProvider extends ChangeNotifier {
       byProduct[item.productId] = _withQuantity(source, nextQuantity);
     }
 
-    for (final item in sale.items) add(item, 1);
+    for (final item in sale.items) {
+      add(item, 1);
+    }
     for (final operation in sale.operations) {
-      for (final item in operation.itemsOut) add(item, -1);
-      for (final item in operation.itemsIn) add(item, 1);
+      for (final item in operation.itemsOut) {
+        add(item, -1);
+      }
+      for (final item in operation.itemsIn) {
+        add(item, 1);
+      }
     }
     return byProduct.values.toList(growable: false);
   }
@@ -491,7 +507,9 @@ class SalesProvider extends ChangeNotifier {
     required ProductProvider productProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0) throw StateError('La venta no existe.');
+    if (index < 0) {
+      throw StateError('La venta no existe.');
+    }
     final sale = _sales[index];
     _ensureOperationAllowed(sale);
     if (quantitiesByProduct.isEmpty)
@@ -510,7 +528,7 @@ class SalesProvider extends ChangeNotifier {
         );
       if (productProvider.findById(item.productId) == null)
         throw StateError(
-          'El producto ${item.productName} ya no existe en el inventario.',
+          'El producto $item.productName ya no existe en el inventario.',
         );
       returned.add(_withQuantity(item, quantity));
     }
@@ -553,7 +571,9 @@ class SalesProvider extends ChangeNotifier {
     required ProductProvider productProvider,
   }) {
     final index = _sales.indexWhere((sale) => sale.id == saleId);
-    if (index < 0) throw StateError('La venta no existe.');
+    if (index < 0) {
+      throw StateError('La venta no existe.');
+    }
     final sale = _sales[index];
     _ensureOperationAllowed(sale);
     if (sourceProductId == replacementProductId)
@@ -600,8 +620,12 @@ class SalesProvider extends ChangeNotifier {
 
   SaleRecord? findByTicketNumber(String ticketNumber) {
     final normalized = ticketNumber.trim().replaceFirst('#', '');
-    if (normalized.isEmpty) return null;
-    for (final sale in _sales) if (sale.ticketNumber == normalized) return sale;
+    if (normalized.isEmpty) {
+      return null;
+    }
+    for (final sale in _sales) {
+      if (sale.ticketNumber == normalized) return sale;
+    }
     return null;
   }
 
@@ -613,7 +637,9 @@ class SalesProvider extends ChangeNotifier {
     _sales.clear();
     _nextTicketNumber = 1;
     notifyListeners();
-    for (final id in ids) _persistDelete(id);
+    for (final id in ids) {
+      _persistDelete(id);
+    }
   }
 
   Future<void> refreshFromRepository() async {
@@ -643,11 +669,15 @@ class SalesProvider extends ChangeNotifier {
       _nextTicketNumber = maxTicket + 1;
     }
     _loaded = true;
-    if (_sales.isNotEmpty) notifyListeners();
+    if (_sales.isNotEmpty) {
+      notifyListeners();
+    }
   }
 
   void _ensureOperationAllowed(SaleRecord sale) {
-    if (sale.isAnnulled) throw StateError('La venta ya está anulada.');
+    if (sale.isAnnulled) {
+      throw StateError('La venta ya está anulada.');
+    }
     if (!sale.canOperateToday)
       throw StateError(
         'Los cambios y devoluciones solo pueden realizarse el mismo día de la venta.',
