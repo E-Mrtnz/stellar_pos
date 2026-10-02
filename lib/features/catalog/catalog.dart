@@ -2,6 +2,7 @@
 ///
 /// Presentation code can depend on this feature entry point instead of
 /// reaching into individual core implementation files.
+library;
 export 'package:stellar_pos/core/domain/catalog/catalog_registrar.dart';
 export 'package:stellar_pos/core/domain/catalog/distributor_catalog.dart';
 export 'package:stellar_pos/core/domain/services/catalog_value_service.dart';
