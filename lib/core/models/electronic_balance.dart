@@ -19,6 +19,7 @@ class ElectronicBalanceSaleOption implements SyncableEntity {
   ElectronicBalanceSaleOption({String? id, required this.category, required this.amount, this.commissionRate, SyncMetadata? metadata})
       : id = id ?? IdGenerator.newId(), metadata = metadata ?? SyncMetadata.initial();
 
+  @override
   Map<String, dynamic> toMap() => {'id': id, 'category': category, 'amount': amount, 'commissionRate': commissionRate, 'metadata': metadata.toMap()};
 
   factory ElectronicBalanceSaleOption.fromMap(Map<String, dynamic> map) => ElectronicBalanceSaleOption(
