@@ -114,11 +114,17 @@ class ElectronicBalanceProvider extends ChangeNotifier {
     for (final option in options) {
       final category = option.category.trim();
       final commission = option.commissionRate;
-      if (option.amount <= 0 || !_service.isValidCategory(category)) continue;
-      if (commission != null && (commission < 0 || commission > 100)) continue;
+      if (option.amount <= 0 || !_service.isValidCategory(category)) {
+        continue;
+      }
+      if (commission != null && (commission < 0 || commission > 100)) {
+        continue;
+      }
       final isStandard = validCategories.contains(category);
       final normalizedCommission = isStandard ? null : commission;
-      if (!isStandard && normalizedCommission == null) continue;
+      if (!isStandard && normalizedCommission == null) {
+        continue;
+      }
       if (seen.add('$category|${option.amount.toStringAsFixed(4)}')) {
         normalized.add(
           ElectronicBalanceSaleOption(
@@ -446,7 +452,9 @@ class ElectronicBalanceProvider extends ChangeNotifier {
       final accountTransactions = _transactions.where(
         (transaction) => transaction.accountId == account.id,
       );
-      if (accountTransactions.isEmpty) continue;
+      if (accountTransactions.isEmpty) {
+        continue;
+      }
 
       var balanceCents = 0;
       for (final transaction in accountTransactions) {
