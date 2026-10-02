@@ -11,6 +11,7 @@ class DebtPaymentDialog extends StatefulWidget {
   final bool editing;
 
   const DebtPaymentDialog({
+    super.key,
     required this.clientName,
     required this.debt,
     this.initialAmount,
@@ -194,7 +195,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                             ),
                           ),
                           Text(
-                            '\u0024' + widget.debt.toStringAsFixed(2),
+                            '\u0024${widget.debt.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -289,7 +290,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                                     ),
                                   ),
                                   Text(
-                                    '\u0024' + _change.toStringAsFixed(2),
+                                    '\u0024${_change.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
