@@ -118,6 +118,9 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         files.add(XFile.fromData(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes), mimeType: 'image/png'));
       }
 
+      if (!mounted) {
+        return;
+      }
       final originBox = context.findRenderObject() as RenderBox?;
       final origin = originBox == null ? null : originBox.localToGlobal(Offset.zero) & originBox.size;
       if (!mounted) {
