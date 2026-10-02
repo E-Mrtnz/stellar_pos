@@ -21,7 +21,9 @@ class DebtPaymentActions {
       initialAmount: movement.amount,
       editing: true,
     );
-    if (amount == null || !context.mounted) return false;
+    if (amount == null || !context.mounted) {
+      return false;
+    }
 
     final updated = debtProvider.updatePayment(
       paymentId: movement.id,
