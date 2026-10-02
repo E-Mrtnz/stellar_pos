@@ -949,7 +949,7 @@ class _ReturnDialogState extends State<_ReturnDialog> {
           const Text('Selecciona el producto que el cliente devuelve.'),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _productId,
+            initialValue: _productId,
             decoration: const InputDecoration(labelText: 'Producto'),
             items: [
               for (final item in widget.items)
@@ -1063,7 +1063,7 @@ class _ChangeDialogState extends State<_ChangeDialog> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _sourceId,
+            initialValue: _sourceId,
             decoration: const InputDecoration(labelText: 'Producto que sale'),
             items: [
               for (final item in widget.items)
@@ -1089,7 +1089,7 @@ class _ChangeDialogState extends State<_ChangeDialog> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _replacementId,
+            initialValue: _replacementId,
             decoration: const InputDecoration(labelText: 'Producto nuevo'),
             items: [
               for (final product in widget.products)
