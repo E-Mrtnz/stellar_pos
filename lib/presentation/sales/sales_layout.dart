@@ -68,7 +68,7 @@ class _SalesLayoutState extends State<SalesLayout> {
   void _refresh() => setState(() {});
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
   DateTimeRange _range() {
     final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
     switch (_period) {
@@ -120,7 +120,7 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   String _dateLabel() => _period == _SalesPeriod.monthly
-      ? '${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}'
+      ? '${_anchorDate.month.toString().padLeft(2, '0')}/$_anchorDate.year'
       : _date(_anchorDate);
   List<SaleRecord> _filterSales(List<SaleRecord> sales) {
     final range = _range();
@@ -129,8 +129,12 @@ class _SalesLayoutState extends State<SalesLayout> {
       if (sale.createdAt.isBefore(range.start) ||
           !sale.createdAt.isBefore(range.end))
         return false;
-      if (!_paymentMatches(sale) || !_typeMatches(sale)) return false;
-      if (query.isEmpty) return true;
+      if (!_paymentMatches(sale) || !_typeMatches(sale)) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
       return sale.ticketNumber.toLowerCase().contains(query) ||
           sale.clientName.toLowerCase().contains(query) ||
           sale.items.any(
@@ -151,11 +155,15 @@ class _SalesLayoutState extends State<SalesLayout> {
       if (movement.createdAt.isBefore(range.start) ||
           !movement.createdAt.isBefore(range.end))
         return false;
-      if (_typeFilter != _SalesTypeFilter.all) return false;
+      if (_typeFilter != _SalesTypeFilter.all) {
+        return false;
+      }
       if (_paymentFilter != _SalesPaymentFilter.all &&
           _paymentFilter != _SalesPaymentFilter.payment)
         return false;
-      if (query.isEmpty) return true;
+      if (query.isEmpty) {
+        return true;
+      }
       return movement.clientName.toLowerCase().contains(query);
     }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
@@ -215,11 +223,15 @@ class _SalesLayoutState extends State<SalesLayout> {
         (sale) => sale.clientId == payment.clientId,
       )) {
         final outstanding = sale.effectiveTotal - (paid[sale.id] ?? 0);
-        if (outstanding <= 0.005) continue;
+        if (outstanding <= 0.005) {
+          continue;
+        }
         final applied = remaining > outstanding ? outstanding : remaining;
         paid[sale.id] = (paid[sale.id] ?? 0) + applied;
         remaining -= applied;
-        if (remaining <= 0.005) break;
+        if (remaining <= 0.005) {
+          break;
+        }
       }
     }
     return paid;
@@ -245,7 +257,9 @@ class _SalesLayoutState extends State<SalesLayout> {
     final byClient = <String, List<SaleRecord>>{};
     for (final sale in activeCredits) {
       final clientId = sale.clientId;
-      if (clientId != null) byClient.putIfAbsent(clientId, () => []).add(sale);
+      if (clientId != null) {
+        byClient.putIfAbsent(clientId, () => []).add(sale);
+      }
     }
 
     return movements
@@ -269,7 +283,9 @@ class _SalesLayoutState extends State<SalesLayout> {
   }
 
   int _effectiveItemCount(SaleRecord sale) {
-    if (sale.isAnnulled) return 0;
+    if (sale.isAnnulled) {
+      return 0;
+    }
     var count = sale.items.fold<int>(0, (sum, item) => sum + item.quantity);
     for (final operation in sale.operations) {
       count -= operation.itemsOut.fold<int>(
@@ -351,7 +367,7 @@ class _SalesLayoutState extends State<SalesLayout> {
           _money(profit),
           valueColor: AppColors.successGreen,
         ),
-        PeriodSummaryMetric('Cantidad de ventas', '${sales.length}'),
+        PeriodSummaryMetric('Cantidad de ventas', '$sales.length'),
         PeriodSummaryMetric('Artículos vendidos', '$itemCount'),
         PeriodSummaryMetric('Clientes', '$clientCount'),
       ];
@@ -386,7 +402,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             ),
             const SizedBox(height: 7),
             Text(
-              '${sales.length} venta${sales.length == 1 ? '' : 's'} · ${payments.length} abono${payments.length == 1 ? '' : 's'} en ${_periodLabel()}',
+              '$sales.length venta${sales.length == 1 ? '' : 's'} · $payments.length abono${payments.length == 1 ? '' : 's'} en ${_periodLabel()}',
               style: const TextStyle(
                 fontSize: 10,
                 color: AppColors.textSecondary,
@@ -440,14 +456,18 @@ class _SalesLayoutState extends State<SalesLayout> {
     ],
   );
   Future<void> _pickDate() async {
-    if (_period == _SalesPeriod.custom) return _pickRange();
+    if (_period == _SalesPeriod.custom) {
+      return _pickRange();
+    }
     final picked = await showDatePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       initialDate: _anchorDate,
     );
-    if (picked != null) setState(() => _anchorDate = picked);
+    if (picked != null) {
+      setState(() => _anchorDate = picked);
+    }
   }
 
   Future<void> _pickRange() async {
@@ -462,7 +482,9 @@ class _SalesLayoutState extends State<SalesLayout> {
         end: end.isBefore(start) ? start : end,
       ),
     );
-    if (picked == null) return;
+    if (picked == null) {
+      return;
+    }
     setState(() {
       _period = _SalesPeriod.custom;
       _customStart = picked.start;
@@ -782,7 +804,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             Expanded(
               flex: 10,
               child: Text(
-                '#${sale.ticketNumber}',
+                '#$sale.ticketNumber',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 11,
@@ -1085,7 +1107,9 @@ class _SalesLayoutState extends State<SalesLayout> {
   Future<void> _printSale(SaleRecord sale) async {
     final printer = context.read<PrinterProvider>();
     final printed = await printer.printSaleTicket(sale);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     AppAlert.show(
       context,
       printed
