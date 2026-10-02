@@ -68,6 +68,7 @@ class PurchaseItemRecord implements SyncableEntity {
                 : unitCost),
         metadata = metadata ?? SyncMetadata.initial();
 
+  @override
   Map<String, dynamic> toMap() => {
         'id': id,
         'productId': productId,
