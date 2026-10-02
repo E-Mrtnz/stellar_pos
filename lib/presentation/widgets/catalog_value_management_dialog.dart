@@ -116,14 +116,14 @@ class _CatalogValueManagementDialogState extends State<CatalogValueManagementDia
       final catalog = context.read<CatalogProvider>();
       switch (widget.type) {
         case CatalogValueType.category:
-          success = isEditing ? catalog.updateTag(oldValue!, value) : catalog.addTag(value);
+          success = isEditing ? catalog.updateTag(oldValue, value) : catalog.addTag(value);
           break;
         case CatalogValueType.brand:
-          success = isEditing ? catalog.updateBrand(oldValue!, value) : catalog.addBrand(value);
+          success = isEditing ? catalog.updateBrand(oldValue, value) : catalog.addBrand(value);
           break;
         case CatalogValueType.distributor:
           success = isEditing
-              ? catalog.updateDistributor(oldValue!, value)
+              ? catalog.updateDistributor(oldValue, value)
               : catalog.addDistributor(value);
           break;
         case CatalogValueType.clientGroup:
