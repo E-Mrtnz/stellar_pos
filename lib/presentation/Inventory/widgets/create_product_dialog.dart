@@ -149,6 +149,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
             baseOffset: 0,
             extentOffset: controller.text.length,
           );
+        }
       });
     });
   }
