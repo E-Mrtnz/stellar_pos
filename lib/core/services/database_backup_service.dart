@@ -428,7 +428,7 @@ class DatabaseBackupService {
     if (schemaVersion is! num ||
         schemaVersion.toInt() > StorageSchema.currentVersion) {
       throw StateError(
-        'El backup fue creado con una versión de almacenamiento más nueva (${schemaVersion ?? 'desconocida'}) que esta aplicación ($StorageSchema.currentVersion).',
+        'El backup fue creado con una versión de almacenamiento más nueva (${schemaVersion ?? 'desconocida'}) que esta aplicación (${StorageSchema.currentVersion}).',
       );
     }
 
@@ -475,7 +475,7 @@ class DatabaseBackupService {
 
       await report(
         0.18 + ((index + 1) / _backupBoxNames.length) * 0.28,
-        'Validando ${index + 1} de $_backupBoxNames.length secciones...',
+        'Validando ${index + 1} de ${_backupBoxNames.length} secciones...',
       );
     }
 
@@ -538,7 +538,7 @@ class DatabaseBackupService {
         final fraction = entries.isEmpty ? 1.0 : end / entries.length;
         await report(
           ((index + fraction) / _backupBoxNames.length) * 0.90,
-          'Restaurando $boxName: $end de $entries.length registros...',
+          'Restaurando $boxName: $end de ${entries.length} registros...',
         );
       }
 
@@ -572,7 +572,7 @@ class DatabaseBackupService {
     }
 
     throw StateError(
-      'Se encontró un tipo de dato no compatible con el formato universal de backup: $value.runtimeType.',
+      'Se encontró un tipo de dato no compatible con el formato universal de backup: ${value.runtimeType}.',
     );
   }
 
@@ -844,12 +844,12 @@ class DatabaseBackupService {
         '${now.second.toString().padLeft(2, '0')}';
 
     var file = File(
-      '$destination.path/$prefix$stamp.zip',
+      '${destination.path}/$prefix$stamp.zip',
     );
     var suffix = 1;
     while (await file.exists()) {
       file = File(
-        '$destination.path/$prefix$stamp_$suffix.zip',
+        '${destination.path}/$prefix${stamp}_$suffix.zip',
       );
       suffix++;
     }
@@ -927,7 +927,7 @@ class DatabaseBackupService {
 
     for (final file in restoredFiles) {
       final destination = File(
-        '$databaseDirectory.path/$file.uri.pathSegments.last',
+        '${databaseDirectory.path}/${file.uri.pathSegments.last}',
       );
       await file.copy(destination.path);
     }

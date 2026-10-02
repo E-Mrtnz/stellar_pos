@@ -185,7 +185,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
                     Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.primary.withAlpha(28), borderRadius: BorderRadius.circular(5)), child: const Text('GRUPO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .4, color: AppColors.primary))),
                   ]),
                   const SizedBox(height: 2),
-                  Text('$members.length integrantes', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  Text('${members.length} integrantes', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
                 ])),
                 Text(_money(remaining), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: remaining > .005 ? AppColors.dangerRed : AppColors.successGreen)),
                 const SizedBox(width: 5),
@@ -201,7 +201,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
             decoration: const BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.vertical(bottom: Radius.circular(13))),
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Padding(padding: const EdgeInsets.fromLTRB(5, 0, 5, 4), child: Row(children: [const Icon(Icons.people_outline, size: 14, color: AppColors.primary), const SizedBox(width: 5), const Text('INTEGRANTES DEL GRUPO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .45, color: AppColors.primary)), const Spacer(), Text('$members.length', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
+              Padding(padding: const EdgeInsets.fromLTRB(5, 0, 5, 4), child: Row(children: [const Icon(Icons.people_outline, size: 14, color: AppColors.primary), const SizedBox(width: 5), const Text('INTEGRANTES DEL GRUPO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .45, color: AppColors.primary)), const Spacer(), Text('${members.length}', style: const TextStyle(fontSize: 9, color: AppColors.textMuted))])),
               const Divider(height: 8, color: AppColors.border),
               ...members.map((c) => Padding(padding: const EdgeInsets.only(bottom: 7), child: _clientCard(c, debts, sales, compact: true))),
               if (members.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Center(child: Text('Este grupo no tiene clientes asignados.', style: TextStyle(color: AppColors.textMuted, fontSize: 11)))),
@@ -251,7 +251,7 @@ class _DebtsLayoutState extends State<DebtsLayout> {
   }
 
   Widget _historyPanel(DebtProvider p) => _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-    Row(children: [const Icon(Icons.history, size: 18, color: AppColors.textSecondary), const SizedBox(width: 7), const Text('Historial', style: AppTextStyles.sectionTitle), const Spacer(), Text('$p.movements.length', style: const TextStyle(color: AppColors.textMuted, fontSize: 11))]),
+    Row(children: [const Icon(Icons.history, size: 18, color: AppColors.textSecondary), const SizedBox(width: 7), const Text('Historial', style: AppTextStyles.sectionTitle), const Spacer(), Text('${p.movements.length}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11))]),
     const SizedBox(height: 10),
     Expanded(child: p.movements.isEmpty ? const _EmptyState('Todavía no hay movimientos.', Icons.receipt_long_outlined) : ListView.separated(itemCount: p.movements.length, separatorBuilder: (_, __) => const SizedBox(height: 7), itemBuilder: (_, i) => _MovementTile(p.movements[i]))),
   ]));
@@ -390,11 +390,11 @@ class _ClientCard extends StatelessWidget {
             const SizedBox(height: 9),
             Row(
               children: [
-                Expanded(child: _AmountBox('Deuda', '\$${account.totalDebt.toStringAsFixed}'(2), AppColors.dangerRed)),
+                Expanded(child: _AmountBox('Deuda', '\$' + account.totalDebt.toStringAsFixed(2), AppColors.dangerRed)),
                 const SizedBox(width: 7),
-                Expanded(child: _AmountBox('Abonado', '\$${account.totalPaid.toStringAsFixed}'(2), AppColors.successGreen)),
+                Expanded(child: _AmountBox('Abonado', '\$' + account.totalPaid.toStringAsFixed(2), AppColors.successGreen)),
                 const SizedBox(width: 7),
-                Expanded(child: _AmountBox('Restante', '\$${account.remaining.toStringAsFixed}'(2), account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
+                Expanded(child: _AmountBox('Restante', '\$' + account.remaining.toStringAsFixed(2), account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
               ],
             ),
             if (onPayment != null || onReminder != null)
@@ -475,7 +475,7 @@ class _MovementTile extends StatelessWidget {
                 Text(
                   '${movement.createdAt.day.toString().padLeft(2, '0')}/'
                   '${movement.createdAt.month.toString().padLeft(2, '0')}/'
-                  '$movement.createdAt.year · '
+                  '${movement.createdAt.year} · '
                   '${movement.createdAt.hour.toString().padLeft(2, '0')}:'
                   '${movement.createdAt.minute.toString().padLeft(2, '0')}',
                   style: const TextStyle(
@@ -487,8 +487,9 @@ class _MovementTile extends StatelessWidget {
             ),
           ),
           Text(
-            (isPayment ?  : '') +
-                '\$${movement.amount.toStringAsFixed}'(2),
+            (isPayment ? '+' : '') +
+                '\$' +
+                movement.amount.toStringAsFixed(2),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

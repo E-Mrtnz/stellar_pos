@@ -47,7 +47,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
   void _refresh() => setState(() {});
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
   DateTimeRange _range() {
     final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
@@ -171,7 +171,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
         _money(profit),
         valueColor: AppColors.successGreen,
       ),
-      PeriodSummaryMetric('Compras registradas', '$purchases.length'),
+      PeriodSummaryMetric('Compras registradas', '${purchases.length}'),
       PeriodSummaryMetric('Unidades recibidas', '$itemCount'),
       PeriodSummaryMetric('Bonificaciones', '$bonusCount'),
       PeriodSummaryMetric('Distribuidoras', '$supplierCount'),
@@ -462,7 +462,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
                         ? 'Compra de saldo'
                         : purchase.invoiceNumber.isEmpty
                             ? 'Sin número de factura'
-                            : 'Factura $purchase.invoiceNumber',
+                            : 'Factura ${purchase.invoiceNumber}',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.textMuted,
@@ -484,7 +484,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             Expanded(
               child: Text(
                 purchase.isElectronicBalancePurchase
-                    ? '\$${purchase.total.toStringAsFixed}'(2) + ' de saldo'
+                    ? '\$' + purchase.total.toStringAsFixed(2) + ' de saldo'
                     : purchase.itemCount.toString() + ' unidades',
                 style: const TextStyle(
                   fontSize: 10,
@@ -594,14 +594,14 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
   const _ElectronicBalancePurchaseDetailDialog(this.purchase);
 
-  String _money(double value) => '\$${value.toStringAsFixed}'(2);
+  String _money(double value) => '\$' + value.toStringAsFixed(2);
   String _date(DateTime value) =>
       value.day.toString().padLeft(2, '0') +
-      '/${value.month.toString}'().padLeft(2, '0') +
-      '/${value.year.toString}'();
+      '/' + value.month.toString().padLeft(2, '0') +
+      '/' + value.year.toString();
   String _time(DateTime value) =>
       value.hour.toString().padLeft(2, '0') +
-      ':${value.minute.toString}'().padLeft(2, '0');
+      ':' + value.minute.toString().padLeft(2, '0');
 
   Future<void> _modify(BuildContext context) async {
     final updated = await showDialog<bool>(
@@ -620,8 +620,11 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar compra de saldo'),
         content: Text(
-          'Se eliminará la compra de ${_money}'(purchase.total) +
-              ' de ${purchase.distributorName} y se descontará ese monto del saldo disponible. ¿Deseas continuar?',
+          'Se eliminará la compra de ' +
+              _money(purchase.total) +
+              ' de ' +
+              purchase.distributorName +
+              ' y se descontará ese monto del saldo disponible. ¿Deseas continuar?',
         ),
         actions: [
           TextButton(
@@ -952,14 +955,14 @@ class _PurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
   const _PurchaseDetailDialog(this.purchase);
 
-  String _money(double value) => '\$${value.toStringAsFixed}'(2);
+  String _money(double value) => '\$' + value.toStringAsFixed(2);
   String _date(DateTime value) =>
       value.day.toString().padLeft(2, '0') +
-      '/${value.month.toString}'().padLeft(2, '0') +
-      '/${value.year.toString}'();
+      '/' + value.month.toString().padLeft(2, '0') +
+      '/' + value.year.toString();
   String _time(DateTime value) =>
       value.hour.toString().padLeft(2, '0') +
-      ':${value.minute.toString}'().padLeft(2, '0');
+      ':' + value.minute.toString().padLeft(2, '0');
 
   Future<void> _modify(BuildContext context) async {
     final updated = await PurchaseCreationDialog.show(
@@ -1397,7 +1400,7 @@ class _PurchaseDetailDialog extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   item.totalQuantity.toString() +
-                      ' recibidas · ${item.bonusQuantity.toString}'() +
+                      ' recibidas · ' + item.bonusQuantity.toString() +
                       ' bonificadas',
                   style: const TextStyle(
                     fontSize: 9,

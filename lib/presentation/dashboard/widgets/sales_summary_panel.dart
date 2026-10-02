@@ -193,7 +193,7 @@ class SalesSummaryPanel extends StatelessWidget {
   Widget _buildSaleDate() {
     final enabled = onSaleDateTap != null;
     final text =
-        '${saleDate.day.toString().padLeft(2, '0')}/${saleDate.month.toString().padLeft(2, '0')}/$saleDate.year';
+        '${saleDate.day.toString().padLeft(2, '0')}/${saleDate.month.toString().padLeft(2, '0')}/${saleDate.year}';
     return InkWell(
       onTap: onSaleDateTap,
       borderRadius: BorderRadius.circular(4),
@@ -541,7 +541,7 @@ class SalesSummaryPanel extends StatelessWidget {
         const DropdownMenuItem<String?>(
           value: createClientValue,
           child: Text(
-            ${Crear}' cliente',
+            '+ Crear cliente',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -692,7 +692,7 @@ class SalesSummaryPanel extends StatelessWidget {
                       ? product['brand']?.toString() ?? ''
                       : product['brand']?.toString().trim().isEmpty ?? true
                           ? unit
-                          : '${unit} | ${product}'['brand'].toString(),
+                          : unit + ' | ' + product['brand'].toString(),
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,

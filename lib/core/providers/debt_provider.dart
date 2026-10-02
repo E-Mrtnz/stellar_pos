@@ -475,8 +475,9 @@ class DebtProvider extends ChangeNotifier {
     var changed = false;
     for (var i = 0; i < _payments.length; i++) {
       final movement = _payments[i];
-      if (movement.clientId != clientId || movement.clientName == clientName)
+      if (movement.clientId != clientId || movement.clientName == clientName) {
         continue;
+      }
       final updated = DebtMovement(
         id: movement.id,
         clientId: movement.clientId,
@@ -610,8 +611,9 @@ class DebtProvider extends ChangeNotifier {
       final byId = <String, DebtMovement>{
         for (final movement in _payments) movement.id: movement,
       };
-      for (final movement in stored)
+      for (final movement in stored) {
         byId.putIfAbsent(movement.id, () => movement);
+      }
       _payments
         ..clear()
         ..addAll(byId.values);

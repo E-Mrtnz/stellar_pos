@@ -168,8 +168,10 @@ class _CentralProductGridState extends State<CentralProductGrid> {
             widget.selectedTagIndex < widget.tags.length
         ? widget.tags[widget.selectedTagIndex]
         : '';
-    final cacheKey = '${widget.searchQuery}|' +
-        (widget.selectedFilter ?? '') + '|${widget.selectedTagIndex.toString}'() + '|${selectedTag}';
+    final cacheKey = widget.searchQuery + '|' +
+        (widget.selectedFilter ?? '') + '|' +
+        widget.selectedTagIndex.toString() + '|' +
+        selectedTag;
     final productsIdentity = identityHashCode(widget.products);
     final cacheValid = _sortedProductsCache != null &&
         _productsIdentity == productsIdentity &&

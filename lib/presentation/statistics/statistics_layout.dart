@@ -94,9 +94,9 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
       const SizedBox(height: 12),
       _Kpis([
         _Kpi('Ventas', _money(a.sales), Icons.point_of_sale_outlined, AppColors.primary, _change(a.sales, b.sales), a.count.toString() + ' ventas'),
-        _Kpi('Ganancia', _money(a.profit), Icons.trending_up_rounded, AppColors.successGreen, _change(a.profit, b.profit), 'Margen ${_pct}'(a.margin)),
+        _Kpi('Ganancia', _money(a.profit), Icons.trending_up_rounded, AppColors.successGreen, _change(a.profit, b.profit), 'Margen ' + _pct(a.margin)),
         _Kpi('Costo de ventas', _money(a.cost), Icons.inventory_2_outlined, AppColors.warningOrange, _change(a.cost, b.cost), a.sales == 0 ? 'Sin ventas' : _pct(a.costRatio) + ' de ventas'),
-        _Kpi('Por cobrar', _money(debts.totalRemaining), Icons.account_balance_wallet_outlined, AppColors.dangerRed, null, 'Saldo actual · ${debts.clientsWithDebt.toString}'() + ' clientes'),
+        _Kpi('Por cobrar', _money(debts.totalRemaining), Icons.account_balance_wallet_outlined, AppColors.dangerRed, null, 'Saldo actual · ' + debts.clientsWithDebt.toString() + ' clientes'),
       ], compact),
       const SizedBox(height: 12),
       _Panel(title: 'Evolución de ventas', trailing: Text(_rangeLabel(r), style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)), child: SizedBox(height: 235, child: _Trend(_trend(sales, r)))),
@@ -199,8 +199,8 @@ class _StatisticsLayoutState extends State<StatisticsLayout> {
   String _anchorLabel() {
     switch (_period) {
       case _StatsPeriod.day: return _date(_anchor);
-      case _StatsPeriod.week: return _shortDate(_range.start) + ' - ${_shortDate}'(_range.end.subtract(const Duration(days: 1)));
-      case _StatsPeriod.month: return _month(_anchor.month) + ' ${_anchor.year.toString}'();
+      case _StatsPeriod.week: return _shortDate(_range.start) + ' - ' + _shortDate(_range.end.subtract(const Duration(days: 1)));
+      case _StatsPeriod.month: return _month(_anchor.month) + ' ' + _anchor.year.toString();
       case _StatsPeriod.year: return _anchor.year.toString();
       case _StatsPeriod.custom: return _rangeLabel(_range);
     }
@@ -481,12 +481,12 @@ List<_ProductStat> _topProducts(List<SaleRecord> sales){final m=<String,List<dyn
 List<_ClientStat> _topClients(List<SaleRecord> sales){final m=<String,List<dynamic>>{};for(final s in sales){if(s.isAnnulled||s.clientId==null)continue;final k=s.clientId!;final v=m.putIfAbsent(k,()=>[s.clientName.trim().isEmpty?'Cliente':s.clientName.trim(),0,0.0]);v[1]++;v[2]+=s.effectiveTotal;}final o=m.values.map((v)=>_ClientStat(v[0] as String,v[1] as int,v[2] as double)).toList()..sort((a,b)=>b.amount.compareTo(a.amount));return o.take(4).toList(growable:false);}
 List<_Dist> _paymentMix(List<SaleRecord> sales){final m=<String,double>{};for(final s in sales)if(!s.isAnnulled)m[s.paymentMethod]=(m[s.paymentMethod]??0)+s.effectiveTotal;final o=m.entries.map((e)=>_Dist(e.key,e.value)).toList()..sort((a,b)=>b.value.compareTo(a.value));return o.take(4).toList(growable:false);}
 List<_Dist> _hourMix(List<SaleRecord> sales){final m=<String,double>{'06:00 - 12:00':0,'12:00 - 18:00':0,'18:00 - 22:00':0,'Otros horarios':0};for(final s in sales){if(s.isAnnulled)continue;final h=s.createdAt.hour;final k=h>=6&&h<12?'06:00 - 12:00':h>=12&&h<18?'12:00 - 18:00':h>=18&&h<22?'18:00 - 22:00':'Otros horarios';m[k]=(m[k]??0)+s.effectiveTotal;}final o=m.entries.where((e)=>e.value>0).map((e)=>_Dist(e.key,e.value)).toList()..sort((a,b)=>b.value.compareTo(a.value));return o;}
-List<_Point> _trend(List<SaleRecord> sales,_StatsRange r){final m=<DateTime,double>{},labels=<DateTime,String>{};if(r.duration.inDays<=1){for(var d=r.start;d.isBefore(r.end);d=d.add(const Duration(hours:1))){final k=DateTime(d.year,d.month,d.day,d.hour);m[k]=0;labels[k]=d.hour.toString().padLeft(2,'0')+':00';}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month,s.createdAt.day,s.createdAt.hour);m[k]=(m[k]??0)+s.effectiveTotal;}}else if(r.duration.inDays<=31){for(var d=r.start;d.isBefore(r.end);d=d.add(const Duration(days:1))){final k=DateTime(d.year,d.month,d.day);m[k]=0;labels[k]=d.day.toString()+'/${d.month.toString}'();}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month,s.createdAt.day);m[k]=(m[k]??0)+s.effectiveTotal;}}else if(r.duration.inDays<=370){for(var d=r.start;d.isBefore(r.end);d=DateTime(d.year,d.month+1)){final k=DateTime(d.year,d.month);m[k]=0;labels[k]=_month(d.month).substring(0,3);}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month);m[k]=(m[k]??0)+s.effectiveTotal;}}else{for(var d=r.start;d.isBefore(r.end);d=DateTime(d.year+1)){final k=DateTime(d.year);m[k]=0;labels[k]=d.year.toString();}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year);m[k]=(m[k]??0)+s.effectiveTotal;}}final e=m.entries.toList()..sort((a,b)=>a.key.compareTo(b.key));return e.map((x)=>_Point(labels[x.key]??'',x.value)).toList(growable:false);}
+List<_Point> _trend(List<SaleRecord> sales,_StatsRange r){final m=<DateTime,double>{},labels=<DateTime,String>{};if(r.duration.inDays<=1){for(var d=r.start;d.isBefore(r.end);d=d.add(const Duration(hours:1))){final k=DateTime(d.year,d.month,d.day,d.hour);m[k]=0;labels[k]=d.hour.toString().padLeft(2,'0')+':00';}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month,s.createdAt.day,s.createdAt.hour);m[k]=(m[k]??0)+s.effectiveTotal;}}else if(r.duration.inDays<=31){for(var d=r.start;d.isBefore(r.end);d=d.add(const Duration(days:1))){final k=DateTime(d.year,d.month,d.day);m[k]=0;labels[k]=d.day.toString()+'/'+d.month.toString();}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month,s.createdAt.day);m[k]=(m[k]??0)+s.effectiveTotal;}}else if(r.duration.inDays<=370){for(var d=r.start;d.isBefore(r.end);d=DateTime(d.year,d.month+1)){final k=DateTime(d.year,d.month);m[k]=0;labels[k]=_month(d.month).substring(0,3);}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year,s.createdAt.month);m[k]=(m[k]??0)+s.effectiveTotal;}}else{for(var d=r.start;d.isBefore(r.end);d=DateTime(d.year+1)){final k=DateTime(d.year);m[k]=0;labels[k]=d.year.toString();}for(final s in sales)if(!s.isAnnulled&&r.contains(s.createdAt)){final k=DateTime(s.createdAt.year);m[k]=(m[k]??0)+s.effectiveTotal;}}final e=m.entries.toList()..sort((a,b)=>a.key.compareTo(b.key));return e.map((x)=>_Point(labels[x.key]??'',x.value)).toList(growable:false);}
 double _saleCost(SaleRecord s){if(s.isAnnulled)return 0;var c=s.items.fold<double>(0,(v,i)=>v+i.cost*i.quantity);for(final o in s.operations){c-=o.itemsOut.fold<double>(0,(v,i)=>v+i.cost*i.quantity);c+=o.itemsIn.fold<double>(0,(v,i)=>v+i.cost*i.quantity);}return math.max(0,c);}
 double? _change(double a,double b)=>b.abs()<.005?null:(a-b)/b;
-String _money(double v)=>'\$${v.toStringAsFixed}'(2);
+String _money(double v)=>'\$'+v.toStringAsFixed(2);
 String _pct(double v)=>(v*100).toStringAsFixed(1)+'%';
-String _date(DateTime d)=>d.day.toString().padLeft(2,'0')+'/${d.month.toString}'().padLeft(2,'0')+'/${d.year.toString}'();
-String _shortDate(DateTime d)=>d.day.toString().padLeft(2,'0')+'/${d.month.toString}'().padLeft(2,'0');
-String _rangeLabel(_StatsRange r)=>_date(r.start)+' - ${_date}'(r.end.subtract(const Duration(days:1)));
+String _date(DateTime d)=>d.day.toString().padLeft(2,'0')+'/'+d.month.toString().padLeft(2,'0')+'/'+d.year.toString();
+String _shortDate(DateTime d)=>d.day.toString().padLeft(2,'0')+'/'+d.month.toString().padLeft(2,'0');
+String _rangeLabel(_StatsRange r)=>_date(r.start)+' - '+_date(r.end.subtract(const Duration(days:1)));
 String _month(int m)=>const ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m-1];
