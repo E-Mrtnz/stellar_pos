@@ -390,11 +390,11 @@ class _ClientCard extends StatelessWidget {
             const SizedBox(height: 9),
             Row(
               children: [
-                Expanded(child: _AmountBox('Deuda', '\${account.totalDebt.toStringAsFixed(2)}', AppColors.dangerRed)),
+                Expanded(child: _AmountBox('Deuda', '\$${account.totalDebt.toStringAsFixed(2)}', AppColors.dangerRed)),
                 const SizedBox(width: 7),
-                Expanded(child: _AmountBox('Abonado', '\${account.totalPaid.toStringAsFixed(2)}', AppColors.successGreen)),
+                Expanded(child: _AmountBox('Abonado', '\$${account.totalPaid.toStringAsFixed(2)}', AppColors.successGreen)),
                 const SizedBox(width: 7),
-                Expanded(child: _AmountBox('Restante', '\${account.remaining.toStringAsFixed(2)}', account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
+                Expanded(child: _AmountBox('Restante', '\$${account.remaining.toStringAsFixed(2)}', account.remaining > .005 ? AppColors.warningOrange : AppColors.successGreen)),
               ],
             ),
             if (onPayment != null || onReminder != null)
@@ -487,7 +487,7 @@ class _MovementTile extends StatelessWidget {
             ),
           ),
           Text(
-            '${isPayment ? '+' : ''}\${movement.amount.toStringAsFixed(2)}',
+            '${isPayment ? '+' : ''}\$${movement.amount.toStringAsFixed(2)}',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
