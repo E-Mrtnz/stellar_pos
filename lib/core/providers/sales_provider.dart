@@ -18,7 +18,6 @@ import 'package:stellar_pos/core/services/domain/sale_totals_service.dart';
 
 class SalesProvider extends ChangeNotifier {
   final List<SaleRecord> _sales = [];
-  int _nextTicketNumber = 1;
   bool _loaded = false;
   Future<void>? _loadFuture;
 
@@ -671,12 +670,11 @@ class SalesProvider extends ChangeNotifier {
   }
 
   void clearSales() {
-    if (_sales.isEmpty && _nextTicketNumber == 1) {
+    if (_sales.isEmpty) {
       return;
     }
     final ids = _sales.map((sale) => sale.id).toList(growable: false);
     _sales.clear();
-    _nextTicketNumber = 1;
     notifyListeners();
     for (final id in ids) {
       _persistDelete(id);
@@ -703,12 +701,6 @@ class SalesProvider extends ChangeNotifier {
     _sales
       ..clear()
       ..addAll(stored);
-    if (_sales.isNotEmpty) {
-      final maxTicket = _sales
-          .map((sale) => int.tryParse(sale.ticketNumber) ?? 0)
-          .fold<int>(0, (max, value) => value > max ? value : max);
-      _nextTicketNumber = maxTicket + 1;
-    }
     _loaded = true;
     if (_sales.isNotEmpty) {
       notifyListeners();
