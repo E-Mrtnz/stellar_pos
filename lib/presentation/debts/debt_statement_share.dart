@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
@@ -6,6 +7,7 @@ import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/debt.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/presentation/widgets/app_alert.dart';
+import 'package:stellar_pos/presentation/debts/debt_statement_file_writer.dart';
 
 class DebtStatementShare {
   static Future<void> show(BuildContext context, {required String clientName, required List<SaleRecord> sales, required DebtAccount account}) async {
@@ -96,55 +98,144 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
     if (!mounted || _sharing) {
       return;
     }
+
     setState(() => _sharing = true);
+
+    final files = <XFile>[];
+
     try {
-      final files = <XFile>[];
+      // Keep the existing 900x1800 canvas and 2.5x pixel ratio unchanged.
+      // Native platforms receive real temporary PNG files instead of
+      // XFile.fromData(), avoiding an extra temporary-file step inside
+      // the macOS share sheet.
       for (var i = 0; i < _pages.length; i++) {
         _pageIndex = i;
         if (mounted) {
           setState(() {});
         }
+
+        // Give Flutter a frame to paint the selected page before capturing it.
         await Future<void>.delayed(const Duration(milliseconds: 90));
-        final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+        final boundary =
+            _boundaryKey.currentContext?.findRenderObject()
+                as RenderRepaintBoundary?;
         if (boundary == null) {
           throw StateError('No se pudo preparar el estado de cuenta.');
         }
+
         final image = await boundary.toImage(pixelRatio: 2.5);
         final data = await image.toByteData(format: ui.ImageByteFormat.png);
         image.dispose();
+
         if (data == null) {
           throw StateError('No se pudo generar una de las imágenes.');
         }
-        files.add(XFile.fromData(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes), mimeType: 'image/png'));
+
+        final bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+        final fileName =
+            'estado_cuenta_' +
+            _safeFileName(widget.clientName) +
+            '_' +
+            (i + 1).toString() +
+            '.png';
+
+        files.add(
+          await createDebtStatementShareFile(
+            bytes,
+            fileName,
+          ),
+        );
       }
+
+      if (!mounted) {
+        await cleanupDebtStatementShareFiles(files);
+        return;
+      }
+
+      final originBox = context.findRenderObject() as RenderBox?;
+      final origin = originBox == null
+          ? null
+          : originBox.localToGlobal(Offset.zero) & originBox.size;
+
+      final shareResult = await SharePlus.instance.share(
+        ShareParams(
+          files: files,
+          subject: 'Estado de cuenta - ' + widget.clientName,
+          sharePositionOrigin: origin,
+          fileNameOverrides: files
+              .map((file) => file.name)
+              .whereType<String>()
+              .toList(growable: false),
+        ),
+      );
+
+      if (!mounted) {
+        await cleanupDebtStatementShareFiles(files);
+        return;
+      }
+
+      Navigator.of(context).pop();
+      await cleanupDebtStatementShareFiles(files);
 
       if (!mounted) {
         return;
       }
-      final originBox = context.findRenderObject() as RenderBox?;
-      final origin = originBox == null ? null : originBox.localToGlobal(Offset.zero) & originBox.size;
-      if (!mounted) {
-        return;
+
+      switch (shareResult.status) {
+        case ShareResultStatus.success:
+          AppAlert.show(
+            context,
+            _pages.length == 1
+                ? 'El estado de cuenta se compartió correctamente.'
+                : 'Se compartieron ' +
+                    _pages.length.toString() +
+                    ' imágenes del estado de cuenta.',
+            title: 'Estado de cuenta compartido',
+            type: AppAlertType.success,
+          );
+        case ShareResultStatus.dismissed:
+          AppAlert.show(
+            context,
+            'El estado de cuenta se generó correctamente, pero no se seleccionó una aplicación para compartirlo.',
+            title: 'Compartir cancelado',
+            type: AppAlertType.info,
+          );
+        case ShareResultStatus.unavailable:
+          AppAlert.show(
+            context,
+            'El estado de cuenta se generó correctamente. El sistema no informó qué aplicación recibió el contenido.',
+            title: 'Estado de cuenta generado',
+            type: AppAlertType.success,
+          );
       }
-      await SharePlus.instance.share(
-        ShareParams(
-          files: files,
-          subject: 'Estado de cuenta - ${widget.clientName}',
-          sharePositionOrigin: origin,
-        ),
-      );
-      if (!mounted) {
-        return;
-      }
-      Navigator.of(context).pop();
-      AppAlert.show(context, _pages.length == 1 ? 'La imagen del estado de cuenta se generó correctamente.' : 'Se generaron ${_pages.length} imágenes del estado de cuenta.', title: 'Estado de cuenta generado', type: AppAlertType.success);
     } catch (error) {
+      await cleanupDebtStatementShareFiles(files);
+
       if (!mounted) {
         return;
       }
+
       Navigator.of(context).pop();
-      AppAlert.show(context, 'No se pudo generar el estado de cuenta: $error', title: 'Error al generar estado de cuenta', type: AppAlertType.error);
+      AppAlert.show(
+        context,
+        'No se pudo generar o compartir el estado de cuenta: ' +
+            error.toString(),
+        title: 'Error al generar estado de cuenta',
+        type: AppAlertType.error,
+      );
     }
+  }
+
+  String _safeFileName(String value) {
+    final sanitized = value
+        .trim()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ _-]'), '')
+        .replaceAll(RegExp(r'\s+'), '_');
+    return sanitized.isEmpty ? 'cliente' : sanitized;
   }
 
   @override Widget build(BuildContext context) => Dialog(
