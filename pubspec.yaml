@@ -26,8 +26,13 @@ dependencies:
   file_saver: ^0.3.1
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
-  firebase_core: ^4.14.0
-  cloud_firestore: ^6.9.0
+
+  # Firebase versions pinned for the current Xcode 15.2 toolchain.
+  # firebase_core 4.14+ migrated the Apple implementation and pulls a
+  # Firebase SDK/toolchain combination that requires a newer Xcode/Swift.
+  firebase_core: 3.15.2
+  cloud_firestore: 5.6.12
+
   path_provider: ^2.1.5
   device_info_plus: ^10.1.2
   package_info_plus: ^8.3.1
