@@ -28,10 +28,10 @@ dependencies:
   hive_ce_flutter: ^2.3.4
 
   # Firebase versions pinned for the current Xcode 15.2 toolchain.
-  # firebase_core 4.14+ migrated the Apple implementation and pulls a
-  # Firebase SDK/toolchain combination that requires a newer Xcode/Swift.
-  firebase_core: 3.15.2
-  cloud_firestore: 5.6.12
+  # Firebase iOS SDK 11.12+ requires Xcode 16.2, so use the
+  # last FlutterFire combination compatible with Xcode 15.2.
+  firebase_core: 3.13.0
+  cloud_firestore: 5.6.7
 
   path_provider: ^2.1.5
   device_info_plus: ^10.1.2
