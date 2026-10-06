@@ -80,7 +80,10 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
     }
 
     completed = true
-    picker?.close()
+    // Do not call NSSharingServicePicker.close() here: that API is only
+    // available when the macOS deployment target is 13.0+, while Stellar POS
+    // keeps a lower deployment target for compatibility. Releasing our strong
+    // reference is enough for the picker lifecycle once sharing completes.
 
     let callback = completion
     completion = nil
@@ -92,7 +95,8 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
   }
 
   func finishForReplacement() {
-    picker?.close()
+    // The picker is released without calling close(), because close() requires
+    // macOS 13.0+ and the app's deployment target is lower.
     completion = nil
     picker = nil
     completed = true
