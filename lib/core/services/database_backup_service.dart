@@ -138,7 +138,7 @@ class DatabaseBackupService {
       await FileSaver.instance.saveFile(
         name: fileName,
         bytes: result.bytes,
-        ext: 'zip',
+        fileExtension: 'zip',
         mimeType: MimeType.other,
       );
 
