@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
@@ -221,14 +222,15 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
 
         await cleanupDebtStatementShareFiles(files);
 
-        if (!widget.hostContext.mounted) {
+        final hostContext = widget.hostContext;
+        if (!hostContext.mounted) {
           return;
         }
 
         switch (status) {
           case 'success':
             AppAlert.show(
-              widget.hostContext,
+              hostContext,
               _pages.length == 1
                   ? 'El estado de cuenta se compartió correctamente.'
                   : 'Se compartieron ${_pages.length} imágenes del estado de cuenta.',
@@ -237,14 +239,14 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
             );
           case 'dismissed':
             AppAlert.show(
-              widget.hostContext,
+              hostContext,
               'El estado de cuenta se generó correctamente, pero no se seleccionó una aplicación para compartirlo.',
               title: 'Compartir cancelado',
               type: AppAlertType.info,
             );
           default:
             AppAlert.show(
-              widget.hostContext,
+              hostContext,
               'No se pudo completar el proceso de compartir.',
               title: 'Error al compartir',
               type: AppAlertType.error,
