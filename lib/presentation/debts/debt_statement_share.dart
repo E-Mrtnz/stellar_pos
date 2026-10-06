@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -55,6 +56,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
   late final List<_StatementPage> _pages;
   int _pageIndex = 0;
   bool _sharing = false;
+  String _status = 'Preparando estado de cuenta';
 
   @override void initState() {
     super.initState();
@@ -122,21 +124,51 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       for (var i = 0; i < _pages.length; i++) {
         _pageIndex = i;
         if (mounted) {
-          setState(() {});
+          setState(() {
+            _status = _pages.length == 1
+                ? 'Generando imagen del estado de cuenta'
+                : 'Generando imagen ${i + 1} de ${_pages.length}';
+          });
         }
 
-        // Give Flutter a frame to paint the selected page before capturing it.
-        await Future<void>.delayed(const Duration(milliseconds: 90));
+        // Wait for the frame that contains the selected page to finish
+        // painting. A fixed delay is not reliable on slower/debug macOS
+        // renders and can leave toImage() waiting on an unpainted layer.
+        await WidgetsBinding.instance.endOfFrame;
+        await WidgetsBinding.instance.endOfFrame;
 
         final boundary =
             _boundaryKey.currentContext?.findRenderObject()
                 as RenderRepaintBoundary?;
-        if (boundary == null) {
+        if (boundary == null || boundary.layer == null) {
           throw StateError('No se pudo preparar el estado de cuenta.');
         }
 
-        final image = await boundary.toImage(pixelRatio: 2.5);
-        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (mounted) {
+          setState(() => _status = 'Capturando imagen ${i + 1} de ${_pages.length}');
+        }
+
+        final image = await boundary
+            .toImage(pixelRatio: 2.5)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () => throw TimeoutException(
+                'La captura de la imagen tardó demasiado.',
+              ),
+            );
+
+        if (mounted) {
+          setState(() => _status = 'Codificando imagen ${i + 1} de ${_pages.length}');
+        }
+
+        final data = await image
+            .toByteData(format: ui.ImageByteFormat.png)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () => throw TimeoutException(
+                'La conversión de la imagen a PNG tardó demasiado.',
+              ),
+            );
         image.dispose();
 
         if (data == null) {
@@ -154,6 +186,10 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
             (i + 1).toString() +
             '.png';
 
+        if (mounted) {
+          setState(() => _status = 'Preparando archivo ${i + 1} de ${_pages.length}');
+        }
+
         files.add(
           await createDebtStatementShareFile(
             bytes,
@@ -165,6 +201,10 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       if (!mounted) {
         await cleanupDebtStatementShareFiles(files);
         return;
+      }
+
+      if (mounted) {
+        setState(() => _status = 'Abriendo opciones para compartir');
       }
 
       // The native macOS share picker must be presented by the main app
@@ -275,7 +315,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
                 SizedBox(height: 16),
                 Text('Preparando estado de cuenta', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 SizedBox(height: 6),
-                Text('Generando las imágenes para compartir por WhatsApp...', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text('$_status', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ),
