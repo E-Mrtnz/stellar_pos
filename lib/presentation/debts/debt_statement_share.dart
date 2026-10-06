@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/services.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
@@ -203,6 +205,57 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         setState(() => _status = 'Abriendo opciones para compartir');
       }
 
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        Navigator.of(context).pop();
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+
+        final status = await const MethodChannel(
+          'stellar_pos/debt_statement_share',
+        ).invokeMethod<String>(
+          'shareFiles',
+          <String, Object>{
+            'paths': files.map((file) => file.path).toList(growable: false),
+            'subject': 'Estado de cuenta - ${widget.clientName}',
+          },
+        );
+
+        await cleanupDebtStatementShareFiles(files);
+
+        if (!widget.hostContext.mounted) {
+          return;
+        }
+
+        switch (status) {
+          case 'success':
+            AppAlert.show(
+              widget.hostContext,
+              _pages.length == 1
+                  ? 'El estado de cuenta se compartió correctamente.'
+                  : 'Se compartieron ${_pages.length} imágenes del estado de cuenta.',
+              title: 'Estado de cuenta compartido',
+              type: AppAlertType.success,
+            );
+          case 'dismissed':
+            AppAlert.show(
+              widget.hostContext,
+              'El estado de cuenta se generó correctamente, pero no se seleccionó una aplicación para compartirlo.',
+              title: 'Compartir cancelado',
+              type: AppAlertType.info,
+            );
+          default:
+            AppAlert.show(
+              widget.hostContext,
+              'No se pudo completar el proceso de compartir.',
+              title: 'Error al compartir',
+              type: AppAlertType.error,
+            );
+        }
+        return;
+      }
+
+      // Other platforms continue using share_plus. macOS uses a native
+      // NSSharingServicePicker implemented in the Runner so the picker
+      // lifecycle and temporary files remain under our control.
       // The native macOS share picker must be presented by the main app
       // window, not while this Flutter showDialog route is still modal.
       // Presenting it from the loading dialog can leave the native picker
