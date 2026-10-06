@@ -140,7 +140,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         final boundary =
             _boundaryKey.currentContext?.findRenderObject()
                 as RenderRepaintBoundary?;
-        if (boundary == null || boundary.layer == null) {
+        if (boundary == null) {
           throw StateError('No se pudo preparar el estado de cuenta.');
         }
 
@@ -180,11 +180,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
           data.lengthInBytes,
         );
         final fileName =
-            'estado_cuenta_' +
-            _safeFileName(widget.clientName) +
-            '_' +
-            (i + 1).toString() +
-            '.png';
+            'estado_cuenta_\${_safeFileName(widget.clientName)}_\${i + 1}.png';
 
         if (mounted) {
           setState(() => _status = 'Preparando archivo ${i + 1} de ${_pages.length}');
@@ -229,7 +225,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       final shareResult = await SharePlus.instance.share(
         ShareParams(
           files: files,
-          subject: 'Estado de cuenta - ' + widget.clientName,
+          subject: 'Estado de cuenta - \${widget.clientName}',
           sharePositionOrigin: origin,
           fileNameOverrides: files
               .map((file) => file.name)
@@ -250,9 +246,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
             widget.hostContext,
             _pages.length == 1
                 ? 'El estado de cuenta se compartió correctamente.'
-                : 'Se compartieron ' +
-                    _pages.length.toString() +
-                    ' imágenes del estado de cuenta.',
+                : 'Se compartieron \${_pages.length} imágenes del estado de cuenta.',
             title: 'Estado de cuenta compartido',
             type: AppAlertType.success,
           );
@@ -281,8 +275,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       Navigator.of(context).pop();
       AppAlert.show(
         context,
-        'No se pudo generar o compartir el estado de cuenta: ' +
-            error.toString(),
+        'No se pudo generar o compartir el estado de cuenta: \$error',
         title: 'Error al generar estado de cuenta',
         type: AppAlertType.error,
       );
@@ -308,14 +301,14 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.dialogRadius), border: Border.all(color: AppColors.border)),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(strokeWidth: 2.5),
                 SizedBox(height: 16),
                 Text('Preparando estado de cuenta', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 SizedBox(height: 6),
-                Text('$_status', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(_status, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ),
