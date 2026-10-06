@@ -126,10 +126,12 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       if (!mounted) {
         return;
       }
-      await Share.shareXFiles(
-        files,
-        subject: 'Estado de cuenta - ${widget.clientName}',
-        sharePositionOrigin: origin,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: files,
+          subject: 'Estado de cuenta - ${widget.clientName}',
+          sharePositionOrigin: origin,
+        ),
       );
       if (!mounted) {
         return;
