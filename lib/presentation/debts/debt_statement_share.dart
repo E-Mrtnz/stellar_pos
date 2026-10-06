@@ -180,7 +180,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
           data.lengthInBytes,
         );
         final fileName =
-            'estado_cuenta_\${_safeFileName(widget.clientName)}_\${i + 1}.png';
+            'estado_cuenta_${_safeFileName(widget.clientName)}_${i + 1}.png';
 
         if (mounted) {
           setState(() => _status = 'Preparando archivo ${i + 1} de ${_pages.length}');
@@ -225,7 +225,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       final shareResult = await SharePlus.instance.share(
         ShareParams(
           files: files,
-          subject: 'Estado de cuenta - \${widget.clientName}',
+          subject: 'Estado de cuenta - ${widget.clientName}',
           sharePositionOrigin: origin,
           fileNameOverrides: files
               .map((file) => file.name)
@@ -246,7 +246,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
             widget.hostContext,
             _pages.length == 1
                 ? 'El estado de cuenta se compartió correctamente.'
-                : 'Se compartieron \${_pages.length} imágenes del estado de cuenta.',
+                : 'Se compartieron ${_pages.length} imágenes del estado de cuenta.',
             title: 'Estado de cuenta compartido',
             type: AppAlertType.success,
           );
@@ -275,7 +275,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       Navigator.of(context).pop();
       AppAlert.show(
         context,
-        'No se pudo generar o compartir el estado de cuenta: \$error',
+        'No se pudo generar o compartir el estado de cuenta: $error',
         title: 'Error al generar estado de cuenta',
         type: AppAlertType.error,
       );
