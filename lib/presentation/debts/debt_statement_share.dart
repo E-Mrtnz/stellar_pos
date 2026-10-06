@@ -26,16 +26,27 @@ class DebtStatementShare {
     await showDialog<void>(
       context: context,
       barrierColor: AppColors.overlayBackground,
-      builder: (_) => _DebtStatementShareDialog(clientName: clientName, sales: creditSales, account: account),
+      builder: (_) => _DebtStatementShareDialog(
+        hostContext: context,
+        clientName: clientName,
+        sales: creditSales,
+        account: account,
+      ),
     );
   }
 }
 
 class _DebtStatementShareDialog extends StatefulWidget {
+  final BuildContext hostContext;
   final String clientName;
   final List<SaleRecord> sales;
   final DebtAccount account;
-  const _DebtStatementShareDialog({required this.clientName, required this.sales, required this.account});
+  const _DebtStatementShareDialog({
+    required this.hostContext,
+    required this.clientName,
+    required this.sales,
+    required this.account,
+  });
   @override State<_DebtStatementShareDialog> createState() => _DebtStatementShareDialogState();
 }
 
@@ -156,10 +167,24 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         return;
       }
 
-      final originBox = context.findRenderObject() as RenderBox?;
-      final origin = originBox == null
-          ? null
-          : originBox.localToGlobal(Offset.zero) & originBox.size;
+      // The native macOS share picker must be presented by the main app
+      // window, not while this Flutter showDialog route is still modal.
+      // Presenting it from the loading dialog can leave the native picker
+      // visible without its sharing options and keep this dialog spinning.
+      final hostBox = widget.hostContext.findRenderObject() as RenderBox?;
+      final origin = hostBox != null && hostBox.hasSize
+          ? Rect.fromCenter(
+              center: hostBox.localToGlobal(
+                Offset(hostBox.size.width / 2, hostBox.size.height / 2),
+              ),
+              width: 1,
+              height: 1,
+            )
+          : Rect.fromLTWH(0, 0, 1, 1);
+
+      // Close the Flutter loading dialog before invoking the native share UI.
+      Navigator.of(context).pop();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
 
       final shareResult = await SharePlus.instance.share(
         ShareParams(
@@ -173,22 +198,16 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
         ),
       );
 
-      if (!mounted) {
-        await cleanupDebtStatementShareFiles(files);
-        return;
-      }
-
-      Navigator.of(context).pop();
       await cleanupDebtStatementShareFiles(files);
 
-      if (!mounted) {
+      if (!widget.hostContext.mounted) {
         return;
       }
 
       switch (shareResult.status) {
         case ShareResultStatus.success:
           AppAlert.show(
-            context,
+            widget.hostContext,
             _pages.length == 1
                 ? 'El estado de cuenta se compartió correctamente.'
                 : 'Se compartieron ' +
@@ -199,14 +218,14 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
           );
         case ShareResultStatus.dismissed:
           AppAlert.show(
-            context,
+            widget.hostContext,
             'El estado de cuenta se generó correctamente, pero no se seleccionó una aplicación para compartirlo.',
             title: 'Compartir cancelado',
             type: AppAlertType.info,
           );
         case ShareResultStatus.unavailable:
           AppAlert.show(
-            context,
+            widget.hostContext,
             'El estado de cuenta se generó correctamente. El sistema no informó qué aplicación recibió el contenido.',
             title: 'Estado de cuenta generado',
             type: AppAlertType.success,
