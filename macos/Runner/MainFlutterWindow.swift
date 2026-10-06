@@ -8,11 +8,7 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
   private var completion: ((String) -> Void)?
   private var completed = false
 
-  func present(
-    items: [URL],
-    in window: NSWindow,
-    completion: @escaping (String) -> Void
-  ) {
+  func present(items: [URL], in window: NSWindow, completion: @escaping (String) -> Void) {
     self.completion = completion
 
     let picker = NSSharingServicePicker(items: items)
@@ -44,7 +40,7 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
     sharingServicesForItems items: [Any],
     proposedSharingServices: [NSSharingService]
   ) -> [NSSharingService] {
-    return proposedSharingServices
+    proposedSharingServices
   }
 
   func sharingServicePicker(
@@ -60,7 +56,7 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
     _ sharingServicePicker: NSSharingServicePicker,
     delegateFor service: NSSharingService
   ) -> NSSharingServiceDelegate? {
-    return self
+    self
   }
 
   func sharingService(
@@ -94,30 +90,68 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
       callback?(status)
     }
   }
+
+  func finishForReplacement() {
+    picker?.close()
+    completion = nil
+    picker = nil
+    completed = true
+  }
 }
 
-class MainFlutterWindow: NSWindow {
-  private var debtStatementShareCoordinator: DebtStatementShareCoordinator?
-  private var debtStatementShareChannel: FlutterMethodChannel?
+private final class StellarPosDebtStatementSharePlugin: NSObject, FlutterPlugin {
+  private weak var window: MainFlutterWindow?
+  private var coordinator: DebtStatementShareCoordinator?
 
-  override func awakeFromNib() {
-    let flutterViewController = FlutterViewController()
-    let windowFrame = self.frame
-    self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
+  init(window: MainFlutterWindow) {
+    self.window = window
+    super.init()
+  }
 
-    RegisterGeneratedPlugins(registry: flutterViewController)
+  static func register(with registrar: FlutterPluginRegistrar) {
+    // Registration is performed explicitly by MainFlutterWindow for its
+    // FlutterViewController/engine so this plugin is attached to the exact
+    // messenger used by the running Dart isolate.
+  }
 
-    let channel = FlutterMethodChannel(
-      name: debtStatementShareChannelName,
-      binaryMessenger: flutterViewController.engine.binaryMessenger
-    )
-    // Retain the channel for the lifetime of the Flutter window. This is
-    // especially important on macOS because the Runner owns the native
-    // platform-channel endpoint.
-    debtStatementShareChannel = channel
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard call.method == "shareFiles" else {
+      result(FlutterMethodNotImplemented)
+      return
+    }
 
-    channel.setMethodCallHandler { [weak self] call, result in
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let paths = arguments["paths"] as? [String],
+      !paths.isEmpty
+    else {
+      result(
+        FlutterError(
+          code: "INVALID_ARGUMENTS",
+          message: "No se recibieron archivos para compartir.",
+          details: nil
+        )
+      )
+      return
+    }
+
+    let urls = paths.map { URL(fileURLWithPath: $0) }
+    let missingFiles = urls.filter {
+      !FileManager.default.fileExists(atPath: $0.path)
+    }
+
+    guard missingFiles.isEmpty else {
+      result(
+        FlutterError(
+          code: "FILE_NOT_FOUND",
+          message: "Uno o más archivos temporales no están disponibles.",
+          details: missingFiles.map(\.path)
+        )
+      )
+      return
+    }
+
+    DispatchQueue.main.async { [weak self] in
       guard let self else {
         result(
           FlutterError(
@@ -129,64 +163,61 @@ class MainFlutterWindow: NSWindow {
         return
       }
 
-      guard call.method == "shareFiles" else {
-        result(FlutterMethodNotImplemented)
-        return
-      }
-
       guard
-        let arguments = call.arguments as? [String: Any],
-        let paths = arguments["paths"] as? [String],
-        !paths.isEmpty
+        let window = self.window ?? NSApp.mainWindow ?? NSApp.keyWindow
       else {
         result(
           FlutterError(
-            code: "INVALID_ARGUMENTS",
-            message: "No se recibieron archivos para compartir.",
+            code: "WINDOW_UNAVAILABLE",
+            message: "No se encontró una ventana principal de macOS.",
             details: nil
           )
         )
         return
       }
 
-      let urls = paths.map { URL(fileURLWithPath: $0) }
-      let missingFiles = urls.filter { !FileManager.default.fileExists(atPath: $0.path) }
+      self.coordinator?.finishForReplacement()
 
-      guard missingFiles.isEmpty else {
-        result(
-          FlutterError(
-            code: "FILE_NOT_FOUND",
-            message: "Uno o más archivos temporales no están disponibles.",
-            details: missingFiles.map(\.path)
-          )
-        )
-        return
-      }
+      let coordinator = DebtStatementShareCoordinator()
+      self.coordinator = coordinator
 
-      DispatchQueue.main.async {
-        self.debtStatementShareCoordinator?.finishForReplacement()
-
-        let coordinator = DebtStatementShareCoordinator()
-        self.debtStatementShareCoordinator = coordinator
-
-        coordinator.present(items: urls, in: self) { status in
-          result(status)
-          if self.debtStatementShareCoordinator === coordinator {
-            self.debtStatementShareCoordinator = nil
-          }
+      coordinator.present(items: urls, in: window) { [weak self] status in
+        result(status)
+        if self?.coordinator === coordinator {
+          self?.coordinator = nil
         }
       }
     }
-
-    super.awakeFromNib()
   }
 }
 
-private extension DebtStatementShareCoordinator {
-  func finishForReplacement() {
-    picker?.close()
-    completion = nil
-    picker = nil
-    completed = true
+class MainFlutterWindow: NSWindow {
+  private var debtStatementSharePlugin: StellarPosDebtStatementSharePlugin?
+
+  override func awakeFromNib() {
+    let flutterViewController = FlutterViewController()
+    let windowFrame = self.frame
+
+    self.contentViewController = flutterViewController
+    self.setFrame(windowFrame, display: true)
+
+    RegisterGeneratedPlugins(registry: flutterViewController.engine)
+
+    // Register the sharing feature through Flutter's native macOS plugin
+    // registrar. This attaches the method-call delegate to the exact
+    // FlutterBinaryMessenger used by this window's Flutter engine.
+    let registrar = flutterViewController.registrar(
+      forPlugin: "StellarPosDebtStatementSharePlugin"
+    )
+    let channel = FlutterMethodChannel(
+      name: debtStatementShareChannelName,
+      binaryMessenger: registrar.messenger
+    )
+    let plugin = StellarPosDebtStatementSharePlugin(window: self)
+
+    registrar.addMethodCallDelegate(plugin, channel: channel)
+    debtStatementSharePlugin = plugin
+
+    super.awakeFromNib()
   }
 }
