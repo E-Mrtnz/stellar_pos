@@ -98,6 +98,7 @@ private final class DebtStatementShareCoordinator: NSObject, NSSharingServicePic
 
 class MainFlutterWindow: NSWindow {
   private var debtStatementShareCoordinator: DebtStatementShareCoordinator?
+  private var debtStatementShareChannel: FlutterMethodChannel?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -111,6 +112,10 @@ class MainFlutterWindow: NSWindow {
       name: debtStatementShareChannelName,
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+    // Retain the channel for the lifetime of the Flutter window. This is
+    // especially important on macOS because the Runner owns the native
+    // platform-channel endpoint.
+    debtStatementShareChannel = channel
 
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self else {
