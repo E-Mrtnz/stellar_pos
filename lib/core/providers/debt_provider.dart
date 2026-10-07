@@ -41,6 +41,10 @@ class DebtProvider extends ChangeNotifier {
     for (final entry in grouped.entries) {
       final sales = entry.value;
       final paidBySale = _allocatedPaidBySale(sales, entry.key);
+      // The account totals represent the complete credit history for the
+      // client. Do not recalculate "debt" from only still-open sales, because
+      // that makes payments which fully settle an older sale disappear from
+      // the "Total abonado" figure.
       final totalDebt = sales.fold<double>(
         0,
         (sum, sale) => sum + sale.effectiveTotal,
@@ -138,21 +142,11 @@ class DebtProvider extends ChangeNotifier {
     }
 
     final paidBySale = _allocatedPaidBySale(matching, clientId);
-    final openSales = matching
-        .where(
-          (sale) =>
-              (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
-                  .clamp(0, double.infinity)
-                  .toDouble() >
-              0.005,
-        )
-        .toList(growable: false);
-
-    final totalDebt = openSales.fold<double>(
+    final totalDebt = matching.fold<double>(
       0,
       (sum, sale) => sum + sale.effectiveTotal,
     );
-    final totalPaid = openSales.fold<double>(
+    final totalPaid = matching.fold<double>(
       0,
       (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
     );
