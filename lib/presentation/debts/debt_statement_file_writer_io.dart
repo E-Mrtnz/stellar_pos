@@ -1,15 +1,18 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 Future<XFile> createDebtStatementShareFile(
   Uint8List bytes,
   String fileName,
 ) async {
-  // Use Dart's native system temp directory for native platforms. This
-  // avoids an extra platform-channel dependency in the critical share path.
-  final directory = await Directory.systemTemp.createTemp(
+  // Never use Directory.systemTemp directly on macOS. In the sandboxed
+  // application it can resolve to /tmp, which may be read-only.
+  // path_provider returns the app's writable temporary/cache location.
+  final temporaryDirectory = await getTemporaryDirectory();
+  final directory = await temporaryDirectory.createTemp(
     'stellar_pos_debt_statement_',
   );
 
@@ -38,8 +41,7 @@ Future<void> cleanupDebtStatementShareFiles(List<XFile> files) async {
         await localFile.delete();
       }
 
-      if (parent.path != Directory.systemTemp.path &&
-          await parent.exists()) {
+      if (await parent.exists()) {
         await parent.delete();
       }
     } catch (_) {
