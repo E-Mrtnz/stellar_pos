@@ -516,7 +516,7 @@ class SaleDetailDialog extends StatelessWidget {
                       if (item.isPrepared) ...[
                         const SizedBox(height: 2),
                         Text(
-                          'Preparada \\${_money(item.preparationExtra)}',
+                          'Costo adicional: \\${_money(item.preparationExtra)}',
                           style: const TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,
