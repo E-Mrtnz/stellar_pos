@@ -182,7 +182,8 @@ class _SalesLayoutState extends State<SalesLayout> {
     // A true opening payment is created at exactly the sale timestamp.
     // Payments made later must remain visible even if an older record was
     // incorrectly marked as an initial payment by a previous version.
-    return movement.createdAt == sale.createdAt;
+    return movement.createdAt == sale.createdAt &&
+        movement.amount <= sale.effectiveCollected + 0.005;
   }
 
   List<DebtMovement> _filterPayments(
