@@ -869,7 +869,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Vender producto preparado',
+                  'Vender producto con costo adicional',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -907,7 +907,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
               children: [
                 const Expanded(
                   child: Text(
-                    'Activar venta preparada',
+                    'Activar costo adicional',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -929,7 +929,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                   flex: 2,
                   child: _field(
                     _preparationExtraController,
-                    'Extra por preparación',
+                    'Costo adicional',
                     prefix: '\$ ',
                     invalid: _invalid('preparationExtra'),
                     changed: (_) => _clearError('preparationExtra'),
