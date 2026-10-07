@@ -80,7 +80,7 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
     // date/table headers and product metadata. The last page also reserves
     // space for the totals section. When the capacity is reached, the next
     // items continue on a new image.
-    const maxRowsPerPage = 8;
+    const maxRowsPerPage = 7;
     final pages = <_StatementPage>[];
     var current = <_StatementGroup>[];
     var rows = 0;
