@@ -41,10 +41,6 @@ class DebtProvider extends ChangeNotifier {
     for (final entry in grouped.entries) {
       final sales = entry.value;
       final paidBySale = _allocatedPaidBySale(sales, entry.key);
-      // The account totals represent the complete credit history for the
-      // client. Do not recalculate "debt" from only still-open sales, because
-      // that makes payments which fully settle an older sale disappear from
-      // the "Total abonado" figure.
       final totalDebt = sales.fold<double>(
         0,
         (sum, sale) => sum + sale.effectiveTotal,
@@ -79,7 +75,7 @@ class DebtProvider extends ChangeNotifier {
               reference: sale.ticketNumber,
             ),
           ),
-      ..._groupPaymentMovements(_payments),
+      ..._groupPaymentMovements(_validPayments.toList(growable: false)),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return List.unmodifiable(result);
   }
@@ -96,8 +92,8 @@ class DebtProvider extends ChangeNotifier {
       // records share the same client and timestamp; present them as the
       // single cash movement the customer actually made.
       final key =
-          '$payment.clientId|$payment.createdAt.microsecondsSinceEpoch|'
-          '$payment.isInitialPayment';
+          '${payment.clientId}|${payment.createdAt.microsecondsSinceEpoch}|'
+          '${payment.isInitialPayment}';
       final existing = grouped[key];
       if (existing == null) {
         grouped[key] = payment;
@@ -142,11 +138,21 @@ class DebtProvider extends ChangeNotifier {
     }
 
     final paidBySale = _allocatedPaidBySale(matching, clientId);
-    final totalDebt = matching.fold<double>(
+    final openSales = matching
+        .where(
+          (sale) =>
+              (sale.effectiveTotal - (paidBySale[sale.id] ?? 0))
+                  .clamp(0, double.infinity)
+                  .toDouble() >
+              0.005,
+        )
+        .toList(growable: false);
+
+    final totalDebt = openSales.fold<double>(
       0,
       (sum, sale) => sum + sale.effectiveTotal,
     );
-    final totalPaid = matching.fold<double>(
+    final totalPaid = openSales.fold<double>(
       0,
       (sum, sale) => sum + (paidBySale[sale.id] ?? 0),
     );
