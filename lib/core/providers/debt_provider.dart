@@ -358,10 +358,10 @@ class DebtProvider extends ChangeNotifier {
     return true;
   }
 
-  bool updatePayment({
+  Future<bool> updatePayment({
     required String paymentId,
     required double amount,
-  }) {
+  }) async {
     if (amount <= 0) {
       return false;
     }
@@ -398,12 +398,17 @@ class DebtProvider extends ChangeNotifier {
       metadata: current.metadata.touch(),
     );
     _payments[index] = updated;
-    unawaited(_movementRepository?.save(updated));
+    try {
+      await _movementRepository?.save(updated);
+    } catch (_) {
+      _payments[index] = current;
+      return false;
+    }
     notifyListeners();
     return true;
   }
 
-  bool deletePayment(String paymentId) {
+  Future<bool> deletePayment(String paymentId) async {
     final index = _payments.indexWhere((payment) => payment.id == paymentId);
     if (index < 0) {
       return false;
@@ -416,7 +421,12 @@ class DebtProvider extends ChangeNotifier {
     }
 
     _payments.removeAt(index);
-    unawaited(_movementRepository?.delete(payment.id));
+    try {
+      await _movementRepository?.delete(payment.id);
+    } catch (_) {
+      _payments.insert(index, payment);
+      return false;
+    }
     notifyListeners();
     return true;
   }
