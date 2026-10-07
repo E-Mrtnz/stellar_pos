@@ -157,44 +157,12 @@ class _SalesLayoutState extends State<SalesLayout> {
     }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  bool _isOpeningPayment(
-    DebtMovement movement,
-    List<SaleRecord> sales,
-  ) {
-    if (!movement.isInitialPayment) {
-      return false;
-    }
-    final reference = movement.reference?.trim();
-    if (reference == null || reference.isEmpty) {
-      // Legacy initial-payment records without a sale reference are kept
-      // hidden from Sales because their amount is already part of the sale.
-      return true;
-    }
-    final sale = sales.cast<SaleRecord?>().firstWhere(
-          (item) => item?.id == reference,
-          orElse: () => null,
-        );
-    if (sale == null) {
-      // If the referenced sale no longer exists, the movement must not
-      // silently disappear from the financial history.
-      return false;
-    }
-    // A true opening payment is created at exactly the sale timestamp.
-    // Payments made later must remain visible even if an older record was
-    // incorrectly marked as an initial payment by a previous version.
-    return movement.createdAt == sale.createdAt &&
-        movement.amount <= sale.effectiveCollected + 0.005;
-  }
-
-  List<DebtMovement> _filterPayments(
-    List<DebtMovement> movements,
-    List<SaleRecord> sales,
-  ) {
+  List<DebtMovement> _filterPayments(List<DebtMovement> movements) {
     final range = _range();
     final query = _searchController.text.trim().toLowerCase();
     return movements.where((movement) {
       if (movement.type != DebtMovementType.payment ||
-          _isOpeningPayment(movement, sales)) {
+          movement.isInitialPayment) {
         return false;
       }
       if (movement.createdAt.isBefore(range.start) ||
@@ -323,7 +291,7 @@ class _SalesLayoutState extends State<SalesLayout> {
         .where(
           (movement) =>
               movement.type == DebtMovementType.payment &&
-              !_isOpeningPayment(movement, sales) &&
+              !movement.isInitialPayment &&
               !movement.createdAt.isBefore(range.start) &&
               movement.createdAt.isBefore(range.end),
         )
@@ -367,10 +335,7 @@ class _SalesLayoutState extends State<SalesLayout> {
   ) => Consumer2<SalesProvider, DebtProvider>(
     builder: (context, salesProvider, debtProvider, _) {
       final sales = _filterSales(salesProvider.sales);
-      final payments = _filterPayments(
-        debtProvider.movements,
-        salesProvider.sales,
-      );
+      final payments = _filterPayments(debtProvider.movements);
       final history = <_SalesHistoryEntry>[
         ...sales.map(_SalesHistoryEntry.sale),
         ...payments.map(_SalesHistoryEntry.payment),
