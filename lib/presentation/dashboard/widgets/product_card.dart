@@ -186,7 +186,7 @@ class ProductCard extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            'Preparada',
+            'Costo adicional',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
