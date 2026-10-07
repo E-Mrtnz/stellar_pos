@@ -75,11 +75,12 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       grouped.putIfAbsent(day, () => []).addAll(sale.items);
     }
     final dates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-    // Keep a conservative row budget because the page also contains date
-    // headers, table headers, product metadata, and (on the last page) totals.
-    // Seven rows leaves enough vertical headroom inside the fixed 1800px canvas
-    // even when a product name wraps to two lines.
-    const maxRowsPerPage = 7;
+    // The 1800px canvas has a fixed amount of vertical space. Eight product
+    // rows is the safe capacity for the current statement layout, including
+    // date/table headers and product metadata. The last page also reserves
+    // space for the totals section. When the capacity is reached, the next
+    // items continue on a new image.
+    const maxRowsPerPage = 8;
     final pages = <_StatementPage>[];
     var current = <_StatementGroup>[];
     var rows = 0;
