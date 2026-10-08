@@ -1198,7 +1198,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                 onClearCart: _clearCart,
                 ticketNumber: salesProvider.nextTicketNumberPreview,
               )
-            : _MobileHomeOverview(
+            : MobileHomeOverview(
                 salesCount: todaySales.length,
                 todayTotal: todayTotal,
                 productCount: productProvider.products.length,
