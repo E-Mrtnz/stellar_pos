@@ -527,6 +527,8 @@ class MobileBarcodeScannerView extends StatefulWidget {
 class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   late final MobileScannerController _controller;
   late Map<String, int> _scannedQuantities;
+  bool _scanLocked = false;
+  Timer? _scanCooldownTimer;
 
   @override
   void initState() {
@@ -539,6 +541,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
 
   @override
   void dispose() {
+    _scanCooldownTimer?.cancel();
     unawaited(_controller.dispose());
     super.dispose();
   }
@@ -559,10 +562,17 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   }
 
   void _detect(BarcodeCapture capture) {
+    if (_scanLocked) {
+      return;
+    }
+
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue?.trim();
       if (value == null || value.isEmpty) continue;
 
+      // A barcode can remain visible for dozens of camera frames. Treat one
+      // continuous view as a single scan so the cart never receives a burst.
+      _scanLocked = true;
       final productId = widget.onBarcodeDetected(value);
       if (productId == null) {
         _playErrorFeedback();
@@ -573,6 +583,15 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
         });
         _playSuccessFeedback();
       }
+
+      // Give the user time to remove/move the product before another scan is
+      // accepted. This prevents the same barcode from being added repeatedly.
+      _scanCooldownTimer?.cancel();
+      _scanCooldownTimer = Timer(const Duration(milliseconds: 1200), () {
+        if (mounted) {
+          _scanLocked = false;
+        }
+      });
       break;
     }
   }
