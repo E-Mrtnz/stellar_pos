@@ -310,11 +310,18 @@ class ProductProvider extends ChangeNotifier {
   String _canonicalBarcode(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return '';
-    final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isNotEmpty && digits.length == trimmed.replaceAll(RegExp(r'[\s-]'), '').length) {
+
+    if (RegExp(r'^[0-9\\s-]+
+
+  String _normalizeCatalogValue(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+}
+).hasMatch(trimmed)) {
+      final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
       return digits.replaceFirst(RegExp(r'^0+(?=\\d)'), '');
     }
-    return trimmed.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+
+    return trimmed.replaceAll(RegExp(r'\\s+'), '').toUpperCase();
   }
 
   String _normalizeCatalogValue(String value) =>
