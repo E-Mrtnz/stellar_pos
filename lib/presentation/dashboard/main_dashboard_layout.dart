@@ -39,6 +39,7 @@ class MainDashboardLayout extends StatefulWidget {
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
   bool _mobileSalesVisible = true;
+  bool _mobileMoreVisible = false;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
   String _searchQuery = '';
@@ -1100,41 +1101,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   Widget _buildMobileShell(BuildContext context) {
-    if (_selectedNavIndex != AppNavigation.home) {
-      return Scaffold(
-        backgroundColor: AppColors.inputBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () =>
-                          setState(() => _selectedNavIndex = AppNavigation.home),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                    ),
-                    Expanded(
-                      child: Text(
-                        _mobileSectionTitle,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(child: _buildMainContent()),
-            ],
-          ),
-        ),
-      );
-    }
-
     final productProvider = context.watch<ProductProvider>();
     final catalog = context.watch<CatalogProvider>();
     final salesProvider = context.watch<SalesProvider>();
@@ -1149,108 +1115,140 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       (sum, sale) => sum + sale.effectiveTotal,
     );
 
+    final isHome = _selectedNavIndex == AppNavigation.home;
+    final isStats = _selectedNavIndex == AppNavigation.stats;
+
+    Widget content;
+    if (_mobileMoreVisible) {
+      content = MobileMoreView(
+        selectedIndex: _selectedNavIndex,
+        onSelect: (index) => setState(() {
+          _selectedNavIndex = index;
+          _mobileMoreVisible = false;
+          _mobileSalesVisible = index == AppNavigation.electronicBalance;
+        }),
+      );
+    } else if (isHome) {
+      content = _mobileSalesVisible
+          ? MobilePosLayout(
+              products: productProvider.productMaps,
+              isLoading: productProvider.isLoading,
+              cartQuantities: _combinedCartQuantities,
+              preparedProductIds: _preparedProductIds,
+              tags: catalog.tags,
+              selectedTagIndex: _selectedTagIndex,
+              onTagSelected: _onTagChanged,
+              selectedFilter: _selectedFilter,
+              onFilterChanged: _onFilterChanged,
+              onAddToCart: _addToCart,
+              onRemoveFromCart: _removeFromCart,
+              onPreparedChanged: _togglePrepared,
+              electronicBalanceSelection: _electronicBalanceSelection,
+              searchQuery: _searchQuery,
+              onSearchChanged: (value) =>
+                  setState(() => _searchQuery = value),
+              total: _total,
+              onCreateSale: _createSale,
+              onBarcodeDetected: _handleScannedBarcode,
+              selectedPaymentMethod: _selectedPaymentMethod,
+              onPaymentMethodChanged: (value) =>
+                  setState(() => _selectedPaymentMethod = value),
+              selectedDebtor: _selectedDebtor,
+              debtorsList:
+                  catalog.clients.map((client) => client.name).toList(),
+              onDebtorChanged: (value) =>
+                  setState(() => _selectedDebtor = value),
+              discountAmountController: _discountAmountController,
+              discountPercentController: _discountPercentController,
+              cashReceivedController: _cashReceivedController,
+              onDiscountAmountChanged: _onDiscountAmountChanged,
+              onDiscountPercentChanged: _onDiscountPercentChanged,
+              onCashReceivedChanged: (_) => setState(() {}),
+              subtotal: _subtotal,
+              cardFeeAmount: _cardFeeAmount,
+              change: _change,
+              onDecrementQuantity: _decrementQuantity,
+              onQuantityChanged: _setCartQuantity,
+              onRemoveCartItem: _removeFromCart,
+              onClearCart: _clearCart,
+              ticketNumber: salesProvider.nextTicketNumberPreview,
+            )
+          : MobileHomeOverview(
+              salesCount: todaySales.length,
+              todayTotal: todayTotal,
+              productCount: productProvider.products.length,
+              clientCount: catalog.clients.length,
+              onSales: () => setState(() => _mobileSalesVisible = true),
+            );
+    } else {
+      content = Column(
+        children: [
+          MobileSectionHeader(title: _mobileSectionTitle),
+          Expanded(
+            child: isStats
+                ? _buildMainContent()
+                : MobileLegacySectionViewport(child: _buildMainContent()),
+          ),
+        ],
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
-        child: _mobileSalesVisible
-            ? MobilePosLayout(
-                products: productProvider.productMaps,
-                isLoading: productProvider.isLoading,
-                cartQuantities: _combinedCartQuantities,
-                preparedProductIds: _preparedProductIds,
-                tags: catalog.tags,
-                selectedTagIndex: _selectedTagIndex,
-                onTagSelected: _onTagChanged,
-                selectedFilter: _selectedFilter,
-                onFilterChanged: _onFilterChanged,
-                onAddToCart: _addToCart,
-                onRemoveFromCart: _removeFromCart,
-                onPreparedChanged: _togglePrepared,
-                electronicBalanceSelection: _electronicBalanceSelection,
-                searchQuery: _searchQuery,
-                onSearchChanged: (value) =>
-                    setState(() => _searchQuery = value),
-                total: _total,
-                onCreateSale: _createSale,
-                onBack: () => setState(() => _mobileSalesVisible = false),
-                onMenu: _showMobileMenu,
-                onBarcodeDetected: _handleScannedBarcode,
-                selectedPaymentMethod: _selectedPaymentMethod,
-                onPaymentMethodChanged: (value) =>
-                    setState(() => _selectedPaymentMethod = value),
-                selectedDebtor: _selectedDebtor,
-                debtorsList:
-                    catalog.clients.map((client) => client.name).toList(),
-                onDebtorChanged: (value) =>
-                    setState(() => _selectedDebtor = value),
-                discountAmountController: _discountAmountController,
-                discountPercentController: _discountPercentController,
-                cashReceivedController: _cashReceivedController,
-                onDiscountAmountChanged: _onDiscountAmountChanged,
-                onDiscountPercentChanged: _onDiscountPercentChanged,
-                onCashReceivedChanged: (_) => setState(() {}),
-                subtotal: _subtotal,
-                cardFeeAmount: _cardFeeAmount,
-                change: _change,
-                onDecrementQuantity: _decrementQuantity,
-                onQuantityChanged: _setCartQuantity,
-                onRemoveCartItem: _removeFromCart,
-                onClearCart: _clearCart,
-                ticketNumber: salesProvider.nextTicketNumberPreview,
-              )
-            : MobileHomeOverview(
-                salesCount: todaySales.length,
-                todayTotal: todayTotal,
-                productCount: productProvider.products.length,
-                clientCount: catalog.clients.length,
-                onSales: () => setState(() => _mobileSalesVisible = true),
-                onMenu: _showMobileMenu,
-              ),
+        maintainBottomViewPadding: true,
+        child: content,
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'mobile-sales',
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        onPressed: () => setState(() => _mobileSalesVisible = true),
-        child: const Icon(Icons.point_of_sale_rounded),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        height: 68,
-        child: Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _mobileSalesVisible = false),
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.home_outlined),
-                    SizedBox(height: 2),
-                    Text('Inicio'),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 72),
-            Expanded(
-              child: InkWell(
-                onTap: _showMobileMenu,
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.menu_rounded),
-                    SizedBox(height: 2),
-                    Text('Menú'),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _mobileNavigationIndex,
+        onDestinationSelected: _onMobileNavigationSelected,
+        height: 72,
+        maintainBottomViewPadding: true,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.point_of_sale_outlined),
+            selectedIcon: Icon(Icons.point_of_sale_rounded),
+            label: 'Ventas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.apps_outlined),
+            selectedIcon: Icon(Icons.apps_rounded),
+            label: 'Más',
+          ),
+        ],
       ),
     );
+  }
+
+  int get _mobileNavigationIndex {
+    if (_mobileMoreVisible) return 2;
+    if (_selectedNavIndex == AppNavigation.electronicBalance ||
+        (_selectedNavIndex == AppNavigation.home && _mobileSalesVisible)) {
+      return 1;
+    }
+    return 0;
+  }
+
+  void _onMobileNavigationSelected(int index) {
+    setState(() {
+      if (index == 0) {
+        _mobileMoreVisible = false;
+        _selectedNavIndex = AppNavigation.home;
+        _mobileSalesVisible = false;
+      } else if (index == 1) {
+        _mobileMoreVisible = false;
+        _selectedNavIndex = AppNavigation.home;
+        _mobileSalesVisible = true;
+      } else {
+        _mobileMoreVisible = true;
+      }
+    });
   }
 
   String get _mobileSectionTitle {
@@ -1274,83 +1272,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
   }
 
-  void _showMobileMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const ListTile(
-              title: Text(
-                'Menú',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-              ),
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Ventas',
-              Icons.receipt_long_outlined,
-              AppNavigation.electronicBalance,
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Cuentas por cobrar',
-              Icons.account_balance_wallet_outlined,
-              AppNavigation.debts,
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Inventario',
-              Icons.inventory_2_outlined,
-              AppNavigation.inventory,
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Compras',
-              Icons.shopping_bag_outlined,
-              AppNavigation.purchases,
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Proveedores',
-              Icons.local_shipping_outlined,
-              AppNavigation.providers,
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Estadísticas',
-              Icons.bar_chart_rounded,
-              AppNavigation.stats,
-            ),
-            _mobileMenuItem(
-              sheetContext,
-              'Ajustes',
-              Icons.settings_outlined,
-              AppNavigation.settings,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _mobileMenuItem(
-    BuildContext sheetContext,
-    String label,
-    IconData icon,
-    int index,
-  ) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(label),
-      onTap: () {
-        Navigator.pop(sheetContext);
-        setState(() => _selectedNavIndex = index);
-      },
-    );
-  }
 
   Widget _buildMainContent() {
     if (_selectedNavIndex == AppNavigation.home) {
