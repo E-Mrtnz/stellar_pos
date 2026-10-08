@@ -1153,6 +1153,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               total: _total,
               onCreateSale: _createSale,
               onBarcodeDetected: _handleScannedBarcode,
+              onDecrementQuantity: _decrementQuantity,
+              onQuantityChanged: _setCartQuantity,
+              onRemoveCartItem: _removeFromCart,
               selectedPaymentMethod: _selectedPaymentMethod,
               onPaymentMethodChanged: (value) =>
                   setState(() => _selectedPaymentMethod = value),
