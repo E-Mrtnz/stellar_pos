@@ -184,7 +184,7 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
             ),
             const Divider(height: 1),
             Expanded(
-              child: SingleChildScrollView(
+              child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: SalesSummaryWithKeypad(
                   cartQuantities: widget.cartQuantities,
