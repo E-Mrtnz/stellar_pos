@@ -45,7 +45,22 @@ class ProductProvider extends ChangeNotifier {
   Product? findByBarcode(String barcode) {
     final normalized = barcode.trim();
     if (normalized.isEmpty) return null;
-    return _productsByBarcode[normalized];
+
+    final exact = _productsByBarcode[normalized];
+    if (exact != null) return exact;
+
+    // Some cameras/readers add separators while the catalog stores the
+    // barcode as plain digits. Only use this normalized fallback after the
+    // exact lookup so existing matching behavior stays unchanged.
+    final canonical = _canonicalBarcode(normalized);
+    if (canonical.isEmpty) return null;
+
+    for (final product in _products) {
+      if (_canonicalBarcode(product.barcode) == canonical) {
+        return product;
+      }
+    }
+    return null;
   }
 
   /// Returns a product only when its barcode is already used by another
@@ -290,6 +305,16 @@ class ProductProvider extends ChangeNotifier {
     if (future != null) {
       unawaited(future.catchError((_) {}));
     }
+  }
+
+  String _canonicalBarcode(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isNotEmpty && digits.length == trimmed.replaceAll(RegExp(r'[\s-]'), '').length) {
+      return digits.replaceFirst(RegExp(r'^0+(?=\\d)'), '');
+    }
+    return trimmed.replaceAll(RegExp(r'\s+'), '').toUpperCase();
   }
 
   String _normalizeCatalogValue(String value) =>
