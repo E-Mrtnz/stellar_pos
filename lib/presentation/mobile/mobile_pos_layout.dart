@@ -231,7 +231,6 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
         builder: (_) => MobileBarcodeScannerView(
           products: widget.products,
           cartQuantities: widget.cartQuantities,
-          total: widget.total,
           onBarcodeDetected: widget.onBarcodeDetected,
           onAddToCart: widget.onAddToCart,
           onDecrementQuantity: widget.onDecrementQuantity,
@@ -506,7 +505,6 @@ class MobileBarcodeScannerView extends StatefulWidget {
   final ValueChanged<String> onDecrementQuantity;
   final void Function(String, int) onQuantityChanged;
   final ValueChanged<String> onRemoveCartItem;
-  final double total;
   final VoidCallback onCreateSale;
 
   const MobileBarcodeScannerView({
@@ -518,7 +516,6 @@ class MobileBarcodeScannerView extends StatefulWidget {
     required this.onDecrementQuantity,
     required this.onQuantityChanged,
     required this.onRemoveCartItem,
-    required this.total,
     required this.onCreateSale,
   });
 
