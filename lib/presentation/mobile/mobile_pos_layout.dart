@@ -51,9 +51,6 @@ class MobilePosLayout extends StatefulWidget {
   final double subtotal;
   final double cardFeeAmount;
   final double change;
-  final ValueChanged<String> onDecrementQuantity;
-  final void Function(String, int) onQuantityChanged;
-  final ValueChanged<String> onRemoveCartItem;
   final VoidCallback onClearCart;
   final String ticketNumber;
 
@@ -91,9 +88,6 @@ class MobilePosLayout extends StatefulWidget {
     required this.subtotal,
     required this.cardFeeAmount,
     required this.change,
-    required this.onDecrementQuantity,
-    required this.onQuantityChanged,
-    required this.onRemoveCartItem,
     required this.onClearCart,
     required this.ticketNumber,
     this.onPreparedChanged,
