@@ -90,7 +90,7 @@ class SalesCartItemTile extends StatelessWidget {
                       ? product['brand']?.toString() ?? ''
                       : product['brand']?.toString().trim().isEmpty ?? true
                           ? unit
-                          : '\${unit} | \${product['brand']}',
+                          : '${unit} | ${product['brand']}',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
@@ -129,7 +129,7 @@ class SalesCartItemTile extends StatelessWidget {
             right: 12,
             bottom: 12,
             child: Text(
-              '\$\${subtotalItem.toStringAsFixed(2)}',
+              '${${subtotalItem.toStringAsFixed(2)}}',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
