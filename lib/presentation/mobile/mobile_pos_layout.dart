@@ -559,6 +559,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
       _lastCode = value;
       _lastScanAt = now;
       widget.onBarcodeDetected(value);
+      if (mounted) setState(() {});
       break;
     }
   }
