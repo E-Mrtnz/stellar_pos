@@ -463,6 +463,7 @@ class _InventoryLayoutState extends State<InventoryLayout> {
   @override
   Widget build(BuildContext context) {
     final productProvider = context.watch<ProductProvider>();
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
     final products = productProvider.productMaps;
     final filteredProducts = _filterProducts(products);
     final totalInvestment = products.fold<double>(
@@ -473,6 +474,10 @@ class _InventoryLayoutState extends State<InventoryLayout> {
       0,
       (total, product) => total + ProductUtils.price(product) * ProductUtils.stock(product),
     );
+
+    if (isMobile) {
+      return _buildMobileInventory(filteredProducts, totalInvestment, totalSales);
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -526,6 +531,190 @@ class _InventoryLayoutState extends State<InventoryLayout> {
             ),
           _buildFloatingActions(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMobileInventory(
+    List<Map<String, dynamic>> products,
+    double investment,
+    double sales,
+  ) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Inventario',
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Nuevo producto',
+                onPressed: _createProduct,
+                icon: const Icon(Icons.add_box_outlined),
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+          ProductSearchBar(
+            onChanged: (value) => setState(() => _searchQuery = value),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _mobileMetric('Productos', products.length.toString(), Icons.inventory_2_outlined)),
+              const SizedBox(width: 8),
+              Expanded(child: _mobileMetric('Inversión', ProductUtils.money(investment), Icons.payments_outlined)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _mobileMetric('Ingreso', ProductUtils.money(sales), Icons.trending_up_rounded)),
+              const SizedBox(width: 8),
+              Expanded(child: _mobileMetric('Ganancia', ProductUtils.money(sales - investment), Icons.account_balance_wallet_outlined)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _createProduct,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nuevo producto'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Importar inventario',
+                onPressed: _isImporting || _isExporting ? null : _importInventory,
+                icon: const Icon(Icons.upload_file_outlined),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Exportar inventario',
+                onPressed: _isImporting || _isExporting ? null : _exportExcel,
+                icon: const Icon(Icons.download_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ProductFilterBar(
+            tags: _tags,
+            selectedFilter: _selectedFilter,
+            onFilterChanged: (filter) => setState(() => _selectedFilter = filter),
+            selectedTagIndex: _selectedTagIndex,
+            onTagSelected: (index) => setState(() => _selectedTagIndex = index),
+          ),
+          const SizedBox(height: 12),
+          if (products.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 70),
+              child: Center(
+                child: Text(
+                  AppStrings.inventoryEmptyMessage,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            )
+          else
+            ...products.map(_mobileProductCard),
+        ],
+      ),
+    );
+  }
+
+  Widget _mobileMetric(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                const SizedBox(height: 2),
+                Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mobileProductCard(Map<String, dynamic> product) {
+    final id = ProductUtils.asString(product['id']);
+    final stock = ProductUtils.stock(product);
+    final minStock = ProductUtils.minStock(product);
+    final stockColor = _getStockColor(stock: stock, minStock: minStock);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Material(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _editProduct(product),
+          onLongPress: () => _duplicateProduct(product),
+          child: Padding(
+            padding: const EdgeInsets.all(11),
+            child: Row(
+              children: [
+                ProductImage(
+                  productId: id,
+                  imageData: ProductUtils.asString(product['imageData']),
+                  width: 58,
+                  height: 58,
+                  fit: BoxFit.contain,
+                  borderRadius: BorderRadius.circular(10),
+                  placeholderIcon: Icons.inventory_2_outlined,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ProductUtils.cleanName(product), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 3),
+                      Text(ProductUtils.unit(product), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      const SizedBox(height: 3),
+                      Text(ProductUtils.money(ProductUtils.price(product)), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: stockColor.withAlpha(18),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: stockColor.withAlpha(80)),
+                  ),
+                  child: Text('$stock', style: TextStyle(fontWeight: FontWeight.w800, color: stockColor)),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
