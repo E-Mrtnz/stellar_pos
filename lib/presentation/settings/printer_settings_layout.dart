@@ -24,31 +24,102 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
     return ChangeNotifierProvider(
       create: (_) => GeneralSettingsProvider(),
       child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.pagePadding),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildMenu(),
-            const SizedBox(width: AppDimensions.productGridSpacing),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
-                  borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: _selectedIndex == 0
-                    ? const _GeneralSettingsContent()
-                    : _selectedIndex == 1
-                    ? const _PrinterContent()
-                    : const DatabaseBackupLayout(),
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        child: MediaQuery.sizeOf(context).width < 600
+            ? _buildMobileSettings()
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildMenu(),
+                  const SizedBox(width: AppDimensions.productGridSpacing),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBackground,
+                        borderRadius: BorderRadius.circular(AppDimensions.largeCardRadius),
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _selectedIndex == 0
+                          ? const _GeneralSettingsContent()
+                          : _selectedIndex == 1
+                          ? const _PrinterContent()
+                          : const DatabaseBackupLayout(),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
+    );
+  }
+
+  Widget _buildMobileSettings() {
+    final titles = const ['General', 'Impresoras', 'Copias de seguridad'];
+    final icons = const [
+      Icons.tune_outlined,
+      Icons.print_outlined,
+      Icons.backup_outlined,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Ajustes',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: titles.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, index) => ChoiceChip(
+              selected: _selectedIndex == index,
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icons[index], size: 17),
+                  const SizedBox(width: 7),
+                  Text(titles[index]),
+                ],
+              ),
+              onSelected: (_) => setState(() => _selectedIndex = index),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: ColoredBox(
+              color: AppColors.cardBackground,
+              child: _selectedIndex == 0
+                  ? const _GeneralSettingsContent()
+                  : _selectedIndex == 1
+                      ? SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 720,
+                            child: _PrinterContent(),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 720,
+                            child: DatabaseBackupLayout(),
+                          ),
+                        ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
