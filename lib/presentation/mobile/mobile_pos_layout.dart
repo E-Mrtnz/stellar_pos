@@ -1030,16 +1030,6 @@ class MobileMoreView extends StatelessWidget {
         index: AppNavigation.electronicBalance,
       ),
       (
-        label: 'Cuentas por cobrar',
-        icon: Icons.account_balance_wallet_outlined,
-        index: AppNavigation.debts,
-      ),
-      (
-        label: 'Inventario',
-        icon: Icons.inventory_2_outlined,
-        index: AppNavigation.inventory,
-      ),
-      (
         label: 'Compras',
         icon: Icons.shopping_bag_outlined,
         index: AppNavigation.purchases,
