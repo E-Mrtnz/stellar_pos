@@ -102,6 +102,10 @@ class _DebtsLayoutState extends State<DebtsLayout> {
     final clients = _filteredClients(catalog.clients, debts, groupedIds);
     final groups = _filteredGroups(groupsProvider.groups, catalog.clients, debts);
 
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return _buildMobileDebts(clients, groups, debts, sales, catalog.clients);
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(children: [
@@ -125,6 +129,146 @@ class _DebtsLayoutState extends State<DebtsLayout> {
           child: const Icon(Icons.person_add_alt_1_outlined, color: Colors.white),
         )),
       ]),
+    );
+  }
+
+  Widget _buildMobileDebts(
+    List<Client> clients,
+    List<ClientGroup> groups,
+    DebtProvider debts,
+    SalesProvider sales,
+    List<Client> allClients,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+      children: [
+        const Text(
+          'Cuentas por cobrar',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _mobileDebtMetric('Deuda pendiente', _money(debts.totalRemaining), Icons.account_balance_wallet_outlined, AppColors.dangerRed),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _mobileDebtMetric('Total abonado', _money(debts.totalPaid), Icons.payments_outlined, AppColors.successGreen)),
+            const SizedBox(width: 8),
+            Expanded(child: _mobileDebtMetric('Clientes', debts.clientsWithDebt.toString(), Icons.people_outline, AppColors.primary)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ProductSearchBar(
+                controller: _searchController,
+                hintText: 'Buscar cliente...',
+                onChanged: (v) => setState(() => _searchQuery = v),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: 'Nuevo cliente',
+              onPressed: _createClient,
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<_DebtFilter>(
+          segments: const [
+            ButtonSegment(value: _DebtFilter.pending, label: Text('Con deuda')),
+            ButtonSegment(value: _DebtFilter.all, label: Text('Todos')),
+            ButtonSegment(value: _DebtFilter.paid, label: Text('Pagados')),
+          ],
+          selected: {_filter},
+          onSelectionChanged: (value) => setState(() => _filter = value.first),
+        ),
+        const SizedBox(height: 12),
+        if (clients.isEmpty && groups.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 60),
+            child: Center(
+              child: Text(
+                'No hay clientes o grupos que coincidan con el filtro.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          )
+        else ...[
+          ...groups.map((group) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _groupCard(group, allClients, debts, sales),
+              )),
+          ...clients.map((client) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _clientCard(client, debts, sales),
+              )),
+        ],
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _createGroup,
+                icon: const Icon(Icons.groups_outlined),
+                label: const Text('Nuevo grupo'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'Historial de movimientos',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 430,
+          child: _historyPanel(debts),
+        ),
+      ],
+    );
+  }
+
+  Widget _mobileDebtMetric(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                const SizedBox(height: 2),
+                Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
