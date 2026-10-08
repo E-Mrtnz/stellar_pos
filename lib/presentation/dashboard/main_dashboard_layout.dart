@@ -118,6 +118,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   String? _handleScannedBarcode(String barcode) {
     final product = context.read<ProductProvider>().findByBarcode(barcode);
     if (product != null) {
+      _productNotFoundTimer?.cancel();
+      _productNotFoundOverlay?.remove();
+      _productNotFoundOverlay = null;
       _addToCart(product.id);
       return product.id;
     }
