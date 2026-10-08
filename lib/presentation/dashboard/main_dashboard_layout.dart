@@ -115,13 +115,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return KeyEventResult.ignored;
   }
 
-  void _handleScannedBarcode(String barcode) {
+  String? _handleScannedBarcode(String barcode) {
     final product = context.read<ProductProvider>().findByBarcode(barcode);
     if (product != null) {
       _addToCart(product.id);
-      return;
+      return product.id;
     }
     _showProductNotFoundAlert();
+    return null;
   }
 
   void _showProductNotFoundAlert() {
@@ -1149,6 +1150,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               total: _total,
               onCreateSale: _createSale,
               onBarcodeDetected: _handleScannedBarcode,
+              onAddToCart: _addToCart,
+              onDecrementQuantity: _decrementQuantity,
+              onQuantityChanged: _setCartQuantity,
+              onRemoveCartItem: _removeFromCart,
               selectedPaymentMethod: _selectedPaymentMethod,
               onPaymentMethodChanged: (value) =>
                   setState(() => _selectedPaymentMethod = value),
