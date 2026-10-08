@@ -63,6 +63,9 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
   @override
   Widget build(BuildContext context) {
     final routes = context.watch<ProvidersProvider>().byType(_selectedType);
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return _buildMobileProviders(routes);
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -81,6 +84,135 @@ class _ProvidersLayoutState extends State<ProvidersLayout> {
           _buildFloatingActions(),
         ],
       ),
+    );
+  }
+
+  Widget _buildMobileProviders(List<ProviderRoute> routes) {
+    final title = _showDeliveryPeople ? 'Repartidores' : 'Vendedores';
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Proveedores',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: _manageDistributors,
+              icon: const Icon(Icons.business_outlined),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() {
+                  _selectedType = _showDeliveryPeople ? 'Vendedor' : 'Repartidor';
+                }),
+                icon: const Icon(Icons.swap_horiz_rounded),
+                label: Text(title),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: _createRoute,
+              icon: const Icon(Icons.add),
+              label: const Text('Nueva ruta'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (routes.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 90),
+            child: Center(
+              child: Text(
+                'No hay eventos programados.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          )
+        else
+          ...routes.map(
+            (route) {
+              final color = Color(route.colorValue);
+              final icon = route.isDeliveryPerson
+                  ? Icons.local_shipping_outlined
+                  : Icons.storefront_outlined;
+              final days = route.weekdays.map((day) => _weekdays[day]).join(' · ');
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Material(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _editRoute(route),
+                    child: Padding(
+                      padding: const EdgeInsets.all(13),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: .14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(icon, color: color),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  route.distributorName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: color,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  days.isEmpty ? 'Sin días asignados' : days,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Eliminar ruta',
+                            onPressed: () => _deleteRoute(route),
+                            icon: const Icon(Icons.delete_outline),
+                            color: AppColors.dangerRed,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 
