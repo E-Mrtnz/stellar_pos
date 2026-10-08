@@ -1150,10 +1150,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               total: _total,
               onCreateSale: _createSale,
               onBarcodeDetected: _handleScannedBarcode,
-              onAddToCart: _addToCart,
-              onDecrementQuantity: _decrementQuantity,
-              onQuantityChanged: _setCartQuantity,
-              onRemoveCartItem: _removeFromCart,
               selectedPaymentMethod: _selectedPaymentMethod,
               onPaymentMethodChanged: (value) =>
                   setState(() => _selectedPaymentMethod = value),
@@ -1171,9 +1167,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               subtotal: _subtotal,
               cardFeeAmount: _cardFeeAmount,
               change: _change,
-              onDecrementQuantity: _decrementQuantity,
-              onQuantityChanged: _setCartQuantity,
-              onRemoveCartItem: _removeFromCart,
               onClearCart: _clearCart,
               ticketNumber: salesProvider.nextTicketNumberPreview,
             )
