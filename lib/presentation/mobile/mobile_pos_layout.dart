@@ -729,3 +729,208 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
     );
   }
 }
+
+
+class MobileHomeOverview extends StatelessWidget {
+  final int salesCount;
+  final double todayTotal;
+  final int productCount;
+  final int clientCount;
+  final VoidCallback onSales;
+  final VoidCallback onMenu;
+
+  const MobileHomeOverview({
+    super.key,
+    required this.salesCount,
+    required this.todayTotal,
+    required this.productCount,
+    required this.clientCount,
+    required this.onSales,
+    required this.onMenu,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.inputBackground,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    AppStrings.appName,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: onMenu,
+                  icon: const Icon(Icons.menu_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Resumen del día',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 18),
+            _MobileHomeCard(
+              icon: Icons.point_of_sale_rounded,
+              title: 'Ventas de hoy',
+              value: '\$' + todayTotal.toStringAsFixed(2),
+              subtitle: salesCount.toString() + ' ventas',
+              onTap: onSales,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _MobileMiniHomeCard(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Productos',
+                    value: productCount.toString(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MobileMiniHomeCard(
+                    icon: Icons.people_outline_rounded,
+                    label: 'Clientes',
+                    value: clientCount.toString(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: onSales,
+                icon: const Icon(Icons.shopping_cart_checkout_rounded),
+                label: const Text(
+                  'Nueva venta',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileHomeCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _MobileHomeCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: AppColors.cardBackground,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 26,
+                backgroundColor: AppColors.primaryLight,
+                child: Icon(
+                  Icons.point_of_sale_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileMiniHomeCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _MobileMiniHomeCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: AppColors.cardBackground,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppColors.primary),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
