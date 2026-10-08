@@ -38,7 +38,6 @@ class MainDashboardLayout extends StatefulWidget {
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
-  bool _mobileSalesVisible = true;
   bool _mobileMoreVisible = false;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
@@ -1117,7 +1116,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         onSelect: (index) => setState(() {
           _selectedNavIndex = index;
           _mobileMoreVisible = false;
-          _mobileSalesVisible = index == AppNavigation.electronicBalance;
         }),
       );
     } else if (isHome) {
@@ -1166,12 +1164,19 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     } else {
       content = Column(
         children: [
-          MobileSectionHeader(title: _mobileSectionTitle),
-          Expanded(
-            child: isStats
-                ? _buildMainContent()
-                : MobileLegacySectionViewport(child: _buildMainContent()),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _mobileSectionTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
+          Expanded(child: _buildMainContent()),
         ],
       );
     }
@@ -1254,11 +1259,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       switch (index) {
         case 0:
           _selectedNavIndex = AppNavigation.home;
-          _mobileSalesVisible = true;
           break;
         case 1:
           _selectedNavIndex = AppNavigation.debts;
-          _mobileSalesVisible = false;
           break;
         case 2:
           _selectedNavIndex = AppNavigation.inventory;
