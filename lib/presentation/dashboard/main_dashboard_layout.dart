@@ -1121,7 +1121,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     Widget content;
     if (_mobileMoreVisible) {
       content = MobileMoreView(
-        selectedIndex: _selectedNavIndex,
         onSelect: (index) => setState(() {
           _selectedNavIndex = index;
           _mobileMoreVisible = false;
