@@ -1231,6 +1231,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         (_selectedNavIndex == AppNavigation.home && _mobileSalesVisible)) {
       return 1;
     }
+    if (_selectedNavIndex != AppNavigation.home) {
+      return 2;
+    }
     return 0;
   }
 
