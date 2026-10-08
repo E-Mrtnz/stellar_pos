@@ -27,13 +27,16 @@ class MobilePosLayout extends StatefulWidget {
   final ValueChanged<String?> onFilterChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onRemoveFromCart;
+  final ValueChanged<String> onDecrementQuantity;
+  final void Function(String, int) onQuantityChanged;
+  final ValueChanged<String> onRemoveCartItem;
   final void Function(String, bool)? onPreparedChanged;
   final String searchQuery;
   final ValueChanged<String>? onSearchChanged;
   final List<ElectronicBalanceCartItem> electronicBalanceSelection;
   final double total;
   final VoidCallback onCreateSale;
-  final ValueChanged<String> onBarcodeDetected;
+  final String? Function(String) onBarcodeDetected;
   final int selectedPaymentMethod;
   final ValueChanged<int> onPaymentMethodChanged;
   final String? selectedDebtor;
@@ -67,6 +70,9 @@ class MobilePosLayout extends StatefulWidget {
     required this.onFilterChanged,
     required this.onAddToCart,
     required this.onRemoveFromCart,
+    required this.onDecrementQuantity,
+    required this.onQuantityChanged,
+    required this.onRemoveCartItem,
     required this.electronicBalanceSelection,
     required this.total,
     required this.onCreateSale,
