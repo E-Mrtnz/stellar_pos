@@ -10,6 +10,7 @@ import 'package:stellar_pos/core/utils/product_utils.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/sales_cart_item_tile.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
 import 'package:stellar_pos/presentation/widgets/product_image.dart';
 import 'package:stellar_pos/presentation/widgets/product_search_bar.dart';
