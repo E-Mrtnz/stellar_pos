@@ -1108,17 +1108,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final productProvider = context.watch<ProductProvider>();
     final catalog = context.watch<CatalogProvider>();
     final salesProvider = context.watch<SalesProvider>();
-    final today = DateTime.now();
-    final todaySales = salesProvider.sales.where((sale) {
-      return sale.createdAt.year == today.year &&
-          sale.createdAt.month == today.month &&
-          sale.createdAt.day == today.day;
-    }).toList(growable: false);
-    final todayTotal = todaySales.fold<double>(
-      0,
-      (sum, sale) => sum + sale.effectiveTotal,
-    );
-
     final isHome = _selectedNavIndex == AppNavigation.home;
     final isStats = _selectedNavIndex == AppNavigation.stats;
 
