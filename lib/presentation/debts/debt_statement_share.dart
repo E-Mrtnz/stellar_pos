@@ -265,7 +265,11 @@ class _DebtStatementShareDialogState extends State<_DebtStatementShareDialog> {
       // window, not while this Flutter showDialog route is still modal.
       // Presenting it from the loading dialog can leave the native picker
       // visible without its sharing options and keep this dialog spinning.
-      final hostBox = widget.hostContext.findRenderObject() as RenderBox?;
+      final hostContext = widget.hostContext;
+      if (!hostContext.mounted) {
+        return;
+      }
+      final hostBox = hostContext.findRenderObject() as RenderBox?;
       final origin = hostBox != null && hostBox.hasSize
           ? Rect.fromCenter(
               center: hostBox.localToGlobal(
