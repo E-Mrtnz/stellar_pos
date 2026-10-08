@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/utils/product_filter_utils.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/product_card.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
 import 'package:stellar_pos/presentation/widgets/product_filter_bar.dart';
