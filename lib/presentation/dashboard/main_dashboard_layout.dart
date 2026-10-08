@@ -1220,6 +1220,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             label: 'Ventas',
           ),
           NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Cobrar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            selectedIcon: Icon(Icons.inventory_2_rounded),
+            label: 'Inventario',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.apps_outlined),
             selectedIcon: Icon(Icons.apps_rounded),
             label: 'Más',
@@ -1230,29 +1240,42 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   int get _mobileNavigationIndex {
-    if (_mobileMoreVisible) return 2;
+    if (_mobileMoreVisible) return 4;
+    if (_selectedNavIndex == AppNavigation.debts) return 2;
+    if (_selectedNavIndex == AppNavigation.inventory) return 3;
     if (_selectedNavIndex == AppNavigation.electronicBalance ||
         (_selectedNavIndex == AppNavigation.home && _mobileSalesVisible)) {
       return 1;
     }
     if (_selectedNavIndex != AppNavigation.home) {
-      return 2;
+      return 4;
     }
     return 0;
   }
 
   void _onMobileNavigationSelected(int index) {
     setState(() {
-      if (index == 0) {
-        _mobileMoreVisible = false;
-        _selectedNavIndex = AppNavigation.home;
-        _mobileSalesVisible = false;
-      } else if (index == 1) {
-        _mobileMoreVisible = false;
-        _selectedNavIndex = AppNavigation.home;
-        _mobileSalesVisible = true;
-      } else {
-        _mobileMoreVisible = true;
+      _mobileMoreVisible = false;
+      switch (index) {
+        case 0:
+          _selectedNavIndex = AppNavigation.home;
+          _mobileSalesVisible = false;
+          break;
+        case 1:
+          _selectedNavIndex = AppNavigation.home;
+          _mobileSalesVisible = true;
+          break;
+        case 2:
+          _selectedNavIndex = AppNavigation.debts;
+          _mobileSalesVisible = false;
+          break;
+        case 3:
+          _selectedNavIndex = AppNavigation.inventory;
+          _mobileSalesVisible = false;
+          break;
+        case 4:
+          _mobileMoreVisible = true;
+          break;
       }
     });
   }
