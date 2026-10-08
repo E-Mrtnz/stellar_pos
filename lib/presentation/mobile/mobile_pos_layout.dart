@@ -917,3 +917,165 @@ class _MobileMiniHomeCard extends StatelessWidget {
     );
   }
 }
+
+
+class MobileSectionHeader extends StatelessWidget {
+  final String title;
+
+  const MobileSectionHeader({super.key, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MobileLegacySectionViewport extends StatelessWidget {
+  final Widget child;
+
+  const MobileLegacySectionViewport({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return Scrollbar(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: width < 980 ? 980 : width,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class MobileMoreView extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  const MobileMoreView({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <({String label, IconData icon, int index})>[
+      (
+        label: 'Cuentas por cobrar',
+        icon: Icons.account_balance_wallet_outlined,
+        index: AppNavigation.debts,
+      ),
+      (
+        label: 'Inventario',
+        icon: Icons.inventory_2_outlined,
+        index: AppNavigation.inventory,
+      ),
+      (
+        label: 'Compras',
+        icon: Icons.shopping_bag_outlined,
+        index: AppNavigation.purchases,
+      ),
+      (
+        label: 'Proveedores',
+        icon: Icons.local_shipping_outlined,
+        index: AppNavigation.providers,
+      ),
+      (
+        label: 'Estadísticas',
+        icon: Icons.bar_chart_rounded,
+        index: AppNavigation.stats,
+      ),
+      (
+        label: 'Ajustes',
+        icon: Icons.settings_outlined,
+        index: AppNavigation.settings,
+      ),
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      children: [
+        const Text(
+          'Más',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Todas las herramientas de Stellar POS',
+          style: TextStyle(
+            fontSize: 15,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 22),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Material(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => onSelect(item.index),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 15,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(18),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(item.icon, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          item.label,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
