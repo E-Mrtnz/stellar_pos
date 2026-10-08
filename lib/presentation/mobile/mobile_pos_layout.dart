@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -231,6 +232,10 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
           cartQuantities: widget.cartQuantities,
           total: widget.total,
           onBarcodeDetected: widget.onBarcodeDetected,
+          onAddToCart: widget.onAddToCart,
+          onDecrementQuantity: widget.onDecrementQuantity,
+          onQuantityChanged: widget.onQuantityChanged,
+          onRemoveCartItem: widget.onRemoveCartItem,
           onCreateSale: _checkout,
         ),
       ),
@@ -495,16 +500,24 @@ class _MobileProductList extends StatelessWidget {
 class MobileBarcodeScannerView extends StatefulWidget {
   final List<Map<String, dynamic>> products;
   final Map<String, int> cartQuantities;
+  final String? Function(String) onBarcodeDetected;
+  final ValueChanged<String> onAddToCart;
+  final ValueChanged<String> onDecrementQuantity;
+  final void Function(String, int) onQuantityChanged;
+  final ValueChanged<String> onRemoveCartItem;
   final double total;
-  final ValueChanged<String> onBarcodeDetected;
   final VoidCallback onCreateSale;
 
   const MobileBarcodeScannerView({
     super.key,
     required this.products,
     required this.cartQuantities,
-    required this.total,
     required this.onBarcodeDetected,
+    required this.onAddToCart,
+    required this.onDecrementQuantity,
+    required this.onQuantityChanged,
+    required this.onRemoveCartItem,
+    required this.total,
     required this.onCreateSale,
   });
 
@@ -515,15 +528,14 @@ class MobileBarcodeScannerView extends StatefulWidget {
 
 class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   late final MobileScannerController _controller;
-  String? _lastCode;
-  DateTime? _lastScanAt;
+  late Map<String, int> _scannedQuantities;
 
   @override
   void initState() {
     super.initState();
+    _scannedQuantities = Map<String, int>.from(widget.cartQuantities);
     _controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      detectionTimeoutMs: 700,
+      detectionSpeed: DetectionSpeed.noDuplicates,
     );
   }
 
@@ -533,32 +545,69 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
     super.dispose();
   }
 
+  void _playSuccessFeedback() {
+    unawaited(SystemSound.play(SystemSoundType.click));
+    unawaited(HapticFeedback.selectionClick());
+  }
+
+  void _playErrorFeedback() {
+    unawaited(SystemSound.play(SystemSoundType.click));
+    Future<void>.delayed(const Duration(milliseconds: 130), () {
+      if (mounted) {
+        unawaited(SystemSound.play(SystemSoundType.click));
+      }
+    });
+    unawaited(HapticFeedback.heavyImpact());
+  }
+
   void _detect(BarcodeCapture capture) {
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue?.trim();
       if (value == null || value.isEmpty) continue;
-      final now = DateTime.now();
-      if (_lastCode == value &&
-          _lastScanAt != null &&
-          now.difference(_lastScanAt!) < const Duration(milliseconds: 700)) {
-        continue;
+
+      final productId = widget.onBarcodeDetected(value);
+      if (productId == null) {
+        _playErrorFeedback();
+      } else {
+        setState(() {
+          _scannedQuantities[productId] =
+              (_scannedQuantities[productId] ?? 0) + 1;
+        });
+        _playSuccessFeedback();
       }
-      _lastCode = value;
-      _lastScanAt = now;
-      widget.onBarcodeDetected(value);
-      if (mounted) setState(() {});
       break;
     }
   }
 
+  void _changeLocalQuantity(String productId, int quantity) {
+    if (quantity <= 0) {
+      setState(() => _scannedQuantities.remove(productId));
+      return;
+    }
+    setState(() => _scannedQuantities[productId] = quantity);
+  }
+
+  double get _scannerTotal {
+    var total = 0.0;
+    for (final entry in _scannedQuantities.entries) {
+      final product = widget.products.cast<Map<String, dynamic>?>().firstWhere(
+            (item) => item?['id']?.toString() == entry.key,
+            orElse: () => null,
+          );
+      if (product == null) continue;
+      total += ProductUtils.priceForQuantity(product, entry.value);
+    }
+    return total;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final count = widget.cartQuantities.values.fold<int>(
+    final count = _scannedQuantities.values.fold<int>(
       0,
       (sum, value) => sum + value,
     );
     final selected = widget.products.where((product) {
-      return (widget.cartQuantities[product['id'].toString()] ?? 0) > 0;
+      return (_scannedQuantities[product['id'].toString()] ?? 0) > 0;
     }).toList(growable: false);
 
     return Scaffold(
@@ -611,7 +660,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
-                  'Productos escaneados: $count',
+                  'Productos escaneados: ${count}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -631,42 +680,38 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
                         ),
                       ),
                     )
-                  : ListView.separated(
+                  : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                       itemCount: selected.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, index) {
                         final product = selected[index];
                         final id = product['id'].toString();
-                        final quantity = widget.cartQuantities[id] ?? 0;
-                        return Material(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(14),
-                          child: ListTile(
-                            leading: ProductImage(
-                              productId: id,
-                              imageData:
-                                  product['imageData']?.toString() ?? '',
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.contain,
-                              borderRadius: BorderRadius.circular(8),
-                              placeholderIcon: Icons.inventory_2_outlined,
-                            ),
-                            title: Text(ProductUtils.cleanName(product)),
-                            subtitle: Text(
-                              ProductUtils.money(ProductUtils.price(product)) + ' × $quantity',
-                            ),
-                            trailing: Text(
-                              ProductUtils.money(
-                                ProductUtils.price(product) * quantity,
-                              ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
+                        final quantity = _scannedQuantities[id] ?? 0;
+                        return SalesCartItemTile(
+                          productId: id,
+                          name: ProductUtils.cleanName(product),
+                          unit: ProductUtils.unit(product),
+                          unitPrice: ProductUtils.price(product),
+                          imageData:
+                              product['imageData']?.toString() ?? '',
+                          quantity: quantity,
+                          product: product,
+                          onDecrement: () {
+                            widget.onDecrementQuantity(id);
+                            _changeLocalQuantity(id, quantity - 1);
+                          },
+                          onQuantityChanged: (value) {
+                            widget.onQuantityChanged(id, value);
+                            _changeLocalQuantity(id, value);
+                          },
+                          onIncrement: () {
+                            widget.onAddToCart(id);
+                            _changeLocalQuantity(id, quantity + 1);
+                          },
+                          onRemove: () {
+                            widget.onRemoveCartItem(id);
+                            setState(() => _scannedQuantities.remove(id));
+                          },
                         );
                       },
                     ),
@@ -697,7 +742,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
                         ),
                       ),
                       Text(
-                        '${widget.total.toStringAsFixed(2)}',
+                        '\$${_scannerTotal.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
