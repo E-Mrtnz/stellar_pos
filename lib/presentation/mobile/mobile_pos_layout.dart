@@ -363,7 +363,7 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
                     ),
                   ),
                   Text(
-                    '${widget.total.toStringAsFixed(2)}',
+                    widget.total.toStringAsFixed(2),
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
@@ -658,7 +658,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
-                  'Productos escaneados: ${count}',
+                  'Productos escaneados: $count',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -800,7 +800,7 @@ class MobileHomeOverview extends StatelessWidget {
             _MobileHomeCard(
               icon: Icons.point_of_sale_rounded,
               title: 'Ventas de hoy',
-              value: '${todayTotal.toStringAsFixed(2)}',
+              value: todayTotal.toStringAsFixed(2),
               subtitle: '$salesCount ventas',
               onTap: onSales,
             ),
