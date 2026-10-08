@@ -321,13 +321,3 @@ class ProductProvider extends ChangeNotifier {
   String _normalizeCatalogValue(String value) =>
       value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
-).hasMatch(trimmed)) {
-      return trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-    }
-
-    return trimmed.replaceAll(' ', '').toUpperCase();
-  }
-
-  String _normalizeCatalogValue(String value) =>
-      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
-}
