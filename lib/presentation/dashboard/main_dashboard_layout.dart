@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
@@ -19,6 +20,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.d
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/debts/debts_layout.dart';
+import 'package:stellar_pos/presentation/mobile/mobile_pos_layout.dart';
 import 'package:stellar_pos/presentation/sales/sales_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
@@ -36,6 +38,7 @@ class MainDashboardLayout extends StatefulWidget {
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
+  bool _mobileSalesVisible = true;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
   String _searchQuery = '';
@@ -1061,8 +1064,17 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _onTagChanged(int index) => setState(() => _selectedTagIndex = index);
   void _onFilterChanged(String? filter) =>
       setState(() => _selectedFilter = filter);
+  bool get _isMobilePlatform =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+
   @override
   Widget build(BuildContext context) {
+    if (_isMobilePlatform) {
+      return _buildMobileShell(context);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
@@ -1083,6 +1095,258 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileShell(BuildContext context) {
+    if (_selectedNavIndex != AppNavigation.home) {
+      return Scaffold(
+        backgroundColor: AppColors.inputBackground,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => _selectedNavIndex = AppNavigation.home),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _mobileSectionTitle,
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(child: _buildMainContent()),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final productProvider = context.watch<ProductProvider>();
+    final catalog = context.watch<CatalogProvider>();
+    final salesProvider = context.watch<SalesProvider>();
+    final today = DateTime.now();
+    final todaySales = salesProvider.sales.where((sale) {
+      return sale.createdAt.year == today.year &&
+          sale.createdAt.month == today.month &&
+          sale.createdAt.day == today.day;
+    }).toList(growable: false);
+    final todayTotal = todaySales.fold<double>(
+      0,
+      (sum, sale) => sum + sale.effectiveTotal,
+    );
+
+    return Scaffold(
+      backgroundColor: AppColors.inputBackground,
+      body: SafeArea(
+        child: _mobileSalesVisible
+            ? MobilePosLayout(
+                products: productProvider.productMaps,
+                isLoading: productProvider.isLoading,
+                cartQuantities: _combinedCartQuantities,
+                preparedProductIds: _preparedProductIds,
+                tags: catalog.tags,
+                selectedTagIndex: _selectedTagIndex,
+                onTagSelected: _onTagChanged,
+                selectedFilter: _selectedFilter,
+                onFilterChanged: _onFilterChanged,
+                onAddToCart: _addToCart,
+                onRemoveFromCart: _removeFromCart,
+                onPreparedChanged: _togglePrepared,
+                electronicBalanceSelection: _electronicBalanceSelection,
+                searchQuery: _searchQuery,
+                onSearchChanged: (value) =>
+                    setState(() => _searchQuery = value),
+                total: _total,
+                onCreateSale: _createSale,
+                onMenu: _showMobileMenu,
+                onBarcodeDetected: _handleScannedBarcode,
+                selectedPaymentMethod: _selectedPaymentMethod,
+                onPaymentMethodChanged: (value) =>
+                    setState(() => _selectedPaymentMethod = value),
+                selectedDebtor: _selectedDebtor,
+                debtorsList:
+                    catalog.clients.map((client) => client.name).toList(),
+                onDebtorChanged: (value) =>
+                    setState(() => _selectedDebtor = value),
+                discountAmountController: _discountAmountController,
+                discountPercentController: _discountPercentController,
+                cashReceivedController: _cashReceivedController,
+                onDiscountAmountChanged: _onDiscountAmountChanged,
+                onDiscountPercentChanged: _onDiscountPercentChanged,
+                onCashReceivedChanged: (_) => setState(() {}),
+                subtotal: _subtotal,
+                cardFeeAmount: _cardFeeAmount,
+                change: _change,
+                onDecrementQuantity: _decrementQuantity,
+                onQuantityChanged: _setCartQuantity,
+                onRemoveCartItem: _removeFromCart,
+                onClearCart: _clearCart,
+                ticketNumber: salesProvider.nextTicketNumberPreview,
+              )
+            : _MobileHomeOverview(
+                salesCount: todaySales.length,
+                todayTotal: todayTotal,
+                productCount: productProvider.products.length,
+                clientCount: catalog.clients.length,
+                onSales: () => setState(() => _mobileSalesVisible = true),
+                onMenu: _showMobileMenu,
+              ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'mobile-sales',
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        onPressed: () => setState(() => _mobileSalesVisible = true),
+        child: const Icon(Icons.point_of_sale_rounded),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        height: 68,
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _mobileSalesVisible = false),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.home_outlined),
+                    SizedBox(height: 2),
+                    Text('Inicio'),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 72),
+            Expanded(
+              child: InkWell(
+                onTap: _showMobileMenu,
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.menu_rounded),
+                    SizedBox(height: 2),
+                    Text('Menú'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _mobileSectionTitle {
+    switch (_selectedNavIndex) {
+      case AppNavigation.electronicBalance:
+        return 'Ventas';
+      case AppNavigation.purchases:
+        return 'Compras';
+      case AppNavigation.debts:
+        return 'Cuentas por cobrar';
+      case AppNavigation.stats:
+        return 'Estadísticas';
+      case AppNavigation.providers:
+        return 'Proveedores';
+      case AppNavigation.inventory:
+        return 'Inventario';
+      case AppNavigation.settings:
+        return 'Ajustes';
+      default:
+        return AppStrings.appName;
+    }
+  }
+
+  void _showMobileMenu() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text(
+                'Menú',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Ventas',
+              Icons.receipt_long_outlined,
+              AppNavigation.electronicBalance,
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Cuentas por cobrar',
+              Icons.account_balance_wallet_outlined,
+              AppNavigation.debts,
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Inventario',
+              Icons.inventory_2_outlined,
+              AppNavigation.inventory,
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Compras',
+              Icons.shopping_bag_outlined,
+              AppNavigation.purchases,
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Proveedores',
+              Icons.local_shipping_outlined,
+              AppNavigation.providers,
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Estadísticas',
+              Icons.bar_chart_rounded,
+              AppNavigation.stats,
+            ),
+            _mobileMenuItem(
+              sheetContext,
+              'Ajustes',
+              Icons.settings_outlined,
+              AppNavigation.settings,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileMenuItem(
+    BuildContext sheetContext,
+    String label,
+    IconData icon,
+    int index,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary),
+      title: Text(label),
+      onTap: () {
+        Navigator.pop(sheetContext);
+        setState(() => _selectedNavIndex = index);
+      },
     );
   }
 
