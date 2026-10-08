@@ -31,8 +31,6 @@ class MobilePosLayout extends StatefulWidget {
   final List<ElectronicBalanceCartItem> electronicBalanceSelection;
   final double total;
   final VoidCallback onCreateSale;
-  final VoidCallback onBack;
-  final VoidCallback onMenu;
   final ValueChanged<String> onBarcodeDetected;
   final int selectedPaymentMethod;
   final ValueChanged<int> onPaymentMethodChanged;
@@ -70,8 +68,6 @@ class MobilePosLayout extends StatefulWidget {
     required this.electronicBalanceSelection,
     required this.total,
     required this.onCreateSale,
-    required this.onBack,
-    required this.onMenu,
     required this.onBarcodeDetected,
     required this.selectedPaymentMethod,
     required this.onPaymentMethodChanged,
@@ -246,29 +242,18 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
     final products = _products;
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: widget.onBack,
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(14, 8, 14, 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Ventas',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
               ),
-              const Expanded(
-                child: Text(
-                  'Ventas',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: widget.onMenu,
-                icon: const Icon(Icons.menu_rounded),
-              ),
-            ],
+            ),
           ),
         ),
         Padding(
@@ -737,7 +722,6 @@ class MobileHomeOverview extends StatelessWidget {
   final int productCount;
   final int clientCount;
   final VoidCallback onSales;
-  final VoidCallback onMenu;
 
   const MobileHomeOverview({
     super.key,
@@ -746,7 +730,6 @@ class MobileHomeOverview extends StatelessWidget {
     required this.productCount,
     required this.clientCount,
     required this.onSales,
-    required this.onMenu,
   });
 
   @override
