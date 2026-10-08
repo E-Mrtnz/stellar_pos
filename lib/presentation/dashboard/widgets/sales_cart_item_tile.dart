@@ -129,7 +129,7 @@ class SalesCartItemTile extends StatelessWidget {
             right: 12,
             bottom: 12,
             child: Text(
-              '${${subtotalItem.toStringAsFixed(2)}}',
+              '\${subtotalItem.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
