@@ -38,7 +38,7 @@ class MainDashboardLayout extends StatefulWidget {
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
-  bool _mobileSalesVisible = true;
+  bool _mobileSalesVisible = false;
   bool _mobileMoreVisible = false;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
