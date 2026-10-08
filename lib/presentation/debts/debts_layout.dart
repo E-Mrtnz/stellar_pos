@@ -75,11 +75,13 @@ class _DebtsLayoutState extends State<DebtsLayout> {
     if (received == null || !mounted) {
       return;
     }
-    if (!await context.read<DebtProvider>().recordPayment(
+    final debtProvider = context.read<DebtProvider>();
+    final recorded = debtProvider.recordPayment(
       clientId: client.id,
       clientName: client.name,
       amount: received,
-    )) {
+    );
+    if (!recorded) {
       AppAlert.show(context, 'No se pudo registrar el abono.', title: 'Error al registrar', type: AppAlertType.error);
       return;
     }
