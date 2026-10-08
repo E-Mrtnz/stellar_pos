@@ -311,13 +311,16 @@ class ProductProvider extends ChangeNotifier {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return '';
 
-    if (RegExp(r'^[0-9 -]+$').hasMatch(trimmed)) {
-      final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-      var start = 0;
-      while (start < digits.length - 1 && digits[start] == '0') {
-        start++;
-      }
-      return digits.substring(start);
+    if (RegExp(r'^[0-9 -]+
+
+    return trimmed.replaceAll(' ', '').toUpperCase();
+  }
+
+  String _normalizeCatalogValue(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+}
+).hasMatch(trimmed)) {
+      return trimmed.replaceAll(RegExp(r'[^0-9]'), '');
     }
 
     return trimmed.replaceAll(' ', '').toUpperCase();
