@@ -16,7 +16,8 @@ class InventoryLayout extends StatelessWidget {
       child: Stack(
         children: [
           const legacy.InventoryLayout(),
-          Positioned(
+          if (MediaQuery.sizeOf(context).width >= 600)
+            Positioned(
             right: 20,
             bottom: 164,
             child: FloatingActionButton(
