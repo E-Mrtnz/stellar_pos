@@ -164,6 +164,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
         .toSet()
         .length;
     final range = _range();
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
     final metrics = <PeriodSummaryMetric>[
       PeriodSummaryMetric('Compras', _money(purchaseTotal)),
       PeriodSummaryMetric('Ventas', _money(salesTotal)),
@@ -177,6 +178,10 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
       PeriodSummaryMetric('Bonificaciones', '$bonusCount'),
       PeriodSummaryMetric('Distribuidoras', '$supplierCount'),
     ];
+
+    if (isMobile) {
+      return _buildMobilePurchases(purchases, purchaseTotal, salesTotal, profit);
+    }
 
     return Padding(
       padding: const EdgeInsets.all(AppDimensions.pagePadding),
@@ -539,6 +544,63 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
     ),
   );
 
+  Widget _buildMobilePurchases(
+    List<PurchaseRecord> purchases, double purchaseTotal, double salesTotal, double profit) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+      children: [
+        Row(children: [
+          const Expanded(child: Text('Compras', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
+          IconButton.filledTonal(onPressed: _newPurchase, icon: const Icon(Icons.add_shopping_cart_rounded)),
+        ]),
+        const Text('Historial y registro de las compras realizadas.', style: TextStyle(color: AppColors.textSecondary)),
+        const SizedBox(height: 14),
+        Row(children: [
+          Expanded(child: _mobilePurchaseMetric('Compras', _money(purchaseTotal), Icons.shopping_bag_outlined)),
+          const SizedBox(width: 8),
+          Expanded(child: _mobilePurchaseMetric('Ventas', _money(salesTotal), Icons.point_of_sale_outlined)),
+        ]),
+        const SizedBox(height: 8),
+        _mobilePurchaseMetric('Ganancia bruta', _money(profit), Icons.trending_up_rounded),
+        const SizedBox(height: 12),
+        ProductSearchBar(controller: _searchController, hintText: 'Buscar proveedor o factura...', onChanged: (_) => _refresh()),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_today_outlined), label: Text(_period == _PurchasePeriod.custom ? 'Elegir rango' : _periodLabel())),
+        const SizedBox(height: 14),
+        if (purchases.isEmpty)
+          const Padding(padding: EdgeInsets.symmetric(vertical: 70), child: Center(child: Text('No hay compras registradas en este período.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary))))
+        else
+          ...purchases.map((purchase) => Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: Material(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(14), child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _detail(purchase),
+              child: Padding(padding: const EdgeInsets.all(13), child: Row(children: [
+                Container(width: 44, height: 44, decoration: BoxDecoration(color: AppColors.primary.withAlpha(18), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.receipt_long_outlined, color: AppColors.primary)),
+                const SizedBox(width: 11),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(purchase.distributorName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 3),
+                  Text('Factura ${purchase.invoiceNumber.isEmpty ? '—' : purchase.invoiceNumber} · ${purchase.itemCount} artículos', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  const SizedBox(height: 3),
+                  Text(_date(purchase.arrivalAt), style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                ])),
+                const SizedBox(width: 8),
+                Text(_money(purchase.total), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+              ])),
+            )),
+          )),
+      ],
+    );
+  }
+
+  Widget _mobilePurchaseMetric(String label, String value, IconData icon) {
+    return Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)), child: Row(children: [
+      Icon(icon, color: AppColors.primary, size: 20), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)), const SizedBox(height: 2), Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      ])),
+    ]));
+  }
   Future<void> _newPurchase() async {
     final created = await PurchaseCreationDialog.show(context);
     if (created == true && mounted) {
