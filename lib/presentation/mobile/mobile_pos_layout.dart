@@ -856,7 +856,7 @@ class _MobileHomeCard extends StatelessWidget {
             children: [
               const CircleAvatar(
                 radius: 26,
-                backgroundColor: AppColors.primaryLight,
+                backgroundColor: AppColors.primary.withAlpha(28),
                 child: Icon(
                   Icons.point_of_sale_rounded,
                   color: AppColors.primary,
