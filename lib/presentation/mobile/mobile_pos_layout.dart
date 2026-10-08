@@ -975,6 +975,11 @@ class MobileMoreView extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = <({String label, IconData icon, int index})>[
       (
+        label: 'Historial de ventas',
+        icon: Icons.receipt_long_outlined,
+        index: AppNavigation.electronicBalance,
+      ),
+      (
         label: 'Cuentas por cobrar',
         icon: Icons.account_balance_wallet_outlined,
         index: AppNavigation.debts,
