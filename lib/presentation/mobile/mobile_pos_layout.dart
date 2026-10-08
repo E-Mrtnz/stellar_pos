@@ -373,7 +373,7 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
                     ),
                   ),
                   Text(
-                    '\$' + widget.total.toStringAsFixed(2),
+                    '\${widget.total.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
@@ -626,7 +626,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
-                  'Productos escaneados: ' + count.toString(),
+                  'Productos escaneados: $count',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -670,9 +670,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
                             ),
                             title: Text(ProductUtils.cleanName(product)),
                             subtitle: Text(
-                              ProductUtils.money(ProductUtils.price(product)) +
-                                  ' × ' +
-                                  quantity.toString(),
+                              ProductUtils.money(ProductUtils.price(product)) + ' × $quantity',
                             ),
                             trailing: Text(
                               ProductUtils.money(
@@ -714,7 +712,7 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
                         ),
                       ),
                       Text(
-                        '\$' + widget.total.toStringAsFixed(2),
+                        '\${widget.total.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -786,8 +784,8 @@ class MobileHomeOverview extends StatelessWidget {
             _MobileHomeCard(
               icon: Icons.point_of_sale_rounded,
               title: 'Ventas de hoy',
-              value: '\$' + todayTotal.toStringAsFixed(2),
-              subtitle: salesCount.toString() + ' ventas',
+              value: '\${todayTotal.toStringAsFixed(2)}',
+              subtitle: '$salesCount ventas',
               onTap: onSales,
             ),
             const SizedBox(height: 12),
@@ -797,7 +795,7 @@ class MobileHomeOverview extends StatelessWidget {
                   child: _MobileMiniHomeCard(
                     icon: Icons.inventory_2_outlined,
                     label: 'Productos',
-                    value: productCount.toString(),
+                    value: '$productCount',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -805,7 +803,7 @@ class MobileHomeOverview extends StatelessWidget {
                   child: _MobileMiniHomeCard(
                     icon: Icons.people_outline_rounded,
                     label: 'Clientes',
-                    value: clientCount.toString(),
+                    value: '$clientCount',
                   ),
                 ),
               ],
