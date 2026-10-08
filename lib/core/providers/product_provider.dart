@@ -311,7 +311,9 @@ class ProductProvider extends ChangeNotifier {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return '';
 
-    if (RegExp(r'^[0-9 -]+
+    if (RegExp(r'^[0-9 -]+$').hasMatch(trimmed)) {
+      return trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+    }
 
     return trimmed.replaceAll(' ', '').toUpperCase();
   }
