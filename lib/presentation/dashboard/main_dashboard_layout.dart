@@ -1064,14 +1064,15 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _onTagChanged(int index) => setState(() => _selectedTagIndex = index);
   void _onFilterChanged(String? filter) =>
       setState(() => _selectedFilter = filter);
-  bool get _isMobilePlatform =>
+  bool _isMobilePlatform(BuildContext context) =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.android);
+          defaultTargetPlatform == TargetPlatform.android) &&
+      MediaQuery.sizeOf(context).shortestSide < 600;
 
   @override
   Widget build(BuildContext context) {
-    if (_isMobilePlatform) {
+    if (_isMobilePlatform(context)) {
       return _buildMobileShell(context);
     }
 
