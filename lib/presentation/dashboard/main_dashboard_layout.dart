@@ -1172,6 +1172,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     setState(() => _searchQuery = value),
                 total: _total,
                 onCreateSale: _createSale,
+                onBack: () => setState(() => _mobileSalesVisible = false),
                 onMenu: _showMobileMenu,
                 onBarcodeDetected: _handleScannedBarcode,
                 selectedPaymentMethod: _selectedPaymentMethod,
