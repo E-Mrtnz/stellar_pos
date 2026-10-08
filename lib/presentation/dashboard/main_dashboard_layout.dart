@@ -1265,7 +1265,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           break;
         case 2:
           _selectedNavIndex = AppNavigation.inventory;
-          _mobileSalesVisible = false;
           break;
         case 3:
           _mobileMoreVisible = true;
