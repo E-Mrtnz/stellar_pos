@@ -38,7 +38,7 @@ class MainDashboardLayout extends StatefulWidget {
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
-  bool _mobileSalesVisible = false;
+  bool _mobileSalesVisible = true;
   bool _mobileMoreVisible = false;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
@@ -1132,57 +1132,48 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         }),
       );
     } else if (isHome) {
-      content = _mobileSalesVisible
-          ? MobilePosLayout(
-              products: productProvider.productMaps,
-              isLoading: productProvider.isLoading,
-              cartQuantities: _combinedCartQuantities,
-              preparedProductIds: _preparedProductIds,
-              tags: catalog.tags,
-              selectedTagIndex: _selectedTagIndex,
-              onTagSelected: _onTagChanged,
-              selectedFilter: _selectedFilter,
-              onFilterChanged: _onFilterChanged,
-              onAddToCart: _addToCart,
-              onRemoveFromCart: _removeFromCart,
-              onPreparedChanged: _togglePrepared,
-              electronicBalanceSelection: _electronicBalanceSelection,
-              searchQuery: _searchQuery,
-              onSearchChanged: (value) =>
-                  setState(() => _searchQuery = value),
-              total: _total,
-              onCreateSale: _createSale,
-              onBarcodeDetected: _handleScannedBarcode,
-              onDecrementQuantity: _decrementQuantity,
-              onQuantityChanged: _setCartQuantity,
-              onRemoveCartItem: _removeFromCart,
-              selectedPaymentMethod: _selectedPaymentMethod,
-              onPaymentMethodChanged: (value) =>
-                  setState(() => _selectedPaymentMethod = value),
-              selectedDebtor: _selectedDebtor,
-              debtorsList:
-                  catalog.clients.map((client) => client.name).toList(),
-              onDebtorChanged: (value) =>
-                  setState(() => _selectedDebtor = value),
-              discountAmountController: _discountAmountController,
-              discountPercentController: _discountPercentController,
-              cashReceivedController: _cashReceivedController,
-              onDiscountAmountChanged: _onDiscountAmountChanged,
-              onDiscountPercentChanged: _onDiscountPercentChanged,
-              onCashReceivedChanged: (_) => setState(() {}),
-              subtotal: _subtotal,
-              cardFeeAmount: _cardFeeAmount,
-              change: _change,
-              onClearCart: _clearCart,
-              ticketNumber: salesProvider.nextTicketNumberPreview,
-            )
-          : MobileHomeOverview(
-              salesCount: todaySales.length,
-              todayTotal: todayTotal,
-              productCount: productProvider.products.length,
-              clientCount: catalog.clients.length,
-              onSales: () => setState(() => _mobileSalesVisible = true),
-            );
+      // Inicio is intentionally omitted on phones; Ventas is the default.
+      content = MobilePosLayout(
+        products: productProvider.productMaps,
+        isLoading: productProvider.isLoading,
+        cartQuantities: _combinedCartQuantities,
+        preparedProductIds: _preparedProductIds,
+        tags: catalog.tags,
+        selectedTagIndex: _selectedTagIndex,
+        onTagSelected: _onTagChanged,
+        selectedFilter: _selectedFilter,
+        onFilterChanged: _onFilterChanged,
+        onAddToCart: _addToCart,
+        onRemoveFromCart: _removeFromCart,
+        onPreparedChanged: _togglePrepared,
+        electronicBalanceSelection: _electronicBalanceSelection,
+        searchQuery: _searchQuery,
+        onSearchChanged: (value) => setState(() => _searchQuery = value),
+        total: _total,
+        onCreateSale: _createSale,
+        onBarcodeDetected: _handleScannedBarcode,
+        onDecrementQuantity: _decrementQuantity,
+        onQuantityChanged: _setCartQuantity,
+        onRemoveCartItem: _removeFromCart,
+        selectedPaymentMethod: _selectedPaymentMethod,
+        onPaymentMethodChanged: (value) =>
+            setState(() => _selectedPaymentMethod = value),
+        selectedDebtor: _selectedDebtor,
+        debtorsList: catalog.clients.map((client) => client.name).toList(),
+        onDebtorChanged: (value) =>
+            setState(() => _selectedDebtor = value),
+        discountAmountController: _discountAmountController,
+        discountPercentController: _discountPercentController,
+        cashReceivedController: _cashReceivedController,
+        onDiscountAmountChanged: _onDiscountAmountChanged,
+        onDiscountPercentChanged: _onDiscountPercentChanged,
+        onCashReceivedChanged: (_) => setState(() {}),
+        subtotal: _subtotal,
+        cardFeeAmount: _cardFeeAmount,
+        change: _change,
+        onClearCart: _clearCart,
+        ticketNumber: salesProvider.nextTicketNumberPreview,
+      );
     } else {
       content = Column(
         children: [
@@ -1202,55 +1193,70 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         maintainBottomViewPadding: true,
         child: content,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _mobileNavigationIndex,
-        onDestinationSelected: _onMobileNavigationSelected,
-        height: 72,
-        maintainBottomViewPadding: true,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Inicio',
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          indicatorColor: Colors.transparent,
+          iconTheme: WidgetStateProperty.resolveWith<IconThemeData?>(
+            (states) => IconThemeData(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.point_of_sale_outlined),
-            selectedIcon: Icon(Icons.point_of_sale_rounded),
-            label: 'Ventas',
+          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>(
+            (states) => TextStyle(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-            label: 'Cobrar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2_rounded),
-            label: 'Inventario',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.apps_outlined),
-            selectedIcon: Icon(Icons.apps_rounded),
-            label: 'Más',
-          ),
-        ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _mobileNavigationIndex,
+          onDestinationSelected: _onMobileNavigationSelected,
+          height: 72,
+          maintainBottomViewPadding: true,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.point_of_sale_outlined),
+              selectedIcon: Icon(Icons.point_of_sale_rounded),
+              label: 'Ventas',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+              label: 'Cobrar',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined),
+              selectedIcon: Icon(Icons.inventory_2_rounded),
+              label: 'Inventario',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.apps_outlined),
+              selectedIcon: Icon(Icons.apps_rounded),
+              label: 'Más',
+            ),
+          ],
+        ),
       ),
     );
   }
 
   int get _mobileNavigationIndex {
-    if (_mobileMoreVisible) return 4;
-    if (_selectedNavIndex == AppNavigation.debts) return 2;
-    if (_selectedNavIndex == AppNavigation.inventory) return 3;
+    if (_mobileMoreVisible) return 3;
+    if (_selectedNavIndex == AppNavigation.debts) return 1;
+    if (_selectedNavIndex == AppNavigation.inventory) return 2;
+    // Sales history remains under More; the primary Ventas destination opens POS.
     if (_selectedNavIndex == AppNavigation.electronicBalance ||
-        (_selectedNavIndex == AppNavigation.home && _mobileSalesVisible)) {
-      return 1;
+        _selectedNavIndex == AppNavigation.home) {
+      return 0;
     }
-    if (_selectedNavIndex != AppNavigation.home) {
-      return 4;
-    }
-    return 0;
+    return 3;
   }
 
   void _onMobileNavigationSelected(int index) {
@@ -1259,21 +1265,17 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       switch (index) {
         case 0:
           _selectedNavIndex = AppNavigation.home;
-          _mobileSalesVisible = false;
-          break;
-        case 1:
-          _selectedNavIndex = AppNavigation.home;
           _mobileSalesVisible = true;
           break;
-        case 2:
+        case 1:
           _selectedNavIndex = AppNavigation.debts;
           _mobileSalesVisible = false;
           break;
-        case 3:
+        case 2:
           _selectedNavIndex = AppNavigation.inventory;
           _mobileSalesVisible = false;
           break;
-        case 4:
+        case 3:
           _mobileMoreVisible = true;
           break;
       }
