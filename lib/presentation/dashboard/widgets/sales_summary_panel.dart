@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/utils/product_utils.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/sales_cart_item_tile.dart';
 
 class SalesSummaryPanel extends StatelessWidget {
   final Map<String, int> cartQuantities;
@@ -641,178 +640,22 @@ class SalesSummaryPanel extends StatelessWidget {
     required int quantity,
     required Map<String, dynamic> product,
     required bool prepared,
-  }) {
-    final preparationExtra = ProductUtils.asDouble(product['preparationExtra']);
-    final subtotalItem = prepared
-        ? (ProductUtils.price(product) + preparationExtra) * quantity
-        : ProductUtils.priceForQuantity(product, quantity);
-    return Container(
-      height: 76,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 8,
-            top: 8,
-            bottom: 8,
-            child: _buildCartItemImage(imageData),
-          ),
-          Positioned(
-            left: 72,
-            top: 8,
-            right: 48,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  unit.trim().isEmpty
-                      ? product['brand']?.toString() ?? ''
-                      : product['brand']?.toString().trim().isEmpty ?? true
-                          ? unit
-                          : '$unit | ${product['brand']}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 72,
-            bottom: 8,
-            child: Container(
-              height: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 2.0),
-              decoration: BoxDecoration(
-                color: AppColors.inputBackground,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildQtyBtn(
-                    Icons.remove,
-                    () => onDecrementQuantity(productId),
-                  ),
-                  _QuantityInput(
-                    quantity: quantity,
-                    onChanged: (value) => onQuantityChanged(productId, value),
-                  ),
-                  _buildQtyBtn(Icons.add, () => onAddToCart(productId)),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            right: 12,
-            bottom: 12,
-            child: Text(
-              '\$${subtotalItem.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: InkWell(
-              onTap: () => onRemoveFromCart(productId),
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(12),
-                bottomLeft: Radius.circular(10),
-              ),
-              child: Container(
-                width: 36,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.dangerRed.withAlpha(20),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(12),
-                    bottomLeft: Radius.circular(10),
-                  ),
-                  border: Border.all(color: AppColors.dangerRed.withAlpha(50)),
-                ),
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: AppColors.dangerRed,
-                  size: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  }) =>
+      SalesCartItemTile(
+        productId: productId,
+        name: name,
+        unit: unit,
+        unitPrice: unitPrice,
+        imageData: imageData,
+        quantity: quantity,
+        product: product,
+        prepared: prepared,
+        onDecrement: () => onDecrementQuantity(productId),
+        onQuantityChanged: (value) => onQuantityChanged(productId, value),
+        onIncrement: () => onAddToCart(productId),
+        onRemove: () => onRemoveFromCart(productId),
+      );
 
-  Widget _buildCartItemImage(String imageData) {
-    if (imageData.trim().isNotEmpty) {
-      try {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            base64Decode(imageData),
-            width: 56,
-            height: 60,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          ),
-        );
-      } catch (_) {}
-    }
-    return Container(
-      width: 56,
-      decoration: BoxDecoration(
-        color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Icon(
-        Icons.image_outlined,
-        color: AppColors.textSecondary,
-        size: 24,
-      ),
-    );
-  }
-
-  Widget _buildQtyBtn(IconData icon, VoidCallback onTap) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(4),
-    child: SizedBox(
-      width: 20,
-      height: 20,
-      child: Icon(icon, size: 13, color: AppColors.primary),
-    ),
-  );
 }
 
 class _QuantityInput extends StatefulWidget {
