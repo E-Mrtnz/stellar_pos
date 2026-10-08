@@ -964,12 +964,10 @@ class MobileLegacySectionViewport extends StatelessWidget {
 }
 
 class MobileMoreView extends StatelessWidget {
-  final int selectedIndex;
   final ValueChanged<int> onSelect;
 
   const MobileMoreView({
     super.key,
-    required this.selectedIndex,
     required this.onSelect,
   });
 
