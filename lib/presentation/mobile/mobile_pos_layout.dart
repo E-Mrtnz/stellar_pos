@@ -31,6 +31,7 @@ class MobilePosLayout extends StatefulWidget {
   final List<ElectronicBalanceCartItem> electronicBalanceSelection;
   final double total;
   final VoidCallback onCreateSale;
+  final VoidCallback onBack;
   final VoidCallback onMenu;
   final ValueChanged<String> onBarcodeDetected;
   final int selectedPaymentMethod;
@@ -69,6 +70,7 @@ class MobilePosLayout extends StatefulWidget {
     required this.electronicBalanceSelection,
     required this.total,
     required this.onCreateSale,
+    required this.onBack,
     required this.onMenu,
     required this.onBarcodeDetected,
     required this.selectedPaymentMethod,
@@ -249,7 +251,7 @@ class _MobilePosLayoutState extends State<MobilePosLayout> {
           child: Row(
             children: [
               IconButton(
-                onPressed: widget.onMenu,
+                onPressed: widget.onBack,
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
               ),
               const Expanded(
