@@ -740,23 +740,16 @@ class MobileHomeOverview extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    AppStrings.appName,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                AppStrings.appName,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
                 ),
-                IconButton(
-                  onPressed: onMenu,
-                  icon: const Icon(Icons.menu_rounded),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 4),
             const Text(
