@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -527,8 +528,7 @@ class MobileBarcodeScannerView extends StatefulWidget {
 class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   late final MobileScannerController _controller;
   late Map<String, int> _scannedQuantities;
-  bool _scanLocked = false;
-  Timer? _scanCooldownTimer;
+  final AudioPlayer _feedbackPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -541,57 +541,50 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
 
   @override
   void dispose() {
-    _scanCooldownTimer?.cancel();
+    unawaited(_feedbackPlayer.dispose());
     unawaited(_controller.dispose());
     super.dispose();
   }
 
-  void _playSuccessFeedback() {
-    unawaited(SystemSound.play(SystemSoundType.click));
+  Future<void> _playSuccessFeedback() async {
+    try {
+      await _feedbackPlayer.stop();
+      await _feedbackPlayer.play(AssetSource('audio/barcode_success.mp3'));
+    } catch (_) {
+      // Scanning must continue even if audio playback is unavailable.
+      unawaited(SystemSound.play(SystemSoundType.click));
+    }
     unawaited(HapticFeedback.selectionClick());
   }
 
-  void _playErrorFeedback() {
-    unawaited(SystemSound.play(SystemSoundType.click));
-    Future<void>.delayed(const Duration(milliseconds: 130), () {
-      if (mounted) {
-        unawaited(SystemSound.play(SystemSoundType.click));
-      }
-    });
+  Future<void> _playErrorFeedback() async {
+    try {
+      await _feedbackPlayer.stop();
+      await _feedbackPlayer.play(AssetSource('audio/barcode_error.mp3'));
+    } catch (_) {
+      unawaited(SystemSound.play(SystemSoundType.alert));
+    }
     unawaited(HapticFeedback.heavyImpact());
   }
 
   void _detect(BarcodeCapture capture) {
-    if (_scanLocked) {
-      return;
-    }
-
+    // mobile_scanner is configured with DetectionSpeed.noDuplicates. Do not
+    // add a second timer-based lock: it can suppress a legitimate next scan
+    // or unlock while the same label is still in front of the camera.
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue?.trim();
       if (value == null || value.isEmpty) continue;
 
-      // A barcode can remain visible for dozens of camera frames. Treat one
-      // continuous view as a single scan so the cart never receives a burst.
-      _scanLocked = true;
       final productId = widget.onBarcodeDetected(value);
       if (productId == null) {
-        _playErrorFeedback();
+        unawaited(_playErrorFeedback());
       } else {
         setState(() {
           _scannedQuantities[productId] =
               (_scannedQuantities[productId] ?? 0) + 1;
         });
-        _playSuccessFeedback();
+        unawaited(_playSuccessFeedback());
       }
-
-      // Give the user time to remove/move the product before another scan is
-      // accepted. This prevents the same barcode from being added repeatedly.
-      _scanCooldownTimer?.cancel();
-      _scanCooldownTimer = Timer(const Duration(milliseconds: 1200), () {
-        if (mounted) {
-          _scanLocked = false;
-        }
-      });
       break;
     }
   }
