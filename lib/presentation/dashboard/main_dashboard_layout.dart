@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
@@ -43,6 +44,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   String? _selectedFilter;
   String _searchQuery = '';
   bool _isSidebarExpanded = true;
+  final AudioPlayer _saleFeedbackPlayer = AudioPlayer();
   final Map<String, int> _cartQuantities = {};
   final Set<String> _preparedProductIds = {};
   List<ElectronicBalanceCartItem> _electronicBalanceSelection = [];
@@ -75,6 +77,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     SaleDetailDialog.changeHandler = null;
     _productNotFoundTimer?.cancel();
     _productNotFoundOverlay?.remove();
+    unawaited(_saleFeedbackPlayer.dispose());
     _discountAmountController.dispose();
     _discountPercentController.dispose();
     _cashReceivedController.dispose();
@@ -299,7 +302,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
-        'name': '$item.companyName · $item.category',
+        'name': '${item.companyName} · ${item.category}',
         'unit': 'Recarga',
         'price': item.amount,
         'imageData': item.imageData,
@@ -806,7 +809,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             (item) => SaleItemRecord(
               productId:
                   'electronic:$item.accountId:$item.category:${item.amount.toStringAsFixed(4)}',
-              productName: '$item.companyName · $item.category',
+              productName: '${item.companyName} · ${item.category}',
               unit: item.category,
               barcode: '',
               cost: item.amount,
@@ -1031,6 +1034,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       );
       return;
     }
+    unawaited(_playSaleSuccessSound());
     _clearCart();
     setState(() {
       _selectedPaymentMethod = AppPaymentMethods.cash;
@@ -1044,6 +1048,16 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       sale: sale,
       onPrint: () => _printSale(sale),
     );
+  }
+
+  Future<void> _playSaleSuccessSound() async {
+    try {
+      await _saleFeedbackPlayer.stop();
+      await _saleFeedbackPlayer.play(AssetSource('audio/sales_success.mp3'));
+    } catch (_) {
+      // Do not interrupt a successfully registered sale if audio is unavailable.
+      unawaited(SystemSound.play(SystemSoundType.alert));
+    }
   }
 
   Future<bool> _printSale(SaleRecord sale) async {
