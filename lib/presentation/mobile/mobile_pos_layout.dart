@@ -529,18 +529,21 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   late final MobileScannerController _controller;
   late Map<String, int> _scannedQuantities;
   final AudioPlayer _feedbackPlayer = AudioPlayer();
+  Timer? _barcodeReleaseTimer;
+  String? _lastDetectedValue;
 
   @override
   void initState() {
     super.initState();
     _scannedQuantities = Map<String, int>.from(widget.cartQuantities);
     _controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
+      detectionSpeed: DetectionSpeed.normal,
     );
   }
 
   @override
   void dispose() {
+    _barcodeReleaseTimer?.cancel();
     unawaited(_feedbackPlayer.dispose());
     unawaited(_controller.dispose());
     super.dispose();
@@ -574,6 +577,22 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue?.trim();
       if (value == null || value.isEmpty) continue;
+
+      // Ignore repeated frames while the same label remains in view. The
+      // release timer only clears after camera detections stop, so presenting
+      // the same item again after moving it away is accepted as a new scan.
+      _barcodeReleaseTimer?.cancel();
+      if (_lastDetectedValue == value) {
+        _barcodeReleaseTimer = Timer(const Duration(milliseconds: 500), () {
+          _lastDetectedValue = null;
+        });
+        break;
+      }
+
+      _lastDetectedValue = value;
+      _barcodeReleaseTimer = Timer(const Duration(milliseconds: 500), () {
+        _lastDetectedValue = null;
+      });
 
       final productId = widget.onBarcodeDetected(value);
       if (productId == null) {
