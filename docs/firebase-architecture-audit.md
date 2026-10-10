@@ -94,7 +94,7 @@ El código de invitación puede resolver a una tienda, pero no sustituye a `stor
 Identificar qué existe y qué falta antes de modificar código.
 
 ### Fase 1 — Arranque y disponibilidad
-Inicialización Firebase no bloqueante, estados observables de conexión y pruebas de que la app abre/funciona con Firebase desactivado o inaccesible. Sin autenticación ni sincronización automática todavía.
+**Implementación inicial completada en el commit `4eb89c3` y en el commit que actualiza `main.dart`.** La aplicación inicializa Hive, ejecuta `runApp` y solo entonces intenta inicializar Firebase sin esperar el resultado. `CloudFirebase.status` expone estados observables de inicialización (`notStarted`, `initializing`, `initialized`, `unavailable`), y los intentos concurrentes comparten una única operación. Se aclara que `initialized` significa que el SDK se inicializó, no que haya conexión real con Firestore ni sesión autenticada. La validación de ejecución/build multiplataforma sigue pendiente. No se añadió autenticación ni sincronización automática.
 
 ### Fase 2 — Contrato de datos y seguridad
 Definir esquema por entidad, rutas, reglas Firestore y estrategia de permisos. Probar CRUD con datos de prueba y aislamiento entre tiendas antes de conectar los repositorios de negocio.
