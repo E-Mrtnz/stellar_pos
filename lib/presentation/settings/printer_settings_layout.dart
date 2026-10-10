@@ -198,6 +198,19 @@ class _GeneralSettingsContent extends StatelessWidget {
                   const SizedBox(height: 8),
                   _switchTile('Mostrar "Descargar inventario"', 'Muestra las opciones para exportar el inventario.', settings.showInventoryExport, settings.setShowInventoryExport),
 
+                  const SizedBox(height: 22),
+                  Row(children: [
+                    Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.volume_up_outlined, color: AppColors.primary)),
+                    const SizedBox(width: 12),
+                    const Text('Sonidos', style: AppTextStyles.sectionTitle),
+                  ]),
+                  const SizedBox(height: 14),
+                  _switchTile('Sonido al escanear correctamente', 'Reproduce un sonido cuando se reconoce un producto.', settings.barcodeSuccessSound, settings.setBarcodeSuccessSound),
+                  const SizedBox(height: 8),
+                  _switchTile('Sonido de código no encontrado', 'Reproduce una alerta cuando el código no pertenece a un producto.', settings.barcodeErrorSound, settings.setBarcodeErrorSound),
+                  const SizedBox(height: 8),
+                  _switchTile('Sonido al completar una venta', 'Reproduce una confirmación al registrar la venta.', settings.saleSuccessSound, settings.setSaleSuccessSound),
+
                 ]),
               ),
             ),
