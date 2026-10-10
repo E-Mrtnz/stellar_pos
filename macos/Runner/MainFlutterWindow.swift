@@ -223,5 +223,15 @@ class MainFlutterWindow: NSWindow {
     debtStatementSharePlugin = plugin
 
     super.awakeFromNib()
+
+    // Open the app maximized (within the usable desktop area), not in a
+    // separate macOS full-screen Space. Defer until AppKit has attached the
+    // window to a screen so the visible frame is available.
+    DispatchQueue.main.async { [weak self] in
+      guard let self, let screen = self.screen ?? NSScreen.main else {
+        return
+      }
+      self.setFrame(screen.visibleFrame, display: true)
+    }
   }
 }
