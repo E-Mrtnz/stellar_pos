@@ -1125,7 +1125,6 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     final catalog = context.watch<CatalogProvider>();
     final salesProvider = context.watch<SalesProvider>();
     final isHome = _selectedNavIndex == AppNavigation.home;
-    final isStats = _selectedNavIndex == AppNavigation.stats;
 
     Widget content;
     if (_mobileMoreVisible) {
