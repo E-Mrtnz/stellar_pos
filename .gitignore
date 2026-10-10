@@ -19,8 +19,7 @@ migrate_working_dir/
 .idea/
 
 # The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# VS Code, so it remains versioned unless explicitly changed.
 #.vscode/
 
 # Database backups / local Hive storage
@@ -35,6 +34,13 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+
+# Node tooling used only for local Firestore emulator rules tests
+node_modules/
+npm-debug.log*
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # Symbolication related
 app.*.symbols
