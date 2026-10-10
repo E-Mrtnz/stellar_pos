@@ -1,14 +1,22 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:stellar_pos/firebase_options.dart';
 
 class CloudFirebase {
   static bool _ready = false;
   static Object? lastError;
+
   static bool get isReady => _ready;
 
   static Future<bool> initialize() async {
     if (_ready) return true;
+
     try {
-      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
+
       _ready = true;
       lastError = null;
       return true;
@@ -19,6 +27,8 @@ class CloudFirebase {
   }
 
   static Future<void> ensureReady() async {
-    if (!await initialize()) throw StateError('Firebase no está disponible.');
+    if (!await initialize()) {
+      throw StateError('Firebase no está disponible: $lastError');
+    }
   }
 }

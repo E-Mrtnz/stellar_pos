@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "837639639748",
+    "project_id": "stellar-pos-86f0c",
+    "storage_bucket": "stellar-pos-86f0c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:837639639748:android:12c192126ca3e5d192af91",
+        "android_client_info": {
+          "package_name": "com.example.stellar_pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZGMyIavOtNNwSex2-6G1EXB4k62FkS4I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
