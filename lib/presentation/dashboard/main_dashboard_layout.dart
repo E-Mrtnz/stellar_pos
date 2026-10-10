@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
@@ -1051,6 +1052,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   Future<void> _playSaleSuccessSound() async {
+    final prefs = SharedPreferencesAsync();
+    if (await prefs.getBool('general.sound.sale_success') == false) return;
     try {
       await _saleFeedbackPlayer.stop();
       await _saleFeedbackPlayer.play(AssetSource('audio/sales_success.mp3'));
