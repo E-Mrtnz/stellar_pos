@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -550,6 +551,11 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   }
 
   Future<void> _playSuccessFeedback() async {
+    final prefs = SharedPreferencesAsync();
+    if (await prefs.getBool('general.sound.barcode_success') == false) {
+      unawaited(HapticFeedback.selectionClick());
+      return;
+    }
     try {
       await _feedbackPlayer.stop();
       await _feedbackPlayer.play(AssetSource('audio/barcode_success.mp3'));
@@ -561,6 +567,11 @@ class _MobileBarcodeScannerViewState extends State<MobileBarcodeScannerView> {
   }
 
   Future<void> _playErrorFeedback() async {
+    final prefs = SharedPreferencesAsync();
+    if (await prefs.getBool('general.sound.barcode_error') == false) {
+      unawaited(HapticFeedback.heavyImpact());
+      return;
+    }
     try {
       await _feedbackPlayer.stop();
       await _feedbackPlayer.play(AssetSource('audio/barcode_error.mp3'));
