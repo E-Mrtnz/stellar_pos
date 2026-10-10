@@ -126,3 +126,8 @@ Se añadió validación de segmentos en `CloudPaths.document`: los identificador
 Se versionó `firestore.rules` con denegación total de lectura/escritura y se registró en `firebase.json`. Es una postura temporal de “cerrado por defecto”: mientras autenticación y membresía no estén implementadas, el cliente no debe poder leer ni escribir documentos remotos. **No desplegar estas reglas esperando que el CRUD remoto funcione**; al desplegarlas se bloquearán todas las operaciones hasta implementar y probar las reglas de membresía. Tampoco se ha añadido sincronización automática ni se ha conectado el CRUD a los flujos de negocio.
 
 Se añadieron pruebas unitarias para rutas válidas, segmentos vacíos/de espacios y barras. Deben ejecutarse localmente con `flutter test test/core/cloud_paths_test.dart`. No se ejecutaron pruebas ni despliegues desde esta edición del repositorio.
+
+
+### Contrato inicial de datos y membresía
+
+Se añadió [`docs/firestore-data-contract.md`](firestore-data-contract.md) con el mapa de rutas propuesto, separación de UID/storeId/deviceId, metadatos para documentos sincronizables, condiciones mínimas de autorización y plan de pruebas con Emulator Suite. Es un contrato de diseño, no una implementación: no se modificaron entidades Hive, no se creó autenticación ni outbox, y no se activó sincronización. Las reglas continúan denegando todo acceso hasta implementar y probar membresía por tienda.
