@@ -118,3 +118,11 @@ Verificar Android, iOS, macOS y web. Comprobar diferencias de almacenamiento loc
 - Las pruebas demuestran aislamiento por tienda y preservación de datos/operaciones existentes.
 
 **Límite de esta auditoría:** se revisaron los archivos y configuraciones disponibles en `feature/responsive-ui`. No se verificaron desde aquí las reglas actualmente desplegadas en la consola Firebase, la configuración real del proyecto remoto ni la ejecución local de pruebas/builds.
+
+### Fase 2 — Primer endurecimiento de rutas y seguridad (parcial)
+
+Se añadió validación de segmentos en `CloudPaths.document`: los identificadores de tienda, colección y documento no pueden estar vacíos ni contener barras. Esto evita rutas malformadas desde el cliente, pero **no reemplaza las reglas de seguridad**.
+
+Se versionó `firestore.rules` con denegación total de lectura/escritura y se registró en `firebase.json`. Es una postura temporal de “cerrado por defecto”: mientras autenticación y membresía no estén implementadas, el cliente no debe poder leer ni escribir documentos remotos. **No desplegar estas reglas esperando que el CRUD remoto funcione**; al desplegarlas se bloquearán todas las operaciones hasta implementar y probar las reglas de membresía. Tampoco se ha añadido sincronización automática ni se ha conectado el CRUD a los flujos de negocio.
+
+Se añadieron pruebas unitarias para rutas válidas, segmentos vacíos/de espacios y barras. Deben ejecutarse localmente con `flutter test test/core/cloud_paths_test.dart`. No se ejecutaron pruebas ni despliegues desde esta edición del repositorio.
