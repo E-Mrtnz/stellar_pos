@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -151,6 +152,74 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           );
         }
       });
+    });
+  }
+
+  Future<void> _scanBarcode() async {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
+    final barcode = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        var handled = false;
+        return Dialog(
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 420,
+            height: 480,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Escanear código de barras',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: MobileScanner(
+                    onDetect: (capture) {
+                      if (handled) return;
+                      for (final item in capture.barcodes) {
+                        final value = item.rawValue?.trim();
+                        if (value == null || value.isEmpty) continue;
+                        handled = true;
+                        Navigator.of(dialogContext).pop(value);
+                        break;
+                      }
+                    },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Centra el código de barras dentro de la cámara.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (barcode == null || !mounted) return;
+    setState(() {
+      _barcodeController.text = barcode;
+      _invalidFields.remove('barcode');
     });
   }
 
@@ -560,11 +629,23 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           _field(
                             _barcodeController,
                             AppStrings.barcodeHint,
-                            suffix: const Icon(
-                              Icons.qr_code_scanner,
-                              color: AppColors.textSecondary,
-                              size: 20,
-                            ),
+                            suffix: !kIsWeb &&
+                                    (defaultTargetPlatform == TargetPlatform.android ||
+                                        defaultTargetPlatform == TargetPlatform.iOS)
+                                ? IconButton(
+                                    tooltip: 'Escanear código de barras',
+                                    onPressed: _scanBarcode,
+                                    icon: const Icon(
+                                      Icons.qr_code_scanner,
+                                      color: AppColors.primary,
+                                      size: 22,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.qr_code_scanner,
+                                    color: AppColors.textSecondary,
+                                    size: 20,
+                                  ),
                           ),
                           const SizedBox(height: 10),
                           Row(
