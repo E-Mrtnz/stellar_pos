@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fail closed while authentication, store membership, and the data
+    // contract are being implemented. Do not loosen these rules before
+    // membership checks and cross-store isolation tests are in place.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
