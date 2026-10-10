@@ -1,1 +1,43 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"stellar-pos-86f0c","appId":"1:837639639748:android:12c192126ca3e5d192af91","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"stellar-pos-86f0c","appId":"1:837639639748:ios:c6159361e7e771db92af91","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"stellar-pos-86f0c","appId":"1:837639639748:ios:be35eb5e30a9f56192af91","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"stellar-pos-86f0c","configurations":{"android":"1:837639639748:android:12c192126ca3e5d192af91","ios":"1:837639639748:ios:c6159361e7e771db92af91","macos":"1:837639639748:ios:be35eb5e30a9f56192af91","web":"1:837639639748:web:329f991ef2976a3692af91"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "stellar-pos-86f0c",
+          "appId": "1:837639639748:android:12c192126ca3e5d192af91",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "stellar-pos-86f0c",
+          "appId": "1:837639639748:ios:c6159361e7e771db92af91",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "stellar-pos-86f0c",
+          "appId": "1:837639639748:ios:be35eb5e30a9f56192af91",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "stellar-pos-86f0c",
+          "configurations": {
+            "android": "1:837639639748:android:12c192126ca3e5d192af91",
+            "ios": "1:837639639748:ios:c6159361e7e771db92af91",
+            "macos": "1:837639639748:ios:be35eb5e30a9f56192af91",
+            "web": "1:837639639748:web:329f991ef2976a3692af91"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
