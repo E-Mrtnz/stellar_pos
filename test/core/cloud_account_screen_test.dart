@@ -78,7 +78,7 @@ void main() {
     await tester.tap(find.text('Iniciar sesión o crear cuenta'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Acceso a la nube'), findsOneWidget);
+    expect(find.text('Cuenta en la nube'), findsOneWidget);
 
     await gateway.dispose();
   });
