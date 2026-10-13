@@ -160,11 +160,11 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
     });
   }
 
-  void _showProviderSetupMessage(String provider) {
+  void _showProviderUnavailableMessage(String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '$provider necesita configurarse en Firebase antes de poder utilizarse.',
+          'El acceso con $provider todavía no está habilitado. Por ahora, usa correo y contraseña.',
         ),
       ),
     );
@@ -350,7 +350,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                   _providerButton(
                     icon: Icons.g_mobiledata_rounded,
                     label: 'Continuar con Google',
-                    onPressed: () => _showProviderSetupMessage('Google'),
+                    onPressed: () => _showProviderUnavailableMessage('Google'),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -359,7 +359,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                         child: _providerButton(
                           icon: Icons.apple,
                           label: 'Apple',
-                          onPressed: () => _showProviderSetupMessage('Apple'),
+                          onPressed: () => _showProviderUnavailableMessage('Apple'),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -367,7 +367,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                         child: _providerButton(
                           icon: Icons.phone_iphone_rounded,
                           label: 'Teléfono',
-                          onPressed: () => _showProviderSetupMessage('El acceso por teléfono'),
+                          onPressed: () => _showProviderUnavailableMessage('teléfono'),
                         ),
                       ),
                     ],
