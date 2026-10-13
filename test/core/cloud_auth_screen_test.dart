@@ -139,5 +139,28 @@ void main() {
     );
   });
 
+  testWidgets('clearly explains that social providers are not enabled yet',
+      (tester) async {
+    await tester.view.setPhysicalSize(const Size(800, 600));
+    await tester.view.setDevicePixelRatio(1);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(home: CloudAuthScreen(gateway: _FakeCloudAuthGateway())),
+    );
+
+    final googleButton = find.text('Continuar con Google');
+    await tester.ensureVisible(googleButton);
+    await tester.tap(googleButton);
+    await tester.pump();
+
+    expect(
+      find.text(
+        'El acceso con Google todavía no está habilitado. Por ahora, usa correo y contraseña.',
+      ),
+      findsOneWidget,
+    );
+  });
 
 }
