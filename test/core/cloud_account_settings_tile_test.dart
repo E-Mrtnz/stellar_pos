@@ -58,6 +58,12 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(ListView), findsOneWidget);
+
+    // The inline account form is taller than this viewport. It must remain
+    // scrollable rather than overflowing the settings panel.
+    await tester.drag(find.byType(ListView), const Offset(0, -420));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
 }
