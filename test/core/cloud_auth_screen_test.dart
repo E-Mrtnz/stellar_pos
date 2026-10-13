@@ -134,7 +134,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
     await tester.pump();
     expect(
-      tester.widget<TextFormField>(find.byKey(const ValueKey('cloud-auth-password'))).obscureText,
+      passwordEditor().obscureText,
       isTrue,
     );
   });
