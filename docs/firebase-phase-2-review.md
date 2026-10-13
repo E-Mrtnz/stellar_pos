@@ -69,3 +69,24 @@ El usuario instaló Eclipse Temurin OpenJDK 21.0.12.1 y ejecutó `npm run test:r
 - El emulador terminó correctamente.
 
 Esas cuatro pruebas verifican únicamente la postura temporal fail-closed. Las nuevas pruebas Dart de `cloud_store_access.dart` aún deben ejecutarse en el equipo local. No se desplegaron reglas y no se accedió a datos reales.
+
+
+## Fase siguiente: puerta de autenticación (2026-10-13)
+
+Se añadió una primera capa aislada de Firebase Authentication:
+
+- `lib/core/cloud_auth_gateway.dart` define `CloudAuthUser`, `CloudAuthGateway` y el adaptador `FirebaseCloudAuth`.
+- Expone cambios de sesión, consulta de usuario actual, registro con correo/contraseña, inicio de sesión, recuperación por correo y cierre de sesión.
+- La instancia de Firebase Auth se resuelve de forma perezosa y cada operación explícita espera a `CloudFirebase.ensureReady()`. Instanciar el adaptador no inicializa Firebase.
+- Se agregó `firebase_auth: 5.3.4`, versión alineada con `firebase_core: 3.8.1`, `cloud_firestore: 5.5.1` y Firebase iOS SDK 11.4.0 según la matriz de versiones FlutterFire.
+
+**No se conectó esta capa a pantallas ni al arranque local.** Hive sigue funcionando como antes. La autenticación por correo/contraseña debe habilitarse en Firebase Console antes de probarla con el proyecto real. El estado autenticado no concede acceso a ninguna tienda: las reglas de Firestore continúan denegando todo, y las membresías/invitaciones todavía no se crean ni se aceptan.
+
+### Validación pendiente en el equipo local
+
+El usuario informó el 2026-10-13 que:
+- `flutter test test/cloud_store_access_test.dart`: 8 pruebas aprobadas.
+- `flutter analyze`: sin problemas.
+- `npm run test:rules`: 4 pruebas aprobadas, 0 fallidas; solo confirma la política fail-closed.
+
+Esos resultados corresponden al código anterior a esta capa de autenticación. Después de incorporar `firebase_auth`, hay que ejecutar `flutter pub get`, `flutter test` y `flutter analyze`. No se han ejecutado desde este entorno. No desplegar reglas ni conectar datos de negocio.
