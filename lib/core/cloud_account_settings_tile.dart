@@ -21,8 +21,10 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
+      shrinkWrap: true,
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.zero,
       children: [
         ListTile(
           key: const ValueKey('cloud-account-settings-tile'),
