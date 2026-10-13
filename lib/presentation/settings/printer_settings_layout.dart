@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
+import 'package:stellar_pos/core/cloud_account_settings_tile.dart';
 import 'package:stellar_pos/core/providers/general_settings_provider.dart';
 import 'package:stellar_pos/presentation/backups/database_backup_layout.dart';
 import 'package:stellar_pos/presentation/widgets/settings_toggle_tile.dart';
@@ -210,6 +211,15 @@ class _GeneralSettingsContent extends StatelessWidget {
                   _switchTile('Sonido de código no encontrado', 'Reproduce una alerta cuando el código no pertenece a un producto.', settings.barcodeErrorSound, settings.setBarcodeErrorSound),
                   const SizedBox(height: 8),
                   _switchTile('Sonido al completar una venta', 'Reproduce una confirmación al registrar la venta.', settings.saleSuccessSound, settings.setSaleSuccessSound),
+
+                  const SizedBox(height: 22),
+                  Row(children: [
+                    Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.cloud_outlined, color: AppColors.primary)),
+                    const SizedBox(width: 12),
+                    const Text('Cuenta y nube', style: AppTextStyles.sectionTitle),
+                  ]),
+                  const SizedBox(height: 8),
+                  const CloudAccountSettingsTile(),
 
                 ]),
               ),
