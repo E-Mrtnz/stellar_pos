@@ -125,13 +125,12 @@ El usuario confirmó que `flutter test test/core/cloud_auth_gateway_test.dart te
 
 ### Integración de cuenta en Ajustes (2026-10-13)
 
-La pantalla de cuenta ahora tiene una entrada explícita en **Ajustes → General → Cuenta y nube**:
+La cuenta en la nube tiene una sección independiente en **Ajustes → Cuenta y nube**, disponible en escritorio y móvil. El contenido de autenticación se expande dentro de la sección, sin navegación a una pantalla completa, e incluye control para mostrar/ocultar la contraseña.
 
-- `lib/core/cloud_account_settings_tile.dart` encapsula la navegación a la pantalla de cuenta.
-- `lib/presentation/settings/printer_settings_layout.dart` muestra la entrada tanto en el diseño general como en el diseño móvil, dentro del contenido de Ajustes generales.
-- La pantalla solo se abre cuando el usuario toca la entrada; no se solicita autenticación al arrancar ni antes de registrar ventas.
-- El texto aclara que la cuenta en la nube no es necesaria para vender localmente.
-- `test/core/cloud_account_settings_tile_test.dart` cubre la indicación de opcionalidad y la navegación bajo demanda.
+- `lib/core/cloud_account_settings_tile.dart` muestra el panel expandible y la sesión actual.
+- `lib/presentation/settings/printer_settings_layout.dart` expone la sección de cuenta como opción independiente y la elimina de General.
+- `lib/core/cloud_auth_screen.dart` puede presentarse incrustada y mantiene la validación, inicio/registro y recuperación de contraseña.
+- `test/core/cloud_account_settings_tile_test.dart` cubre la expansión/contracción sin navegar; `test/core/cloud_auth_screen_test.dart` cubre mostrar/ocultar contraseña.
 
 El usuario confirmó el 2026-10-13 que las 16 pruebas de `cloud_auth_gateway`, `cloud_auth_screen`, `cloud_account_screen` y `cloud_store_access` pasaron. Las nuevas pruebas de integración de la entrada de Ajustes se deben ejecutar localmente con el resto del conjunto.
 
