@@ -46,7 +46,9 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                           ? const _GeneralSettingsContent()
                           : _selectedIndex == 1
                           ? const _PrinterContent()
-                          : const DatabaseBackupLayout(),
+                          : _selectedIndex == 2
+                              ? const DatabaseBackupLayout()
+                              : const _CloudAccountContent(),
                     ),
                   ),
                 ],
@@ -56,11 +58,12 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
   }
 
   Widget _buildMobileSettings() {
-    final titles = const ['General', 'Impresoras', 'Copias de seguridad'];
+    final titles = const ['General', 'Impresoras', 'Copias de seguridad', 'Cuenta y nube'];
     final icons = const [
       Icons.tune_outlined,
       Icons.print_outlined,
       Icons.backup_outlined,
+      Icons.cloud_outlined,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,13 +113,12 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
                             child: _PrinterContent(),
                           ),
                         )
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 720,
-                            child: DatabaseBackupLayout(),
-                          ),
-                        ),
+                      : _selectedIndex == 2
+                          ? SingleChildScrollView(
+                              padding: const EdgeInsets.all(12),
+                              child: SizedBox(width: 720, child: DatabaseBackupLayout()),
+                            )
+                          : const _CloudAccountContent(),
             ),
           ),
         ),
@@ -141,6 +143,7 @@ class _PrinterSettingsLayoutState extends State<PrinterSettingsLayout> {
         _menuItem(0, Icons.tune_outlined, 'General'),
         _menuItem(1, Icons.print_outlined, 'Impresoras'),
         _menuItem(2, Icons.backup_outlined, 'Copias de seguridad'),
+        _menuItem(3, Icons.cloud_outlined, 'Cuenta y nube'),
       ]),
     );
   }
@@ -212,14 +215,7 @@ class _GeneralSettingsContent extends StatelessWidget {
                   const SizedBox(height: 8),
                   _switchTile('Sonido al completar una venta', 'Reproduce una confirmación al registrar la venta.', settings.saleSuccessSound, settings.setSaleSuccessSound),
 
-                  const SizedBox(height: 22),
-                  Row(children: [
-                    Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.cloud_outlined, color: AppColors.primary)),
-                    const SizedBox(width: 12),
-                    const Text('Cuenta y nube', style: AppTextStyles.sectionTitle),
-                  ]),
-                  const SizedBox(height: 8),
-                  const CloudAccountSettingsTile(),
+
 
                 ]),
               ),
@@ -241,5 +237,40 @@ class _PrinterContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const legacy.PrinterSettingsContent();
+  }
+}
+
+
+class _CloudAccountContent extends StatelessWidget {
+  const _CloudAccountContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppDimensions.pagePadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Cuenta y nube', style: AppTextStyles.brandTitle),
+          const SizedBox(height: 4),
+          const Text(
+            'Administra tu cuenta sin interrumpir las ventas locales.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          const Expanded(
+            child: SingleChildScrollView(
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CloudAccountSettingsTile(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
