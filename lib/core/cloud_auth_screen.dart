@@ -12,10 +12,12 @@ class CloudAuthScreen extends StatefulWidget {
     required this.gateway,
     super.key,
     this.onAuthenticated,
+    this.embedded = false,
   });
 
   final CloudAuthGateway gateway;
   final ValueChanged<CloudAuthUser>? onAuthenticated;
+  final bool embedded;
 
   @override
   State<CloudAuthScreen> createState() => _CloudAuthScreenState();
@@ -28,6 +30,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
 
   bool _isRegistering = false;
   bool _isBusy = false;
+  bool _obscurePassword = true;
   String? _message;
   bool _isError = false;
 
@@ -160,11 +163,9 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cuenta en la nube')),
-      body: Center(
+    final content = Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(widget.embedded ? 8 : 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Form(
@@ -185,7 +186,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                     'la sesión local ni habilita permisos de tienda por sí sola.',
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   TextFormField(
                     key: const ValueKey('cloud-auth-email'),
                     controller: _emailController,
@@ -202,11 +203,17 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                   TextFormField(
                     key: const ValueKey('cloud-auth-password'),
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     enabled: !_isBusy,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Contraseña',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        key: const ValueKey('cloud-auth-toggle-password'),
+                        tooltip: _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                        onPressed: _isBusy ? null : () => setState(() => _obscurePassword = !_obscurePassword),
+                        icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      ),
                     ),
                     validator: _validatePassword,
                   ),
@@ -259,7 +266,11 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
             ),
           ),
         ),
-      ),
+      );
+    if (widget.embedded) return content;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cuenta en la nube')),
+      body: content,
     );
   }
 }
