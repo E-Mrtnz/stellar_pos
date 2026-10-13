@@ -118,14 +118,17 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: CloudAuthScreen(gateway: _FakeCloudAuthGateway())),
     );
-    final passwordField = tester.widget<TextFormField>(
-      find.byKey(const ValueKey('cloud-auth-password')),
+    EditableText passwordEditor() => tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const ValueKey('cloud-auth-password')),
+        matching: find.byType(EditableText),
+      ),
     );
-    expect(passwordField.obscureText, isTrue);
+    expect(passwordEditor().obscureText, isTrue);
     await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
     await tester.pump();
     expect(
-      tester.widget<TextFormField>(find.byKey(const ValueKey('cloud-auth-password'))).obscureText,
+      passwordEditor().obscureText,
       isFalse,
     );
     await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
