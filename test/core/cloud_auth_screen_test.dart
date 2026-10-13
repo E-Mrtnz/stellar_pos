@@ -49,29 +49,7 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Future<void> signOut() async {
     signedIn = null;
   }
-  testWidgets('password can be shown and hidden', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(home: CloudAuthScreen(gateway: _FakeCloudAuthGateway())),
-    );
-    final passwordField = tester.widget<TextFormField>(
-      find.byKey(const ValueKey('cloud-auth-password')),
-    );
-    expect(passwordField.obscureText, isTrue);
-    await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
-    await tester.pump();
-    expect(
-      tester.widget<TextFormField>(find.byKey(const ValueKey('cloud-auth-password'))).obscureText,
-      isFalse,
-    );
-    await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
-    await tester.pump();
-    expect(
-      tester.widget<TextFormField>(find.byKey(const ValueKey('cloud-auth-password'))).obscureText,
-      isTrue,
-    );
-  });
 
-}
 
 void main() {
   testWidgets('validates required email and password', (tester) async {
@@ -136,4 +114,27 @@ void main() {
 
     expect(find.text('Correo o contraseña incorrectos.'), findsOneWidget);
   });
+  testWidgets('password can be shown and hidden', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(home: CloudAuthScreen(gateway: _FakeCloudAuthGateway())),
+    );
+    final passwordField = tester.widget<TextFormField>(
+      find.byKey(const ValueKey('cloud-auth-password')),
+    );
+    expect(passwordField.obscureText, isTrue);
+    await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
+    await tester.pump();
+    expect(
+      tester.widget<TextFormField>(find.byKey(const ValueKey('cloud-auth-password'))).obscureText,
+      isFalse,
+    );
+    await tester.tap(find.byKey(const ValueKey('cloud-auth-toggle-password')));
+    await tester.pump();
+    expect(
+      tester.widget<TextFormField>(find.byKey(const ValueKey('cloud-auth-password'))).obscureText,
+      isTrue,
+    );
+  });
+
+
 }
