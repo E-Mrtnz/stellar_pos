@@ -121,3 +121,18 @@ La pantalla sigue siendo opt-in y no se conectó automáticamente al inicio ni a
 El usuario confirmó que `flutter test test/core/cloud_auth_gateway_test.dart test/core/cloud_auth_screen_test.dart test/cloud_store_access_test.dart` terminó con 13 pruebas aprobadas, y `npm run test:rules` con 4 pruebas aprobadas y 0 fallidas. `flutter analyze` había terminado sin problemas antes de la pantalla de cuenta. La nueva pantalla de cuenta y sus pruebas aún requieren `flutter test` y `flutter analyze`.
 
 **Seguridad:** no hay flujo de membresía/aceptación de invitaciones ni reglas positivas implementadas. `firestore.rules` continúa denegando todas las operaciones. No desplegar reglas ni conectar datos de negocio.
+
+
+### Integración de cuenta en Ajustes (2026-10-13)
+
+La pantalla de cuenta ahora tiene una entrada explícita en **Ajustes → General → Cuenta y nube**:
+
+- `lib/core/cloud_account_settings_tile.dart` encapsula la navegación a la pantalla de cuenta.
+- `lib/presentation/settings/printer_settings_layout.dart` muestra la entrada tanto en el diseño general como en el diseño móvil, dentro del contenido de Ajustes generales.
+- La pantalla solo se abre cuando el usuario toca la entrada; no se solicita autenticación al arrancar ni antes de registrar ventas.
+- El texto aclara que la cuenta en la nube no es necesaria para vender localmente.
+- `test/core/cloud_account_settings_tile_test.dart` cubre la indicación de opcionalidad y la navegación bajo demanda.
+
+El usuario confirmó el 2026-10-13 que las 16 pruebas de `cloud_auth_gateway`, `cloud_auth_screen`, `cloud_account_screen` y `cloud_store_access` pasaron. Las nuevas pruebas de integración de la entrada de Ajustes se deben ejecutar localmente con el resto del conjunto.
+
+**Límites de seguridad sin cambios:** Firestore continúa denegando todas las lecturas y escrituras; no se desplegaron reglas. Todavía no existe flujo de creación de tienda/membresía/invitaciones, ni se conectaron datos de negocio a la nube.
