@@ -12,7 +12,10 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   int signOutCalls = 0;
 
   @override
-  Stream<CloudAuthUser?> authStateChanges() => controller.stream;
+  Stream<CloudAuthUser?> authStateChanges() async* {
+    yield user;
+    yield* controller.stream;
+  }
 
   @override
   Future<CloudAuthUser?> currentUser() async => user;
