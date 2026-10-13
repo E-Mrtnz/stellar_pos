@@ -40,4 +40,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Iniciar sesión'), findsOneWidget);
   });
+
+  testWidgets('account panel scrolls on a compact desktop viewport', (tester) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CloudAccountSettingsTile(gateway: _FakeCloudAuthGateway()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ListView), findsOneWidget);
+  });
+
 }
