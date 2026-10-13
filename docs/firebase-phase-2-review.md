@@ -103,3 +103,21 @@ Se añadió `lib/core/cloud_auth_screen.dart`, una pantalla reutilizable de acce
 La pantalla **no es la ruta inicial ni se conectó al panel principal**. Esto es deliberado: no debe bloquear la caja local ni forzar una cuenta para vender sin conexión. El callback `onAuthenticated` solo notifica la identidad autenticada; no concede acceso a una tienda ni cambia las reglas.
 
 Se agregó `test/core/cloud_auth_screen_test.dart` con pruebas de validación, inicio de sesión simulado y errores de credenciales. Estas pruebas aún deben ejecutarse localmente. Antes de probar contra el proyecto real, habilitar el proveedor Email/Password en Firebase Authentication Console. La aceptación de invitaciones, creación de membresías y permisos de Firestore continúan sin implementar; las reglas permanecen en denegación total.
+
+
+### Fase siguiente: gestión explícita de sesión (2026-10-13)
+
+Se agregó `lib/core/cloud_account_screen.dart` como pantalla reutilizable para acciones de cuenta:
+- Muestra el estado de sesión mediante `CloudAuthGateway.authStateChanges()`.
+- Si no hay sesión, permite abrir la pantalla de acceso/registro.
+- Si hay sesión, muestra el correo o UID y permite cerrar sesión.
+- Explica en la interfaz que autenticarse no concede membresía ni permisos de tienda.
+- Los errores de sesión no bloquean ni cambian el flujo local de caja.
+
+La pantalla sigue siendo opt-in y no se conectó automáticamente al inicio ni al menú de ajustes; el acceso de navegación debe integrarse después de validar la UI en los dispositivos objetivo. Se agregaron `test/core/cloud_account_screen_test.dart` para ausencia de sesión, identidad y cierre de sesión.
+
+### Validación local informada el 2026-10-13
+
+El usuario confirmó que `flutter test test/core/cloud_auth_gateway_test.dart test/core/cloud_auth_screen_test.dart test/cloud_store_access_test.dart` terminó con 13 pruebas aprobadas, y `npm run test:rules` con 4 pruebas aprobadas y 0 fallidas. `flutter analyze` había terminado sin problemas antes de la pantalla de cuenta. La nueva pantalla de cuenta y sus pruebas aún requieren `flutter test` y `flutter analyze`.
+
+**Seguridad:** no hay flujo de membresía/aceptación de invitaciones ni reglas positivas implementadas. `firestore.rules` continúa denegando todas las operaciones. No desplegar reglas ni conectar datos de negocio.
