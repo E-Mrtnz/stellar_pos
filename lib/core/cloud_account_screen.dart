@@ -7,7 +7,7 @@ import 'cloud_auth_screen.dart';
 ///
 /// This screen is opt-in and is not the POS home route. A signed-in user still
 /// needs a separately verified store membership before accessing store data.
-class CloudAccountScreen extends StatelessWidget {
+class CloudAccountScreen extends StatefulWidget {
   const CloudAccountScreen({
     required this.gateway,
     super.key,
@@ -16,11 +16,19 @@ class CloudAccountScreen extends StatelessWidget {
   final CloudAuthGateway gateway;
 
   @override
+  State<CloudAccountScreen> createState() => _CloudAccountScreenState();
+}
+
+class _CloudAccountScreenState extends State<CloudAccountScreen> {
+  int _streamVersion = 0;
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Cuenta en la nube')),
       body: StreamBuilder<CloudAuthUser?>(
-        stream: gateway.authStateChanges(),
+        key: ValueKey(_streamVersion),
+        stream: widget.gateway.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -33,7 +41,7 @@ class CloudAccountScreen extends StatelessWidget {
                   'Comprueba la conexión y la configuración de Firebase. '
                   'La operación local de la tienda sigue disponible.',
               actionLabel: 'Reintentar',
-              onAction: () => (context as Element).markNeedsBuild(),
+              onAction: () => setState(() => _streamVersion++),
             );
           }
 
@@ -49,7 +57,7 @@ class CloudAccountScreen extends StatelessWidget {
               onAction: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => CloudAuthScreen(gateway: gateway),
+                    builder: (_) => CloudAuthScreen(gateway: widget.gateway),
                   ),
                 );
               },
@@ -114,7 +122,7 @@ class CloudAccountScreen extends StatelessWidget {
 
   Future<void> _signOut(BuildContext context) async {
     try {
-      await gateway.signOut();
+      await widget.gateway.signOut();
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
