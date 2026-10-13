@@ -48,3 +48,24 @@ No desplegar reglas permisivas ni usar datos reales hasta pasar las pruebas de a
 - El usuario informó que `flutter test test/core/cloud_paths_test.dart test/core/cloud_firestore_repository_test.dart` terminó con `00:04 +5: All tests passed!`.
 - El usuario informó que `flutter analyze` produjo cero problemas.
 - Los tests del emulador se agregaron al repositorio, pero aún falta ejecutarlos en el equipo local.
+
+
+## Fase siguiente: contrato de identidad y membresías (2026-10-12)
+
+Se agregaron los siguientes artefactos de dominio/documentación en `feature/cloud-storage-v2`:
+
+- `lib/core/cloud_store_access.dart`: roles `owner`, `manager`, `cashier` y `viewer`; estado de membresía; metadatos de invitación con hash, expiración, revocación y límites de uso.
+- `test/cloud_store_access_test.dart`: pruebas unitarias para permisos de rol de dominio, validación de UID/identificadores, valores de rol desconocidos y límites de invitaciones.
+- `docs/store-identity-membership-design.md`: contrato de identidad, rutas, roles, protocolo de invitación y matriz de pruebas para el emulador.
+
+**Límite importante:** estos modelos no son un mecanismo de autorización ni crean/aceptan invitaciones. No se añadió Firebase Authentication ni se conectó ningún repositorio de negocio. Las reglas de Firestore siguen denegando todas las operaciones remotas hasta que el flujo autenticado y las reglas positivas/negativas estén implementados.
+
+### Validación local informada por el usuario
+
+El usuario instaló Eclipse Temurin OpenJDK 21.0.12.1 y ejecutó `npm run test:rules` en el proyecto ficticio `demo-stellar-pos`. El registro compartido muestra:
+
+- 4 pruebas de reglas aprobadas.
+- 0 fallidas.
+- El emulador terminó correctamente.
+
+Esas cuatro pruebas verifican únicamente la postura temporal fail-closed. Las nuevas pruebas Dart de `cloud_store_access.dart` aún deben ejecutarse en el equipo local. No se desplegaron reglas y no se accedió a datos reales.
