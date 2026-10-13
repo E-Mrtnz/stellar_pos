@@ -232,7 +232,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    _isRegistering ? 'Crea tu cuenta' : 'Bienvenido de nuevo',
+                    _isRegistering ? 'Crear cuenta' : 'Iniciar sesión',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
@@ -328,7 +328,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(
-                            _isRegistering ? 'Crear cuenta' : 'Iniciar sesión',
+                            _isRegistering ? 'Crear cuenta' : 'Entrar',
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                   ),
