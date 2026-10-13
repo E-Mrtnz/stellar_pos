@@ -49,7 +49,7 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Future<void> signOut() async {
     signedIn = null;
   }
-
+}
 
 void main() {
   testWidgets('validates required email and password', (tester) async {
