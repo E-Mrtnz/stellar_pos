@@ -90,3 +90,16 @@ El usuario informó el 2026-10-13 que:
 - `npm run test:rules`: 4 pruebas aprobadas, 0 fallidas; solo confirma la política fail-closed.
 
 Esos resultados corresponden al código anterior a esta capa de autenticación. Después de incorporar `firebase_auth`, hay que ejecutar `flutter pub get`, `flutter test` y `flutter analyze`. No se han ejecutado desde este entorno. No desplegar reglas ni conectar datos de negocio.
+
+
+### Fase siguiente: interfaz de cuenta opcional (2026-10-13)
+
+Se añadió `lib/core/cloud_auth_screen.dart`, una pantalla reutilizable de acceso a la nube con:
+- Inicio de sesión y creación de cuenta por correo/contraseña.
+- Recuperación de contraseña por correo.
+- Validación de campos, indicador de carga y mensajes de error en español.
+- Un `CloudAuthGateway` inyectado, para probar la interfaz sin Firebase real.
+
+La pantalla **no es la ruta inicial ni se conectó al panel principal**. Esto es deliberado: no debe bloquear la caja local ni forzar una cuenta para vender sin conexión. El callback `onAuthenticated` solo notifica la identidad autenticada; no concede acceso a una tienda ni cambia las reglas.
+
+Se agregó `test/core/cloud_auth_screen_test.dart` con pruebas de validación, inicio de sesión simulado y errores de credenciales. Estas pruebas aún deben ejecutarse localmente. Antes de probar contra el proyecto real, habilitar el proveedor Email/Password en Firebase Authentication Console. La aceptación de invitaciones, creación de membresías y permisos de Firestore continúan sin implementar; las reglas permanecen en denegación total.
