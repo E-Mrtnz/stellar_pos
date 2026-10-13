@@ -160,42 +160,118 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
     });
   }
 
+  void _showProviderSetupMessage(String provider) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$provider necesita configurarse en Firebase antes de poder utilizarse.',
+        ),
+      ),
+    );
+  }
+
+  Widget _providerButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    bool expanded = true,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: _isBusy ? null : onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 48),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final radius = BorderRadius.circular(16);
+
     final content = Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(widget.embedded ? 8 : 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(widget.embedded ? 12 : 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Container(
+            padding: EdgeInsets.all(widget.embedded ? 20 : 30),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: radius,
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.shadow.withValues(alpha: .07),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.cloud_outlined, size: 56, color: colors.primary),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isRegistering ? 'Crear cuenta' : 'Iniciar sesión',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'La cuenta prepara el acceso a tus tiendas. No reemplaza '
-                    'la sesión local ni habilita permisos de tienda por sí sola.',
-                    textAlign: TextAlign.center,
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(Icons.cloud_done_rounded, size: 30, color: colors.primary),
                   ),
                   const SizedBox(height: 20),
+                  Text(
+                    _isRegistering ? 'Crea tu cuenta' : 'Bienvenido de nuevo',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isRegistering
+                        ? 'Regístrate para preparar el acceso a tus tiendas.'
+                        : 'Inicia sesión para administrar tu cuenta en la nube.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 26),
                   TextFormField(
                     key: const ValueKey('cloud-auth-email'),
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
+                    autofillHints: const [AutofillHints.email],
                     enabled: !_isBusy,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Correo electrónico',
-                      border: OutlineInputBorder(),
+                      hintText: 'nombre@ejemplo.com',
+                      prefixIcon: const Icon(Icons.mail_outline_rounded),
+                      filled: true,
+                      fillColor: colors.surfaceContainerLowest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(13),
+                        borderSide: BorderSide(color: colors.outlineVariant),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(13),
+                        borderSide: BorderSide(color: colors.outlineVariant),
+                      ),
                     ),
                     validator: _validateEmail,
                   ),
@@ -204,69 +280,147 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                     key: const ValueKey('cloud-auth-password'),
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    autofillHints: const [AutofillHints.password],
                     enabled: !_isBusy,
                     decoration: InputDecoration(
                       labelText: 'Contraseña',
-                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         key: const ValueKey('cloud-auth-toggle-password'),
                         tooltip: _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
                         onPressed: _isBusy ? null : () => setState(() => _obscurePassword = !_obscurePassword),
                         icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                       ),
+                      filled: true,
+                      fillColor: colors.surfaceContainerLowest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(13),
+                        borderSide: BorderSide(color: colors.outlineVariant),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(13),
+                        borderSide: BorderSide(color: colors.outlineVariant),
+                      ),
                     ),
                     validator: _validatePassword,
                   ),
-                  if (!_isRegistering) ...[
+                  if (!_isRegistering)
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _isBusy ? null : _resetPassword,
                         child: const Text('¿Olvidaste tu contraseña?'),
                       ),
-                    ),
-                  ] else
+                    )
+                  else
                     const SizedBox(height: 12),
                   const SizedBox(height: 8),
                   FilledButton(
                     onPressed: _isBusy ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                    ),
                     child: _isBusy
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(_isRegistering ? 'Crear cuenta' : 'Entrar'),
+                        : Text(
+                            _isRegistering ? 'Crear cuenta' : 'Iniciar sesión',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
                   ),
-                  TextButton(
-                    onPressed: _isBusy ? null : _toggleMode,
-                    child: Text(
-                      _isRegistering
-                          ? 'Ya tengo una cuenta'
-                          : 'Crear una cuenta nueva',
-                    ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: colors.outlineVariant)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'O continúa con',
+                          style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: colors.outlineVariant)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _providerButton(
+                    icon: Icons.g_mobiledata_rounded,
+                    label: 'Continuar con Google',
+                    onPressed: () => _showProviderSetupMessage('Google'),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _providerButton(
+                          icon: Icons.apple,
+                          label: 'Apple',
+                          onPressed: () => _showProviderSetupMessage('Apple'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _providerButton(
+                          icon: Icons.phone_iphone_rounded,
+                          label: 'Teléfono',
+                          onPressed: () => _showProviderSetupMessage('El acceso por teléfono'),
+                        ),
+                      ),
+                    ],
                   ),
                   if (_message != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Semantics(
                       liveRegion: true,
-                      child: Text(
-                        _message!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _isError
-                              ? colors.error
-                              : colors.primary,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: (_isError ? colors.errorContainer : colors.primaryContainer).withValues(alpha: .7),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _message!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _isError ? colors.onErrorContainer : colors.onPrimaryContainer,
+                          ),
                         ),
                       ),
                     ),
                   ],
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        _isRegistering ? '¿Ya tienes una cuenta? ' : '¿No tienes una cuenta? ',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+                      ),
+                      TextButton(
+                        onPressed: _isBusy ? null : _toggleMode,
+                        child: Text(_isRegistering ? 'Inicia sesión' : 'Crear cuenta'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tu punto de venta local seguirá disponible aunque no inicies sesión.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                  ),
                 ],
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+
     if (widget.embedded) return content;
     return Scaffold(
       appBar: AppBar(title: const Text('Cuenta en la nube')),
