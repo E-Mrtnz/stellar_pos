@@ -10,7 +10,7 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   String? lastPassword;
   int resetRequests = 0;
   String? requestedPhone;
-  String? verifiedCode;\n  String? requestedPhone;\n  String? verifiedCode;
+  String? verifiedCode;
 
   @override
   Stream<CloudAuthUser?> authStateChanges() => const Stream.empty();
