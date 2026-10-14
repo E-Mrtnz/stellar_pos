@@ -46,6 +46,28 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Future<void> sendPasswordResetEmail({required String email}) async {}
 
   @override
+  Future<CloudAuthUser> signInWithGoogle() => Future<CloudAuthUser>.error(
+        UnsupportedError('Google no está habilitado en este fake.'),
+      );
+
+  @override
+  Future<CloudAuthUser> signInWithApple() => Future<CloudAuthUser>.error(
+        UnsupportedError('Apple no está habilitado en este fake.'),
+      );
+
+  @override
+  Future<void> sendPhoneVerificationCode({required String phoneNumber}) =>
+      Future<void>.error(
+        UnsupportedError('SMS no está habilitado en este fake.'),
+      );
+
+  @override
+  Future<CloudAuthUser> verifyPhoneCode({required String smsCode}) =>
+      Future<CloudAuthUser>.error(
+        UnsupportedError('SMS no está habilitado en este fake.'),
+      );
+
+  @override
   Future<void> signOut() async {
     signOutCalls++;
     user = null;
