@@ -1,0 +1,33 @@
+name: Flutter auth regression tests
+
+on:
+  push:
+    branches:
+      - feature/cloud-storage-v2
+  pull_request:
+    branches:
+      - feature/cloud-storage-v2
+
+jobs:
+  flutter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.0'
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze changed auth files
+        run: flutter analyze lib/core/cloud_auth_gateway.dart lib/core/cloud_auth_screen.dart lib/core/cloud_account_settings_tile.dart
+      - name: Run cloud authentication regression tests
+        run: >-
+          flutter test
+          test/core/cloud_auth_gateway_test.dart
+          test/core/cloud_auth_screen_test.dart
+          test/core/cloud_account_settings_tile_test.dart
+          test/cloud_store_access_test.dart
