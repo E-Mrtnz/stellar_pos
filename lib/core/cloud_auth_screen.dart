@@ -189,6 +189,129 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
     }
   }
 
+  Future<void> _phoneSignInFlow() async {
+    if (_isBusy) return;
+    final phoneController = TextEditingController();
+    final codeController = TextEditingController();
+    var codeSent = false;
+    var sending = false;
+    String? dialogError;
+    setState(() {
+      _isBusy = true;
+      _message = null;
+    });
+
+    try {
+      final user = await showDialog<CloudAuthUser>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Acceder con teléfono'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    codeSent
+                        ? 'Introduce el código SMS que recibiste.'
+                        : 'Escribe tu número con código de país. Ejemplo: +503XXXXXXXX.',
+                  ),
+                  const SizedBox(height: 16),
+                  if (!codeSent)
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Número de teléfono',
+                        hintText: '+503XXXXXXXX',
+                      ),
+                    )
+                  else
+                    TextField(
+                      controller: codeController,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Código SMS',
+                      ),
+                    ),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      dialogError!,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: sending ? null : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          sending = true;
+                          dialogError = null;
+                        });
+                        try {
+                          if (!codeSent) {
+                            await widget.gateway.sendPhoneVerificationCode(
+                              phoneNumber: phoneController.text,
+                            );
+                            setDialogState(() {
+                              codeSent = true;
+                              sending = false;
+                            });
+                          } else {
+                            final user = await widget.gateway.verifyPhoneCode(
+                              smsCode: codeController.text,
+                            );
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop(user);
+                            }
+                          }
+                        } catch (error) {
+                          setDialogState(() {
+                            sending = false;
+                            dialogError = error is UnsupportedError
+                                ? error.message?.toString() ?? 'Este método no está disponible.'
+                                : _friendlyError(error);
+                          });
+                        }
+                      },
+                child: sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(codeSent ? 'Verificar código' : 'Enviar código'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (!mounted || user == null) return;
+      setState(() {
+        _isError = false;
+        _message = 'Sesión iniciada como ${user.email ?? user.uid}.';
+      });
+      widget.onAuthenticated?.call(user);
+    } finally {
+      phoneController.dispose();
+      codeController.dispose();
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
   void _showProviderUnavailableMessage(String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -400,7 +523,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                         child: _providerButton(
                           icon: Icons.phone_iphone_rounded,
                           label: 'Teléfono',
-                          onPressed: () => _showProviderUnavailableMessage('teléfono'),
+                          onPressed: _phoneSignInFlow,
                         ),
                       ),
                     ],
