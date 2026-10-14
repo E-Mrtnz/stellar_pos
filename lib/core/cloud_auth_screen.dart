@@ -76,6 +76,20 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
         text.contains('unavailable')) {
       return 'No hay conexión con el servicio. Puedes seguir usando la caja local.';
     }
+    if (text.contains('invalid-phone-number')) {
+      return 'El número no es válido. Incluye el código de país, por ejemplo +503.';
+    }
+    if (text.contains('invalid-verification-code') ||
+        text.contains('session-expired') ||
+        text.contains('code-expired')) {
+      return 'El código SMS no es válido o ya venció. Solicita uno nuevo.';
+    }
+    if (text.contains('quota-exceeded')) {
+      return 'Se alcanzó el límite de SMS. Inténtalo más tarde.';
+    }
+    if (text.contains('sign-in-cancelled') || text.contains('canceled')) {
+      return 'Se canceló el inicio de sesión.';
+    }
     if (text.contains('too-many-requests')) {
       return 'Demasiados intentos. Espera un momento y vuelve a intentarlo.';
     }
