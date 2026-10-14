@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 
 import 'cloud_firebase.dart';
 
@@ -47,6 +48,16 @@ abstract interface class CloudAuthGateway {
   });
 
   Future<void> sendPasswordResetEmail({required String email});
+
+  /// Optional providers have safe defaults so existing fake gateways remain
+  /// source-compatible while providers are configured per platform.
+  Future<CloudAuthUser> signInWithGoogle() => Future<CloudAuthUser>.error(
+        UnsupportedError('Google sign-in is not supported by this gateway.'),
+      );
+
+  Future<CloudAuthUser> signInWithApple() => Future<CloudAuthUser>.error(
+        UnsupportedError('Apple sign-in is not supported by this gateway.'),
+      );
 
   Future<void> signOut();
 }
@@ -103,6 +114,40 @@ class FirebaseCloudAuth implements CloudAuthGateway {
       email: email.trim(),
       password: password,
     );
+    final user = credential.user;
+    if (user == null) {
+      throw StateError('Firebase Authentication no devolvió un usuario.');
+    }
+    return CloudAuthUser.fromFirebase(user);
+  }
+
+  @override
+  Future<CloudAuthUser> signInWithGoogle() async {
+    await CloudFirebase.ensureReady();
+    if (!kIsWeb) {
+      throw UnsupportedError(
+        'El acceso nativo con Google requiere integrar google_sign_in y sus credenciales de plataforma.',
+      );
+    }
+    final credential = await _auth.signInWithPopup(
+      firebase_auth.GoogleAuthProvider(),
+    );
+    final user = credential.user;
+    if (user == null) {
+      throw StateError('Firebase Authentication no devolvió un usuario.');
+    }
+    return CloudAuthUser.fromFirebase(user);
+  }
+
+  @override
+  Future<CloudAuthUser> signInWithApple() async {
+    await CloudFirebase.ensureReady();
+    final provider = firebase_auth.AppleAuthProvider()
+      ..addScope('email')
+      ..addScope('name');
+    final credential = kIsWeb
+        ? await _auth.signInWithPopup(provider)
+        : await _auth.signInWithProvider(provider);
     final user = credential.user;
     if (user == null) {
       throw StateError('Firebase Authentication no devolvió un usuario.');
