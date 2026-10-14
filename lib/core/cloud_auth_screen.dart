@@ -221,6 +221,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                   const SizedBox(height: 16),
                   if (!codeSent)
                     TextField(
+                      
                       key: const ValueKey('cloud-auth-phone-number'),
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
@@ -232,6 +233,7 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                     )
                   else
                     TextField(
+                      key: const ValueKey('cloud-auth-phone-code'),
                       key: const ValueKey('cloud-auth-phone-code'),
                       controller: codeController,
                       keyboardType: TextInputType.number,
