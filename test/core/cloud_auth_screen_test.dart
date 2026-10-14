@@ -80,6 +80,7 @@ void main() {
       MaterialApp(home: CloudAuthScreen(gateway: _FakeCloudAuthGateway())),
     );
 
+    await tester.ensureVisible(find.text('Entrar'));
     await tester.tap(find.text('Entrar'));
     await tester.pump();
 
