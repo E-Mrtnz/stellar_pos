@@ -183,7 +183,7 @@ void main() {
 
     await tester.ensureVisible(find.text('Teléfono'));
     await tester.tap(find.text('Teléfono'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     await tester.enterText(find.byKey(const ValueKey('cloud-auth-phone-number')), '+50370000000');
     await tester.tap(find.text('Enviar código'));
