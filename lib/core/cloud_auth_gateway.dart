@@ -77,7 +77,7 @@ abstract interface class CloudAuthGateway {
 class FirebaseCloudAuth implements CloudAuthGateway {
   FirebaseCloudAuth({firebase_auth.FirebaseAuth? auth}) : _providedAuth = auth;
 
-  final firebase_auth.FirebaseAuth? _providedAuth;\n  String? _phoneVerificationId;\n  firebase_auth.ConfirmationResult? _webPhoneConfirmation;
+  final firebase_auth.FirebaseAuth? _providedAuth;\n  String? _phoneVerificationId;\n  firebase_auth.ConfirmationResult? _webPhoneConfirmation;\n  CloudAuthUser? _autoVerifiedPhoneUser;
 
   firebase_auth.FirebaseAuth get _auth =>
       _providedAuth ?? firebase_auth.FirebaseAuth.instance;
