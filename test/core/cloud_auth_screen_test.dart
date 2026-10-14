@@ -157,7 +157,7 @@ void main() {
 
     expect(
       find.text(
-        'El acceso con Google todavía no está habilitado. Por ahora, usa correo y contraseña.',
+        'El acceso con Google no está habilitado en este dispositivo.',
       ),
       findsOneWidget,
     );
