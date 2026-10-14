@@ -52,11 +52,11 @@ abstract interface class CloudAuthGateway {
   /// Optional providers have safe defaults so existing fake gateways remain
   /// source-compatible while providers are configured per platform.
   Future<CloudAuthUser> signInWithGoogle() => Future<CloudAuthUser>.error(
-        UnsupportedError('Google sign-in is not supported by this gateway.'),
+        UnsupportedError('El acceso con Google no está habilitado en este dispositivo.'),
       );
 
   Future<CloudAuthUser> signInWithApple() => Future<CloudAuthUser>.error(
-        UnsupportedError('Apple sign-in is not supported by this gateway.'),
+        UnsupportedError('El acceso con Apple no está habilitado en este dispositivo.'),
       );
 
   Future<void> signOut();
