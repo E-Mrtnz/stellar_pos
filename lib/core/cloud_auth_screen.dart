@@ -160,6 +160,36 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
     });
   }
 
+  Future<void> _signInWithProvider({
+    required String provider,
+    required Future<CloudAuthUser> Function() authenticate,
+  }) async {
+    if (_isBusy) return;
+    setState(() {
+      _isBusy = true;
+      _message = null;
+    });
+    try {
+      final user = await authenticate();
+      if (!mounted) return;
+      setState(() {
+        _isError = false;
+        _message = 'Sesión iniciada como ${user.email ?? user.uid}.';
+      });
+      widget.onAuthenticated?.call(user);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        _message = error is UnsupportedError
+            ? error.message?.toString() ?? 'Este método no está disponible en esta plataforma.'
+            : _friendlyError(error);
+      });
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
   void _showProviderUnavailableMessage(String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -350,7 +380,10 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                   _providerButton(
                     icon: Icons.g_mobiledata_rounded,
                     label: 'Continuar con Google',
-                    onPressed: () => _showProviderUnavailableMessage('Google'),
+                    onPressed: () => _signInWithProvider(
+                      provider: 'Google',
+                      authenticate: widget.gateway.signInWithGoogle,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -359,7 +392,10 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                         child: _providerButton(
                           icon: Icons.apple,
                           label: 'Apple',
-                          onPressed: () => _showProviderUnavailableMessage('Apple'),
+                          onPressed: () => _signInWithProvider(
+                            provider: 'Apple',
+                            authenticate: widget.gateway.signInWithApple,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
