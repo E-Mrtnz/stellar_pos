@@ -46,6 +46,16 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   }
 
   @override
+  Future<CloudAuthUser> signInWithGoogle() => Future.error(
+        UnsupportedError('El acceso con Google no está habilitado en este dispositivo.'),
+      );
+
+  @override
+  Future<CloudAuthUser> signInWithApple() => Future.error(
+        UnsupportedError('El acceso con Apple no está habilitado en este dispositivo.'),
+      );
+
+  @override
   Future<void> signOut() async {
     signedIn = null;
   }
