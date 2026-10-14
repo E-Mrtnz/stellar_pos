@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'dart:async';\n\nimport 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'cloud_firebase.dart';
@@ -78,7 +80,10 @@ abstract interface class CloudAuthGateway {
 class FirebaseCloudAuth implements CloudAuthGateway {
   FirebaseCloudAuth({firebase_auth.FirebaseAuth? auth}) : _providedAuth = auth;
 
-  final firebase_auth.FirebaseAuth? _providedAuth;\n  String? _phoneVerificationId;\n  firebase_auth.ConfirmationResult? _webPhoneConfirmation;\n  CloudAuthUser? _autoVerifiedPhoneUser;
+  final firebase_auth.FirebaseAuth? _providedAuth;
+  String? _phoneVerificationId;
+  firebase_auth.ConfirmationResult? _webPhoneConfirmation;
+  CloudAuthUser? _autoVerifiedPhoneUser;
 
   firebase_auth.FirebaseAuth get _auth =>
       _providedAuth ?? firebase_auth.FirebaseAuth.instance;
@@ -211,7 +216,10 @@ class FirebaseCloudAuth implements CloudAuthGateway {
       phoneNumber: normalized,
       verificationCompleted: (credential) async {
         try {
-          await _auth.signInWithCredential(credential);
+          final result = await _auth.signInWithCredential(credential);
+          if (result.user != null) {
+            _autoVerifiedPhoneUser = CloudAuthUser.fromFirebase(result.user!);
+          }
           if (!completer.isCompleted) completer.complete();
         } catch (error, stackTrace) {
           if (!completer.isCompleted) completer.completeError(error, stackTrace);
@@ -235,6 +243,12 @@ class FirebaseCloudAuth implements CloudAuthGateway {
   @override
   Future<CloudAuthUser> verifyPhoneCode({required String smsCode}) async {
     await CloudFirebase.ensureReady();
+    final automaticUser = _autoVerifiedPhoneUser;
+    if (automaticUser != null) {
+      _autoVerifiedPhoneUser = null;
+      _phoneVerificationId = null;
+      return automaticUser;
+    }
     final code = smsCode.trim();
     if (code.length < 4) {
       throw const FormatException('Introduce el código recibido por SMS.');
