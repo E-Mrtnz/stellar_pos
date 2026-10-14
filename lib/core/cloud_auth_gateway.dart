@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'dart:async';\n\nimport 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'cloud_firebase.dart';
 
@@ -134,14 +135,38 @@ class FirebaseCloudAuth implements CloudAuthGateway {
   @override
   Future<CloudAuthUser> signInWithGoogle() async {
     await CloudFirebase.ensureReady();
-    if (!kIsWeb) {
+    if (kIsWeb) {
+      final credential = await _auth.signInWithPopup(
+        firebase_auth.GoogleAuthProvider(),
+      );
+      final user = credential.user;
+      if (user == null) {
+        throw StateError('Firebase Authentication no devolvió un usuario.');
+      }
+      return CloudAuthUser.fromFirebase(user);
+    }
+
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.iOS) {
       throw UnsupportedError(
-        'El acceso nativo con Google requiere integrar google_sign_in y sus credenciales de plataforma.',
+        'El acceso nativo con Google está disponible en Android y iOS. En web se usa la ventana de Firebase.',
       );
     }
-    final credential = await _auth.signInWithPopup(
-      firebase_auth.GoogleAuthProvider(),
+
+    final googleSignIn = GoogleSignIn(scopes: const ['email']);
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      throw firebase_auth.FirebaseAuthException(
+        code: 'sign-in-cancelled',
+        message: 'El usuario canceló el acceso con Google.',
+      );
+    }
+    final googleAuth = await googleUser.authentication;
+    final oauthCredential = firebase_auth.GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
     );
+    final credential = await _auth.signInWithCredential(oauthCredential);
     final user = credential.user;
     if (user == null) {
       throw StateError('Firebase Authentication no devolvió un usuario.');
