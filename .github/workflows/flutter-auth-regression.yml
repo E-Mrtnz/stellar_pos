@@ -22,6 +22,8 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Verify provider dependencies resolve
+        run: flutter pub deps --style=compact
       - name: Analyze changed auth files
         run: flutter analyze lib/core/cloud_auth_gateway.dart lib/core/cloud_auth_screen.dart lib/core/cloud_account_settings_tile.dart
       - name: Run cloud authentication regression tests
