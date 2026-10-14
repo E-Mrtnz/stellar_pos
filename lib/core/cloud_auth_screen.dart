@@ -322,6 +322,10 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
       });
       widget.onAuthenticated?.call(user);
     } finally {
+      // showDialog completes when pop is requested, before its reverse
+      // transition has fully removed the TextFields from the widget tree.
+      // Keep their controllers alive until that transition has finished.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
       phoneController.dispose();
       codeController.dispose();
       if (mounted) setState(() => _isBusy = false);
