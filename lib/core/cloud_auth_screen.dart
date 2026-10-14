@@ -221,7 +221,6 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                   const SizedBox(height: 16),
                   if (!codeSent)
                     TextField(
-                      
                       key: const ValueKey('cloud-auth-phone-number'),
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
@@ -233,7 +232,6 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
                     )
                   else
                     TextField(
-                      key: const ValueKey('cloud-auth-phone-code'),
                       key: const ValueKey('cloud-auth-phone-code'),
                       controller: codeController,
                       keyboardType: TextInputType.number,
@@ -316,21 +314,11 @@ class _CloudAuthScreenState extends State<CloudAuthScreen> {
     }
   }
 
-  void _showProviderUnavailableMessage(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'El acceso con $provider todavía no está habilitado. Por ahora, usa correo y contraseña.',
-        ),
-      ),
-    );
-  }
 
   Widget _providerButton({
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
-    bool expanded = true,
   }) {
     return OutlinedButton.icon(
       onPressed: _isBusy ? null : onPressed,
