@@ -8,7 +8,7 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Object? signInError;
   String? lastEmail;
   String? lastPassword;
-  int resetRequests = 0;
+  int resetRequests = 0;\n  String? requestedPhone;\n  String? verifiedCode;
 
   @override
   Stream<CloudAuthUser?> authStateChanges() => const Stream.empty();
@@ -147,6 +147,42 @@ void main() {
       passwordEditor().obscureText,
       isTrue,
     );
+  });
+
+  testWidgets('phone sign-in requests and verifies an SMS code',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final gateway = _FakeCloudAuthGateway();
+    CloudAuthUser? authenticated;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAuthScreen(
+          gateway: gateway,
+          onAuthenticated: (user) => authenticated = user,
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('Teléfono'));
+    await tester.tap(find.text('Teléfono'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byLabelText('Número de teléfono'), '+50370000000');
+    await tester.tap(find.text('Enviar código'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.requestedPhone, '+50370000000');
+    await tester.enterText(find.byLabelText('Código SMS'), '123456');
+    await tester.tap(find.text('Verificar código'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.verifiedCode, '123456');
+    expect(authenticated?.uid, 'phone-user');
+    expect(find.text('Sesión iniciada como phone-user.'), findsOneWidget);
   });
 
   testWidgets('clearly explains that social providers are not enabled yet',
