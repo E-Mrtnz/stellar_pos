@@ -8,7 +8,9 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Object? signInError;
   String? lastEmail;
   String? lastPassword;
-  int resetRequests = 0;\n  String? requestedPhone;\n  String? verifiedCode;
+  int resetRequests = 0;
+  String? requestedPhone;
+  String? verifiedCode;\n  String? requestedPhone;\n  String? verifiedCode;
 
   @override
   Stream<CloudAuthUser?> authStateChanges() => const Stream.empty();
@@ -54,6 +56,17 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Future<CloudAuthUser> signInWithApple() => Future.error(
         UnsupportedError('El acceso con Apple no está habilitado en este dispositivo.'),
       );
+
+  @override
+  Future<void> sendPhoneVerificationCode({required String phoneNumber}) async {
+    requestedPhone = phoneNumber;
+  }
+
+  @override
+  Future<CloudAuthUser> verifyPhoneCode({required String smsCode}) async {
+    verifiedCode = smsCode;
+    return signedIn = CloudAuthUser(uid: 'phone-user', email: null);
+  }
 
   @override
   Future<void> signOut() async {
