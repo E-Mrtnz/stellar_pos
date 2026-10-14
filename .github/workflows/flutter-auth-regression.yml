@@ -24,6 +24,12 @@ jobs:
         run: flutter pub get
       - name: Verify provider dependencies resolve
         run: flutter pub deps --style=compact
+      - name: Preserve resolved dependency lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-pubspec-lock
+          path: pubspec.lock
+          if-no-files-found: error
       - name: Analyze changed auth files
         run: flutter analyze lib/core/cloud_auth_gateway.dart lib/core/cloud_auth_screen.dart lib/core/cloud_account_settings_tile.dart
       - name: Run cloud authentication regression tests
