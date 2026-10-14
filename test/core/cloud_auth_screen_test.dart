@@ -187,12 +187,14 @@ void main() {
 
     await tester.enterText(find.byKey(const ValueKey('cloud-auth-phone-number')), '+50370000000');
     await tester.tap(find.text('Enviar código'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(gateway.requestedPhone, '+50370000000');
     await tester.enterText(find.byKey(const ValueKey('cloud-auth-phone-code')), '123456');
     await tester.tap(find.text('Verificar código'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(gateway.verifiedCode, '123456');
     expect(authenticated?.uid, 'phone-user');
