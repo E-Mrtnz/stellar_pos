@@ -25,6 +25,13 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
       );
 
   @override
+  Future<void> sendPhoneVerificationCode({required String phoneNumber}) async {}
+
+  @override
+  Future<CloudAuthUser> verifyPhoneCode({required String smsCode}) =>
+      Future.error(UnsupportedError('El acceso por teléfono no está habilitado en este dispositivo.'));
+
+  @override
   Future<void> signOut() async {}
 }
 
