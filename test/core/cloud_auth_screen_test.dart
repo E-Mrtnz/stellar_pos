@@ -171,12 +171,12 @@ void main() {
     await tester.tap(find.text('Teléfono'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byLabelText('Número de teléfono'), '+50370000000');
+    await tester.enterText(find.byKey(const ValueKey('cloud-auth-phone-number')), '+50370000000');
     await tester.tap(find.text('Enviar código'));
     await tester.pumpAndSettle();
 
     expect(gateway.requestedPhone, '+50370000000');
-    await tester.enterText(find.byLabelText('Código SMS'), '123456');
+    await tester.enterText(find.byKey(const ValueKey('cloud-auth-phone-code')), '123456');
     await tester.tap(find.text('Verificar código'));
     await tester.pumpAndSettle();
 
