@@ -13,6 +13,9 @@ service cloud.firestore {
         )
         && get(
           /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
+        ).data.uid == request.auth.uid
+        && get(
+          /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
         ).data.status == 'active';
     }
 
