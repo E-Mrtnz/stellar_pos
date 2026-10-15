@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 
 import 'cloud_auth_gateway.dart';
 import 'cloud_auth_screen.dart';
+import 'cloud_store_repository.dart';
 
-/// Account hub for explicit cloud-account actions.
+/// Account hub for explicit cloud-account and store-creation actions.
 ///
-/// This screen is opt-in and is not the POS home route. A signed-in user still
-/// needs a separately verified store membership before accessing store data.
+/// This screen is opt-in and is not the POS home route. Creating a shared store
+/// does not upload or synchronize local business data.
 class CloudAccountScreen extends StatefulWidget {
   const CloudAccountScreen({
     required this.gateway,
+    this.storeGateway,
     super.key,
   });
 
   final CloudAuthGateway gateway;
+  final CloudStoreGateway? storeGateway;
 
   @override
   State<CloudAccountScreen> createState() => _CloudAccountScreenState();
@@ -21,6 +24,8 @@ class CloudAccountScreen extends StatefulWidget {
 
 class _CloudAccountScreenState extends State<CloudAccountScreen> {
   int _streamVersion = 0;
+  late final CloudStoreGateway _storeGateway =
+      widget.storeGateway ?? CloudStoreRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -64,65 +69,222 @@ class _CloudAccountScreenState extends State<CloudAccountScreen> {
             );
           }
 
-          return Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircleAvatar(
-                      radius: 32,
-                      child: Icon(Icons.person, size: 32),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Sesión iniciada',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    SelectableText(user.email ?? user.uid),
-                    const SizedBox(height: 16),
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+          return _SignedInCloudPanel(
+            key: ValueKey(user.uid),
+            user: user,
+            authGateway: widget.gateway,
+            storeGateway: _storeGateway,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SignedInCloudPanel extends StatefulWidget {
+  const _SignedInCloudPanel({
+    required this.user,
+    required this.authGateway,
+    required this.storeGateway,
+    super.key,
+  });
+
+  final CloudAuthUser user;
+  final CloudAuthGateway authGateway;
+  final CloudStoreGateway storeGateway;
+
+  @override
+  State<_SignedInCloudPanel> createState() => _SignedInCloudPanelState();
+}
+
+class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
+  final _storeNameController = TextEditingController();
+  bool _creatingStore = false;
+  String? _errorMessage;
+  CloudStore? _createdStore;
+
+  @override
+  void dispose() {
+    _storeNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createStore() async {
+    if (_creatingStore) return;
+    setState(() {
+      _creatingStore = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final store = await widget.storeGateway.createStore(
+        name: _storeNameController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _createdStore = store;
+        _storeNameController.clear();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage =
+            'No se pudo crear la tienda. Comprueba la conexión y que las '
+            'reglas de Firestore estén desplegadas; tus datos locales no se '
+            'han modificado.';
+      });
+    } finally {
+      if (mounted) setState(() => _creatingStore = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const CircleAvatar(
+                radius: 32,
+                child: Icon(Icons.person, size: 32),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Sesión iniciada',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                widget.user.email ?? widget.user.uid,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Una tienda de Stellar POS es un espacio de datos '
+                          'compartido, no una página de comercio electrónico. '
+                          'Crear una tienda no sube tus productos ni tus ventas.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Crear una tienda',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _storeNameController,
+                maxLength: 80,
+                textCapitalization: TextCapitalization.words,
+                enabled: !_creatingStore && _createdStore == null,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre de la tienda',
+                  hintText: 'Ej. Tienda El Edén',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) {
+                  if (_errorMessage != null) {
+                    setState(() => _errorMessage = null);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _creatingStore || _createdStore != null
+                    ? null
+                    : _createStore,
+                icon: _creatingStore
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_business_outlined),
+                label: Text(
+                  _creatingStore ? 'Creando tienda…' : 'Crear tienda',
+                ),
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorMessage!,
+                  key: const ValueKey('create-store-error'),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              if (_createdStore != null) ...[
+                const SizedBox(height: 16),
+                Card(
+                  key: const ValueKey('created-store-result'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
                           children: [
-                            Icon(Icons.info_outline),
-                            SizedBox(width: 12),
+                            Icon(Icons.check_circle_outline),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'La cuenta confirma tu identidad, pero todavía '
-                                'no concede acceso a una tienda. La membresía '
-                                'y los permisos se habilitarán después de '
-                                'implementar y probar las reglas de seguridad.',
+                                'Tienda creada',
+                                style: TextStyle(fontWeight: FontWeight.w700),
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(_createdStore!.name),
+                        const SizedBox(height: 4),
+                        const Text('Identificador de tienda'),
+                        SelectableText(
+                          _createdStore!.id,
+                          key: const ValueKey('created-store-id'),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'La tienda está creada, pero todavía no se han '
+                          'sincronizado productos, ventas ni otros datos.',
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    OutlinedButton.icon(
-                      onPressed: () => _signOut(context),
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Cerrar sesión en la nube'),
-                    ),
-                  ],
+                  ),
                 ),
+              ],
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: () => _signOut(context),
+                icon: const Icon(Icons.logout),
+                label: const Text('Cerrar sesión en la nube'),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Future<void> _signOut(BuildContext context) async {
     try {
-      await widget.gateway.signOut();
+      await widget.authGateway.signOut();
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
