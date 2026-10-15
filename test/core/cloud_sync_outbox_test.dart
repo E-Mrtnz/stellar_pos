@@ -58,6 +58,28 @@ void main() {
       expect(storage.flushCount, 2);
     });
 
+    test('serializes concurrent enqueues that reuse an event ID', () async {
+      final results = await Future.wait<Object?>([
+        outbox.enqueue(event(entityId: 'product-1')).then<Object?>((_) => null),
+        outbox.enqueue(event(entityId: 'product-2')).then<Object?>((_) => null,
+            onError: (Object error) => error),
+      ]);
+
+      expect(results.whereType<StateError>(), hasLength(1));
+      expect(storage.data, hasLength(1));
+      final stored = storage.data['evt-1']! as Map<String, Object?>;
+      expect(stored['entityId'], 'product-1');
+    });
+
+    test('a new outbox instance can resume persisted pending events', () async {
+      await outbox.enqueue(event());
+      final restartedOutbox = CloudSyncOutbox(storage: storage);
+
+      final pending = await restartedOutbox.pendingForStore('store-a');
+
+      expect(pending.map((item) => item.eventId), <String>['evt-1']);
+    });
+
     test('rejects reuse of an event ID for a different entity', () async {
       await outbox.enqueue(event());
       await expectLater(
