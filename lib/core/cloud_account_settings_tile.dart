@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'cloud_account_screen.dart';
 import 'cloud_auth_gateway.dart';
 import 'cloud_auth_screen.dart';
 
@@ -88,7 +89,22 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
                     ),
                     const SizedBox(height: 12),
                     const _InlineNotice(
-                      message: 'La cuenta confirma tu identidad, pero todavía no concede acceso a una tienda.',
+                      message: 'Tu cuenta ya está autenticada. Crea una tienda compartida desde aquí; los productos y las ventas locales no se subirán automáticamente.',
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => CloudAccountScreen(gateway: _gateway),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.storefront_outlined),
+                        label: const Text('Crear una tienda'),
+                      ),
                     ),
                     Align(
                       alignment: Alignment.centerRight,
