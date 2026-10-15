@@ -162,8 +162,11 @@ void main() {
 
     await tester.ensureVisible(find.text('Cerrar sesión en la nube'));
     await tester.tap(find.text('Cerrar sesión en la nube'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(gateway.signOutCalls, 1);
+    expect(storeGateway.createCalls, 0);
+    expect(find.text('Sin sesión en la nube'), findsOneWidget);
+    expect(find.text('Iniciar sesión o crear cuenta'), findsOneWidget);
 
     await gateway.dispose();
   });
