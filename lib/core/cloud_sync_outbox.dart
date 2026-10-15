@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
 
@@ -60,7 +62,23 @@ class CloudSyncOutbox {
 
   final String boxName;
 
-  Future<void> enqueue(CloudSyncEvent event) async {
+  // Hive operations must be serialized: two simultaneous enqueue calls could
+  // otherwise both observe a missing ID and overwrite each other's payload.
+  Future<void> _operationTail = Future<void>.value();
+
+  Future<T> _serialize<T>(Future<T> Function() operation) {
+    final result = Completer<T>();
+    _operationTail = _operationTail.then((_) async {
+      try {
+        result.complete(await operation());
+      } on Object catch (error, stackTrace) {
+        result.completeError(error, stackTrace);
+      }
+    });
+    return result.future;
+  }
+
+  Future<void> enqueue(CloudSyncEvent event) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final existing = _storage.get(event.eventId);
     if (existing != null) {
@@ -80,9 +98,10 @@ class CloudSyncOutbox {
     }
     await _storage.put(event.eventId, _encode(event));
     await _storage.flush();
-  }
+  });
 
-  Future<List<CloudSyncEvent>> pendingForStore(String storeId) async {
+  Future<List<CloudSyncEvent>> pendingForStore(String storeId) =>
+      _serialize(() async {
     await (_storage is _HiveCloudSyncOutboxStorage ? _storage._refresh() : Future<void>.value());
     final events = <CloudSyncEvent>[];
     for (final value in _storage.values) {
@@ -94,7 +113,7 @@ class CloudSyncOutbox {
     }
     events.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return List<CloudSyncEvent>.unmodifiable(events);
-  }
+  });
 
   Future<void> markInFlight(String eventId) =>
       _updateStatus(eventId, CloudSyncEventStatus.inFlight);
@@ -110,7 +129,7 @@ class CloudSyncOutbox {
   /// The stable event ID must be used by an idempotent remote transport before
   /// this recovery is enabled for business data; a prior request may have
   /// reached the server even if the client never recorded its acknowledgement.
-  Future<int> recoverInterruptedEvents() async {
+  Future<int> recoverInterruptedEvents() => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     var recovered = 0;
     final interrupted = <CloudSyncEvent>[];
@@ -132,9 +151,9 @@ class CloudSyncOutbox {
     }
     if (recovered > 0) await _storage.flush();
     return recovered;
-  }
+  });
 
-  Future<void> retry(String eventId) async {
+  Future<void> retry(String eventId) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
@@ -147,18 +166,18 @@ class CloudSyncOutbox {
       )),
     );
     await _storage.flush();
-  }
+  });
 
   Future<void> _updateStatus(
     String eventId,
     CloudSyncEventStatus status,
-  ) async {
+  ) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     await _storage.put(eventId, _encode(_decode(value).copyWith(status: status)));
     await _storage.flush();
-  }
+  });
 
   Map<String, Object?> _encode(CloudSyncEvent event) => <String, Object?>{
         'eventId': event.eventId,
