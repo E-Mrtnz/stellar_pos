@@ -11,6 +11,7 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
       StreamController<CloudAuthUser?>.broadcast();
   CloudAuthUser? user;
   int signOutCalls = 0;
+  Object? signOutError;
 
   @override
   Stream<CloudAuthUser?> authStateChanges() async* {
@@ -71,6 +72,7 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   @override
   Future<void> signOut() async {
     signOutCalls++;
+    if (signOutError != null) throw signOutError!;
     user = null;
     controller.add(null);
   }
@@ -169,6 +171,39 @@ void main() {
     expect(storeGateway.createCalls, 0);
     expect(find.text('Sin sesión en la nube'), findsOneWidget);
     expect(find.text('Iniciar sesión o crear cuenta'), findsOneWidget);
+
+    await gateway.dispose();
+  });
+
+
+  testWidgets('keeps the cloud session visible when sign-out fails', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com')
+      ..signOutError = StateError('network-unavailable');
+    final storeGateway = _FakeCloudStoreGateway();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Cerrar sesión en la nube'));
+    await tester.tap(find.text('Cerrar sesión en la nube'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.signOutCalls, 1);
+    expect(find.text('Sesión iniciada'), findsOneWidget);
+    expect(find.text('owner@example.com'), findsOneWidget);
+    expect(
+      find.textContaining('No se pudo cerrar la sesión en la nube'),
+      findsOneWidget,
+    );
+    expect(storeGateway.createCalls, 0);
 
     await gateway.dispose();
   });
