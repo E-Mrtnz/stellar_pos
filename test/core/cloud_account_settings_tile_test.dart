@@ -39,39 +39,6 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
 
   @override
   Future<void> signOut() async {}
-  testWidgets('auth stream error with retry stays within a compact viewport',
-      (tester) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: CloudAccountSettingsTile(
-            gateway: _FakeCloudAuthGateway(failAuthStream: true),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text(
-        'No se pudo consultar la sesión. La caja local sigue disponible.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Reintentar'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Reintentar'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Reintentar'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
 
 }
 
@@ -120,6 +87,41 @@ void main() {
     // scrollable rather than overflowing the settings panel.
     await tester.drag(find.byType(ListView), const Offset(0, -420));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('auth stream error with retry stays within a compact viewport',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CloudAccountSettingsTile(
+            gateway: _FakeCloudAuthGateway(failAuthStream: true),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'No se pudo consultar la sesión. La caja local sigue disponible.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Reintentar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reintentar'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
