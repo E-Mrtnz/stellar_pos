@@ -7,11 +7,15 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  query,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 const projectId = 'demo-stellar-pos';
@@ -118,6 +122,53 @@ test('denies claiming a store with another user as owner', async () => {
     createdAt: timestamp,
   });
   await assertFails(batch.commit());
+});
+
+test('allows a user to list only their own active store memberships', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const batch = db.batch();
+    const timestamp = new Date();
+    for (const [storeId, uid, status] of [
+      ['store-a', 'user-a', 'active'],
+      ['store-b', 'user-a', 'active'],
+      ['store-c', 'user-b', 'active'],
+      ['store-d', 'user-a', 'revoked'],
+    ]) {
+      batch.set(doc(db, `stores/${storeId}/members/${uid}`), {
+        uid,
+        role: 'owner',
+        status,
+        createdAt: timestamp,
+      });
+    }
+    await batch.commit();
+  });
+
+  const db = testEnv.authenticatedContext('user-a').firestore();
+  const ownMemberships = query(
+    collectionGroup(db, 'members'),
+    where('uid', '==', 'user-a'),
+    where('status', '==', 'active'),
+  );
+  const result = await getDocs(ownMemberships);
+  assert.equal(result.size, 2);
+  assert.deepEqual(
+    result.docs.map((membership) => membership.data().uid),
+    ['user-a', 'user-a'],
+  );
+});
+
+test('denies unbounded collection-group membership queries', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, 'stores/store-a/members/user-a'), {
+      uid: 'user-a', role: 'owner', status: 'active', createdAt: new Date(),
+    });
+  });
+
+  const db = testEnv.authenticatedContext('user-a').firestore();
+  await assertFails(getDocs(collectionGroup(db, 'members')));
 });
 
 test('does not allow store owners to create arbitrary business records yet', async () => {
