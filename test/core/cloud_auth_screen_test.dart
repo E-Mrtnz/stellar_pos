@@ -223,6 +223,7 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
   });
 
 }
