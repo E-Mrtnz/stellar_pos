@@ -50,3 +50,38 @@ Pendiente antes de conectar datos de negocio:
 4. Diseñar una outbox durable y sincronización incremental con datos sintéticos, sin activar aún escrituras de negocio.
 
 No crear colecciones manualmente ni cargar el inventario actual durante esta fase.
+
+
+## Diagnóstico en macOS: tiendas no se pueden listar ni crear
+
+Si la interfaz muestra errores al listar y crear tiendas, la sesión de Firebase Authentication por sí sola no confirma que las reglas de Firestore estén desplegadas ni que la cuenta tenga una membresía activa. La configuración FlutterFire del repositorio apunta al proyecto `stellar-pos-86f0c`; confirmar el proyecto activo antes de cualquier despliegue.
+
+Comprobaciones seguras desde la terminal del desarrollador:
+
+```bash
+firebase projects:list
+firebase use
+```
+
+El identificador de proyecto de `lib/firebase_options.dart` y `firebase.json` debe coincidir con el proyecto seleccionado. Revisar las reglas locales y ejecutar las pruebas del emulador antes de desplegar:
+
+```bash
+npm run test:rules
+```
+
+**No desplegar reglas a producción automáticamente desde esta fase.** Si el proyecto correcto ha sido confirmado por el propietario y las pruebas pasan, el despliegue debe ser una acción explícita y consciente del desarrollador, usando el ID confirmado; no usar `firebase use` a ciegas ni confiar únicamente en el alias local. Una respuesta `permission-denied` normalmente apunta a reglas no desplegadas/incorrectas o a una consulta que las reglas no pueden autorizar. Un error de conexión apunta a disponibilidad o red, no a permisos.
+
+La creación válida escribe solo dos documentos en un batch atómico. La consulta de tiendas consulta membresías activas y luego los metadatos de cada tienda; no consulta colecciones de productos ni ventas.
+
+## Diseño aprobado para sincronización incremental (todavía no activado)
+
+La sincronización prevista será automática en segundo plano, sin pedir al usuario que aplique cada cambio manualmente. No debe descargar ni subir toda la base al abrir la app. Antes de habilitarla se necesita:
+
+1. Registrar cada cambio local en una outbox durable junto con la escritura local, con ID de evento/documento estable.
+2. Procesar solo eventos pendientes, con reintentos idempotentes y confirmación explícita de evento aplicado.
+3. Mantener un cursor o versión remota para traer solo cambios posteriores; no confiar únicamente en comparar snapshots completos.
+4. Evitar bucles de eco marcando el origen de cada cambio y distinguir cambios locales de cambios aplicados desde la nube.
+5. Definir conflictos por tipo de dato. El inventario, las ventas, pagos y deudas no deben resolverse con una política genérica de “última escritura gana”.
+6. Aplicar autorización por tienda y rol en Firestore Rules, y probar desconexión, reintentos, duplicados, cierre de sesión y dos dispositivos concurrentes con datos sintéticos.
+
+Hasta implementar y probar todos estos componentes, la sincronización de datos comerciales permanece apagada. Esta documentación no modifica datos de Firebase ni despliega reglas.
