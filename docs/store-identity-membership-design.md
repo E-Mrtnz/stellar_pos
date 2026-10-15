@@ -1,6 +1,6 @@
 # STELLAR POS — Identidad, membresías e invitaciones
 
-**Estado:** contrato de dominio y base para el alta limitada de tienda. La autenticación está integrada; el repositorio de creación existe, pero aún no está conectado a la interfaz. Las invitaciones no están habilitadas.
+**Estado:** alta explícita de tienda y consulta de membresías integradas en la interfaz. Las pruebas de Flutter y Firestore Emulator pasan en CI. Las invitaciones y la sincronización de datos de negocio siguen deshabilitadas por diseño.
 
 ## Objetivo
 
@@ -46,7 +46,7 @@ Los permisos en Dart solo ayudan a presentar acciones; no son una barrera de seg
 7. El código no debe convertirse en una credencial permanente. No exponer invitaciones en consultas generales ni permitir leerlas por conocer su ID.
 8. El cliente no puede asignarse un rol ni editar su membresía directamente.
 
-La generación/validación de códigos y la operación transaccional de aceptación requieren un diseño de confianza final (por ejemplo, función backend o un protocolo de reglas que se pueda demostrar seguro). El modelo Dart recién agregado es solo un contrato y no ejecuta esas operaciones.
+La generación/validación de códigos y la operación transaccional de aceptación requieren un diseño de confianza final (por ejemplo, función backend o un protocolo de reglas que se pueda demostrar seguro). La interfaz muestra explícitamente que compartir tiendas aún no está disponible. El modelo de dominio no ejecuta creación ni aceptación de invitaciones.
 
 ## Matriz mínima para reglas Emulator
 
