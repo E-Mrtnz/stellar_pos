@@ -2,9 +2,79 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Fail closed while authentication, store membership, and the data
-    // contract are being implemented. Do not loosen these rules before
-    // membership checks and cross-store isolation tests are in place.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function activeMember(storeId) {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
+        )
+        && get(
+          /databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)
+        ).data.status == 'active';
+    }
+
+    function pairedOwnerMembership(storeId, uid) {
+      let membership = getAfter(
+        /databases/$(database)/documents/stores/$(storeId)/members/$(uid)
+      ).data;
+      return membership.uid == uid
+        && membership.role == 'owner'
+        && membership.status == 'active';
+    }
+
+    match /stores/{storeId} {
+      // Store creation is allowed only as part of the same atomic batch that
+      // creates the authenticated creator's owner membership.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'name', 'ownerUid', 'schemaVersion', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'name', 'ownerUid', 'schemaVersion', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && pairedOwnerMembership(storeId, request.auth.uid);
+
+      allow read: if activeMember(storeId);
+      // Store updates and deletion stay disabled until separately designed.
+      allow update, delete: if false;
+
+      match /members/{uid} {
+        // A new owner membership must be paired with creating its store.
+        // This deliberately does not enable invitations or adding members.
+        allow create: if signedIn()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasAll([
+            'uid', 'role', 'status', 'createdAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'uid', 'role', 'status', 'createdAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == 'owner'
+          && request.resource.data.status == 'active'
+          && request.resource.data.createdAt is timestamp
+          && getAfter(
+            /databases/$(database)/documents/stores/$(storeId)
+          ).data.ownerUid == request.auth.uid;
+
+        allow read: if signedIn()
+          && (uid == request.auth.uid || activeMember(storeId));
+        allow update, delete: if false;
+      }
+    }
+
+    // Business records, invitations, and all unspecified paths remain closed.
+    // In particular, this does not enable product/sale/inventory sync.
     match /{document=**} {
       allow read, write: if false;
     }
