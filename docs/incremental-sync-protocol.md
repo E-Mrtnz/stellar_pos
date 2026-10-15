@@ -64,3 +64,11 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - La cola no tiene conexión con Firebase y no se inicia automáticamente. Se añadió `recoverInterruptedEvents()` para devolver a pendientes los eventos que quedaron `inFlight` tras un cierre inesperado, aumentando el contador de intentos. Todavía no está conectada a las mutaciones de productos/ventas ni al inicio de la app.
 - Antes de integrar cambios comerciales hacen falta pruebas de persistencia/reapertura real, validación de payloads corruptos, coordinación atómica entre mutación local y outbox, y un transporte remoto idempotente. La recuperación de `inFlight` puede repetir una petición cuya respuesta se perdió; no debe usarse con datos comerciales hasta tener idempotencia remota. La outbox sola no garantiza entrega remota ni sincronización.
 - No ejecutar escrituras de negocio ni desplegar reglas de producción como parte de este paso.
+
+
+## Fase de aislamiento remoto (2026-10-15)
+
+- Se ampliaron las pruebas de reglas para verificar explícitamente que un miembro activo no pueda leer los metadatos de otra tienda sin membresía, consultar la membresía de otro usuario en otra tienda ni escribir documentos sintéticos de eventos de sincronización.
+- Estas pruebas usan únicamente el Firebase Emulator y documentos sintéticos; no cambian reglas ni datos del proyecto de producción.
+- El transporte remoto idempotente sigue pendiente: todavía no hay trabajador ni escritura de eventos en Firestore. Por tanto, estas pruebas validan límites de autorización, no demuestran aún idempotencia de un backend real.
+- La sincronización comercial permanece deshabilitada. No conectar ventas, inventario, productos, pagos o deudas hasta que exista un receptor remoto idempotente y pruebas de integración que demuestren deduplicación ante reintentos y timeouts.
