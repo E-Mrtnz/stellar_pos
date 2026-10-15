@@ -41,7 +41,7 @@ class _HiveCloudSyncOutboxStorage implements CloudSyncOutboxStorage {
   @override
   Future<void> flush() async {
     final box = await _box;
-    await _storage.flush();
+    await box.flush();
   }
 }
 
@@ -114,7 +114,7 @@ class CloudSyncOutbox {
         attemptCount: event.attemptCount + 1,
       )),
     );
-    await box.flush();
+    await _storage.flush();
   }
 
   Future<void> _updateStatus(
@@ -124,8 +124,8 @@ class CloudSyncOutbox {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
-    await box.put(eventId, _encode(_decode(value).copyWith(status: status)));
-    await box.flush();
+    await _storage.put(eventId, _encode(_decode(value).copyWith(status: status)));
+    await _storage.flush();
   }
 
   Map<String, Object?> _encode(CloudSyncEvent event) => <String, Object?>{
