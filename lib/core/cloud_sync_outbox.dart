@@ -176,17 +176,22 @@ class CloudSyncOutbox {
     if (raw is! Map) {
       throw StateError('El evento guardado en la cola no es válido.');
     }
-    final map = Map<String, Object?>.from(raw);
-    return CloudSyncEvent(
-      eventId: map['eventId'] as String,
-      storeId: map['storeId'] as String,
-      entityType: map['entityType'] as String,
-      entityId: map['entityId'] as String,
-      operation: CloudSyncOperation.values.byName(map['operation'] as String),
-      localVersion: map['localVersion'] as int,
-      createdAt: DateTime.parse(map['createdAt'] as String).toUtc(),
-      status: CloudSyncEventStatus.values.byName(map['status'] as String),
-      attemptCount: map['attemptCount'] as int,
-    );
+    try {
+      final map = Map<String, Object?>.from(raw);
+      return CloudSyncEvent(
+        eventId: map['eventId'] as String,
+        storeId: map['storeId'] as String,
+        entityType: map['entityType'] as String,
+        entityId: map['entityId'] as String,
+        operation: CloudSyncOperation.values.byName(map['operation'] as String),
+        localVersion: map['localVersion'] as int,
+        createdAt: DateTime.parse(map['createdAt'] as String).toUtc(),
+        status: CloudSyncEventStatus.values.byName(map['status'] as String),
+        attemptCount: map['attemptCount'] as int,
+      );
+    } on StateError {
+      rethrow;
+    } on Object catch (error) {
+      throw StateError('El evento guardado en la cola está corrupto: $error');
+    }
   }
-}
