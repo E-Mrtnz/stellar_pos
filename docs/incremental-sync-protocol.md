@@ -1,6 +1,6 @@
 # STELLAR POS — Protocolo de sincronización incremental (diseño)
 
-**Estado:** diseño previo a implementación. No activa sincronización ni escribe datos en Firebase.
+**Estado:** protocolo de diseño con contratos de dominio y una outbox local inicial implementados. No activa sincronización comercial ni escribe datos en Firebase.
 
 ## Objetivo
 
@@ -37,8 +37,8 @@ Mantener Hive como almacenamiento operativo local y sincronizar automáticamente
 
 ## Orden de implementación
 
-1. Crear modelos y pruebas unitarias de eventos/outbox, sin conectar repositorios de negocio.
-2. Probar persistencia de la cola, reinicio de app, reintentos y deduplicación usando un gateway falso.
+1. Completar pruebas unitarias aisladas de la outbox (idempotencia, colisión de IDs, aislamiento por tienda, estados y reintentos), sin conectar repositorios de negocio.
+2. Probar persistencia real de la cola tras cerrar/reabrir la app y recuperación de eventos que quedaron `inFlight`, usando un gateway falso.
 3. Definir contrato de backend y reglas de autorización para una entidad sintética.
 4. Ejecutar pruebas de integración en Firebase Emulator, incluyendo dos clientes, desconexión, duplicados y permisos negativos.
 5. Habilitar un piloto opt-in con datos sintéticos, métricas y mecanismo de apagado.
@@ -54,7 +54,7 @@ Mantener Hive como almacenamiento operativo local y sincronizar automáticamente
 - Los conflictos tienen pruebas por tipo de entidad.
 - Los tests demuestran que abrir la app sin cambios no dispara una descarga completa.
 
-Este documento es un contrato de diseño; todavía no existe sincronización comercial activa. No ejecutar despliegues de producción ni migraciones de Hive como parte de esta fase.
+Este documento combina el contrato de diseño con el estado de implementación; todavía no existe sincronización comercial activa. No ejecutar despliegues de producción ni migraciones de Hive como parte de esta fase.
 
 
 ## Progreso de implementación (2026-10-14)
