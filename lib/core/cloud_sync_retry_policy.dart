@@ -9,9 +9,7 @@ class CloudSyncRetryPolicy {
     this.baseDelay = const Duration(seconds: 2),
     this.maxDelay = const Duration(minutes: 15),
     this.maxAttempts = 8,
-  })  : assert(baseDelay.inMilliseconds > 0),
-        assert(maxDelay.inMilliseconds > 0),
-        assert(maxAttempts > 0);
+  }) : assert(maxAttempts > 0);
 
   final Duration baseDelay;
   final Duration maxDelay;
@@ -26,9 +24,7 @@ class CloudSyncRetryPolicy {
         .clamp(0, 30).toInt();
     var milliseconds = baseDelay.inMilliseconds;
     for (var i = 0; i < exponent; i++) {
-      if (milliseconds >= maxDelay.inMilliseconds) {
-        return maxDelay;
-      }
+      if (milliseconds >= maxDelay.inMilliseconds) return maxDelay;
       milliseconds *= 2;
     }
     return Duration(
