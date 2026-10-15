@@ -73,6 +73,16 @@ service cloud.firestore {
       }
     }
 
+    // Collection-group queries can return only active membership documents
+    // whose uid matches the authenticated user. Clients must constrain their
+    // query by both fields; this does not grant access to another member's data.
+    match /{path=**}/members/{memberUid} {
+      allow get: if signedIn() && memberUid == request.auth.uid;
+      allow list: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.status == 'active';
+    }
+
     // Business records, invitations, and all unspecified paths remain closed.
     // In particular, this does not enable product/sale/inventory sync.
     match /{document=**} {
