@@ -23,6 +23,9 @@ class CloudStore {
 /// Application-facing boundary for explicit store creation.
 abstract interface class CloudStoreGateway {
   Future<CloudStore> createStore({required String name});
+
+  /// Returns only active stores belonging to the currently authenticated user.
+  Future<List<CloudStore>> listMyStores();
 }
 
 /// Explicit store-creation operations. This repository does not synchronize
@@ -94,6 +97,46 @@ class CloudStoreRepository implements CloudStoreGateway {
       name: normalizedName,
       ownerUid: user.uid,
     );
+  }
+
+  /// Queries the user's active memberships, then reads each matching store.
+  ///
+  /// The query is constrained by the authenticated UID and active status; it
+  /// does not scan products, sales, inventory, or any business collection.
+  @override
+  Future<List<CloudStore>> listMyStores() async {
+    await CloudFirebase.ensureReady();
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('Inicia sesión para consultar tus tiendas.');
+    }
+
+    final memberships = await _firestore
+        .collectionGroup('members')
+        .where('uid', isEqualTo: user.uid)
+        .where('status', isEqualTo: 'active')
+        .get();
+
+    final stores = <CloudStore>[];
+    for (final membership in memberships.docs) {
+      final storeRef = membership.reference.parent.parent;
+      if (storeRef == null) continue;
+      final storeSnapshot = await storeRef.get();
+      if (!storeSnapshot.exists) continue;
+      final data = storeSnapshot.data();
+      if (data == null || data['name'] is! String || data['ownerUid'] is! String) {
+        continue;
+      }
+      stores.add(CloudStore(
+        id: storeSnapshot.id,
+        name: data['name'] as String,
+        ownerUid: data['ownerUid'] as String,
+      ));
+    }
+
+    stores.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return List<CloudStore>.unmodifiable(stores);
   }
 
   String _newStoreId() => List<String>.generate(
