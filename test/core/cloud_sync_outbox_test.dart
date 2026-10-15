@@ -117,6 +117,28 @@ void main() {
           'evt-1');
     });
 
+    test('recovers interrupted in-flight events without crossing stores', () async {
+      await outbox.enqueue(event());
+      await outbox.enqueue(event(eventId: 'evt-2', storeId: 'store-b'));
+      await outbox.markInFlight('evt-1');
+
+      final recovered = await outbox.recoverInterruptedEvents();
+
+      expect(recovered, 1);
+      expect(storage.data['evt-1'], containsPair('status', 'pending'));
+      expect(storage.data['evt-1'], containsPair('attemptCount', 1));
+      expect(storage.data['evt-2'], containsPair('status', 'pending'));
+      expect(await outbox.pendingForStore('store-a'), hasLength(1));
+    });
+
+    test('does not flush when there is nothing to recover', () async {
+      await outbox.enqueue(event());
+      final flushesBeforeRecovery = storage.flushCount;
+
+      expect(await outbox.recoverInterruptedEvents(), 0);
+      expect(storage.flushCount, flushesBeforeRecovery);
+    });
+
     test('unknown event status update fails explicitly', () async {
       await expectLater(
         outbox.markDelivered('missing'),
