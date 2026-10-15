@@ -53,19 +53,38 @@ void main() {
       );
     });
 
-    test('constructor rejects negative retry counters', () {
+    test('validator rejects negative retry counters', () {
+      final invalid = CloudSyncEvent(
+        eventId: 'evt-negative-attempts',
+        storeId: 'store-a',
+        entityType: 'product',
+        entityId: 'product-1',
+        operation: CloudSyncOperation.update,
+        localVersion: 1,
+        createdAt: createdAt,
+        attemptCount: -1,
+      );
+
       expect(
-        () => CloudSyncEvent(
-          eventId: 'evt-negative-attempts',
-          storeId: 'store-a',
-          entityType: 'product',
-          entityId: 'product-1',
-          operation: CloudSyncOperation.update,
-          localVersion: 1,
-          createdAt: createdAt,
-          attemptCount: -1,
-        ),
-        throwsAssertionError,
+        validateCloudSyncEvent(invalid, activeStoreId: 'store-a'),
+        'invalid-attempt-count',
+      );
+    });
+
+    test('validator rejects negative local versions', () {
+      final invalid = CloudSyncEvent(
+        eventId: 'evt-negative-version',
+        storeId: 'store-a',
+        entityType: 'product',
+        entityId: 'product-1',
+        operation: CloudSyncOperation.update,
+        localVersion: -1,
+        createdAt: createdAt,
+      );
+
+      expect(
+        validateCloudSyncEvent(invalid, activeStoreId: 'store-a'),
+        'invalid-local-version',
       );
     });
 
