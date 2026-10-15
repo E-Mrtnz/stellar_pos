@@ -67,6 +67,22 @@ void main() {
       expect(storage.data, hasLength(1));
     });
 
+    test('rejects reuse of an event ID with a different local version', () async {
+      await outbox.enqueue(event());
+      await expectLater(
+        outbox.enqueue(CloudSyncEvent(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          entityType: 'product',
+          entityId: 'product-1',
+          operation: CloudSyncOperation.update,
+          localVersion: 2,
+          createdAt: firstTime,
+        )),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('pending events are isolated by store and sorted by creation time',
         () async {
       await outbox.enqueue(event(eventId: 'later', createdAt: secondTime));
