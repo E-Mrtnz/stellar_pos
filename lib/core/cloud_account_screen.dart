@@ -307,6 +307,34 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
               ),
               const SizedBox(height: 20),
               Text(
+                'Compartir una tienda',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.lock_outline),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Las invitaciones todavía no están habilitadas. '
+                          'Se activarán cuando exista una aceptación segura '
+                          'que valide el código y cree la membresía sin '
+                          'permitir que alguien se asigne permisos por su cuenta. '
+                          'Por ahora, no compartas códigos ni cambies permisos '
+                          'manualmente en Firestore.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
                 'Crear una tienda',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
