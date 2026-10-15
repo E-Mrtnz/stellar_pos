@@ -1,9 +1,10 @@
 {
   "name": "stellar-pos-firestore-rules",
   "private": true,
-  "description": "Local-only Firestore Security Rules tests for STELLAR POS",
+  "description": "Local-only Firestore Security Rules and sync receiver emulator tests for STELLAR POS",
   "scripts": {
-    "test:rules": "firebase emulators:exec --only firestore --project demo-stellar-pos \"node --test test/firestore/firestore.rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-stellar-pos \"node --test test/firestore/firestore.rules.test.mjs\"",
+    "test:receiver": "firebase emulators:exec --only auth,firestore,functions --project demo-stellar-pos \"node --test functions/test/receiver.emulator.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
