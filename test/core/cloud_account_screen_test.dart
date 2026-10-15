@@ -166,6 +166,34 @@ void main() {
     await gateway.dispose();
   });
 
+  testWidgets('recovers active stores for the signed-in account', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway()
+      ..stores = const [
+        CloudStore(id: 'store-a1', name: 'Tienda El Edén', ownerUid: 'uid-1'),
+        CloudStore(id: 'store-b2', name: 'Sucursal Centro', ownerUid: 'uid-2'),
+      ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(storeGateway.listCalls, 1);
+    expect(find.text('Mis tiendas'), findsOneWidget);
+    expect(find.text('Tienda El Edén'), findsOneWidget);
+    expect(find.text('Sucursal Centro'), findsOneWidget);
+    expect(find.textContaining('todavía no se han sincronizado'), findsNothing);
+
+    await gateway.dispose();
+  });
+
   testWidgets('creates a store only after explicit confirmation', (tester) async {
     final gateway = _FakeCloudAuthGateway()
       ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
