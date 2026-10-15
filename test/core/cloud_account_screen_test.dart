@@ -266,6 +266,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(find.byType(TextField), 'Tienda de prueba');
+    await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
     await tester.pumpAndSettle();
 
