@@ -72,3 +72,13 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Estas pruebas usan únicamente el Firebase Emulator y documentos sintéticos; no cambian reglas ni datos del proyecto de producción.
 - El transporte remoto idempotente sigue pendiente: todavía no hay trabajador ni escritura de eventos en Firestore. Por tanto, estas pruebas validan límites de autorización, no demuestran aún idempotencia de un backend real.
 - La sincronización comercial permanece deshabilitada. No conectar ventas, inventario, productos, pagos o deudas hasta que exista un receptor remoto idempotente y pruebas de integración que demuestren deduplicación ante reintentos y timeouts.
+
+## Registro de avance — 2026-10-15
+
+- La suite de CI para el protocolo, outbox, recuperación Hive, política de reintentos y reglas Firestore terminó correctamente en el commit `6b9407a`.
+- Se agregó una prueba negativa para asegurar que los clientes, incluso miembros activos, no puedan leer ni escribir directamente `syncReceipts` ni `syncEvents`. Esto protege las rutas reservadas al futuro receptor confiable.
+- La validación del protocolo ahora tiene pruebas explícitas para `attemptCount < 0` y `localVersion < 0`.
+- Se actualizó `docs/cloud-sync-idempotency-contract.md` para dejar explícita la puerta que falta: no hay todavía un paquete Firebase Functions ni receptor remoto implementado. Las pruebas actuales no demuestran idempotencia del servidor.
+- No se modificaron repositorios de negocio ni el flujo de arranque; no hay escrituras de negocio ni despliegue de producción.
+
+**Estado real:** outbox local y contratos de dominio bajo pruebas; permisos de cliente cerrados; receptor confiable, transacción idempotente y pruebas de Functions Emulator siguen pendientes. No habilitar sincronización comercial.
