@@ -1,6 +1,6 @@
 # STELLAR POS — Identidad, membresías e invitaciones
 
-**Estado:** contrato de dominio inicial; no habilita autenticación, invitaciones ni acceso remoto.
+**Estado:** contrato de dominio y base para el alta limitada de tienda. La autenticación está integrada; el repositorio de creación existe, pero aún no está conectado a la interfaz. Las invitaciones no están habilitadas.
 
 ## Objetivo
 
@@ -63,7 +63,7 @@ La generación/validación de códigos y la operación transaccional de aceptaci
 
 ## Estado de seguridad actual
 
-`firestore.rules` sigue con `allow read, write: if false`. Esto es intencional. No desplegar ni cambiar estas reglas hasta que exista una identidad autenticada integrada, el flujo de membresía esté implementado y todas las pruebas positivas y negativas pasen. El CRUD genérico de Firestore no debe conectarse aún a ventas, productos, inventario, compras, pagos o deudas.
+`firestore.rules` permite ahora únicamente el alta atómica de una tienda con su membresía inicial de propietario y la lectura de metadatos/membresías por miembros activos. Las escrituras de negocio, invitaciones, actualizaciones y eliminaciones continúan denegadas. Antes de desplegar las reglas, ejecutar las pruebas positivas y negativas del emulador. El CRUD genérico de Firestore no debe conectarse aún a ventas, productos, inventario, compras, pagos o deudas.
 
 ## Próximos pasos
 
