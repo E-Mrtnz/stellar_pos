@@ -1,0 +1,94 @@
+name: STELLAR POS validation
+
+on:
+  push:
+    branches:
+      - feature/cloud-storage-v2
+  pull_request:
+    branches:
+      - main
+      - feature/cloud-storage-v2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stellar-pos-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter tests and analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+  firestore-rules:
+    name: Firestore rules emulator tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Set up Java for Firebase Emulator Suite
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install root test dependencies
+        run: npm install
+
+      - name: Run Firestore rules tests in emulator
+        run: npm run test:rules
+
+  synthetic-sync-receiver:
+    name: Synthetic receiver emulator tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Java for Firebase Emulator Suite
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install root test dependencies
+        run: npm install
+
+      - name: Install receiver dependencies
+        working-directory: functions
+        run: npm install
+
+      - name: Run synthetic receiver tests in emulators
+        run: npm run test:receiver
