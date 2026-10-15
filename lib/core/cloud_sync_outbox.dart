@@ -96,6 +96,13 @@ class CloudSyncOutbox {
       // Stable event ID makes enqueue idempotent; do not reset delivery state.
       return;
     }
+    final validationError = validateCloudSyncEvent(
+      event,
+      activeStoreId: event.storeId,
+    );
+    if (validationError != null) {
+      throw StateError('El evento de sincronización no es válido: $validationError');
+    }
     await _storage.put(event.eventId, _encode(event));
     await _storage.flush();
   });
