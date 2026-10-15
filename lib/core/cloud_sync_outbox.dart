@@ -68,7 +68,9 @@ class CloudSyncOutbox {
       if (stored.storeId != event.storeId ||
           stored.entityType != event.entityType ||
           stored.entityId != event.entityId ||
-          stored.operation != event.operation) {
+          stored.operation != event.operation ||
+          stored.localVersion != event.localVersion ||
+          !stored.createdAt.isAtSameMomentAs(event.createdAt)) {
         throw StateError(
           'El identificador de evento ya existe con otro contenido.',
         );
