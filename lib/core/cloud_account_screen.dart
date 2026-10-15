@@ -294,7 +294,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Text(
-                              'Tienda seleccionada: ${stores.where((s) => s.id == _selectedStoreId).firstOrNull?.name ?? 'Tienda'}\\n'
+                              'Tienda seleccionada: ${stores.where((s) => s.id == _selectedStoreId).map((s) => s.name).join()}\\n'
                               'Esta selección es visual por ahora; todavía no cambia la caja ni activa sincronización.',
                             ),
                           ),
