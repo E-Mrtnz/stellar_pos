@@ -72,3 +72,19 @@ Usando exclusivamente Firebase Emulator y datos sintéticos, automatizar al meno
 ## Puerta de activación
 
 Hasta que el receptor confiable, las reglas y todas las pruebas anteriores estén implementados y verdes en el emulador, este contrato es solo diseño. Mantener la outbox aislada de las mutaciones comerciales y no sincronizar productos, inventario, ventas, pagos ni deudas. No realizar escrituras de negocio ni despliegues de producción durante esta fase.
+
+## Implementación actual y siguiente puerta (2026-10-15)
+
+El repositorio todavía no contiene un paquete Firebase Functions ni un receptor confiable desplegable. Por eso, la ruta segura de esta fase es **no simular el receptor en el cliente**: una implementación Dart/Node puramente local no demostraría autorización del servidor ni atomicidad de Firestore.
+
+Ya se añadieron pruebas en el emulador de reglas para comprobar que incluso un miembro propietario no puede leer ni escribir directamente las rutas sintéticas `syncReceipts` y `syncEvents`. Estas pruebas verifican únicamente la frontera de reglas; no simulan ni prueban la función receptora.
+
+### Puerta de implementación del receptor
+
+Antes de crear el receptor, el siguiente cambio debe incorporar una base Firebase Functions aislada, con versiones fijadas y comandos locales de emulador. La función debe ser invocable solo con Firebase Auth válido, derivar el UID de `request.auth.uid`, comprobar la membresía activa en el servidor y aceptar exclusivamente un tipo de entidad sintética de prueba. No debe aceptar una ruta de colección o campos de permisos arbitrarios desde el cliente.
+
+La transacción debe leer primero el recibo delimitado por tienda/evento; para una huella idéntica debe devolver el resultado original, para una huella diferente debe rechazar la colisión y, si no hay recibo, debe aplicar la mutación sintética y crear el recibo dentro de la misma transacción. Debe incluir pruebas de concurrencia, repetición tras timeout simulado, colisión, aislamiento entre tiendas, usuario no autenticado, membresía inactiva, versión conflictiva y fallo transaccional.
+
+### Condición de activación
+
+No conectar el receptor con la outbox ni con repositorios comerciales hasta que la suite de Functions Emulator cubra los casos anteriores y la suite de reglas permanezca verde. No desplegar Functions ni reglas en producción como parte de esta fase. Las pruebas existentes de reglas verdes no se deben interpretar como prueba de idempotencia de servidor.
