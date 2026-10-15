@@ -71,6 +71,7 @@ String? validateCloudSyncEvent(
   if (event.entityType.trim().isEmpty) return 'missing-entity-type';
   if (event.entityId.trim().isEmpty) return 'missing-entity-id';
   if (event.localVersion < 0) return 'invalid-local-version';
+  if (event.attemptCount < 0) return 'invalid-attempt-count';
   return null;
 }
 
