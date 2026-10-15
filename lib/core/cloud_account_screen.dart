@@ -261,16 +261,17 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                       ),
                     );
                   }
-                  return Column(
+                  return RadioGroup<String>(
+                    groupValue: _selectedStoreId,
+                    onChanged: (value) {
+                      setState(() => _selectedStoreId = value);
+                    },
+                    child: Column(
                     children: [
                       for (final store in stores)
                         Card(
                           child: RadioListTile<String>(
                             value: store.id,
-                            groupValue: _selectedStoreId,
-                            onChanged: (value) {
-                              setState(() => _selectedStoreId = value);
-                            },
                             title: Text(store.name),
                             subtitle: SelectableText('ID: ${store.id}'),
                             secondary: Icon(
@@ -300,6 +301,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                           ),
                         ),
                     ],
+                    ),
                   );
                 },
               ),
