@@ -30,7 +30,7 @@ jobs:
           name: flutter-pubspec-lock
           path: pubspec.lock
           if-no-files-found: error
-      - name: Analyze cloud access files
+      - name: Analyze cloud access and sync files
         run: >-
           flutter analyze
           lib/core/cloud_auth_gateway.dart
@@ -38,7 +38,10 @@ jobs:
           lib/core/cloud_account_settings_tile.dart
           lib/core/cloud_account_screen.dart
           lib/core/cloud_store_repository.dart
-      - name: Run cloud regression tests
+          lib/core/cloud_sync_protocol.dart
+          lib/core/cloud_sync_outbox.dart
+          lib/core/cloud_sync_retry_policy.dart
+      - name: Run cloud access and incremental sync regression tests
         run: >-
           flutter test
           test/core/cloud_auth_gateway_test.dart
@@ -49,6 +52,11 @@ jobs:
           test/cloud_store_access_test.dart
           test/core/cloud_paths_test.dart
           test/core/cloud_firestore_repository_test.dart
+          test/core/cloud_sync_protocol_test.dart
+          test/core/cloud_sync_outbox_test.dart
+          test/core/cloud_sync_outbox_hive_test.dart
+          test/core/cloud_sync_outbox_recovery_hive_test.dart
+          test/core/cloud_sync_retry_policy_test.dart
 
   firestore-rules-tests:
     runs-on: ubuntu-latest
