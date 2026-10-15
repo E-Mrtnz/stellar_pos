@@ -85,3 +85,24 @@ La sincronización prevista será automática en segundo plano, sin pedir al usu
 6. Aplicar autorización por tienda y rol en Firestore Rules, y probar desconexión, reintentos, duplicados, cierre de sesión y dos dispositivos concurrentes con datos sintéticos.
 
 Hasta implementar y probar todos estos componentes, la sincronización de datos comerciales permanece apagada. Esta documentación no modifica datos de Firebase ni despliega reglas.
+
+
+## Revisión adicional — 2026-10-15
+
+### Límite del backend existente
+
+Se inspeccionó `functions/src/index.js`. El callable `acceptSyntheticSyncEvent` es un receptor de pruebas que solo admite la entidad `syntheticTestValue`; valida la membresía activa en servidor y aplica recibos idempotentes en una transacción. No es un backend de invitaciones y no debe reutilizarse como si ya autorizara altas de miembros.
+
+No se implementan invitaciones en esta etapa: falta una función dedicada que genere y almacene un secreto de invitación de forma segura, limite su vigencia/uso, valide el usuario autenticado y cree la membresía dentro de una transacción confiable. Las reglas de Firestore deben seguir rechazando escrituras directas a `invitations` y membresías nuevas fuera del alta inicial de tienda.
+
+### Estado de las pruebas de interfaz
+
+Se amplió `test/core/cloud_account_settings_tile_test.dart` para que el gateway falso falle en la primera consulta y funcione en el reintento. El caso verifica que la acción Reintentar recupera el formulario de autenticación sin excepciones en un viewport compacto.
+
+En `test/core/cloud_auth_screen_test.dart`, la prueba de proveedor social ahora usa un viewport de 320 × 568 para ejercitar la pantalla en un ancho de teléfono reducido.
+
+### Verificación de ejecución
+
+Los archivos se publicaron en la rama de GitHub, pero no se ejecutó `flutter test`, `flutter analyze` ni la suite de Firebase Emulator desde esta sesión. La consulta de estado de checks para el commit revisado no devolvió checks; por tanto, no debe interpretarse como una ejecución exitosa. Antes de considerar cerrada esta fase, ejecutar localmente las pruebas Flutter y `npm run test:rules`. La prueba del receptor requiere los emuladores Auth, Firestore y Functions mediante `npm run test:receiver`.
+
+Se mantiene la restricción: no desplegar reglas en Firebase real y no conectar ventas, productos, inventario, pagos o deudas a la nube.
