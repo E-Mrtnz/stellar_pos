@@ -101,6 +101,20 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
   final _storeNameController = TextEditingController();
   bool _creatingStore = false;
   String? _errorMessage;
+  late Future<List<CloudStore>> _storesFuture;
+  String? _selectedStoreId;
+
+  @override
+  void initState() {
+    super.initState();
+    _storesFuture = widget.storeGateway.listMyStores();
+  }
+
+  void _reloadStores() {
+    setState(() {
+      _storesFuture = widget.storeGateway.listMyStores();
+    });
+  }
   CloudStore? _createdStore;
 
   @override
@@ -129,7 +143,9 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
       if (!mounted) return;
       setState(() {
         _createdStore = store;
+        _selectedStoreId = store.id;
         _storeNameController.clear();
+        _storesFuture = widget.storeGateway.listMyStores();
       });
     } catch (_) {
       if (!mounted) return;
@@ -189,6 +205,103 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Mis tiendas',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<List<CloudStore>>(
+                future: _storesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('No se pudieron recuperar tus tiendas.'),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Comprueba la conexión y las reglas de Firestore. '
+                              'No se ha modificado ningún dato local.',
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: _reloadStores,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Reintentar'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  final stores = snapshot.data ?? const <CloudStore>[];
+                  if (stores.isEmpty) {
+                    return const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          'Todavía no tienes tiendas vinculadas a esta cuenta. '
+                          'Puedes crear una aquí. La opción para unirte a una '
+                          'tienda existente estará disponible cuando se implemente '
+                          'el flujo seguro de invitaciones.',
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final store in stores)
+                        Card(
+                          child: RadioListTile<String>(
+                            value: store.id,
+                            groupValue: _selectedStoreId,
+                            onChanged: (value) {
+                              setState(() => _selectedStoreId = value);
+                            },
+                            title: Text(store.name),
+                            subtitle: SelectableText('ID: ${store.id}'),
+                            secondary: Icon(
+                              store.ownerUid == widget.user.uid
+                                  ? Icons.storefront_outlined
+                                  : Icons.store_outlined,
+                            ),
+                          ),
+                        ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _reloadStores,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Actualizar lista'),
+                        ),
+                      ),
+                      if (_selectedStoreId != null)
+                        Card(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              'Tienda seleccionada: ${stores.where((s) => s.id == _selectedStoreId).firstOrNull?.name ?? 'Tienda'}\\n'
+                              'Esta selección es visual por ahora; todavía no cambia la caja ni activa sincronización.',
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 20),
               Text(
