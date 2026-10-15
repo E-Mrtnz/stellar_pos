@@ -263,44 +263,48 @@ test('denies a user from creating their own elevated or additional membership', 
 
 
 test('an active member cannot read another store without membership', async () => {
+  const ownStoreId = 'boundary-own-store';
+  const foreignStoreId = 'boundary-foreign-store';
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     const timestamp = new Date();
     const batch = db.batch();
-    batch.set(doc(db, 'stores/store-a'), {
-      name: 'Tienda A sintética',
+    batch.set(doc(db, `stores/${ownStoreId}`), {
+      name: 'Tienda propia sintética',
       ownerUid: 'user-a',
       schemaVersion: 1,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    batch.set(doc(db, 'stores/store-a/members/user-a'), {
+    batch.set(doc(db, `stores/${ownStoreId}/members/user-a`), {
       uid: 'user-a', role: 'owner', status: 'active', createdAt: timestamp,
     });
-    batch.set(doc(db, 'stores/store-b'), {
-      name: 'Tienda B sintética',
+    batch.set(doc(db, `stores/${foreignStoreId}`), {
+      name: 'Tienda ajena sintética',
       ownerUid: 'user-b',
       schemaVersion: 1,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    batch.set(doc(db, 'stores/store-b/members/user-b'), {
+    batch.set(doc(db, `stores/${foreignStoreId}/members/user-b`), {
       uid: 'user-b', role: 'owner', status: 'active', createdAt: timestamp,
     });
     await batch.commit();
   });
 
   const db = testEnv.authenticatedContext('user-a').firestore();
-  assert.equal((await getDoc(doc(db, 'stores/store-a'))).data().name, 'Tienda A sintética');
-  await assertFails(getDoc(doc(db, 'stores/store-b')));
+  assert.equal((await getDoc(doc(db, `stores/${ownStoreId}`))).data().name, 'Tienda propia sintética');
+  await assertFails(getDoc(doc(db, `stores/${foreignStoreId}`)));
 });
 
-test('an active member cannot read another store\'s membership document', async () => {
+test('an active member cannot read another store\\'s membership document', async () => {
+  const ownStoreId = 'membership-boundary-own-store';
+  const foreignStoreId = 'membership-boundary-foreign-store';
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     const timestamp = new Date();
     const batch = db.batch();
-    for (const [storeId, uid] of [['store-a', 'user-a'], ['store-b', 'user-b']]) {
+    for (const [storeId, uid] of [[ownStoreId, 'user-a'], [foreignStoreId, 'user-b']]) {
       batch.set(doc(db, `stores/${storeId}`), {
         name: storeId,
         ownerUid: uid,
@@ -316,7 +320,7 @@ test('an active member cannot read another store\'s membership document', async 
   });
 
   const db = testEnv.authenticatedContext('user-a').firestore();
-  await assertFails(getDoc(doc(db, 'stores/store-b/members/user-b')));
+  await assertFails(getDoc(doc(db, `stores/${foreignStoreId}/members/user-b`)));
 });
 
 test('active membership does not enable writes to synthetic sync-event documents', async () => {
