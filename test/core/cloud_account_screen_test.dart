@@ -148,6 +148,7 @@ void main() {
     expect(find.textContaining('no sube tus productos ni tus ventas'), findsOneWidget);
     expect(storeGateway.createCalls, 0);
 
+    await tester.ensureVisible(find.text('Cerrar sesión en la nube'));
     await tester.tap(find.text('Cerrar sesión en la nube'));
     await tester.pump();
     expect(gateway.signOutCalls, 1);
