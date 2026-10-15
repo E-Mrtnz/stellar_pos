@@ -7,11 +7,15 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   _FakeCloudAuthGateway({this.failAuthStream = false});
 
   final bool failAuthStream;
+  int authStreamAttempts = 0;
 
   @override
-  Stream<CloudAuthUser?> authStateChanges() => failAuthStream
-      ? Stream.error(StateError('auth stream unavailable'))
-      : Stream.value(null);
+  Stream<CloudAuthUser?> authStateChanges() {
+    if (failAuthStream && authStreamAttempts++ == 0) {
+      return Stream.error(StateError('auth stream unavailable'));
+    }
+    return Stream.value(null);
+  }
   @override
   Future<CloudAuthUser?> currentUser() async => null;
   @override
@@ -121,7 +125,8 @@ void main() {
     await tester.tap(find.text('Reintentar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Reintentar'), findsOneWidget);
+    expect(find.text('Reintentar'), findsNothing);
+    expect(find.text('Iniciar sesión'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
