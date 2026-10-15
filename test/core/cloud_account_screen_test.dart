@@ -320,8 +320,6 @@ void main() {
 
     await gateway.dispose();
   });
-}
-
 
   testWidgets('allows creating another store after a successful creation', (tester) async {
     final gateway = _FakeCloudAuthGateway()
@@ -357,3 +355,4 @@ void main() {
 
     await gateway.dispose();
   });
+}
