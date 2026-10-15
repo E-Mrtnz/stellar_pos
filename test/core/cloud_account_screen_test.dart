@@ -81,7 +81,17 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
 class _FakeCloudStoreGateway implements CloudStoreGateway {
   String? lastName;
   int createCalls = 0;
+  int listCalls = 0;
+  List<CloudStore> stores = <CloudStore>[];
+  Object? listError;
   Object? error;
+
+  @override
+  Future<List<CloudStore>> listMyStores() async {
+    listCalls++;
+    if (listError != null) throw listError!;
+    return stores;
+  }
 
   @override
   Future<CloudStore> createStore({required String name}) async {
