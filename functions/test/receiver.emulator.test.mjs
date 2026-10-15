@@ -131,6 +131,22 @@ test("rejects stale versions without writing a receipt", async () => {
   assert.equal(replay.body.result.status, "applied");
 });
 
+test("rejects unsupported entity types and oversized synthetic values", async () => {
+  const user = await createUser();
+  const storeId = "receiver-payload-bounds";
+  await seedMembership(storeId, user.localId);
+
+  const unsupportedEntity = await invoke(user.idToken, event(storeId, {
+    entityType: "sales",
+  }));
+  assert.equal(unsupportedEntity.body.error.status, "INVALID_ARGUMENT");
+
+  const oversizedValue = await invoke(user.idToken, event(storeId, {
+    payload: { value: "x".repeat(201) },
+  }));
+  assert.equal(oversizedValue.body.error.status, "INVALID_ARGUMENT");
+});
+
 test("rejects client-controlled identity and unsupported payload fields", async () => {
   const user = await createUser();
   const storeId = "receiver-schema";
