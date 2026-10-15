@@ -52,7 +52,8 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
                 }
                 if (snapshot.hasError) {
                   return _InlineNotice(
-                    message: 'No se pudo consultar la sesión. La caja local sigue disponible.',
+                    message:
+                        'No se pudo consultar la sesión. La caja local sigue disponible.',
                     action: TextButton(
                       onPressed: () => setState(() => _streamVersion++),
                       child: const Text('Reintentar'),
@@ -80,7 +81,10 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Sesión iniciada', style: TextStyle(fontWeight: FontWeight.w700)),
+                              const Text(
+                                'Sesión iniciada',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
                               SelectableText(user.email ?? user.uid),
                             ],
                           ),
@@ -89,7 +93,8 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
                     ),
                     const SizedBox(height: 12),
                     const _InlineNotice(
-                      message: 'Tu cuenta ya está autenticada. Crea una tienda compartida desde aquí; los productos y las ventas locales no se subirán automáticamente.',
+                      message:
+                          'Tu cuenta ya está autenticada. Crea una tienda compartida desde aquí; los productos y las ventas locales no se subirán automáticamente.',
                     ),
                     const SizedBox(height: 8),
                     Align(
@@ -98,7 +103,8 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
-                              builder: (_) => CloudAccountScreen(gateway: _gateway),
+                              builder: (_) =>
+                                  CloudAccountScreen(gateway: _gateway),
                             ),
                           );
                         },
@@ -129,7 +135,11 @@ class _CloudAccountSettingsTileState extends State<CloudAccountSettingsTile> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo cerrar la sesión. La caja local sigue disponible.')),
+        const SnackBar(
+          content: Text(
+            'No se pudo cerrar la sesión. La caja local sigue disponible.',
+          ),
+        ),
       );
     }
   }
@@ -144,18 +154,27 @@ class _InlineNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.info_outline, size: 19),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message)),
-          if (action != null) action!,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline, size: 19),
+              const SizedBox(width: 8),
+              Expanded(child: Text(message)),
+            ],
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 4),
+            Align(alignment: Alignment.centerRight, child: action!),
+          ],
         ],
       ),
     );
