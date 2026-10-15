@@ -80,6 +80,16 @@ void main() {
       expect(pending.map((item) => item.eventId), <String>['evt-1']);
     });
 
+    test('rejects non-pending events before persisting them', () async {
+      await expectLater(
+        outbox.enqueue(event().copyWith(
+          status: CloudSyncEventStatus.delivered,
+        )),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data, isEmpty);
+    });
+
     test('rejects reuse of an event ID for a different entity', () async {
       await outbox.enqueue(event());
       await expectLater(
