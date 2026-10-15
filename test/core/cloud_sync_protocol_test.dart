@@ -53,6 +53,47 @@ void main() {
       );
     });
 
+    test('rejects negative retry counters', () {
+      final invalid = CloudSyncEvent(
+        eventId: 'evt-negative-attempts',
+        storeId: 'store-a',
+        entityType: 'product',
+        entityId: 'product-1',
+        operation: CloudSyncOperation.update,
+        localVersion: 1,
+        createdAt: createdAt,
+        attemptCount: -1,
+      );
+
+      expect(
+        validateCloudSyncEvent(invalid, activeStoreId: 'store-a'),
+        'invalid-attempt-count',
+      );
+    });
+
+    test('rejects blank identifiers and entity types', () {
+      expect(
+        validateCloudSyncEvent(
+          event(eventId: '   '),
+          activeStoreId: 'store-a',
+        ),
+        'missing-event-id',
+      );
+      final invalidEntity = CloudSyncEvent(
+        eventId: 'evt-blank-entity',
+        storeId: 'store-a',
+        entityType: '   ',
+        entityId: 'product-1',
+        operation: CloudSyncOperation.update,
+        localVersion: 1,
+        createdAt: createdAt,
+      );
+      expect(
+        validateCloudSyncEvent(invalidEntity, activeStoreId: 'store-a'),
+        'missing-entity-type',
+      );
+    });
+
     test('keeps event identity stable when status changes for retry', () {
       final original = event();
       final retry = original.copyWith(
