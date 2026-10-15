@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_account_screen.dart';
 import 'package:stellar_pos/core/cloud_auth_gateway.dart';
+import 'package:stellar_pos/core/cloud_store_repository.dart';
 
 class _FakeCloudAuthGateway implements CloudAuthGateway {
   final StreamController<CloudAuthUser?> controller =
@@ -77,9 +78,26 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
   Future<void> dispose() => controller.close();
 }
 
+class _FakeCloudStoreGateway implements CloudStoreGateway {
+  String? lastName;
+  int createCalls = 0;
+  Object? error;
+
+  @override
+  Future<CloudStore> createStore({required String name}) async {
+    createCalls++;
+    lastName = name;
+    if (error != null) throw error!;
+    return CloudStore(
+      id: 'store-test-123',
+      name: name.trim(),
+      ownerUid: 'uid-1',
+    );
+  }
+}
+
 void main() {
-  testWidgets('explains that local checkout does not require cloud login',
-      (tester) async {
+  testWidgets('local checkout does not require cloud login', (tester) async {
     final gateway = _FakeCloudAuthGateway();
     await tester.pumpWidget(
       MaterialApp(home: CloudAccountScreen(gateway: gateway)),
@@ -108,29 +126,111 @@ void main() {
     await gateway.dispose();
   });
 
-  testWidgets('shows identity without implying store permissions',
-      (tester) async {
-    final gateway = _FakeCloudAuthGateway();
-    await tester.pumpWidget(
-      MaterialApp(home: CloudAccountScreen(gateway: gateway)),
-    );
-    await tester.pump();
+  testWidgets('shows account identity and explicit store creation', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway();
 
-    gateway.controller.add(
-      const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
     );
     await tester.pump();
 
     expect(find.text('Sesión iniciada'), findsOneWidget);
     expect(find.text('owner@example.com'), findsOneWidget);
-    expect(
-      find.textContaining('todavía no concede acceso a una tienda'),
-      findsOneWidget,
-    );
+    expect(find.text('Crear una tienda'), findsOneWidget);
+    expect(find.text('Nombre de la tienda'), findsOneWidget);
+    expect(find.textContaining('no sube tus productos ni tus ventas'), findsOneWidget);
+    expect(storeGateway.createCalls, 0);
 
     await tester.tap(find.text('Cerrar sesión en la nube'));
     await tester.pump();
     expect(gateway.signOutCalls, 1);
+
+    await gateway.dispose();
+  });
+
+  testWidgets('creates a store only after explicit confirmation', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'Tienda El Edén');
+    expect(storeGateway.createCalls, 0);
+    await tester.tap(find.text('Crear tienda'));
+    await tester.pumpAndSettle();
+
+    expect(storeGateway.createCalls, 1);
+    expect(storeGateway.lastName, 'Tienda El Edén');
+    expect(find.text('Tienda creada'), findsOneWidget);
+    expect(find.text('store-test-123'), findsOneWidget);
+    expect(find.textContaining('todavía no se han sincronizado'), findsOneWidget);
+
+    await gateway.dispose();
+  });
+
+  testWidgets('does not attempt a remote write for an empty store name',
+      (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Crear tienda'));
+    await tester.pump();
+
+    expect(storeGateway.createCalls, 0);
+    expect(find.text('Escribe el nombre de la tienda.'), findsOneWidget);
+
+    await gateway.dispose();
+  });
+
+  testWidgets('shows a safe message when store creation fails', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway()..error = StateError('permission-denied');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'Tienda de prueba');
+    await tester.tap(find.text('Crear tienda'));
+    await tester.pumpAndSettle();
+
+    expect(storeGateway.createCalls, 1);
+    expect(find.textContaining('tus datos locales no se han modificado'), findsOneWidget);
+    expect(find.byKey(const ValueKey('created-store-result')), findsNothing);
 
     await gateway.dispose();
   });
