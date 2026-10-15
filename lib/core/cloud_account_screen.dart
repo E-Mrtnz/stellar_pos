@@ -111,6 +111,12 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
 
   Future<void> _createStore() async {
     if (_creatingStore) return;
+    if (_storeNameController.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = 'Escribe el nombre de la tienda.';
+      });
+      return;
+    }
     setState(() {
       _creatingStore = true;
       _errorMessage = null;
