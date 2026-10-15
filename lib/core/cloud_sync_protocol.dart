@@ -24,9 +24,7 @@ class CloudSyncEvent {
   })  : assert(eventId != ''),
         assert(storeId != ''),
         assert(entityType != ''),
-        assert(entityId != ''),
-        assert(localVersion >= 0),
-        assert(attemptCount >= 0);
+        assert(entityId != '');
 
   final String eventId;
   final String storeId;
