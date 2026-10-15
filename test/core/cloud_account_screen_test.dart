@@ -211,6 +211,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'Tienda El Edén');
     expect(storeGateway.createCalls, 0);
+    await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
     await tester.pumpAndSettle();
 
@@ -239,6 +240,7 @@ void main() {
     );
     await tester.pump();
 
+    await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
     await tester.pump();
 
