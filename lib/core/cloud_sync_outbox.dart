@@ -1,19 +1,67 @@
 import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
 
+/// Minimal storage contract so outbox behavior can be tested without platform Hive.
+abstract interface class CloudSyncOutboxStorage {
+  Object? get(String key);
+  Iterable<Object?> get values;
+  Future<void> put(String key, Object value);
+  Future<void> flush();
+}
+
+class _HiveCloudSyncOutboxStorage implements CloudSyncOutboxStorage {
+  _HiveCloudSyncOutboxStorage(this.boxName);
+
+  final String boxName;
+
+  Future<dynamic> get _box => LocalStorage.openBox(boxName);
+
+  @override
+  Object? get(String key) => _cachedValues[key];
+
+  @override
+  Iterable<Object?> get values => _cachedValues.values;
+
+  Map<String, Object?> _cachedValues = <String, Object?>{};
+
+  Future<void> _refresh() async {
+    final box = await _box;
+    _cachedValues = <String, Object?>{
+      for (final key in box.keys) key as String: box.get(key) as Object?,
+    };
+  }
+
+  @override
+  Future<void> put(String key, Object value) async {
+    final box = await _box;
+    await box.put(key, value);
+    await _refresh();
+  }
+
+  @override
+  Future<void> flush() async {
+    final box = await _box;
+    await _storage.flush();
+  }
+}
+
 /// Durable local outbox for future sync events.
 ///
 /// This class only stores queue metadata in Hive. It intentionally has no
 /// transport and cannot send business records to Firebase. Callers must enqueue
 /// only as part of a correctly coordinated local mutation workflow.
 class CloudSyncOutbox {
-  CloudSyncOutbox({this.boxName = 'cloud_sync_outbox'});
+  CloudSyncOutbox({
+    this.boxName = 'cloud_sync_outbox',
+    CloudSyncOutboxStorage? storage,
+  }) : _storage = storage ?? _HiveCloudSyncOutboxStorage(boxName);
+
+  final CloudSyncOutboxStorage _storage;
 
   final String boxName;
 
   Future<void> enqueue(CloudSyncEvent event) async {
-    final box = await LocalStorage.openBox(boxName);
-    final existing = box.get(event.eventId);
+    final existing = _storage.get(event.eventId);
     if (existing != null) {
       final stored = _decode(existing);
       if (stored.storeId != event.storeId ||
@@ -27,14 +75,14 @@ class CloudSyncOutbox {
       // Stable event ID makes enqueue idempotent; do not reset delivery state.
       return;
     }
-    await box.put(event.eventId, _encode(event));
-    await box.flush();
+    await _storage.put(event.eventId, _encode(event));
+    await _storage.flush();
   }
 
   Future<List<CloudSyncEvent>> pendingForStore(String storeId) async {
-    final box = await LocalStorage.openBox(boxName);
+    await (_storage is _HiveCloudSyncOutboxStorage ? _storage._refresh() : Future<void>.value());
     final events = <CloudSyncEvent>[];
-    for (final value in box.values) {
+    for (final value in _storage.values) {
       final event = _decode(value);
       if (event.storeId == storeId &&
           event.status == CloudSyncEventStatus.pending) {
@@ -55,11 +103,11 @@ class CloudSyncOutbox {
       _updateStatus(eventId, CloudSyncEventStatus.blocked);
 
   Future<void> retry(String eventId) async {
-    final box = await LocalStorage.openBox(boxName);
-    final value = box.get(eventId);
+    if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
+    final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     final event = _decode(value);
-    await box.put(
+    await _storage.put(
       eventId,
       _encode(event.copyWith(
         status: CloudSyncEventStatus.pending,
@@ -73,8 +121,8 @@ class CloudSyncOutbox {
     String eventId,
     CloudSyncEventStatus status,
   ) async {
-    final box = await LocalStorage.openBox(boxName);
-    final value = box.get(eventId);
+    if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
+    final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     await box.put(eventId, _encode(_decode(value).copyWith(status: status)));
     await box.flush();
