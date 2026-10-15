@@ -260,3 +260,90 @@ test('denies a user from creating their own elevated or additional membership', 
     createdAt: new Date(),
   }));
 });
+
+
+test('an active member cannot read another store without membership', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const timestamp = new Date();
+    const batch = db.batch();
+    batch.set(doc(db, 'stores/store-a'), {
+      name: 'Tienda A sintética',
+      ownerUid: 'user-a',
+      schemaVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.set(doc(db, 'stores/store-a/members/user-a'), {
+      uid: 'user-a', role: 'owner', status: 'active', createdAt: timestamp,
+    });
+    batch.set(doc(db, 'stores/store-b'), {
+      name: 'Tienda B sintética',
+      ownerUid: 'user-b',
+      schemaVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.set(doc(db, 'stores/store-b/members/user-b'), {
+      uid: 'user-b', role: 'owner', status: 'active', createdAt: timestamp,
+    });
+    await batch.commit();
+  });
+
+  const db = testEnv.authenticatedContext('user-a').firestore();
+  assert.equal((await getDoc(doc(db, 'stores/store-a'))).data().name, 'Tienda A sintética');
+  await assertFails(getDoc(doc(db, 'stores/store-b')));
+});
+
+test('an active member cannot read another store\'s membership document', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const timestamp = new Date();
+    const batch = db.batch();
+    for (const [storeId, uid] of [['store-a', 'user-a'], ['store-b', 'user-b']]) {
+      batch.set(doc(db, `stores/${storeId}`), {
+        name: storeId,
+        ownerUid: uid,
+        schemaVersion: 1,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      batch.set(doc(db, `stores/${storeId}/members/${uid}`), {
+        uid, role: 'owner', status: 'active', createdAt: timestamp,
+      });
+    }
+    await batch.commit();
+  });
+
+  const db = testEnv.authenticatedContext('user-a').firestore();
+  await assertFails(getDoc(doc(db, 'stores/store-b/members/user-b')));
+});
+
+test('active membership does not enable writes to synthetic sync-event documents', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const timestamp = new Date();
+    const batch = db.batch();
+    batch.set(doc(db, 'stores/store-a'), {
+      name: 'Tienda de prueba',
+      ownerUid: 'owner-a',
+      schemaVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.set(doc(db, 'stores/store-a/members/owner-a'), {
+      uid: 'owner-a', role: 'owner', status: 'active', createdAt: timestamp,
+    });
+    await batch.commit();
+  });
+
+  const db = testEnv.authenticatedContext('owner-a').firestore();
+  await assertFails(setDoc(doc(db, 'stores/store-a/syncEvents/event-1'), {
+    eventId: 'event-1',
+    storeId: 'store-a',
+    entityType: 'synthetic',
+    entityId: 'synthetic-1',
+    operation: 'create',
+    createdAt: new Date(),
+  }));
+});
