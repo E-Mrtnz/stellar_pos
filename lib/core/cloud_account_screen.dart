@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'cloud_auth_gateway.dart';
 import 'cloud_auth_screen.dart';
@@ -147,13 +148,20 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _storeNameController.clear();
         _storesFuture = widget.storeGateway.listMyStores();
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage =
-            'No se pudo crear la tienda. Comprueba la conexión y que las '
-            'reglas de Firestore estén desplegadas; tus datos locales no se '
-            'han modificado.';
+        if (error is FirebaseException &&
+            (error.code == 'permission-denied' || error.code == 'unauthorized')) {
+          _errorMessage = 'Firebase rechazó la creación por permisos (${error.code}). Comprueba que las reglas de firestore.rules estén desplegadas en el proyecto stellar-pos-86f0c y que hayas iniciado sesión con la cuenta correcta. Tus datos locales no se han modificado.';
+        } else if (error is FirebaseException &&
+            (error.code == 'unavailable' || error.code == 'deadline-exceeded')) {
+          _errorMessage = 'Firebase no está disponible por ahora. Comprueba tu conexión y vuelve a intentarlo. Tus datos locales no se han modificado.';
+        } else if (error.toString().contains('Firebase no está disponible')) {
+          _errorMessage = 'Firebase no pudo inicializarse. Verifica la configuración de Firebase para macOS. La caja local sigue disponible.';
+        } else {
+          _errorMessage = 'No se pudo crear la tienda. Comprueba la conexión y la configuración de Firestore; tus datos locales no se han modificado.';
+        }
       });
     } finally {
       if (mounted) setState(() => _creatingStore = false);
