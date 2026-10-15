@@ -15,8 +15,9 @@ async function createUser() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ returnSecureToken: true }),
   });
-  assert.equal(response.ok, true, await response.text());
-  return response.json();
+  const body = await response.json();
+  assert.equal(response.ok, true, JSON.stringify(body));
+  return body;
 }
 
 async function seedMembership(storeId, uid, status = "active") {
