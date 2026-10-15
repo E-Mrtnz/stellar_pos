@@ -74,6 +74,19 @@ test("applies once and returns the original result on duplicate replay", async (
   assert.equal(second.body.result.remoteVersion, 1);
 });
 
+test("concurrent identical requests produce one effect and a duplicate result", async () => {
+  const user = await createUser();
+  const storeId = "receiver-concurrent";
+  await seedMembership(storeId, user.localId);
+  const payload = event(storeId);
+  const [first, second] = await Promise.all([
+    invoke(user.idToken, payload),
+    invoke(user.idToken, payload),
+  ]);
+  const statuses = [first.body.result?.status, second.body.result?.status].sort();
+  assert.deepEqual(statuses, ["applied", "duplicate"]);
+});
+
 test("rejects a reused event ID with a different payload", async () => {
   const user = await createUser();
   const storeId = "receiver-collision";
