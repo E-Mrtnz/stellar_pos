@@ -55,3 +55,12 @@ Mantener Hive como almacenamiento operativo local y sincronizar automáticamente
 - Los tests demuestran que abrir la app sin cambios no dispara una descarga completa.
 
 Este documento es un contrato de diseño; todavía no existe sincronización comercial activa. No ejecutar despliegues de producción ni migraciones de Hive como parte de esta fase.
+
+
+## Progreso de implementación (2026-10-14)
+
+- Añadidos contratos de dominio puros en `lib/core/cloud_sync_protocol.dart` para eventos, estados, validación por tienda y cursores monotónicos.
+- Añadida una cola local Hive en `lib/core/cloud_sync_outbox.dart`. Usa IDs estables, hace idempotente la inserción, conserva estados y permite reintentar un evento incrementando el contador de intentos.
+- La cola no tiene conexión con Firebase y no se inicia automáticamente. Todavía no está conectada a las mutaciones de productos/ventas ni al inicio de la app.
+- Antes de integrar cambios comerciales hacen falta pruebas de persistencia/reapertura, validación de payloads corruptos, coordinación atómica entre mutación local y outbox, y un transporte remoto idempotente. La outbox sola no garantiza entrega remota ni sincronización.
+- No ejecutar escrituras de negocio ni desplegar reglas de producción como parte de este paso.
