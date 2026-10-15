@@ -15,16 +15,14 @@ class _HiveCloudSyncOutboxStorage implements CloudSyncOutboxStorage {
   _HiveCloudSyncOutboxStorage(this.boxName);
 
   final String boxName;
-
   Future<dynamic> get _box => LocalStorage.openBox(boxName);
+  Map<String, Object?> _cachedValues = <String, Object?>{};
 
   @override
   Object? get(String key) => _cachedValues[key];
 
   @override
   Iterable<Object?> get values => _cachedValues.values;
-
-  Map<String, Object?> _cachedValues = <String, Object?>{};
 
   Future<void> _refresh() async {
     final box = await _box;
@@ -59,11 +57,7 @@ class CloudSyncOutbox {
   }) : _storage = storage ?? _HiveCloudSyncOutboxStorage(boxName);
 
   final CloudSyncOutboxStorage _storage;
-
   final String boxName;
-
-  // Hive operations must be serialized: two simultaneous enqueue calls could
-  // otherwise both observe a missing ID and overwrite each other's payload.
   Future<void> _operationTail = Future<void>.value();
 
   Future<T> _serialize<T>(Future<T> Function() operation) {
@@ -93,7 +87,6 @@ class CloudSyncOutbox {
           'El identificador de evento ya existe con otro contenido.',
         );
       }
-      // Stable event ID makes enqueue idempotent; do not reset delivery state.
       return;
     }
     final validationError = validateCloudSyncEvent(
@@ -109,7 +102,7 @@ class CloudSyncOutbox {
 
   Future<List<CloudSyncEvent>> pendingForStore(String storeId) =>
       _serialize(() async {
-    await (_storage is _HiveCloudSyncOutboxStorage ? _storage._refresh() : Future<void>.value());
+    if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final events = <CloudSyncEvent>[];
     for (final value in _storage.values) {
       final event = _decode(value);
@@ -124,27 +117,20 @@ class CloudSyncOutbox {
 
   Future<void> markInFlight(String eventId) =>
       _updateStatus(eventId, CloudSyncEventStatus.inFlight);
-
   Future<void> markDelivered(String eventId) =>
       _updateStatus(eventId, CloudSyncEventStatus.delivered);
-
   Future<void> markBlocked(String eventId) =>
       _updateStatus(eventId, CloudSyncEventStatus.blocked);
 
   /// Recovers events left in-flight when the app stopped unexpectedly.
-  ///
-  /// The stable event ID must be used by an idempotent remote transport before
-  /// this recovery is enabled for business data; a prior request may have
-  /// reached the server even if the client never recorded its acknowledgement.
+  /// A remote transport must be idempotent before this is used for business data.
   Future<int> recoverInterruptedEvents() => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     var recovered = 0;
     final interrupted = <CloudSyncEvent>[];
     for (final value in _storage.values) {
       final event = _decode(value);
-      if (event.status == CloudSyncEventStatus.inFlight) {
-        interrupted.add(event);
-      }
+      if (event.status == CloudSyncEventStatus.inFlight) interrupted.add(event);
     }
     for (final event in interrupted) {
       await _storage.put(
@@ -175,10 +161,8 @@ class CloudSyncOutbox {
     await _storage.flush();
   });
 
-  Future<void> _updateStatus(
-    String eventId,
-    CloudSyncEventStatus status,
-  ) => _serialize(() async {
+  Future<void> _updateStatus(String eventId, CloudSyncEventStatus status) =>
+      _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
@@ -221,3 +205,4 @@ class CloudSyncOutbox {
       throw StateError('El evento guardado en la cola está corrupto: $error');
     }
   }
+}
