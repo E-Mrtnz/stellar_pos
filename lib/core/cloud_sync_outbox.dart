@@ -105,6 +105,35 @@ class CloudSyncOutbox {
   Future<void> markBlocked(String eventId) =>
       _updateStatus(eventId, CloudSyncEventStatus.blocked);
 
+  /// Recovers events left in-flight when the app stopped unexpectedly.
+  ///
+  /// The stable event ID must be used by an idempotent remote transport before
+  /// this recovery is enabled for business data; a prior request may have
+  /// reached the server even if the client never recorded its acknowledgement.
+  Future<int> recoverInterruptedEvents() async {
+    if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
+    var recovered = 0;
+    final interrupted = <CloudSyncEvent>[];
+    for (final value in _storage.values) {
+      final event = _decode(value);
+      if (event.status == CloudSyncEventStatus.inFlight) {
+        interrupted.add(event);
+      }
+    }
+    for (final event in interrupted) {
+      await _storage.put(
+        event.eventId,
+        _encode(event.copyWith(
+          status: CloudSyncEventStatus.pending,
+          attemptCount: event.attemptCount + 1,
+        )),
+      );
+      recovered++;
+    }
+    if (recovered > 0) await _storage.flush();
+    return recovered;
+  }
+
   Future<void> retry(String eventId) async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
