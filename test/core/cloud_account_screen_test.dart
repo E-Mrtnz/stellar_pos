@@ -199,6 +199,43 @@ void main() {
     await gateway.dispose();
   });
 
+  testWidgets('recovers store list after a cloud query error', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway()
+      ..listError = StateError('unavailable');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudieron recuperar tus tiendas.'), findsOneWidget);
+    expect(storeGateway.createCalls, 0);
+
+    storeGateway
+      ..listError = null
+      ..stores = const [
+        CloudStore(id: 'store-recovered', name: 'Tienda recuperada', ownerUid: 'uid-1'),
+      ];
+
+    await tester.ensureVisible(find.text('Reintentar'));
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+
+    expect(storeGateway.listCalls, 2);
+    expect(find.text('Tienda recuperada'), findsOneWidget);
+    expect(find.text('No se pudieron recuperar tus tiendas.'), findsNothing);
+    expect(storeGateway.createCalls, 0);
+
+    await gateway.dispose();
+  });
+
   testWidgets('creates a store only after explicit confirmation', (tester) async {
     final gateway = _FakeCloudAuthGateway()
       ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
