@@ -60,7 +60,7 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 ## Progreso de implementación (2026-10-14)
 
 - Añadidos contratos de dominio puros en `lib/core/cloud_sync_protocol.dart` para eventos, estados, validación por tienda y cursores monotónicos.
-- Añadida una cola local Hive en `lib/core/cloud_sync_outbox.dart`. Usa IDs estables, hace idempotente la inserción, conserva estados y permite reintentar un evento incrementando el contador de intentos.
+- Añadida una cola local Hive en `lib/core/cloud_sync_outbox.dart`. Usa IDs estables, hace idempotente la inserción, conserva estados y permite reintentar un evento incrementando el contador de intentos. La cola valida los metadatos básicos de los eventos nuevos antes de persistirlos (tienda, estado pendiente, IDs, versión e intentos no negativos), para que los eventos mal formados fallen en el límite local.
 - La cola no tiene conexión con Firebase y no se inicia automáticamente. Se añadió `recoverInterruptedEvents()` para devolver a pendientes los eventos que quedaron `inFlight` tras un cierre inesperado, aumentando el contador de intentos. Todavía no está conectada a las mutaciones de productos/ventas ni al inicio de la app.
 - Antes de integrar cambios comerciales hacen falta pruebas de persistencia/reapertura real, validación de payloads corruptos, coordinación atómica entre mutación local y outbox, y un transporte remoto idempotente. La recuperación de `inFlight` puede repetir una petición cuya respuesta se perdió; no debe usarse con datos comerciales hasta tener idempotencia remota. La outbox sola no garantiza entrega remota ni sincronización.
 - No ejecutar escrituras de negocio ni desplegar reglas de producción como parte de este paso.
