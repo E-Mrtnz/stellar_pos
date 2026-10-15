@@ -203,7 +203,7 @@ void main() {
 
   testWidgets('clearly explains that social providers are not enabled yet',
       (tester) async {
-    tester.view.physicalSize = const Size(800, 600);
+    tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
