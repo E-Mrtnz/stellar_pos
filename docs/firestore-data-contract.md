@@ -1,6 +1,6 @@
 # STELLAR POS — Contrato inicial de datos Firestore
 
-**Estado:** propuesta versionada para revisión; todavía no conecta Firestore con ventas, inventario ni otros repositorios locales.
+**Estado:** contrato versionado para la fase de cuenta/tiendas. La interfaz y el repositorio permiten alta explícita y consulta de tiendas; ventas, inventario y otros repositorios locales siguen desconectados.
 
 ## 1. Principios obligatorios
 
@@ -89,4 +89,4 @@ La regla de `firestore.rules` permite únicamente crear la tienda junto con la m
 
 ## 7. Alcance de esta entrega
 
-Este documento define el contrato de datos y no sube información local. Existe un repositorio explícito de alta de tienda que crea solo dos documentos (tienda y membresía inicial) en un batch atómico; todavía no está conectado a la interfaz. No crea invitaciones ni sincroniza productos, ventas u otros registros de negocio. Las reglas permiten únicamente ese alta y lectura básica de miembros activos; el resto permanece cerrado. Las reglas no se despliegan automáticamente desde GitHub.
+Este documento define el contrato de datos y no sube información local. El repositorio y la interfaz permiten consultar tiendas de la cuenta y crear una tienda solo por acción explícita; el alta crea exactamente dos documentos (metadatos y membresía inicial del propietario) en un batch atómico. La lista de tiendas se puede reintentar tras un error. No se crean invitaciones ni se sincronizan productos, ventas u otros registros de negocio. Las pruebas de reglas cubren alta atómica, consultas limitadas a membresías propias activas, denegación de invitaciones, escalamiento de roles, cambios/eliminaciones de tienda o membresía y rutas de negocio. Las reglas no se despliegan automáticamente desde GitHub.

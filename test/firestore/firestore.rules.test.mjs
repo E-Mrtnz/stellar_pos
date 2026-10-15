@@ -198,3 +198,65 @@ test('does not allow store owners to create arbitrary business records yet', asy
     { name: 'Producto sintético' },
   ));
 });
+
+
+test('denies invitation creation and access until a trusted acceptance flow exists', async () => {
+  const db = testEnv.authenticatedContext('owner-a').firestore();
+  await assertFails(setDoc(
+    doc(db, 'stores/store-a/invitations/invite-a'),
+    {
+      tokenHash: 'synthetic-hash',
+      status: 'pending',
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+    },
+  ));
+  await assertFails(getDoc(doc(db, 'stores/store-a/invitations/invite-a')));
+});
+
+test('denies store metadata changes and membership role escalation', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const batch = db.batch();
+    const timestamp = new Date();
+    batch.set(doc(db, 'stores/store-a'), {
+      name: 'Tienda protegida',
+      ownerUid: 'owner-a',
+      schemaVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.set(doc(db, 'stores/store-a/members/owner-a'), {
+      uid: 'owner-a',
+      role: 'owner',
+      status: 'active',
+      createdAt: timestamp,
+    });
+    await batch.commit();
+  });
+
+  const ownerDb = testEnv.authenticatedContext('owner-a').firestore();
+  await assertFails(updateDoc(doc(ownerDb, 'stores/store-a'), {
+    name: 'Nombre alterado',
+  }));
+  await assertFails(updateDoc(doc(ownerDb, 'stores/store-a/members/owner-a'), {
+    role: 'admin',
+  }));
+  await assertFails(deleteDoc(doc(ownerDb, 'stores/store-a/members/owner-a')));
+});
+
+test('denies a user from creating their own elevated or additional membership', async () => {
+  const db = testEnv.authenticatedContext('user-a').firestore();
+  await assertFails(setDoc(doc(db, 'stores/store-a/members/user-a'), {
+    uid: 'user-a',
+    role: 'owner',
+    status: 'active',
+    createdAt: new Date(),
+  }));
+  await assertFails(setDoc(doc(db, 'stores/store-a/members/user-b'), {
+    uid: 'user-b',
+    role: 'admin',
+    status: 'active',
+    createdAt: new Date(),
+  }));
+});
