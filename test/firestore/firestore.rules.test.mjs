@@ -200,6 +200,43 @@ test('does not allow store owners to create arbitrary business records yet', asy
 });
 
 
+test('denies clients direct access to remote sync events and idempotency receipts', async () => {
+  const storeId = 'sync-receipt-boundary-store';
+  const uid = 'sync-receipt-boundary-owner';
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const batch = db.batch();
+    const timestamp = new Date();
+    batch.set(doc(db, `stores/${storeId}`), {
+      name: 'Tienda sintética',
+      ownerUid: uid,
+      schemaVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.set(doc(db, `stores/${storeId}/members/${uid}`), {
+      uid, role: 'owner', status: 'active', createdAt: timestamp,
+    });
+    batch.set(doc(db, `stores/${storeId}/syncReceipts/event-1`), {
+      eventId: 'event-1', fingerprint: 'synthetic-fingerprint', result: 'applied',
+    });
+    batch.set(doc(db, `stores/${storeId}/syncEvents/event-1`), {
+      eventId: 'event-1', status: 'applied',
+    });
+    await batch.commit();
+  });
+
+  const db = testEnv.authenticatedContext(uid).firestore();
+  await assertFails(getDoc(doc(db, `stores/${storeId}/syncReceipts/event-1`)));
+  await assertFails(setDoc(doc(db, `stores/${storeId}/syncReceipts/event-2`), {
+    eventId: 'event-2', fingerprint: 'forged', result: 'applied',
+  }));
+  await assertFails(getDoc(doc(db, `stores/${storeId}/syncEvents/event-1`)));
+  await assertFails(setDoc(doc(db, `stores/${storeId}/syncEvents/event-2`), {
+    eventId: 'event-2', status: 'applied',
+  }));
+});
+
 test('denies invitation creation and access until a trusted acceptance flow exists', async () => {
   const db = testEnv.authenticatedContext('owner-a').firestore();
   await assertFails(setDoc(
