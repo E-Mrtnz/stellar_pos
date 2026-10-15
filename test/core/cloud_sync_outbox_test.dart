@@ -139,6 +139,15 @@ void main() {
       expect(storage.flushCount, flushesBeforeRecovery);
     });
 
+    test('reports malformed persisted events as a clear state error', () async {
+      storage.data['corrupt'] = <String, Object>{'eventId': 'corrupt'};
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('unknown event status update fails explicitly', () async {
       await expectLater(
         outbox.markDelivered('missing'),
