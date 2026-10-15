@@ -36,6 +36,7 @@ jobs:
           lib/core/cloud_auth_gateway.dart
           lib/core/cloud_auth_screen.dart
           lib/core/cloud_account_settings_tile.dart
+          lib/core/cloud_account_screen.dart
           lib/core/cloud_store_repository.dart
       - name: Run cloud regression tests
         run: >-
@@ -43,6 +44,7 @@ jobs:
           test/core/cloud_auth_gateway_test.dart
           test/core/cloud_auth_screen_test.dart
           test/core/cloud_account_settings_tile_test.dart
+          test/core/cloud_account_screen_test.dart
           test/core/cloud_store_repository_test.dart
           test/cloud_store_access_test.dart
           test/core/cloud_paths_test.dart
