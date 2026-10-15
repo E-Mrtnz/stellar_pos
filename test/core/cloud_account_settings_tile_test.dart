@@ -4,8 +4,14 @@ import 'package:stellar_pos/core/cloud_account_settings_tile.dart';
 import 'package:stellar_pos/core/cloud_auth_gateway.dart';
 
 class _FakeCloudAuthGateway implements CloudAuthGateway {
+  _FakeCloudAuthGateway({this.failAuthStream = false});
+
+  final bool failAuthStream;
+
   @override
-  Stream<CloudAuthUser?> authStateChanges() => Stream.value(null);
+  Stream<CloudAuthUser?> authStateChanges() => failAuthStream
+      ? Stream.error(StateError('auth stream unavailable'))
+      : Stream.value(null);
   @override
   Future<CloudAuthUser?> currentUser() async => null;
   @override
@@ -33,6 +39,40 @@ class _FakeCloudAuthGateway implements CloudAuthGateway {
 
   @override
   Future<void> signOut() async {}
+  testWidgets('auth stream error with retry stays within a compact viewport',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CloudAccountSettingsTile(
+            gateway: _FakeCloudAuthGateway(failAuthStream: true),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'No se pudo consultar la sesión. La caja local sigue disponible.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Reintentar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reintentar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
 
 void main() {
