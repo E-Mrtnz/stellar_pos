@@ -53,21 +53,19 @@ void main() {
       );
     });
 
-    test('rejects negative retry counters', () {
-      final invalid = CloudSyncEvent(
-        eventId: 'evt-negative-attempts',
-        storeId: 'store-a',
-        entityType: 'product',
-        entityId: 'product-1',
-        operation: CloudSyncOperation.update,
-        localVersion: 1,
-        createdAt: createdAt,
-        attemptCount: -1,
-      );
-
+    test('constructor rejects negative retry counters', () {
       expect(
-        validateCloudSyncEvent(invalid, activeStoreId: 'store-a'),
-        'invalid-attempt-count',
+        () => CloudSyncEvent(
+          eventId: 'evt-negative-attempts',
+          storeId: 'store-a',
+          entityType: 'product',
+          entityId: 'product-1',
+          operation: CloudSyncOperation.update,
+          localVersion: 1,
+          createdAt: createdAt,
+          attemptCount: -1,
+        ),
+        throwsAssertionError,
       );
     });
 
