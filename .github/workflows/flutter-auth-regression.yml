@@ -76,3 +76,7 @@ jobs:
         run: npm install
       - name: Test Firestore rules in the local emulator
         run: npm run test:rules
+      - name: Install receiver dependencies
+        run: npm --prefix functions install
+      - name: Test synthetic receiver in Auth, Firestore and Functions emulators
+        run: npm run test:receiver
