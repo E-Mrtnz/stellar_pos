@@ -343,7 +343,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                 controller: _storeNameController,
                 maxLength: 80,
                 textCapitalization: TextCapitalization.words,
-                enabled: !_creatingStore && _createdStore == null,
+                enabled: !_creatingStore,
                 decoration: const InputDecoration(
                   labelText: 'Nombre de la tienda',
                   hintText: 'Ej. Tienda El Edén',
@@ -357,9 +357,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: _creatingStore || _createdStore != null
-                    ? null
-                    : _createStore,
+                onPressed: _creatingStore ? null : _createStore,
                 icon: _creatingStore
                     ? const SizedBox(
                         width: 18,

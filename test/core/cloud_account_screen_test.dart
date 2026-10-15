@@ -82,6 +82,7 @@ class _FakeCloudStoreGateway implements CloudStoreGateway {
   String? lastName;
   int createCalls = 0;
   int listCalls = 0;
+  int _nextStoreId = 0;
   List<CloudStore> stores = <CloudStore>[];
   Object? listError;
   Object? error;
@@ -98,8 +99,9 @@ class _FakeCloudStoreGateway implements CloudStoreGateway {
     createCalls++;
     lastName = name;
     if (error != null) throw error!;
+    _nextStoreId++;
     return CloudStore(
-      id: 'store-test-123',
+      id: 'store-test-$_nextStoreId',
       name: name.trim(),
       ownerUid: 'uid-1',
     );
@@ -260,7 +262,7 @@ void main() {
     expect(storeGateway.createCalls, 1);
     expect(storeGateway.lastName, 'Tienda El Edén');
     expect(find.text('Tienda creada'), findsOneWidget);
-    expect(find.text('store-test-123'), findsOneWidget);
+    expect(find.text('store-test-1'), findsOneWidget);
     expect(find.textContaining('todavía no se han sincronizado'), findsOneWidget);
 
     await gateway.dispose();
@@ -319,3 +321,39 @@ void main() {
     await gateway.dispose();
   });
 }
+
+
+  testWidgets('allows creating another store after a successful creation', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CloudAccountScreen(
+          gateway: gateway,
+          storeGateway: storeGateway,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Tienda principal');
+    await tester.ensureVisible(find.text('Crear tienda'));
+    await tester.tap(find.text('Crear tienda'));
+    await tester.pumpAndSettle();
+
+    expect(storeGateway.createCalls, 1);
+    expect(find.text('store-test-1'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Sucursal nueva');
+    await tester.ensureVisible(find.text('Crear tienda'));
+    await tester.tap(find.text('Crear tienda'));
+    await tester.pumpAndSettle();
+
+    expect(storeGateway.createCalls, 2);
+    expect(storeGateway.lastName, 'Sucursal nueva');
+    expect(find.text('store-test-2'), findsOneWidget);
+
+    await gateway.dispose();
+  });

@@ -38,14 +38,15 @@ El workflow de GitHub Actions se amplía para ejecutar:
 
 Los casos de reglas deben demostrar tanto el alta atómica válida como el rechazo de alta sin membresía, suplantación del propietario y escrituras de productos. Las pruebas del emulador no despliegan reglas ni acceden al proyecto real `stellar-pos-86f0c`.
 
-## Pendiente antes de conectar la interfaz
+## Estado y siguientes pasos
 
-1. Esperar y revisar el resultado del workflow.
-2. Ejecutar localmente `npm run test:rules` y las pruebas Flutter.
-3. Revisar las reglas y desplegarlas explícitamente a Firebase solo después de confirmar que las pruebas pasan.
-4. Añadir la interfaz de crear tienda con confirmación del usuario y estado de error claro.
-5. Implementar la consulta de tiendas del usuario.
-6. Diseñar invitaciones mediante un flujo confiable y probar permisos positivos/negativos.
-7. Solo después comenzar el diseño de outbox/sincronización incremental con datos sintéticos.
+La interfaz para crear tiendas mediante acción explícita, consultar tiendas y reintentar una consulta fallida ya está implementada y cubierta por pruebas. Tras crear una tienda, el usuario puede crear otra desde la misma sesión; el control de estado evita solicitudes duplicadas mientras una operación está en curso.
+
+Pendiente antes de conectar datos de negocio:
+
+1. Ejecutar localmente `npm run test:rules` y las pruebas Flutter en el entorno del desarrollador.
+2. Revisar las reglas y desplegarlas explícitamente a Firebase solo tras confirmar el proyecto destino y la aprobación del propietario.
+3. Diseñar invitaciones mediante un flujo confiable y probar permisos positivos/negativos.
+4. Diseñar una outbox durable y sincronización incremental con datos sintéticos, sin activar aún escrituras de negocio.
 
 No crear colecciones manualmente ni cargar el inventario actual durante esta fase.
