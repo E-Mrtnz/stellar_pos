@@ -61,6 +61,7 @@ class CloudSyncOutbox {
   final String boxName;
 
   Future<void> enqueue(CloudSyncEvent event) async {
+    if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final existing = _storage.get(event.eventId);
     if (existing != null) {
       final stored = _decode(existing);
