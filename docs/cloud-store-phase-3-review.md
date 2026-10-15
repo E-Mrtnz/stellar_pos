@@ -2,7 +2,7 @@
 
 **Rama:** `feature/cloud-storage-v2`  
 **Fecha:** 2026-10-14  
-**Alcance:** primer paso funcional para crear una tienda compartida. No conecta el almacenamiento local ni habilita sincronización de datos de negocio.
+**Alcance:** alta/consulta explícita de tiendas y ciclo de vida de cuenta. No conecta el almacenamiento local ni habilita sincronización de datos de negocio.
 
 ## Hallazgos confirmados
 
@@ -24,7 +24,7 @@ Se añade `CloudStoreRepository.createStore`, que realiza una operación explíc
 
 La regla de Firestore acepta el alta solo si ambos documentos se crean en la misma operación y el UID autenticado coincide con el propietario y la membresía `owner`. Se permite leer los metadatos y membresías de una tienda solo a miembros autenticados activos. La política continúa denegando actualizaciones/eliminaciones de tiendas y membresías, invitaciones, y todas las rutas de negocio no especificadas.
 
-**Presupuesto de escritura de la operación:** dos documentos por alta de tienda, una sola vez por acción explícita del usuario. No se ejecuta al arrancar la app, iniciar sesión, abrir una pantalla ni editar productos. La interfaz aún no está conectada a este repositorio.
+**Presupuesto de escritura de la operación:** dos documentos por alta de tienda, una sola vez por acción explícita del usuario. No se ejecuta al arrancar la app, iniciar sesión, abrir una pantalla ni editar productos. La interfaz de Cuenta en la nube ya permite consultar tiendas y crear una tienda de forma explícita; también explica que las invitaciones aún no están disponibles.
 
 ## Por qué no se habilita todavía la sincronización
 
