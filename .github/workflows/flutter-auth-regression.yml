@@ -1,4 +1,4 @@
-name: Flutter auth regression tests
+name: Flutter and cloud access regression tests
 
 on:
   push:
@@ -30,12 +30,40 @@ jobs:
           name: flutter-pubspec-lock
           path: pubspec.lock
           if-no-files-found: error
-      - name: Analyze changed auth files
-        run: flutter analyze lib/core/cloud_auth_gateway.dart lib/core/cloud_auth_screen.dart lib/core/cloud_account_settings_tile.dart
-      - name: Run cloud authentication regression tests
+      - name: Analyze cloud access files
+        run: >-
+          flutter analyze
+          lib/core/cloud_auth_gateway.dart
+          lib/core/cloud_auth_screen.dart
+          lib/core/cloud_account_settings_tile.dart
+          lib/core/cloud_store_repository.dart
+      - name: Run cloud regression tests
         run: >-
           flutter test
           test/core/cloud_auth_gateway_test.dart
           test/core/cloud_auth_screen_test.dart
           test/core/cloud_account_settings_tile_test.dart
+          test/core/cloud_store_repository_test.dart
           test/cloud_store_access_test.dart
+          test/core/cloud_paths_test.dart
+          test/core/cloud_firestore_repository_test.dart
+
+  firestore-rules-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install rules-test dependencies
+        run: npm install
+      - name: Test Firestore rules in the local emulator
+        run: npm run test:rules
