@@ -66,7 +66,7 @@ Las reglas definitivas deben aplicar, como mínimo, estas condiciones:
 6. Validar tipos y campos permitidos por colección, además de limitar campos sensibles que un usuario puede cambiar.
 7. Las invitaciones deben ser de uso limitado, revocables y con expiración; conocer el código no debe conceder acceso permanente sin un flujo de aceptación controlado.
 
-La regla temporal en `firestore.rules` deniega todo acceso. Se mantiene así hasta que las condiciones anteriores estén implementadas y probadas. No se debe cambiar a `allow read, write: if request.auth != null`, porque eso no aísla las tiendas.
+La regla de `firestore.rules` permite únicamente crear la tienda junto con la membresía inicial `owner` en un batch atómico, y leer metadatos/membresías de miembros activos. Las escrituras de negocio, invitaciones, modificaciones y eliminaciones siguen denegadas. No se debe cambiar a `allow read, write: if request.auth != null`, porque eso no aísla las tiendas.
 
 ## 5. Estrategia de sincronización (aún no implementada)
 
@@ -89,4 +89,4 @@ La regla temporal en `firestore.rules` deniega todo acceso. Se mantiene así has
 
 ## 7. Alcance de esta entrega
 
-Este documento define un contrato inicial para revisión. No crea usuarios, tiendas, miembros, invitaciones ni documentos remotos; no cambia modelos Hive; no activa autenticación ni sincronización; y no despliega reglas. Las reglas actuales siguen cerradas por defecto.
+Este documento define el contrato de datos y no sube información local. Existe un repositorio explícito de alta de tienda que crea solo dos documentos (tienda y membresía inicial) en un batch atómico; todavía no está conectado a la interfaz. No crea invitaciones ni sincroniza productos, ventas u otros registros de negocio. Las reglas permiten únicamente ese alta y lectura básica de miembros activos; el resto permanece cerrado. Las reglas no se despliegan automáticamente desde GitHub.
