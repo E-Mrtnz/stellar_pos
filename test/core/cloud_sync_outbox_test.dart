@@ -13,10 +13,10 @@ class _MemoryOutboxStorage implements CloudSyncOutboxStorage {
   Iterable<Object?> get values => data.values;
 
   @override
-  Future<void> put(String key, Object value) async => data[key] = value;
+  Future<void> put(String key, Object value) async { data[key] = value; }
 
   @override
-  Future<void> flush() async => flushCount++;
+  Future<void> flush() async { flushCount++; }
 }
 
 void main() {
