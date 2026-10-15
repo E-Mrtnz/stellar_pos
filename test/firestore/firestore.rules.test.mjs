@@ -297,7 +297,7 @@ test('an active member cannot read another store without membership', async () =
   await assertFails(getDoc(doc(db, `stores/${foreignStoreId}`)));
 });
 
-test('an active member cannot read another store\\'s membership document', async () => {
+test('an active member cannot read another store\'s membership document', async () => {
   const ownStoreId = 'membership-boundary-own-store';
   const foreignStoreId = 'membership-boundary-foreign-store';
   await testEnv.withSecurityRulesDisabled(async (context) => {
