@@ -23,7 +23,7 @@ class CloudSyncRetryPolicy {
   /// capped at [maxDelay]. A zero or negative count is treated as attempt 1.
   Duration delayForAttempt(int attemptCount) {
     final exponent = (attemptCount <= 1 ? 0 : attemptCount - 1)
-        .clamp(0, 30);
+        .clamp(0, 30).toInt();
     var milliseconds = baseDelay.inMilliseconds;
     for (var i = 0; i < exponent; i++) {
       if (milliseconds >= maxDelay.inMilliseconds) {
@@ -32,7 +32,7 @@ class CloudSyncRetryPolicy {
       milliseconds *= 2;
     }
     return Duration(
-      milliseconds: milliseconds.clamp(0, maxDelay.inMilliseconds),
+      milliseconds: milliseconds.clamp(0, maxDelay.inMilliseconds).toInt(),
     );
   }
 
