@@ -20,9 +20,14 @@ class CloudStore {
   final String ownerUid;
 }
 
+/// Application-facing boundary for explicit store creation.
+abstract interface class CloudStoreGateway {
+  Future<CloudStore> createStore({required String name});
+}
+
 /// Explicit store-creation operations. This repository does not synchronize
 /// products, sales, inventory, or any other local Hive records.
-class CloudStoreRepository {
+class CloudStoreRepository implements CloudStoreGateway {
   CloudStoreRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
@@ -46,6 +51,7 @@ class CloudStoreRepository {
   ///
   /// Firestore Security Rules must allow this exact paired write before this
   /// method can succeed. No product or business data is uploaded here.
+  @override
   Future<CloudStore> createStore({required String name}) async {
     await CloudFirebase.ensureReady();
 
