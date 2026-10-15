@@ -154,6 +154,8 @@ void main() {
     expect(find.text('Sesión iniciada'), findsOneWidget);
     expect(find.text('owner@example.com'), findsOneWidget);
     expect(find.text('Crear una tienda'), findsOneWidget);
+    expect(find.text('Compartir una tienda'), findsOneWidget);
+    expect(find.textContaining('Las invitaciones todavía no están habilitadas'), findsOneWidget);
     expect(find.text('Nombre de la tienda'), findsOneWidget);
     expect(find.textContaining('no sube tus productos ni tus ventas'), findsOneWidget);
     expect(storeGateway.createCalls, 0);
