@@ -410,4 +410,59 @@ void main() {
 
     await gateway.dispose();
   });
+
+  testWidgets('restores the selected cloud store for the same user', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway()
+      ..stores = const [
+        CloudStore(id: 'store-a', name: 'Tienda A', ownerUid: 'uid-1'),
+        CloudStore(id: 'store-b', name: 'Tienda B', ownerUid: 'uid-1'),
+      ];
+    final selection = _FakeActiveStoreSelection()
+      ..values['uid-1'] = 'store-b';
+
+    await tester.pumpWidget(MaterialApp(
+      home: CloudAccountScreen(
+        gateway: gateway,
+        storeGateway: storeGateway,
+        activeStoreSelection: selection,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Tienda seleccionada: Tienda B'), findsOneWidget);
+    expect(selection.values['uid-1'], 'store-b');
+
+    await gateway.dispose();
+  });
+
+  testWidgets('persists the selection after explicitly choosing a store', (tester) async {
+    final gateway = _FakeCloudAuthGateway()
+      ..user = const CloudAuthUser(uid: 'uid-1', email: 'owner@example.com');
+    final storeGateway = _FakeCloudStoreGateway()
+      ..stores = const [
+        CloudStore(id: 'store-a', name: 'Tienda A', ownerUid: 'uid-1'),
+        CloudStore(id: 'store-b', name: 'Tienda B', ownerUid: 'uid-1'),
+      ];
+    final selection = _FakeActiveStoreSelection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: CloudAccountScreen(
+        gateway: gateway,
+        storeGateway: storeGateway,
+        activeStoreSelection: selection,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(RadioListTile).last);
+    await tester.pumpAndSettle();
+
+    expect(selection.values['uid-1'], 'store-b');
+    expect(find.textContaining('Tienda seleccionada: Tienda B'), findsOneWidget);
+
+    await gateway.dispose();
+  });
+
 }
