@@ -28,6 +28,7 @@ void main() {
     String storeId = 'store-a',
     String entityId = 'product-1',
     DateTime? createdAt,
+    Map<String, Object?> payload = const <String, Object?>{},
   }) =>
       CloudSyncEvent(
         eventId: eventId,
@@ -37,6 +38,7 @@ void main() {
         operation: CloudSyncOperation.update,
         localVersion: 1,
         createdAt: createdAt ?? firstTime,
+        payload: payload,
       );
 
   group('CloudSyncOutbox', () {
@@ -56,6 +58,30 @@ void main() {
       expect(storage.data, hasLength(1));
       expect(storage.data['evt-1'], containsPair('status', 'delivered'));
       expect(storage.flushCount, 2);
+    });
+
+    test('same event payload with different map key order is idempotent', () async {
+      await outbox.enqueue(event(payload: <String, Object?>{
+        'name': 'Milk',
+        'details': <String, Object?>{'b': 2, 'a': 1},
+      }));
+      await outbox.enqueue(event(payload: <String, Object?>{
+        'details': <String, Object?>{'a': 1, 'b': 2},
+        'name': 'Milk',
+      }));
+
+      expect(storage.data, hasLength(1));
+      expect((await outbox.pendingForStore('store-a')).single.payload['name'],
+          'Milk');
+    });
+
+    test('rejects a reused event ID with different payload content', () async {
+      await outbox.enqueue(event(payload: <String, Object?>{'price': 2.5}));
+      await expectLater(
+        outbox.enqueue(event(payload: <String, Object?>{'price': 3.0})),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data, hasLength(1));
     });
 
     test('serializes concurrent enqueues that reuse an event ID', () async {
