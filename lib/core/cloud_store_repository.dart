@@ -197,7 +197,6 @@ class CloudStoreRepository implements CloudStoreGateway, CloudInvitationGateway 
         (_) => _alphabet[_random.nextInt(_alphabet.length)],
         growable: false,
       ).join();
-  }
 
   @override
   Future<CreatedStoreInvitation> createInvitation({
