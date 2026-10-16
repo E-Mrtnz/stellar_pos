@@ -95,3 +95,10 @@ No conectar el receptor con la outbox ni con repositorios comerciales hasta que 
 El worker manual `CloudSyncWorker.runOnce` valida sesión/membresía, limita cada lote, conserva el mismo `eventId` en reintentos y solo marca entregado después de respuesta `applied` o `duplicate`. El transporte integrado permite únicamente la entidad sintética de prueba y rechaza otras entidades antes de enviar. La outbox persiste el payload y detecta colisiones comparando JSON canónico. La política de conflictos y el cursor local monotónico están probados de forma aislada.
 
 No hay aún un worker programado en segundo plano, un pull remoto paginado ni coordinación atómica entre las mutaciones de las cajas Hive comerciales y la outbox. Tampoco existe una función de venta comercial que valide todos los campos de `SaleRecord` y asigne `saleNumber` en la misma transacción idempotente. Estos puntos son puertas obligatorias antes de habilitar ventas, productos, inventario, pagos o deudas. Mantener las reglas y Functions sin desplegar en producción.
+
+
+### Pull incremental sintético — 2026-10-16
+
+Se añadió el callable `pullSyntheticSyncChanges`, protegido por autenticación y membresía activa, con paginación por versión global de tienda. El cliente `CloudSyncPullCoordinator` valida tienda, tipo de entidad, orden de versiones y cursor; aplica una página y solo después avanza el cursor durable por dispositivo. El aplicador debe deduplicar por `eventId`, porque un cierre inesperado después de aplicar y antes de guardar el cursor puede volver a entregar la página.
+
+Este canal devuelve exclusivamente `syntheticTestValue`. No es una API de lectura de ventas, productos, inventario, pagos o deudas. La sincronización comercial sigue deshabilitada y no se ha desplegado ninguna Function ni regla a producción.
