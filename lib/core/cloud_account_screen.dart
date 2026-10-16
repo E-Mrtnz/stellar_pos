@@ -150,6 +150,10 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
   Future<void> _selectStore(String? storeId) async {
     if (storeId == null) return;
     setState(() => _selectedStoreId = storeId);
+    await _persistSelectedStore(storeId);
+  }
+
+  Future<void> _persistSelectedStore(String storeId) async {
     try {
       await widget.activeStoreSelection.write(widget.user.uid, storeId);
     } catch (_) {
@@ -199,7 +203,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _storeNameController.clear();
         _storesFuture = widget.storeGateway.listMyStores();
       });
-      await widget.activeStoreSelection.write(widget.user.uid, store.id);
+      await _persistSelectedStore(store.id);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -603,7 +607,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _invitationMessage =
             'Invitación válida hasta ${invitation.expiresAt.toLocal()}.';
       });
-      await widget.activeStoreSelection.write(widget.user.uid, accepted.storeId);
+      await _persistSelectedStore(accepted.storeId);
     } catch (error) {
       if (!mounted) return;
       setState(() => _invitationMessage =
