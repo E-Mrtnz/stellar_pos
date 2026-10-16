@@ -189,6 +189,55 @@ test("rejects client-controlled identity and unsupported payload fields", async 
 });
 
 
+test("pulls synthetic changes incrementally using a monotonic store cursor", async () => {
+  const user = await createUser();
+  const storeId = "receiver-pull-cursor";
+  await seedMembership(storeId, user.localId);
+  const first = event(storeId, {
+    eventId: "pull-event-1",
+    entityId: "entity-one",
+    localVersion: 1,
+    payload: { value: "one" },
+  });
+  const second = event(storeId, {
+    eventId: "pull-event-2",
+    entityId: "entity-two",
+    localVersion: 1,
+    payload: { value: "two" },
+  });
+  assert.equal((await invoke(user.idToken, first)).body.result.status, "applied");
+  assert.equal((await invoke(user.idToken, second)).body.result.status, "applied");
+
+  const pageOne = await invoke(user.idToken, {
+    storeId, afterVersion: 0, limit: 1,
+  }, "pullSyntheticSyncChanges");
+  assert.equal(pageOne.body.result.changes.length, 1);
+  assert.equal(pageOne.body.result.changes[0].eventId, "pull-event-1");
+  assert.equal(pageOne.body.result.nextCursor, 1);
+  assert.equal(pageOne.body.result.hasMore, true);
+
+  const pageTwo = await invoke(user.idToken, {
+    storeId, afterVersion: pageOne.body.result.nextCursor, limit: 1,
+  }, "pullSyntheticSyncChanges");
+  assert.equal(pageTwo.body.result.changes.length, 1);
+  assert.equal(pageTwo.body.result.changes[0].eventId, "pull-event-2");
+  assert.equal(pageTwo.body.result.nextCursor, 2);
+});
+
+test("synthetic pull rejects anonymous and non-member callers", async () => {
+  const user = await createUser();
+  const anonymous = await invoke(null, {
+    storeId: "receiver-pull-denied", afterVersion: 0, limit: 10,
+  }, "pullSyntheticSyncChanges");
+  assert.equal(anonymous.body.error.status, "UNAUTHENTICATED");
+
+  const denied = await invoke(user.idToken, {
+    storeId: "receiver-pull-denied", afterVersion: 0, limit: 10,
+  }, "pullSyntheticSyncChanges");
+  assert.equal(denied.body.error.status, "PERMISSION_DENIED");
+});
+
+
 async function invokeInvitation(functionName, idToken, data) {
   return invoke(idToken, data, functionName);
 }
