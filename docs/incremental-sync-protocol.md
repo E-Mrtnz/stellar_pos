@@ -105,3 +105,12 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 
 - Añadidos `CloudSaleSyncCoordinator` y `SaleRepositoryCloudRemoteApplier`: el primero consulta la membresía, usa el ID estable para repetir la aceptación y guarda el número devuelto por el servidor; el segundo hace upsert local idempotente y rechaza conflictos de contenido. Son servicios explícitos, no se llaman automáticamente desde el checkout.
 - Añadido `CloudSyncScheduler` con inicio explícito, pausa en segundo plano, ejecución al reanudar, coalescencia de ejecuciones concurrentes y backoff. No se registra automáticamente en el arranque de la aplicación; debe permanecer inactivo hasta que exista una pantalla de consentimiento y un flujo de activación probado.
+
+
+## Ledger comercial inmutable — avance (2026-10-16)
+
+- Se añadió el receptor callable `acceptCloudLedgerEntry` para movimientos de inventario firmados, compras, movimientos de deuda y transacciones de saldo electrónico. El backend valida identidad, tipos, cantidades/importes, fechas, límites de tamaño y campos de los artículos de compra.
+- Cada entrada se almacena con un recibo idempotente dentro de una transacción Firestore y genera una versión en un feed paginado por tienda. Repetir el mismo ID y contenido devuelve el resultado anterior; reutilizarlo con contenido distinto se rechaza. Los miembros activos con rol de caja/gestión pueden escribir; los lectores activos pueden recibir el feed.
+- Se añadió `CloudFunctionsLedgerGateway` en Dart para llamar al receptor y leer páginas. Valida tienda, identidad, tipos de entidad, orden de versiones y cursor antes de entregar los datos al coordinador.
+- El inventario remoto usa movimientos firmados e inmutables, no una sobrescritura de `Product.stock`. La recepción de páginas aún requiere un applier local que proyecte movimientos de manera idempotente y un cursor Hive conectado a esa aplicación.
+- **No es todavía sincronización comercial completa ni activada.** La cola general sigue limitada a eventos sintéticos; el gateway ledger no se conecta automáticamente a repositorios ni al planificador. Productos descriptivos, proyección de inventario, recepción/aplicación de compras y movimientos monetarios necesitan coordinadores locales y pruebas end-to-end antes de habilitarse. No desplegar Functions ni reglas en producción.
