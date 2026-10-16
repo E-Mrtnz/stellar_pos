@@ -47,6 +47,7 @@ jobs:
           lib/core/cloud_mutation_journal.dart
           lib/core/cloud_sync_scheduler.dart
           lib/core/cloud_sales_pull.dart
+          lib/core/cloud_ledger_sync.dart
       - name: Run cloud access and incremental sync regression tests
         run: >-
           flutter test
@@ -59,6 +60,7 @@ jobs:
           test/core/cloud_sale_sync_coordinator_test.dart
           test/core/cloud_mutation_journal_test.dart
           test/core/cloud_sales_pull_test.dart
+          test/core/cloud_ledger_sync_test.dart
           test/core/cloud_sync_scheduler_test.dart
           test/core/cloud_sync_worker_test.dart
           test/core/cloud_sync_pull_test.dart
