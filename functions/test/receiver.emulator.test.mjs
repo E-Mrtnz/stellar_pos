@@ -158,7 +158,8 @@ test("cloud sale receiver rejects client-chosen numbers and changed payload coll
     saleId: "sale-client-number",
     sale: salePayload("sale-client-number", { saleNumber: "999" }),
   }, "acceptCloudSale");
-  assert.equal(chosenNumber.body.error.status, "INVALID_ARGUMENT");
+  assert.equal(chosenNumber.body.result.status, "applied");
+  assert.equal(chosenNumber.body.result.saleNumber, "1");
 
   const payload = salePayload("sale-collision");
   const accepted = await invoke(user.idToken, {
