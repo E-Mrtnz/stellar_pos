@@ -110,6 +110,33 @@ void main() {
       expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
     });
 
+    test('rejects a page with a missing version instead of skipping changes', () async {
+      final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
+      final transport = _FakePullTransport(CloudSyncSyntheticPullPage(
+        storeId: 'store-a',
+        afterVersion: 0,
+        changes: <CloudSyncSyntheticChange>[
+          _change(1, 'event-1'),
+          _change(3, 'event-3'),
+        ],
+        nextCursor: 3,
+        hasMore: false,
+      ));
+      final applier = _FakeApplier();
+      final coordinator = CloudSyncPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
+
+      await expectLater(
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        throwsFormatException,
+      );
+      expect(applier.applied, isEmpty);
+      expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
+    });
+
     test('rejects cross-store or non-synthetic changes before applying', () async {
       final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
       final bad = CloudSyncSyntheticChange(
