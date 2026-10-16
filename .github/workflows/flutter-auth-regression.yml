@@ -43,6 +43,7 @@ jobs:
           lib/core/cloud_sync_retry_policy.dart
           lib/core/cloud_active_store_selection.dart
           lib/core/cloud_sale_acceptance_transport.dart
+          lib/core/cloud_sale_sync_coordinator.dart
           lib/core/cloud_mutation_journal.dart
           lib/core/cloud_sync_scheduler.dart
           lib/core/cloud_sales_pull.dart
@@ -56,6 +57,7 @@ jobs:
           test/core/cloud_account_screen_test.dart
           test/core/cloud_active_store_selection_test.dart
           test/core/cloud_sale_acceptance_transport_test.dart
+          test/core/cloud_sale_sync_coordinator_test.dart
           test/core/cloud_mutation_journal_test.dart
           test/core/cloud_sales_pull_test.dart
           test/core/cloud_sync_scheduler_test.dart
