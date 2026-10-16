@@ -47,7 +47,6 @@ class CloudSaleAcceptance {
 }
 
 abstract interface class CloudSaleAcceptanceGateway {
-  @override
   Future<CloudSaleAcceptance> accept({
     required String storeId,
     required SaleRecord sale,
@@ -64,6 +63,7 @@ class CloudSaleAcceptanceTransport implements CloudSaleAcceptanceGateway {
 
   final FirebaseFunctions _functions;
 
+  @override
   Future<CloudSaleAcceptance> accept({
     required String storeId,
     required SaleRecord sale,
