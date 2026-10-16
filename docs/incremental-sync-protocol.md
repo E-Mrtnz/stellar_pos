@@ -1,6 +1,6 @@
 # STELLAR POS — Protocolo de sincronización incremental (diseño)
 
-**Estado:** protocolo de diseño con contratos de dominio y una outbox local inicial implementados. No activa sincronización comercial ni escribe datos en Firebase.
+**Estado (2026-10-16):** contratos de eventos con payload, outbox local, política de conflictos por entidad, cursor local monotónico y un trabajador manual limitado a eventos sintéticos implementados. No activa sincronización comercial ni se inicia automáticamente.
 
 ## Objetivo
 
@@ -9,9 +9,9 @@ Mantener Hive como almacenamiento operativo local y sincronizar automáticamente
 ## Componentes requeridos
 
 - **Outbox durable local:** la cola actual serializa sus operaciones dentro de una instancia para evitar carreras entre altas simultáneas con el mismo ID; los tests cubren colisiones concurrentes y reconstrucción del objeto usando almacenamiento falso. Esto no sustituye una prueba de cierre/reapertura real de Hive ni garantiza atomicidad con la mutación comercial. Cada cambio local deberá generar un evento persistido junto con la mutación local, en la misma transacción Hive cuando el modelo lo permita. Un evento incluye `eventId` estable, `storeId`, tipo de entidad, `entityId`, operación, versión local, fecha de creación, origen y estado de entrega.
-- **Procesador de salida:** lee solo eventos pendientes, comprueba sesión y membresía, envía lotes acotados y marca entregados únicamente tras confirmación remota. Reintenta errores transitorios con backoff; no reintenta indefinidamente errores permanentes de permisos. Ya existe una política pura `CloudSyncRetryPolicy` con espera exponencial acotada (2 segundos iniciales, máximo 15 minutos y 8 intentos por defecto); aún no está conectada a un trabajador ni clasifica errores por sí sola.
+- **Procesador de salida:** existe `CloudSyncWorker.runOnce`, con límite de lote, comprobación de sesión/membresía, reintentos y bloqueo de errores permanentes. Su transporte integrado acepta exclusivamente `syntheticTestValue`; las entidades comerciales se bloquean antes de la red. El worker es manual, no está conectado al arranque/lifecycle ni a repositorios de negocio. La política pura `CloudSyncRetryPolicy` define backoff exponencial (2 segundos iniciales, máximo 15 minutos y 8 intentos), pero la planificación temporal de reintentos debe ser proporcionada por un coordinador futuro.
 - **Idempotencia remota:** el identificador de evento/documento es estable. Repetir una petición tras un timeout no puede crear una venta o un pago duplicado. El servidor debe poder reconocer eventos ya aplicados.
-- **Cursor de entrada:** por tienda y dispositivo, conserva el último cursor/versionado confirmado. Trae únicamente cambios posteriores a ese cursor; si el cursor expiró o la historia remota no está disponible, exige una reconciliación controlada, no una descarga silenciosa de toda la base.
+- **Cursor de entrada:** `CloudSyncCursorStore` persiste el cursor local por tienda y dispositivo, y rechaza movimientos hacia atrás o cursores de otra tienda. Todavía no hay lector remoto de cambios ni aplicación de páginas; el cursor solo se debe avanzar después de aplicar una página completa de forma durable.
 - **Origen de cambio:** distingue `local` de `remote` para que aplicar un cambio remoto no cree otro evento de salida y forme un bucle.
 - **Resolución de conflictos:** política específica por entidad. No usar “última escritura gana” como regla universal para cantidades de inventario, ventas, pagos o deudas.
 
@@ -82,3 +82,14 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - No se modificaron repositorios de negocio ni el flujo de arranque; no hay escrituras de negocio ni despliegue de producción.
 
 **Estado actualizado (2026-10-16):** contratos de dominio y outbox local bajo pruebas; permisos directos de cliente cerrados; existe un receptor confiable exclusivamente sintético (`acceptSyntheticSyncEvent`) con transacción idempotente y pruebas de Firebase Functions Emulator. Este receptor no acepta entidades comerciales ni está conectado a la outbox. No habilitar sincronización comercial.
+
+
+## Implementación segura — 2026-10-16
+
+- Los eventos de outbox ahora conservan su payload en Hive. La detección de reutilización de `eventId` compara contenido JSON canónico, de modo que el orden de claves de un mapa no cambia la identidad y un payload diferente se rechaza.
+- Se añadió `CloudSyncCursorStore`, con cursor local monotónico por `storeId` y `deviceId`, validación de corrupción y pruebas aisladas.
+- Se añadieron decisiones explícitas de conflicto: metadatos descriptivos pueden usar comparación de versión; inventario debe usar movimientos; ventas, pagos y deudas requieren reconciliación específica y no usan última escritura gana.
+- Se añadió `CloudSyncWorker.runOnce` y un transporte callable para `acceptSyntheticSyncEvent`. El worker consulta la membresía activa, limita el lote y solo envía `syntheticTestValue`; los eventos `sale`, `product`, `inventory`, `payment` y `debt` quedan bloqueados. No está conectado al arranque de la app ni a mutaciones locales, por lo que no cambia el comportamiento de la caja offline.
+- El cursor no está conectado a una función de pull remoto. La outbox aún no es atómica con los repositorios Hive de negocio porque la persistencia comercial actual y la cola usan cajas separadas y no existe una transacción multi-caja confirmada.
+- `SaleRecord` ya mantiene `id`/ `saleId` como identidad local y un campo `saleNumber` nullable. No se ha implementado la asignación de número secuencial en una transacción de servidor junto con la aceptación idempotente de la venta; por tanto, no debe anunciarse como terminado ni conectarse a ventas reales.
+- Pendiente antes de piloto comercial: integración atómica mediante un registro local de cambios diseñado para el almacenamiento actual; pull remoto paginado y aplicación local sin eco; planificador/reanudación del worker; función confiable de venta con validación de esquema y asignación idempotente de `saleNumber`; políticas por entidad y pruebas de dos dispositivos, desconexión, timeout y reconciliación. No desplegar funciones/reglas a producción ni habilitar sincronización comercial en esta fase.
