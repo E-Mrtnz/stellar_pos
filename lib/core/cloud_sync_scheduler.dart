@@ -28,6 +28,7 @@ class CloudSyncScheduler with WidgetsBindingObserver {
   bool _started = false;
   bool _running = false;
   bool _rerunRequested = false;
+  bool _lifecyclePaused = false;
   int _failedAttempts = 0;
 
   bool get isStarted => _started;
@@ -82,7 +83,7 @@ class CloudSyncScheduler with WidgetsBindingObserver {
   }
 
   void _schedule(Duration delay) {
-    if (!_started) return;
+    if (!_started || _lifecyclePaused) return;
     _timer?.cancel();
     _timer = Timer(delay, () {
       runNow().catchError((Object _) {
@@ -95,9 +96,11 @@ class CloudSyncScheduler with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_started || !observeLifecycle) return;
     if (state == AppLifecycleState.resumed) {
+      _lifecyclePaused = false;
       _schedule(Duration.zero);
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
+      _lifecyclePaused = true;
       _timer?.cancel();
       _timer = null;
     }
