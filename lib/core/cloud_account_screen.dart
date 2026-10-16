@@ -607,7 +607,6 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _invitationMessage =
             'Invitación válida hasta ${invitation.expiresAt.toLocal()}.';
       });
-      await _persistSelectedStore(accepted.storeId);
     } catch (error) {
       if (!mounted) return;
       setState(() => _invitationMessage =
