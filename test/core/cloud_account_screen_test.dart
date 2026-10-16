@@ -459,7 +459,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(RadioListTile).last);
+    await tester.ensureVisible(find.text('Tienda B'));
+    await tester.tap(find.text('Tienda B'));
     await tester.pumpAndSettle();
 
     expect(selection.values['uid-1'], 'store-b');
