@@ -754,6 +754,7 @@ test("cloud ledger accepts electronic balance transactions and sequences concurr
     type: "purchase",
     amount: 25,
     providerCost: 25,
+    profit: 0,
     createdAt: at,
     description: "Recarga de prueba",
   };
