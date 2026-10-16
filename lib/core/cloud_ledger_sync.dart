@@ -223,3 +223,71 @@ class CloudFunctionsLedgerGateway implements CloudLedgerGateway {
     }
   }
 }
+
+
+abstract interface class CloudLedgerRemoteApplier {
+  /// Must append/project by stable eventId without generating another outbox
+  /// event. A failed page may replay before its cursor is committed.
+  Future<void> apply(CloudLedgerChange change);
+}
+
+/// Applies a complete ledger page before persisting the durable cursor.
+class CloudLedgerPullCoordinator {
+  CloudLedgerPullCoordinator({
+    required CloudLedgerGateway gateway,
+    required CloudLedgerRemoteApplier applier,
+    required CloudSyncCursorStore cursors,
+  }) : _gateway = gateway, _applier = applier, _cursors = cursors;
+
+  final CloudLedgerGateway _gateway;
+  final CloudLedgerRemoteApplier _applier;
+  final CloudSyncCursorStore _cursors;
+
+  Future<CloudLedgerPullPage> pullOnce({
+    required String storeId,
+    required String deviceId,
+    int limit = 50,
+  }) async {
+    if (storeId.trim().isEmpty || storeId.contains('/') ||
+        deviceId.trim().isEmpty || deviceId.contains('/')) {
+      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
+    }
+    if (limit < 1 || limit > 100) {
+      throw ArgumentError.value(limit, 'limit', 'El límite debe estar entre 1 y 100.');
+    }
+    final current = await _cursors.read(storeId: storeId, deviceId: deviceId) ??
+        CloudSyncCursor(storeId: storeId, version: 0);
+    final page = await _gateway.pull(
+      storeId: storeId,
+      afterVersion: current.version,
+      limit: limit,
+    );
+    if (page.storeId != storeId || page.afterVersion != current.version ||
+        page.changes.length > limit) {
+      throw const FormatException('La página de ledger no corresponde al cursor actual.');
+    }
+    var expectedVersion = current.version;
+    for (final change in page.changes) {
+      if (change.storeId != storeId || change.version != expectedVersion + 1) {
+        throw const FormatException('La secuencia del ledger contiene un salto o una tienda distinta.');
+      }
+      expectedVersion = change.version;
+    }
+    if (page.nextCursor != expectedVersion ||
+        (page.hasMore && page.changes.length != limit)) {
+      throw const FormatException('El cursor o la paginación del ledger son inconsistentes.');
+    }
+    for (final change in page.changes) {
+      await _applier.apply(change);
+    }
+    if (page.nextCursor > current.version) {
+      final advanced = await _cursors.advance(
+        storeId: storeId,
+        deviceId: deviceId,
+        candidate: CloudSyncCursor(storeId: storeId, version: page.nextCursor),
+      );
+      if (!advanced) throw StateError('No se pudo avanzar el cursor del ledger.');
+    }
+    return page;
+  }
+}
