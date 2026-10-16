@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
-import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/cloud_sync_pull.dart';
 
 class _MemoryCursorStorage implements CloudSyncCursorStorage {
