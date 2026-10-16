@@ -388,3 +388,31 @@ test('active membership does not enable writes to synthetic sync-event documents
     createdAt: new Date(),
   }));
 });
+
+test('a revoked member cannot read store metadata or its own membership', async () => {
+  const storeId = 'revoked-membership-boundary';
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const timestamp = new Date();
+    const batch = db.batch();
+    batch.set(doc(db, `stores/${storeId}`), {
+      name: 'Tienda con acceso revocado',
+      ownerUid: 'user-a',
+      schemaVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.set(doc(db, `stores/${storeId}/members/user-a`), {
+      uid: 'user-a',
+      role: 'owner',
+      status: 'revoked',
+      createdAt: timestamp,
+    });
+    await batch.commit();
+  });
+
+  const db = testEnv.authenticatedContext('user-a').firestore();
+  await assertFails(getDoc(doc(db, `stores/${storeId}`)));
+  await assertFails(getDoc(doc(db, `stores/${storeId}/members/user-a`)));
+});
+
