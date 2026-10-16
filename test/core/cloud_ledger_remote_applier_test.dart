@@ -35,7 +35,7 @@ void main() {
       final applier = DurableCloudLedgerRemoteApplier(
         receipts: receipts,
         handlers: <CloudLedgerEntityType, CloudLedgerChangeHandler>{
-          CloudLedgerEntityType.inventoryMovement: (_) async => applications++,
+          CloudLedgerEntityType.inventoryMovement: (_) async { applications++; },
         },
       );
 
