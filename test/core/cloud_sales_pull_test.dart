@@ -5,6 +5,15 @@ import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/models/sync_metadata.dart';
 
+
+class _LocalStore implements CloudSaleLocalStore {
+  final Map<String, SaleRecord> sales = <String, SaleRecord>{};
+  @override
+  Future<SaleRecord?> getById(String id) async => sales[id];
+  @override
+  Future<void> save(SaleRecord sale) async { sales[sale.id] = sale; }
+}
+
 class _CursorMemory implements CloudSyncCursorStorage {
   final Map<String, Object> data = <String, Object>{};
   @override Object? get(String key) => data[key];
@@ -76,6 +85,23 @@ void main() {
   setUp(() {
     cursorMemory = _CursorMemory();
     cursors = CloudSyncCursorStore(storage: cursorMemory);
+  });
+
+  test('remote repository applier upserts by stable ID without echoing', () async {
+    final local = _LocalStore();
+    final applier = SaleRepositoryCloudRemoteApplier(local: local);
+    await applier.apply(_change('sale-1', 1));
+    await applier.apply(_change('sale-1', 1));
+    expect(local.sales, hasLength(1));
+    expect(local.sales['sale-1']?.saleNumber, '1');
+  });
+
+  test('remote repository applier refuses same-ID business conflicts', () async {
+    final local = _LocalStore();
+    local.sales['sale-1'] = _sale('sale-1').copyWith(total: 500);
+    final applier = SaleRepositoryCloudRemoteApplier(local: local);
+    await expectLater(applier.apply(_change('sale-1', 1)), throwsStateError);
+    expect(local.sales['sale-1']?.total, 500);
   });
 
   test('applies a complete sale page before advancing its cursor', () async {
