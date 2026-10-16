@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'cloud_auth_gateway.dart';
 import 'cloud_auth_screen.dart';
 import 'cloud_store_repository.dart';
+import 'cloud_active_store_selection.dart';
 
 /// Account hub for explicit cloud-account and store-creation actions.
 ///
@@ -15,12 +16,14 @@ class CloudAccountScreen extends StatefulWidget {
     required this.gateway,
     this.storeGateway,
     this.invitationGateway,
+    this.activeStoreSelection,
     super.key,
   });
 
   final CloudAuthGateway gateway;
   final CloudStoreGateway? storeGateway;
   final CloudInvitationGateway? invitationGateway;
+  final ActiveCloudStoreSelection? activeStoreSelection;
 
   @override
   State<CloudAccountScreen> createState() => _CloudAccountScreenState();
@@ -82,6 +85,8 @@ class _CloudAccountScreenState extends State<CloudAccountScreen> {
                 (_storeGateway is CloudInvitationGateway
                     ? _storeGateway as CloudInvitationGateway
                     : CloudStoreRepository()),
+            activeStoreSelection: widget.activeStoreSelection ??
+                SharedPreferencesActiveCloudStoreSelection(),
           );
         },
       ),
@@ -95,6 +100,7 @@ class _SignedInCloudPanel extends StatefulWidget {
     required this.authGateway,
     required this.storeGateway,
     required this.invitationGateway,
+    required this.activeStoreSelection,
     super.key,
   });
 
@@ -102,6 +108,7 @@ class _SignedInCloudPanel extends StatefulWidget {
   final CloudAuthGateway authGateway;
   final CloudStoreGateway storeGateway;
   final CloudInvitationGateway invitationGateway;
+  final ActiveCloudStoreSelection activeStoreSelection;
 
   @override
   State<_SignedInCloudPanel> createState() => _SignedInCloudPanelState();
@@ -125,6 +132,32 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
   void initState() {
     super.initState();
     _storesFuture = widget.storeGateway.listMyStores();
+    _restoreSelectedStore();
+  }
+
+  Future<void> _restoreSelectedStore() async {
+    try {
+      final saved = await widget.activeStoreSelection.read(widget.user.uid);
+      if (!mounted || saved == null) return;
+      final stores = await _storesFuture;
+      if (!mounted || !stores.any((store) => store.id == saved)) return;
+      setState(() => _selectedStoreId = saved);
+    } catch (_) {
+      // A stale/unavailable preference must never prevent local checkout.
+    }
+  }
+
+  Future<void> _selectStore(String? storeId) async {
+    if (storeId == null) return;
+    setState(() => _selectedStoreId = storeId);
+    try {
+      await widget.activeStoreSelection.write(widget.user.uid, storeId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo guardar la tienda seleccionada en este dispositivo.')),
+      );
+    }
   }
 
   void _reloadStores() {
@@ -166,6 +199,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _storeNameController.clear();
         _storesFuture = widget.storeGateway.listMyStores();
       });
+      await widget.activeStoreSelection.write(widget.user.uid, store.id);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -289,9 +323,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                   }
                   return RadioGroup<String>(
                     groupValue: _selectedStoreId,
-                    onChanged: (value) {
-                      setState(() => _selectedStoreId = value);
-                    },
+                    onChanged: _selectStore,
                     child: Column(
                     children: [
                       for (final store in stores)
@@ -322,7 +354,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                             padding: const EdgeInsets.all(12),
                             child: Text(
                               'Tienda seleccionada: ${stores.where((s) => s.id == _selectedStoreId).map((s) => s.name).join()}\n'
-                              'Esta selección es visual por ahora; todavía no cambia la caja ni activa sincronización.',
+                              'La selección se guarda en este dispositivo. Todavía no cambia la caja ni activa sincronización comercial.',
                             ),
                           ),
                         ),
@@ -571,6 +603,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _invitationMessage =
             'Invitación válida hasta ${invitation.expiresAt.toLocal()}.';
       });
+      await widget.activeStoreSelection.write(widget.user.uid, accepted.storeId);
     } catch (error) {
       if (!mounted) return;
       setState(() => _invitationMessage =
