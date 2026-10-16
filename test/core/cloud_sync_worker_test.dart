@@ -123,9 +123,9 @@ void main() {
       final result = await worker.runOnce(storeId: 'store-a');
 
       expect(result.retried, 1);
-      expect(storage.values['event-1'], containsPair('eventId', 'event-1'));
-      expect(storage.values['event-1'], containsPair('status', 'pending'));
-      expect(storage.values['event-1'], containsPair('attemptCount', 1));
+      expect(storage.data['event-1'], containsPair('eventId', 'event-1'));
+      expect(storage.data['event-1'], containsPair('status', 'pending'));
+      expect(storage.data['event-1'], containsPair('attemptCount', 1));
     });
 
     test('rejects unbounded batch sizes', () async {
