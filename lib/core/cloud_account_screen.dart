@@ -667,6 +667,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         _invitationMessage =
             'Te uniste a la tienda con el rol: ${accepted.role}.';
       });
+      await _persistSelectedStore(accepted.storeId);
     } catch (error) {
       if (!mounted) return;
       setState(() => _invitationMessage =
