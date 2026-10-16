@@ -703,3 +703,200 @@ exports.revokeStoreInvitation = onCall(async (request) => {
   });
   return { storeId: data.storeId, revoked: true };
 });
+
+
+
+const LEDGER_ENTITY_SCHEMAS = {
+  inventoryMovement: {
+    required: ["id", "productId", "quantityDelta", "reason", "createdAt"],
+    strings: ["id", "productId", "reason", "createdAt"],
+    numbers: ["quantityDelta"],
+  },
+  purchase: {
+    required: ["id", "arrivalAt", "distributorName", "paymentMethod", "total", "items"],
+    strings: ["id", "arrivalAt", "distributorName", "paymentMethod"],
+    numbers: ["total"],
+  },
+  debtMovement: {
+    required: ["id", "clientId", "clientName", "type", "amount", "createdAt"],
+    strings: ["id", "clientId", "clientName", "type", "createdAt"],
+    numbers: ["amount"],
+  },
+  electronicBalanceTransaction: {
+    required: ["id", "accountId", "type", "amount", "providerCost", "profit", "createdAt"],
+    strings: ["id", "accountId", "type", "createdAt"],
+    numbers: ["amount", "providerCost", "profit"],
+  },
+};
+
+function validateLedgerEntry(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)
+      || Object.keys(data).some((key) => !["storeId", "entityType", "entityId", "entry"].includes(key))) {
+    throw new HttpsError("invalid-argument", "Ledger request contains unsupported fields.");
+  }
+  validateStoreId(data.storeId);
+  if (!Object.hasOwn(LEDGER_ENTITY_SCHEMAS, data.entityType)) {
+    throw new HttpsError("invalid-argument", "Ledger entity type is not supported.");
+  }
+  if (typeof data.entityId !== "string" || !/^[A-Za-z0-9_-]{1,120}$/.test(data.entityId)) {
+    throw new HttpsError("invalid-argument", "Ledger entity ID is invalid.");
+  }
+  const schema = LEDGER_ENTITY_SCHEMAS[data.entityType];
+  onlyAllowedKeys(data.entry, schema.required.concat([
+    "metadata", "invoiceNumber", "purchaseType", "items", "reference",
+    "isInitialPayment", "saleId", "purchaseId", "category", "description",
+    "bonusQuantity", "quantity", "unitCost", "totalQuantity", "subtotal",
+    "discount", "paymentMethod", "electronicBalanceAccountId",
+    "electronicBalanceTransactionId", "electronicBalanceCategory",
+  ]), "Ledger entry");
+  if (data.entry.id !== data.entityId
+      || schema.required.some((key) => data.entry[key] === undefined)) {
+    throw new HttpsError("invalid-argument", "Ledger entry identity or required fields are missing.");
+  }
+  for (const key of schema.strings) {
+    if (typeof data.entry[key] !== "string" || data.entry[key].length > 500) {
+      throw new HttpsError("invalid-argument", "Ledger entry contains invalid text fields.");
+    }
+  }
+  for (const key of schema.numbers) {
+    if (!finiteNumber(data.entry[key]) || Math.abs(data.entry[key]) > 1e12) {
+      throw new HttpsError("invalid-argument", "Ledger entry contains invalid numeric fields.");
+    }
+  }
+  if (data.entityType === "inventoryMovement") {
+    if (data.entry.quantityDelta === 0 || !Number.isSafeInteger(data.entry.quantityDelta)
+        || Number.isNaN(Date.parse(data.entry.createdAt))) {
+      throw new HttpsError("invalid-argument", "Inventory movement is invalid.");
+    }
+  }
+  if (data.entityType === "debtMovement") {
+    if (!["debt", "payment"].includes(data.entry.type) || data.entry.amount <= 0
+        || Number.isNaN(Date.parse(data.entry.createdAt))) {
+      throw new HttpsError("invalid-argument", "Debt movement is invalid.");
+    }
+  }
+  if (data.entityType === "purchase") {
+    if (data.entry.total < 0 || !Array.isArray(data.entry.items)
+        || data.entry.items.length < 1 || data.entry.items.length > 500
+        || Number.isNaN(Date.parse(data.entry.arrivalAt))) {
+      throw new HttpsError("invalid-argument", "Purchase entry is invalid.");
+    }
+  }
+  if (data.entityType === "electronicBalanceTransaction") {
+    if (!["purchase", "sale", "adjustment"].includes(data.entry.type)
+        || data.entry.amount < 0 || data.entry.providerCost < 0
+        || Number.isNaN(Date.parse(data.entry.createdAt))) {
+      throw new HttpsError("invalid-argument", "Electronic balance transaction is invalid.");
+    }
+  }
+  if (data.entry.metadata !== undefined) {
+    onlyAllowedKeys(data.entry.metadata, SYNC_METADATA_FIELDS, "Ledger metadata");
+    if (data.entry.metadata.schemaVersion !== 1
+        || !Number.isSafeInteger(data.entry.metadata.version)
+        || data.entry.metadata.version < 1) {
+      throw new HttpsError("invalid-argument", "Ledger metadata is invalid.");
+    }
+  }
+  if (Buffer.byteLength(JSON.stringify(data.entry), "utf8") > 700000) {
+    throw new HttpsError("invalid-argument", "Ledger entry is too large.");
+  }
+  return data;
+}
+
+/**
+ * Accepts immutable business ledger entries. Inventory is stored as signed
+ * movements (never last-write-wins stock totals); purchases and money movements
+ * are deduplicated by stable entity ID and canonical content fingerprint.
+ */
+exports.acceptCloudLedgerEntry = onCall(async (request) => {
+  const uid = requireAuthenticatedUid(request);
+  const data = validateLedgerEntry(request.data);
+  const memberRef = db.doc(`stores/${data.storeId}/members/${uid}`);
+  const entryRef = db.doc(`stores/${data.storeId}/ledgerEntries/${data.entityType}_${data.entityId}`);
+  const receiptRef = db.doc(`stores/${data.storeId}/ledgerReceipts/${data.entityType}_${data.entityId}`);
+  const sequenceRef = db.doc(`stores/${data.storeId}/metadata/ledgerChangeSequence`);
+  const fingerprint = createHash("sha256").update(stableJson({
+    entityType: data.entityType, entityId: data.entityId, entry: data.entry,
+  }), "utf8").digest("hex");
+  return db.runTransaction(async (transaction) => {
+    const [memberSnap, entrySnap, receiptSnap, sequenceSnap] = await Promise.all([
+      transaction.get(memberRef), transaction.get(entryRef),
+      transaction.get(receiptRef), transaction.get(sequenceRef),
+    ]);
+    if (!memberSnap.exists || memberSnap.get("uid") !== uid
+        || memberSnap.get("status") !== "active"
+        || !["owner", "manager", "cashier"].includes(memberSnap.get("role"))) {
+      throw new HttpsError("permission-denied", "Active business-data membership is required.");
+    }
+    if (receiptSnap.exists) {
+      if (receiptSnap.get("fingerprint") !== fingerprint) {
+        throw new HttpsError("already-exists", "Ledger ID collision: business content differs.");
+      }
+      return { entityType: data.entityType, entityId: data.entityId,
+        status: "duplicate", version: receiptSnap.get("version") };
+    }
+    if (entrySnap.exists) {
+      throw new HttpsError("already-exists", "Ledger entry exists without an idempotency receipt.");
+    }
+    const lastVersion = sequenceSnap.exists ? sequenceSnap.get("lastVersion") : 0;
+    if (!Number.isSafeInteger(lastVersion) || lastVersion < 0
+        || lastVersion >= Number.MAX_SAFE_INTEGER) {
+      throw new HttpsError("failed-precondition", "Ledger change cursor is invalid or exhausted.");
+    }
+    const version = lastVersion + 1;
+    const eventId = data.entityType + "_" + data.entityId;
+    transaction.create(entryRef, {
+      storeId: data.storeId, entityType: data.entityType, entityId: data.entityId,
+      entry: data.entry, version, acceptedByUid: uid,
+      acceptedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(sequenceRef, {
+      storeId: data.storeId, lastVersion: version,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(db.doc(`stores/${data.storeId}/ledgerSyncChanges/${eventId}`), {
+      storeId: data.storeId, eventId, entityType: data.entityType,
+      entityId: data.entityId, operation: "append", version, payload: data.entry,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(receiptRef, {
+      fingerprint, version, entityType: data.entityType, entityId: data.entityId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return { entityType: data.entityType, entityId: data.entityId, status: "applied", version };
+  });
+});
+
+/** Bounded cursor-based feed for immutable ledger entries. */
+exports.pullCloudLedgerChanges = onCall(async (request) => {
+  const uid = requireAuthenticatedUid(request);
+  const data = request.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)
+      || Object.keys(data).some((key) => !["storeId", "afterVersion", "limit"].includes(key))) {
+    throw new HttpsError("invalid-argument", "Ledger pull request contains unsupported fields.");
+  }
+  validateStoreId(data.storeId);
+  const afterVersion = data.afterVersion === undefined ? 0 : data.afterVersion;
+  const limit = data.limit === undefined ? 50 : data.limit;
+  if (!Number.isSafeInteger(afterVersion) || afterVersion < 0
+      || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new HttpsError("invalid-argument", "Ledger cursor or page size is out of range.");
+  }
+  const memberSnap = await db.doc(`stores/${data.storeId}/members/${uid}`).get();
+  if (!memberSnap.exists || memberSnap.get("uid") !== uid
+      || memberSnap.get("status") !== "active"
+      || !["owner", "manager", "cashier", "viewer"].includes(memberSnap.get("role"))) {
+    throw new HttpsError("permission-denied", "Active store membership is required.");
+  }
+  const snapshot = await db.collection(`stores/${data.storeId}/ledgerSyncChanges`)
+    .where("version", ">", afterVersion).orderBy("version", "asc").limit(limit).get();
+  const changes = snapshot.docs.map((document) => {
+    const change = document.data();
+    return { storeId: change.storeId, eventId: change.eventId,
+      entityType: change.entityType, entityId: change.entityId,
+      operation: change.operation, version: change.version, payload: change.payload };
+  });
+  return { storeId: data.storeId, afterVersion, changes,
+    nextCursor: changes.length === 0 ? afterVersion : changes[changes.length - 1].version,
+    hasMore: changes.length === limit };
+});
