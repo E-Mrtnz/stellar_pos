@@ -81,4 +81,4 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Se actualizó `docs/cloud-sync-idempotency-contract.md` para dejar explícita la puerta que falta: no hay todavía un paquete Firebase Functions ni receptor remoto implementado. Las pruebas actuales no demuestran idempotencia del servidor.
 - No se modificaron repositorios de negocio ni el flujo de arranque; no hay escrituras de negocio ni despliegue de producción.
 
-**Estado real:** outbox local y contratos de dominio bajo pruebas; permisos de cliente cerrados; receptor confiable, transacción idempotente y pruebas de Functions Emulator siguen pendientes. No habilitar sincronización comercial.
+**Estado actualizado (2026-10-16):** contratos de dominio y outbox local bajo pruebas; permisos directos de cliente cerrados; existe un receptor confiable exclusivamente sintético (`acceptSyntheticSyncEvent`) con transacción idempotente y pruebas de Firebase Functions Emulator. Este receptor no acepta entidades comerciales ni está conectado a la outbox. No habilitar sincronización comercial.
