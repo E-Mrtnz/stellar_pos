@@ -393,7 +393,7 @@ exports.acceptCloudSale = onCall(async (request) => {
     }
     const nextNumber = lastNumber + 1;
     const saleNumber = String(nextNumber);
-    const ticketNumber = data.sale.ticketNumber.trim().isEmpty
+    const ticketNumber = data.sale.ticketNumber.trim().length === 0
       ? saleNumber : data.sale.ticketNumber;
     const acceptedSale = {
       ...data.sale,
