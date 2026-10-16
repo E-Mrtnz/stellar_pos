@@ -53,6 +53,23 @@ void main() {
       );
     });
 
+    test('validator rejects non-JSON and non-finite payload values', () {
+      expect(
+        validateCloudSyncEvent(
+          event().copyWith(payload: <String, Object?>{'invalid': DateTime.utc(2026)}),
+          activeStoreId: 'store-a',
+        ),
+        'invalid-payload',
+      );
+      expect(
+        validateCloudSyncEvent(
+          event().copyWith(payload: <String, Object?>{'invalid': double.nan}),
+          activeStoreId: 'store-a',
+        ),
+        'invalid-payload',
+      );
+    });
+
     test('validator rejects negative retry counters', () {
       final invalid = CloudSyncEvent(
         eventId: 'evt-negative-attempts',
