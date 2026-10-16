@@ -273,7 +273,7 @@ function validateSaleRecord(sale, saleId) {
   if (sale.id !== saleId || typeof sale.id !== "string"
       || !/^[A-Za-z0-9_-]{1,120}$/.test(saleId)
       || typeof sale.ticketNumber !== "string"
-      || (sale.saleNumber !== null && sale.saleNumber !== "")
+      || (sale.saleNumber !== null && typeof sale.saleNumber !== "string")
       || typeof sale.createdAt !== "string" || Number.isNaN(Date.parse(sale.createdAt))
       || (sale.clientId !== null && typeof sale.clientId !== "string")
       || typeof sale.clientName !== "string"
