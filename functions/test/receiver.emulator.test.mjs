@@ -314,3 +314,40 @@ test("owner can revoke an invitation and the code can no longer be accepted", as
   });
   assert.equal(accepted.body.error.status, "FAILED_PRECONDITION");
 });
+
+
+test("single-use invitation cannot be consumed by two accounts concurrently", async () => {
+  const owner = await createUser();
+  const firstJoiner = await createUser();
+  const secondJoiner = await createUser();
+  const storeId = "invitation-concurrent-single-use";
+  await seedMembership(storeId, owner.localId, "active");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Invitation concurrency test",
+      ownerUid: owner.localId,
+      schemaVersion: 1,
+    });
+  });
+
+  const created = await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "cashier", expiresInHours: 24, maxUses: 1,
+  });
+  assert.equal(created.body.result.maxUses, 1);
+  const code = created.body.result.invitationCode;
+  const attempts = await Promise.all([
+    invokeInvitation("acceptStoreInvitation", firstJoiner.idToken, {
+      storeId, invitationCode: code,
+    }),
+    invokeInvitation("acceptStoreInvitation", secondJoiner.idToken, {
+      storeId, invitationCode: code,
+    }),
+  ]);
+
+  const accepted = attempts.filter((result) => result.body.result?.status === "accepted"
+    || result.body.result?.role === "cashier");
+  const rejected = attempts.filter((result) => result.body.error != null);
+  assert.equal(accepted.length, 1, JSON.stringify(attempts));
+  assert.equal(rejected.length, 1, JSON.stringify(attempts));
+  assert.equal(rejected[0].body.error.status, "FAILED_PRECONDITION");
+});
