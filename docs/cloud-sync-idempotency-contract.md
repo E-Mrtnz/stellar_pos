@@ -75,7 +75,7 @@ Hasta que el receptor confiable, las reglas y todas las pruebas anteriores esté
 
 ## Implementación actual y siguiente puerta (2026-10-15)
 
-El repositorio todavía no contiene un paquete Firebase Functions ni un receptor confiable desplegable. Por eso, la ruta segura de esta fase es **no simular el receptor en el cliente**: una implementación Dart/Node puramente local no demostraría autorización del servidor ni atomicidad de Firestore.
+El repositorio contiene una base Firebase Functions y el callable `acceptSyntheticSyncEvent`, que acepta únicamente la entidad de prueba `syntheticTestValue`. La función valida la sesión y membresía en servidor, calcula una huella canónica y aplica efecto/recibo idempotente en una transacción. Es un receptor confiable para pruebas sintéticas, no un transporte comercial ni una función desplegada en producción.
 
 Ya se añadieron pruebas en el emulador de reglas para comprobar que incluso un miembro propietario no puede leer ni escribir directamente las rutas sintéticas `syncReceipts` y `syncEvents`. Estas pruebas verifican únicamente la frontera de reglas; no simulan ni prueban la función receptora.
 
