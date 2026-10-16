@@ -147,6 +147,58 @@ test("cloud sale acceptance assigns sequential numbers and is idempotent", async
   assert.equal(second.body.result.saleNumber, "2");
 });
 
+
+test("cloud sales pull is paginated and store-scoped", async () => {
+  const owner = await createUser();
+  const viewer = await createUser();
+  const storeId = "sale-pull-pagination";
+  await seedMembership(storeId, owner.localId);
+  await seedStore(storeId, owner.localId);
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}/members/${viewer.localId}`), {
+      uid: viewer.localId, role: "viewer", status: "active", createdAt: new Date(),
+    });
+  });
+
+  for (const saleId of ["sale-pull-1", "sale-pull-2"]) {
+    const result = await invoke(owner.idToken, {
+      storeId, saleId, sale: salePayload(saleId),
+    }, "acceptCloudSale");
+    assert.equal(result.body.result.status, "applied");
+  }
+
+  const first = await invoke(viewer.idToken, {
+    storeId, afterVersion: 0, limit: 1,
+  }, "pullCloudSales");
+  assert.equal(first.body.result.changes.length, 1);
+  assert.equal(first.body.result.changes[0].entityType, "sale");
+  assert.equal(first.body.result.changes[0].version, 1);
+  assert.equal(first.body.result.changes[0].payload.saleNumber, "1");
+  assert.equal(first.body.result.nextCursor, 1);
+  assert.equal(first.body.result.hasMore, true);
+
+  const second = await invoke(viewer.idToken, {
+    storeId, afterVersion: first.body.result.nextCursor, limit: 10,
+  }, "pullCloudSales");
+  assert.equal(second.body.result.changes.length, 1);
+  assert.equal(second.body.result.changes[0].version, 2);
+  assert.equal(second.body.result.changes[0].payload.saleNumber, "2");
+  assert.equal(second.body.result.nextCursor, 2);
+});
+
+test("cloud sales pull denies unauthenticated and non-member callers", async () => {
+  const user = await createUser();
+  const anonymous = await invoke(null, {
+    storeId: "sale-pull-denied", afterVersion: 0, limit: 10,
+  }, "pullCloudSales");
+  assert.equal(anonymous.body.error.status, "UNAUTHENTICATED");
+
+  const denied = await invoke(user.idToken, {
+    storeId: "sale-pull-denied", afterVersion: 0, limit: 10,
+  }, "pullCloudSales");
+  assert.equal(denied.body.error.status, "PERMISSION_DENIED");
+});
+
 test("cloud sale receiver rejects client-chosen numbers and changed payload collisions", async () => {
   const user = await createUser();
   const storeId = "sale-numbering-validation";
