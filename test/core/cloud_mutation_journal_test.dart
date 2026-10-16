@@ -28,14 +28,16 @@ CloudMutationJournalEntry _entry({
 );
 
 void main() {
-  late _MemoryStorage storage;
+  late _MemoryStorage outboxStorage;
+  late _MemoryStorage journalStorage;
   late CloudSyncOutbox outbox;
   late CloudMutationJournal journal;
 
   setUp(() {
-    storage = _MemoryStorage();
-    outbox = CloudSyncOutbox(storage: storage);
-    journal = CloudMutationJournal(outbox: outbox, storage: storage);
+    outboxStorage = _MemoryStorage();
+    journalStorage = _MemoryStorage();
+    outbox = CloudSyncOutbox(storage: outboxStorage);
+    journal = CloudMutationJournal(outbox: outbox, storage: journalStorage);
   });
 
   test('records intent before applying and queues one stable event', () async {
@@ -49,7 +51,7 @@ void main() {
     expect(local['sale-1'], 4);
     expect(calls, 1);
     expect((await outbox.pendingForStore('store-a')), hasLength(1));
-    final record = Map<String, Object?>.from(storage.data['mutation-1'] as Map);
+    final record = Map<String, Object?>.from(journalStorage.data['mutation-1'] as Map);
     expect(record['status'], 'completed');
 
     await journal.commit(entry: _entry(), applyLocal: (mutation) async {
@@ -101,7 +103,7 @@ void main() {
     );
     expect(count, 1);
     expect(applied, ['sale-1']);
-    expect((storage.data['b'] as Map)['status'], 'prepared');
+    expect((journalStorage.data['b'] as Map)['status'], 'prepared');
   });
 
   test('rejects reusing a mutation ID for different content', () async {
