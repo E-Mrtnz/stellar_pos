@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_ledger_sync.dart';
+import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
+import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 
 
 class _MemoryCursorStorage implements CloudSyncCursorStorage {
@@ -182,4 +184,46 @@ void main() {
       );
     });
   });
+
+  group('CloudLedgerPullCoordinator', () {
+    test('advances cursor only after the full page is applied', () async {
+      final storage = _MemoryCursorStorage();
+      final cursors = CloudSyncCursorStore(storage: storage);
+      final page = CloudLedgerPullPage(
+        storeId: 'store-a',
+        afterVersion: 0,
+        nextCursor: 1,
+        hasMore: false,
+        changes: <CloudLedgerChange>[
+          CloudLedgerChange(
+            storeId: 'store-a',
+            eventId: 'inventoryMovement_move-1',
+            entityType: CloudLedgerEntityType.inventoryMovement,
+            entityId: 'move-1',
+            version: 1,
+            payload: <String, dynamic>{'id': 'move-1', 'quantityDelta': 3},
+          ),
+        ],
+      );
+      final gateway = _FakeLedgerGateway(page);
+      final applier = _FakeLedgerApplier()..fail = true;
+      final coordinator = CloudLedgerPullCoordinator(
+        gateway: gateway, applier: applier, cursors: cursors,
+      );
+      await expectLater(
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        throwsStateError,
+      );
+      expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
+
+      applier.fail = false;
+      await coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a');
+      expect(applier.applied, <String>['inventoryMovement_move-1']);
+      expect(
+        (await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version,
+        1,
+      );
+    });
+  });
+
 }
