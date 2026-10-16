@@ -358,14 +358,17 @@ exports.acceptCloudSale = onCall(async (request) => {
   const saleRef = db.doc("stores/" + data.storeId + "/sales/" + data.saleId);
   const receiptRef = db.doc("stores/" + data.storeId + "/saleSyncReceipts/" + data.saleId);
   const sequenceRef = db.doc("stores/" + data.storeId + "/metadata/saleSequence");
+  const changeSequenceRef = db.doc("stores/" + data.storeId + "/metadata/saleChangeSequence");
+  const changeRef = db.doc("stores/" + data.storeId + "/salesSyncChanges/" + data.saleId);
 
   return db.runTransaction(async (transaction) => {
-    const [storeSnap, memberSnap, receiptSnap, saleSnap, sequenceSnap] = await Promise.all([
+    const [storeSnap, memberSnap, receiptSnap, saleSnap, sequenceSnap, changeSequenceSnap] = await Promise.all([
       transaction.get(storeRef),
       transaction.get(memberRef),
       transaction.get(receiptRef),
       transaction.get(saleRef),
       transaction.get(sequenceRef),
+      transaction.get(changeSequenceRef),
     ]);
     if (!storeSnap.exists || !memberSnap.exists
         || memberSnap.get("uid") !== uid
@@ -422,6 +425,28 @@ exports.acceptCloudSale = onCall(async (request) => {
       lastNumber: nextNumber,
       updatedAt: FieldValue.serverTimestamp(),
     });
+    const lastChangeVersion = changeSequenceSnap.exists ? changeSequenceSnap.get("lastVersion") : 0;
+    if (!Number.isSafeInteger(lastChangeVersion) || lastChangeVersion < 0
+        || lastChangeVersion >= Number.MAX_SAFE_INTEGER) {
+      throw new HttpsError("failed-precondition", "Sale change cursor is invalid or exhausted.");
+    }
+    const changeVersion = lastChangeVersion + 1;
+    transaction.set(changeSequenceRef, {
+      storeId: data.storeId,
+      lastVersion: changeVersion,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(changeRef, {
+      storeId: data.storeId,
+      eventId: data.saleId,
+      entityType: "sale",
+      entityId: data.saleId,
+      operation: "set",
+      localVersion: data.sale.metadata.version,
+      version: changeVersion,
+      payload: acceptedSale,
+      createdAt: FieldValue.serverTimestamp(),
+    });
     transaction.create(receiptRef, {
       saleId: data.saleId,
       fingerprint,
@@ -432,6 +457,59 @@ exports.acceptCloudSale = onCall(async (request) => {
     });
     return result;
   });
+});
+
+
+
+/**
+ * Returns paginated, store-scoped sale changes after a durable client cursor.
+ * Only authenticated active members can read this feed.
+ */
+exports.pullCloudSales = onCall(async (request) => {
+  const uid = requireAuthenticatedUid(request);
+  const data = request.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)
+      || Object.keys(data).some((key) => !["storeId", "afterVersion", "limit"].includes(key))) {
+    throw new HttpsError("invalid-argument", "Sale pull request contains unsupported fields.");
+  }
+  validateStoreId(data.storeId);
+  const afterVersion = data.afterVersion === undefined ? 0 : data.afterVersion;
+  const limit = data.limit === undefined ? 50 : data.limit;
+  if (!Number.isSafeInteger(afterVersion) || afterVersion < 0
+      || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new HttpsError("invalid-argument", "Sale cursor or page size is out of range.");
+  }
+  const memberSnap = await db.doc(`stores/${data.storeId}/members/${uid}`).get();
+  if (!memberSnap.exists || memberSnap.get("uid") !== uid
+      || memberSnap.get("status") !== "active"
+      || !["owner", "manager", "cashier", "viewer"].includes(memberSnap.get("role"))) {
+    throw new HttpsError("permission-denied", "Active store membership is required.");
+  }
+  const snapshot = await db.collection(`stores/${data.storeId}/salesSyncChanges`)
+    .where("version", ">", afterVersion)
+    .orderBy("version", "asc")
+    .limit(limit)
+    .get();
+  const changes = snapshot.docs.map((document) => {
+    const change = document.data();
+    return {
+      storeId: change.storeId,
+      eventId: change.eventId,
+      entityType: change.entityType,
+      entityId: change.entityId,
+      operation: change.operation,
+      localVersion: change.localVersion,
+      version: change.version,
+      payload: change.payload,
+    };
+  });
+  return {
+    storeId: data.storeId,
+    afterVersion,
+    changes,
+    nextCursor: changes.length === 0 ? afterVersion : changes[changes.length - 1].version,
+    hasMore: changes.length === limit,
+  };
 });
 
 
