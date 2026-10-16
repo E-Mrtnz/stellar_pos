@@ -46,11 +46,11 @@ class _HiveCloudSyncOutboxStorage implements CloudSyncOutboxStorage {
   }
 }
 
-/// Durable local outbox for future sync events.
+/// Durable local outbox for incremental-sync events.
 ///
-/// This class only stores queue metadata in Hive. It intentionally has no
-/// transport and cannot send business records to Firebase. Callers must enqueue
-/// only as part of a correctly coordinated local mutation workflow.
+/// This class stores event envelopes in Hive but does not coordinate writes
+/// with commercial repositories. The worker currently transports only synthetic
+/// test events; business events must remain disconnected until that is solved.
 class CloudSyncOutbox {
   CloudSyncOutbox({
     this.boxName = 'cloud_sync_outbox',
