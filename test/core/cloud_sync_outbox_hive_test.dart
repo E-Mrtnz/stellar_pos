@@ -57,6 +57,33 @@ void main() {
     expect(pending.single.createdAt, createdAt);
   });
 
+  test('event payload survives closing and reopening Hive', () async {
+    final box = await Hive.openBox<dynamic>(boxName);
+    final outbox = CloudSyncOutbox(storage: _HiveOutboxStorage(box));
+    await outbox.enqueue(CloudSyncEvent(
+      eventId: 'evt-payload',
+      storeId: 'store-a',
+      entityType: 'syntheticTestValue',
+      entityId: 'synthetic-1',
+      operation: CloudSyncOperation.update,
+      localVersion: 1,
+      createdAt: DateTime.utc(2026, 10, 14, 12),
+      payload: <String, Object?>{
+        'value': 'persisted',
+        'details': <String, Object?>{'count': 2},
+      },
+    ));
+    await Hive.close();
+
+    Hive.init(directory.path);
+    final reopenedBox = await Hive.openBox<dynamic>(boxName);
+    final reopened = CloudSyncOutbox(storage: _HiveOutboxStorage(reopenedBox));
+    final event = (await reopened.pendingForStore('store-a')).single;
+
+    expect(event.payload['value'], 'persisted');
+    expect((event.payload['details'] as Map)['count'], 2);
+  });
+
   test('delivered status survives closing and reopening Hive', () async {
     final box = await Hive.openBox<dynamic>(boxName);
     final outbox = CloudSyncOutbox(storage: _HiveOutboxStorage(box));
