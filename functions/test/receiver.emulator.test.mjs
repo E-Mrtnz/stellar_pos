@@ -682,3 +682,62 @@ test("cloud ledger receiver rejects content collisions, invalid movements and no
   }, "pullCloudLedgerChanges");
   assert.equal(deniedPull.body.error.status, "PERMISSION_DENIED");
 });
+
+
+test("cloud ledger accepts purchases and debt movements with stable IDs", async () => {
+  const owner = await createUser();
+  const storeId = "ledger-purchase-debt";
+  await seedMembership(storeId, owner.localId);
+  const at = "2026-10-16T11:00:00.000Z";
+  const purchase = {
+    id: "purchase-ledger-1",
+    arrivalAt: at,
+    distributorName: "Proveedor de prueba",
+    paymentMethod: "Efectivo",
+    total: 12,
+    subtotal: 12,
+    discount: 0,
+    items: [{
+      id: "purchase-item-1",
+      productId: "product-1",
+      productName: "Producto de prueba",
+      unit: "unidad",
+      barcode: "",
+      imageData: "",
+      unitCost: 6,
+      quantity: 2,
+      bonusQuantity: 0,
+      unitsPerPresentation: 1,
+      totalQuantity: 2,
+      salePrice: 8,
+      discount: 0,
+      total: 12,
+      effectiveUnitCost: 6,
+    }],
+  };
+  const acceptedPurchase = await invoke(owner.idToken, {
+    storeId, entityType: "purchase", entityId: purchase.id, entry: purchase,
+  }, "acceptCloudLedgerEntry");
+  assert.equal(acceptedPurchase.body.result.status, "applied", JSON.stringify(acceptedPurchase.body));
+
+  const debt = {
+    id: "debt-ledger-1",
+    clientId: "client-1",
+    clientName: "Cliente de prueba",
+    type: "debt",
+    amount: 12,
+    createdAt: at,
+    reference: "sale-1",
+    isInitialPayment: false,
+  };
+  const acceptedDebt = await invoke(owner.idToken, {
+    storeId, entityType: "debtMovement", entityId: debt.id, entry: debt,
+  }, "acceptCloudLedgerEntry");
+  assert.equal(acceptedDebt.body.result.status, "applied", JSON.stringify(acceptedDebt.body));
+
+  const invalidDebt = await invoke(owner.idToken, {
+    storeId, entityType: "debtMovement", entityId: "debt-ledger-invalid",
+    entry: { ...debt, id: "debt-ledger-invalid", type: "refund", amount: -2 },
+  }, "acceptCloudLedgerEntry");
+  assert.equal(invalidDebt.body.error.status, "INVALID_ARGUMENT");
+});
