@@ -193,6 +193,248 @@ exports.pullSyntheticSyncChanges = onCall(async (request) => {
 });
 
 
+const SALE_FIELDS = [
+  "id", "ticketNumber", "saleNumber", "createdAt", "clientId", "clientName",
+  "paymentMethod", "items", "subtotal", "discountPercent", "discountAmount",
+  "cardFeeAmount", "total", "received", "change", "status", "operations", "metadata",
+];
+const SALE_ITEM_FIELDS = [
+  "id", "productId", "productName", "unit", "brand", "barcode", "cost",
+  "unitPrice", "quantity", "lineSubtotal", "discount", "lineTotal", "imageData",
+  "isElectronicBalance", "hasGroupPricing", "isPrepared", "preparationExtra",
+  "electronicBalanceAccountId", "electronicBalanceCategory", "metadata",
+];
+const SALE_OPERATION_FIELDS = [
+  "id", "type", "createdAt", "itemsOut", "itemsIn", "amountDelta", "note",
+];
+const SYNC_METADATA_FIELDS = [
+  "createdAt", "updatedAt", "version", "schemaVersion", "syncState",
+  "lastSyncedAt", "deletedAt", "deviceId", "storeId",
+];
+
+function onlyAllowedKeys(value, allowed, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)
+      || Object.keys(value).some((key) => !allowed.includes(key))) {
+    throw new HttpsError("invalid-argument", label + " contains unsupported fields.");
+  }
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function validateSaleMetadata(metadata, label) {
+  onlyAllowedKeys(metadata, SYNC_METADATA_FIELDS, label);
+  if (typeof metadata.createdAt !== "string"
+      || Number.isNaN(Date.parse(metadata.createdAt))
+      || typeof metadata.updatedAt !== "string"
+      || Number.isNaN(Date.parse(metadata.updatedAt))
+      || !Number.isSafeInteger(metadata.version) || metadata.version < 1
+      || metadata.schemaVersion !== 1
+      || !["pending", "updated", "synced", "deleted"].includes(metadata.syncState)) {
+    throw new HttpsError("invalid-argument", label + " is invalid.");
+  }
+  for (const key of ["lastSyncedAt", "deletedAt", "deviceId", "storeId"]) {
+    if (metadata[key] !== undefined && metadata[key] !== null
+        && typeof metadata[key] !== "string") {
+      throw new HttpsError("invalid-argument", label + " contains invalid metadata.");
+    }
+  }
+}
+
+function validateSaleItem(item, label) {
+  onlyAllowedKeys(item, SALE_ITEM_FIELDS, label);
+  for (const key of ["id", "productId", "productName", "unit", "brand", "barcode", "imageData"]) {
+    if (typeof item[key] !== "string") {
+      throw new HttpsError("invalid-argument", label + " contains invalid text fields.");
+    }
+  }
+  for (const key of ["electronicBalanceAccountId", "electronicBalanceCategory"]) {
+    if (item[key] !== undefined && item[key] !== null && typeof item[key] !== "string") {
+      throw new HttpsError("invalid-argument", label + " contains invalid optional fields.");
+    }
+  }
+  for (const key of ["cost", "unitPrice", "lineSubtotal", "discount", "lineTotal", "preparationExtra"]) {
+    if (!finiteNumber(item[key]) || item[key] < 0) {
+      throw new HttpsError("invalid-argument", label + " contains invalid amounts.");
+    }
+  }
+  if (!Number.isSafeInteger(item.quantity) || item.quantity < 1
+      || typeof item.isElectronicBalance !== "boolean"
+      || typeof item.hasGroupPricing !== "boolean"
+      || typeof item.isPrepared !== "boolean") {
+    throw new HttpsError("invalid-argument", label + " contains invalid quantity or flags.");
+  }
+  validateSaleMetadata(item.metadata, label + ".metadata");
+}
+
+function validateSaleRecord(sale, saleId) {
+  onlyAllowedKeys(sale, SALE_FIELDS, "Sale");
+  if (sale.id !== saleId || typeof sale.id !== "string"
+      || !/^[A-Za-z0-9_-]{1,120}$/.test(saleId)
+      || typeof sale.ticketNumber !== "string"
+      || (sale.saleNumber !== null && sale.saleNumber !== "")
+      || typeof sale.createdAt !== "string" || Number.isNaN(Date.parse(sale.createdAt))
+      || (sale.clientId !== null && typeof sale.clientId !== "string")
+      || typeof sale.clientName !== "string"
+      || typeof sale.paymentMethod !== "string" || sale.paymentMethod.length > 80
+      || !["completed", "annulled"].includes(sale.status)
+      || !Array.isArray(sale.items) || sale.items.length > 500
+      || !Array.isArray(sale.operations) || sale.operations.length > 100) {
+    throw new HttpsError("invalid-argument", "Sale identity or schema is invalid.");
+  }
+  for (const key of ["subtotal", "discountPercent", "discountAmount", "cardFeeAmount", "total", "received", "change"]) {
+    if (!finiteNumber(sale[key]) || sale[key] < 0) {
+      throw new HttpsError("invalid-argument", "Sale contains invalid amounts.");
+    }
+  }
+  if (sale.discountPercent > 100) {
+    throw new HttpsError("invalid-argument", "Sale discount percentage is out of range.");
+  }
+  sale.items.forEach((item, index) => validateSaleItem(item, "Sale item " + index));
+  sale.operations.forEach((operation, index) => {
+    const label = "Sale operation " + index;
+    onlyAllowedKeys(operation, SALE_OPERATION_FIELDS, label);
+    if (typeof operation.id !== "string"
+        || !["returnItem", "change"].includes(operation.type)
+        || typeof operation.createdAt !== "string"
+        || Number.isNaN(Date.parse(operation.createdAt))
+        || !finiteNumber(operation.amountDelta)
+        || typeof operation.note !== "string"
+        || !Array.isArray(operation.itemsOut)
+        || !Array.isArray(operation.itemsIn)
+        || operation.itemsOut.length > 500 || operation.itemsIn.length > 500) {
+      throw new HttpsError("invalid-argument", label + " is invalid.");
+    }
+    operation.itemsOut.forEach((item, itemIndex) =>
+      validateSaleItem(item, label + ".itemsOut " + itemIndex));
+    operation.itemsIn.forEach((item, itemIndex) =>
+      validateSaleItem(item, label + ".itemsIn " + itemIndex));
+  });
+  validateSaleMetadata(sale.metadata, "Sale metadata");
+  // Validate serializability and keep payload size safely below Firestore's limit.
+  if (Buffer.byteLength(JSON.stringify(sale), "utf8") > 700000) {
+    throw new HttpsError("invalid-argument", "Sale payload is too large.");
+  }
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return "[" + value.map(stableJson).join(",") + "]";
+  if (value && typeof value === "object") {
+    return "{" + Object.keys(value).sort()
+      .map((key) => JSON.stringify(key) + ":" + stableJson(value[key])).join(",") + "}";
+  }
+  return JSON.stringify(value);
+}
+
+function saleFingerprint(sale) {
+  const businessData = { ...sale };
+  delete businessData.ticketNumber;
+  delete businessData.saleNumber;
+  delete businessData.metadata;
+  return createHash("sha256").update(stableJson(businessData), "utf8").digest("hex");
+}
+
+/**
+ * Accepts one immutable sale by stable local saleId and assigns its sequential
+ * cloud number in the same transaction as the sale and idempotency receipt.
+ * This endpoint is emulator-tested and intentionally not wired to the client.
+ */
+exports.acceptCloudSale = onCall(async (request) => {
+  const uid = requireAuthenticatedUid(request);
+  const data = request.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)
+      || Object.keys(data).some((key) => !["storeId", "saleId", "sale"].includes(key))) {
+    throw new HttpsError("invalid-argument", "Sale request contains unsupported fields.");
+  }
+  validateStoreId(data.storeId);
+  if (typeof data.saleId !== "string" || !/^[A-Za-z0-9_-]{1,120}$/.test(data.saleId)) {
+    throw new HttpsError("invalid-argument", "Sale ID is invalid.");
+  }
+  validateSaleRecord(data.sale, data.saleId);
+  const fingerprint = saleFingerprint(data.sale);
+  const storeRef = db.doc("stores/" + data.storeId);
+  const memberRef = db.doc("stores/" + data.storeId + "/members/" + uid);
+  const saleRef = db.doc("stores/" + data.storeId + "/sales/" + data.saleId);
+  const receiptRef = db.doc("stores/" + data.storeId + "/saleSyncReceipts/" + data.saleId);
+  const sequenceRef = db.doc("stores/" + data.storeId + "/metadata/saleSequence");
+
+  return db.runTransaction(async (transaction) => {
+    const [storeSnap, memberSnap, receiptSnap, saleSnap, sequenceSnap] = await Promise.all([
+      transaction.get(storeRef),
+      transaction.get(memberRef),
+      transaction.get(receiptRef),
+      transaction.get(saleRef),
+      transaction.get(sequenceRef),
+    ]);
+    if (!storeSnap.exists || !memberSnap.exists
+        || memberSnap.get("uid") !== uid
+        || memberSnap.get("status") !== "active"
+        || !["owner", "manager", "cashier"].includes(memberSnap.get("role"))) {
+      throw new HttpsError("permission-denied", "Active business-data membership is required.");
+    }
+    if (receiptSnap.exists) {
+      if (receiptSnap.get("fingerprint") !== fingerprint) {
+        throw new HttpsError("already-exists", "Sale ID collision: business data differs.");
+      }
+      return {
+        saleId: data.saleId,
+        saleNumber: receiptSnap.get("saleNumber"),
+        ticketNumber: receiptSnap.get("ticketNumber"),
+        status: "duplicate",
+      };
+    }
+    if (saleSnap.exists) {
+      throw new HttpsError("already-exists", "Sale exists without an idempotency receipt.");
+    }
+    const lastNumber = sequenceSnap.exists ? sequenceSnap.get("lastNumber") : 0;
+    if (!Number.isSafeInteger(lastNumber) || lastNumber < 0 || lastNumber >= Number.MAX_SAFE_INTEGER) {
+      throw new HttpsError("failed-precondition", "Sale sequence is invalid or exhausted.");
+    }
+    const nextNumber = lastNumber + 1;
+    const saleNumber = String(nextNumber);
+    const ticketNumber = data.sale.ticketNumber.trim().isEmpty
+      ? saleNumber : data.sale.ticketNumber;
+    const acceptedSale = {
+      ...data.sale,
+      saleNumber,
+      ticketNumber,
+      metadata: {
+        ...data.sale.metadata,
+        storeId: data.storeId,
+        syncState: "synced",
+        lastSyncedAt: new Date().toISOString(),
+      },
+    };
+    const result = {
+      saleId: data.saleId,
+      saleNumber,
+      ticketNumber,
+      status: "applied",
+    };
+    transaction.set(saleRef, {
+      ...acceptedSale,
+      acceptedByUid: uid,
+      acceptedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(sequenceRef, {
+      storeId: data.storeId,
+      lastNumber: nextNumber,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(receiptRef, {
+      saleId: data.saleId,
+      fingerprint,
+      saleNumber,
+      ticketNumber,
+      result,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return result;
+  });
+});
+
+
 const INVITATION_ROLES = new Set(["manager", "cashier", "viewer"]);
 const DEFAULT_INVITATION_HOURS = 24;
 const MAX_INVITATION_HOURS = 168;
