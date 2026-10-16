@@ -159,7 +159,7 @@ void main() {
     expect(find.text('owner@example.com'), findsOneWidget);
     expect(find.text('Crear una tienda'), findsOneWidget);
     expect(find.text('Compartir una tienda'), findsOneWidget);
-    expect(find.textContaining('Las invitaciones todavía no están habilitadas'), findsOneWidget);
+    expect(find.textContaining('Solo el propietario de la tienda puede generar una invitación'), findsOneWidget);
     expect(find.text('Nombre de la tienda'), findsOneWidget);
     expect(find.textContaining('no sube tus productos ni tus ventas'), findsOneWidget);
     expect(storeGateway.createCalls, 0);
@@ -288,7 +288,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), 'Tienda El Edén');
+    await tester.enterText(find.byKey(const ValueKey('store-name-field')), 'Tienda El Edén');
     expect(storeGateway.createCalls, 0);
     await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
