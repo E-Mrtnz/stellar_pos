@@ -5,7 +5,7 @@ import { doc, setDoc } from "firebase/firestore";
 
 const projectId = "demo-stellar-pos";
 const authBase = "http://127.0.0.1:9099";
-const functionUrl = "http://127.0.0.1:5001/demo-stellar-pos/us-central1/acceptSyntheticSyncEvent";
+const functionBase = "http://127.0.0.1:5001/demo-stellar-pos/us-central1";
 let env;
 let counter = 0;
 
@@ -43,8 +43,8 @@ function event(storeId, overrides = {}) {
   };
 }
 
-async function invoke(idToken, data) {
-  const response = await fetch(functionUrl, {
+async function invoke(idToken, data, functionName = "acceptSyntheticSyncEvent") {
+  const response = await fetch(`${functionBase}/${functionName}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -186,4 +186,106 @@ test("rejects client-controlled identity and unsupported payload fields", async 
   const payload = event(storeId, { uid: "attacker" });
   const result = await invoke(user.idToken, payload);
   assert.equal(result.body.error.status, "INVALID_ARGUMENT");
+});
+
+
+async function invokeInvitation(functionName, idToken, data) {
+  return invoke(idToken, data, functionName);
+}
+
+test("only the active owner can create a short-lived invitation and code is not stored", async () => {
+  const owner = await createUser();
+  const storeId = "invitation-owner-only";
+  await seedMembership(storeId, owner.localId, "active");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Invitation test store",
+      ownerUid: owner.localId,
+      schemaVersion: 1,
+    });
+  });
+  const created = await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "cashier", expiresInHours: 24, maxUses: 1,
+  });
+  assert.equal(created.body.result.role, "cashier");
+  const code = created.body.result.invitationCode;
+  assert.equal(typeof code, "string");
+  assert.equal(code.length, 32);
+
+  const attacker = await createUser();
+  await seedMembership(storeId, attacker.localId, "active");
+  const denied = await invokeInvitation("createStoreInvitation", attacker.idToken, {
+    storeId, role: "cashier",
+  });
+  assert.equal(denied.body.error.status, "PERMISSION_DENIED");
+});
+
+test("accepting an invitation creates membership atomically and a second use fails", async () => {
+  const owner = await createUser();
+  const joiner = await createUser();
+  const storeId = "invitation-single-use";
+  await seedMembership(storeId, owner.localId, "active");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Invitation test store",
+      ownerUid: owner.localId,
+      schemaVersion: 1,
+    });
+  });
+  const created = await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "viewer", expiresInHours: 24, maxUses: 1,
+  });
+  const code = created.body.result.invitationCode;
+  const accepted = await invokeInvitation("acceptStoreInvitation", joiner.idToken, {
+    storeId, invitationCode: code,
+  });
+  assert.equal(accepted.body.result.role, "viewer");
+  assert.equal(accepted.body.result.status, "active");
+
+  const replay = await invokeInvitation("acceptStoreInvitation", joiner.idToken, {
+    storeId, invitationCode: code,
+  });
+  assert.equal(replay.body.error.status, "ALREADY_EXISTS");
+});
+
+test("invitation creation rejects invalid roles, overlong expiry, and unauthenticated callers", async () => {
+  const owner = await createUser();
+  const storeId = "invitation-validation";
+  await seedMembership(storeId, owner.localId, "active");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Invitation test store", ownerUid: owner.localId, schemaVersion: 1,
+    });
+  });
+  assert.equal((await invokeInvitation("createStoreInvitation", null, {
+    storeId, role: "owner",
+  })).body.error.status, "UNAUTHENTICATED");
+  assert.equal((await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "owner",
+  })).body.error.status, "INVALID_ARGUMENT");
+  assert.equal((await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "cashier", expiresInHours: 999,
+  })).body.error.status, "INVALID_ARGUMENT");
+});
+
+test("invitation cannot be accepted by an unauthenticated caller or another store", async () => {
+  const owner = await createUser();
+  const joiner = await createUser();
+  const storeId = "invitation-store-binding";
+  await seedMembership(storeId, owner.localId, "active");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Invitation test store", ownerUid: owner.localId, schemaVersion: 1,
+    });
+  });
+  const created = await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "manager",
+  });
+  const code = created.body.result.invitationCode;
+  assert.equal((await invokeInvitation("acceptStoreInvitation", null, {
+    storeId, invitationCode: code,
+  })).body.error.status, "UNAUTHENTICATED");
+  assert.equal((await invokeInvitation("acceptStoreInvitation", joiner.idToken, {
+    storeId: "different-store", invitationCode: code,
+  })).body.error.status, "NOT_FOUND");
 });

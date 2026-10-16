@@ -128,3 +128,28 @@ Se considera validada la infraestructura de prueba, el control de acceso actual 
 
 Los workflows de prueba usan el proyecto ficticio `demo-stellar-pos`; no despliegan reglas ni escriben en Firebase de producción. La caja local sigue siendo independiente de autenticación y conectividad, y las colecciones de ventas, productos, inventario, compras, pagos y deudas continúan cerradas a la nube.
 
+
+
+## Implementación de invitaciones confiables — 2026-10-16
+
+Se incorporan dos callable functions del backend:
+
+- `createStoreInvitation`: exige membresía activa de propietario y que el UID coincida con `ownerUid`; permite solo los roles `manager`, `cashier` y `viewer`; limita la vigencia a 1–168 horas y los usos a 1–10. Genera un código aleatorio de alta entropía, devuelve el código una sola vez y guarda únicamente su hash SHA-256.
+- `acceptStoreInvitation`: exige sesión autenticada, valida el código y la tienda en el servidor y, dentro de una transacción, comprueba vigencia, revocación y límite de usos, crea la membresía activa con el rol autorizado y consume el uso. No permite que el cliente elija su UID o rol.
+
+Las reglas de Firestore continúan cerrando las escrituras directas a invitaciones y membresías; las funciones usan Admin SDK para la operación confiable. El código de invitación es un secreto tipo bearer: debe compartirse solo con la persona deseada y no registrarse en logs. La membresía de un usuario que ya tenga un documento —incluido uno revocado— no se reactiva automáticamente.
+
+La suite del emulador añade pruebas para propietario/no propietario, rol inválido, límites de expiración, falta de autenticación, aceptación de un solo uso y vinculación del código a la tienda. Las funciones todavía no se despliegan a Firebase de producción; para usarlas allí se necesita una publicación explícita y revisar el proyecto destino.
+
+## Límite pendiente: sincronización comercial
+
+Esta entrega **no activa** sincronización de ventas, productos, inventario, compras, pagos o deudas. El receptor existente sigue siendo solo sintético. No hay aún una outbox durable atómica con las escrituras Hive existentes, ni un adaptador comercial probado que mantenga IDs locales estables, asigne números remotos idempotentes y resuelva conflictos por tipo de entidad. Activar escrituras comerciales sin esos componentes podría duplicar ventas o perder cambios al desconectarse.
+
+Por ello, los siguientes criterios siguen abiertos y deben completarse antes de declarar terminada la sincronización comercial:
+1. Integrar una outbox durable con las transacciones/escrituras locales de cada repositorio.
+2. Definir y probar el contrato de cada entidad comercial y sus permisos de lectura/escritura.
+3. Implementar cursor remoto, reintentos, deduplicación, reconciliación y conflictos por entidad.
+4. Probar reinicios, desconexión, dos dispositivos concurrentes y cierres de sesión con datos sintéticos.
+5. Desplegar las funciones solo después de confirmar configuración y aprobación del propietario.
+
+La caja local permanece independiente de red/autenticación. No se modifica la base de datos de producción ni se despliegan reglas automáticamente.
