@@ -461,6 +461,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
               ),
               const SizedBox(height: 8),
               TextField(
+                key: const ValueKey('store-name-field'),
                 controller: _storeNameController,
                 maxLength: 80,
                 textCapitalization: TextCapitalization.words,
