@@ -781,6 +781,34 @@ function validateLedgerEntry(data) {
         || Number.isNaN(Date.parse(data.entry.arrivalAt))) {
       throw new HttpsError("invalid-argument", "Purchase entry is invalid.");
     }
+    for (const item of data.entry.items) {
+      onlyAllowedKeys(item, [
+        "id", "productId", "productName", "unit", "barcode", "imageData",
+        "unitCost", "quantity", "bonusQuantity", "unitsPerPresentation",
+        "totalQuantity", "salePrice", "previousCost", "previousSalePrice",
+        "discount", "discountPercent", "iva", "total", "effectiveUnitCost",
+        "metadata",
+      ], "Purchase item");
+      if (typeof item.id !== "string" || typeof item.productId !== "string"
+          || typeof item.productName !== "string"
+          || !Number.isSafeInteger(item.quantity) || item.quantity <= 0
+          || !Number.isSafeInteger(item.bonusQuantity ?? 0) || (item.bonusQuantity ?? 0) < 0
+          || !Number.isSafeInteger(item.totalQuantity) || item.totalQuantity <= 0) {
+        throw new HttpsError("invalid-argument", "Purchase item identity or quantity is invalid.");
+      }
+      for (const key of ["unitCost", "salePrice", "discount", "total", "effectiveUnitCost"]) {
+        if (!finiteNumber(item[key]) || item[key] < 0) {
+          throw new HttpsError("invalid-argument", "Purchase item amounts are invalid.");
+        }
+      }
+      if (item.metadata !== undefined) {
+        onlyAllowedKeys(item.metadata, SYNC_METADATA_FIELDS, "Purchase item metadata");
+        if (item.metadata.schemaVersion !== 1
+            || !Number.isSafeInteger(item.metadata.version) || item.metadata.version < 1) {
+          throw new HttpsError("invalid-argument", "Purchase item metadata is invalid.");
+        }
+      }
+    }
   }
   if (data.entityType === "electronicBalanceTransaction") {
     if (!["purchase", "sale", "adjustment"].includes(data.entry.type)
