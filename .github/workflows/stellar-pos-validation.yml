@@ -1,6 +1,7 @@
 name: STELLAR POS validation
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feature/cloud-storage-v2
