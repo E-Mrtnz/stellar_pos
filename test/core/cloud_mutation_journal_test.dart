@@ -84,7 +84,7 @@ void main() {
 
     expect(recovered, 1);
     expect(await outbox.pendingForStore('store-a'), hasLength(1));
-    expect((storage.data['mutation-1'] as Map)['status'], 'completed');
+    expect((journalStorage.data['mutation-1'] as Map)['status'], 'completed');
   });
 
   test('recovery is scoped to a store and bounded', () async {
