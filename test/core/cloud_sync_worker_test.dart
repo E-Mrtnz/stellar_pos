@@ -4,14 +4,14 @@ import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/cloud_sync_worker.dart';
 
 class _MemoryStorage implements CloudSyncOutboxStorage {
-  final Map<String, Object> values = <String, Object>{};
+  final Map<String, Object> data = <String, Object>{};
   @override
   Object? get(String key) => values[key];
   @override
-  Iterable<Object?> get values => this.values.values;
+  Iterable<Object?> get values => data.values;
   @override
   Future<void> put(String key, Object value) async {
-    this.values[key] = value;
+    data[key] = value;
   }
   @override
   Future<void> flush() async {}
@@ -90,7 +90,7 @@ void main() {
       expect(result.applied, 1);
       expect(result.blocked, 0);
       expect(transport.calls, 1);
-      expect(storage.values['event-1'], containsPair('status', 'delivered'));
+      expect(storage.data['event-1'], containsPair('status', 'delivered'));
     });
 
     test('blocks commercial entities before calling the transport', () async {
