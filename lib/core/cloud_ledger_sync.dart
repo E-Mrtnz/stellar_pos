@@ -1,4 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
+import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 
 /// Immutable business ledgers supported by the trusted cloud receiver.
 /// Stock is deliberately represented by signed movements, never by syncing
