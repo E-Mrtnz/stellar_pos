@@ -125,6 +125,26 @@ void main() {
     });
   });
 
+  group('cloud sync conflict policy', () {
+    test('does not use last-write-wins for money or inventory', () {
+      expect(conflictActionFor(CloudSyncConflictKind.inventoryMovement),
+          CloudSyncConflictAction.appendMovement);
+      expect(conflictActionFor(CloudSyncConflictKind.sale),
+          CloudSyncConflictAction.rejectAndReconcile);
+      expect(conflictActionFor(CloudSyncConflictKind.payment),
+          CloudSyncConflictAction.rejectAndReconcile);
+      expect(conflictActionFor(CloudSyncConflictKind.debt),
+          CloudSyncConflictAction.rejectAndReconcile);
+    });
+
+    test('permits version comparison only for descriptive metadata', () {
+      expect(conflictActionFor(CloudSyncConflictKind.versionedMetadata),
+          CloudSyncConflictAction.applyIfNewer);
+      expect(conflictActionFor(CloudSyncConflictKind.immutableDuplicate),
+          CloudSyncConflictAction.acceptDuplicate);
+    });
+  });
+
   group('CloudSyncCursor', () {
     test('advances within the same store', () {
       const current = CloudSyncCursor(storeId: 'store-a', version: 3);
