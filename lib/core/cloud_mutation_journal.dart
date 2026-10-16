@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:stellar_pos/core/cloud_sync_outbox.dart';
 import 'package:stellar_pos/core/cloud_sync_protocol.dart';
+import 'package:stellar_pos/core/data/storage/local_storage.dart';
 
 /// A durable write-ahead record for a local mutation that must also enter the
 /// sync outbox. This journal does not make two Hive boxes transactional; instead
