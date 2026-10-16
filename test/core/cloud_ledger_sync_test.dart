@@ -1,15 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_ledger_sync.dart';
 import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
-import 'package:stellar_pos/core/cloud_sync_protocol.dart';
-
 
 class _MemoryCursorStorage implements CloudSyncCursorStorage {
   final Map<String, Object?> valuesByKey = <String, Object?>{};
   @override
   Object? get(String key) => valuesByKey[key];
-  @override
-  Iterable<Object?> get values => valuesByKey.values;
   @override
   Future<void> put(String key, Object value) async => valuesByKey[key] = value;
   @override
