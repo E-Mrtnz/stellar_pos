@@ -81,8 +81,8 @@ String? validateCloudSyncEvent(
 
 /// A remote change cursor is scoped to one store and must only move forward.
 ///
-/// The actual remote transport and durable cursor storage are intentionally
-/// not implemented here.
+/// Durable local storage is implemented separately. A remote pull transport
+/// must not advance the persisted cursor until a whole page is applied.
 class CloudSyncCursor {
   const CloudSyncCursor({
     required this.storeId,
