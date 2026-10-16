@@ -48,7 +48,6 @@ void main() {
       final applied = CloudLedgerAcceptance.fromResponse(
         <String, dynamic>{
           'entityType': 'inventoryMovement',
-              'operation': 'append',
           'entityId': 'movement-1',
           'status': 'applied',
           'version': 1,
@@ -62,7 +61,6 @@ void main() {
       final duplicate = CloudLedgerAcceptance.fromResponse(
         <String, dynamic>{
           'entityType': 'inventoryMovement',
-              'operation': 'append',
           'entityId': 'movement-1',
           'status': 'duplicate',
           'version': 1,
@@ -100,7 +98,6 @@ void main() {
               'storeId': 'store-a',
               'eventId': 'inventoryMovement_move-5',
               'entityType': 'inventoryMovement',
-              'operation': 'append',
               'entityId': 'move-5',
               'operation': 'append',
               'version': 5,
@@ -110,7 +107,6 @@ void main() {
               'storeId': 'store-a',
               'eventId': 'debtMovement_debt-6',
               'entityType': 'debtMovement',
-              'operation': 'append',
               'entityId': 'debt-6',
               'operation': 'append',
               'version': 6,
