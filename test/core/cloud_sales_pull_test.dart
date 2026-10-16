@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_sales_pull.dart';
 import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
-import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/models/sale.dart';
 import 'package:stellar_pos/core/models/sync_metadata.dart';
 
