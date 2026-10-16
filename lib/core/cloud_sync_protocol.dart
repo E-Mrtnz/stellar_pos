@@ -1,7 +1,7 @@
-/// Pure domain contracts for the future incremental sync worker.
+/// Pure domain contracts for incremental sync.
 ///
-/// This file deliberately has no Firebase or Hive dependency. It does not
-/// enqueue, persist, upload, download, or apply business records by itself.
+/// This file deliberately has no Firebase or Hive dependency. It describes
+/// validated event envelopes and conflict decisions; it does not perform I/O.
 enum CloudSyncOperation { create, update, delete }
 
 enum CloudSyncEventStatus { pending, inFlight, delivered, blocked }
@@ -21,6 +21,7 @@ class CloudSyncEvent {
     required this.createdAt,
     this.status = CloudSyncEventStatus.pending,
     this.attemptCount = 0,
+    this.payload = const <String, Object?>{},
   })  : assert(eventId != ''),
         assert(storeId != ''),
         assert(entityType != ''),
@@ -35,10 +36,13 @@ class CloudSyncEvent {
   final DateTime createdAt;
   final CloudSyncEventStatus status;
   final int attemptCount;
+  /// Entity-specific data. The trusted server must still validate its schema.
+  final Map<String, Object?> payload;
 
   CloudSyncEvent copyWith({
     CloudSyncEventStatus? status,
     int? attemptCount,
+    Map<String, Object?>? payload,
   }) {
     return CloudSyncEvent(
       eventId: eventId,
@@ -50,6 +54,7 @@ class CloudSyncEvent {
       createdAt: createdAt,
       status: status ?? this.status,
       attemptCount: attemptCount ?? this.attemptCount,
+      payload: payload ?? this.payload,
     );
   }
 }
@@ -94,5 +99,45 @@ class CloudSyncCursor {
       return null;
     }
     return candidate;
+  }
+}
+
+
+/// Conflict categories are explicit because business records cannot safely use
+/// one generic last-write-wins strategy.
+enum CloudSyncConflictKind {
+  /// Immutable record with a stable ID; same ID + same content is idempotent.
+  immutableDuplicate,
+  /// Mutable descriptive data where an explicit version comparison is valid.
+  versionedMetadata,
+  /// Quantities must be represented as movements or transactionally merged.
+  inventoryMovement,
+  /// Sales are immutable facts and require server-side idempotency.
+  sale,
+  /// Money movements are immutable ledger entries.
+  payment,
+  /// Customer balances/debts require ledger-aware reconciliation.
+  debt,
+}
+
+enum CloudSyncConflictAction {
+  acceptDuplicate,
+  applyIfNewer,
+  appendMovement,
+  rejectAndReconcile,
+}
+
+CloudSyncConflictAction conflictActionFor(CloudSyncConflictKind kind) {
+  switch (kind) {
+    case CloudSyncConflictKind.immutableDuplicate:
+      return CloudSyncConflictAction.acceptDuplicate;
+    case CloudSyncConflictKind.versionedMetadata:
+      return CloudSyncConflictAction.applyIfNewer;
+    case CloudSyncConflictKind.inventoryMovement:
+      return CloudSyncConflictAction.appendMovement;
+    case CloudSyncConflictKind.sale:
+    case CloudSyncConflictKind.payment:
+    case CloudSyncConflictKind.debt:
+      return CloudSyncConflictAction.rejectAndReconcile;
   }
 }
