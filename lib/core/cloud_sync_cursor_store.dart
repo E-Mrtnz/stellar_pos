@@ -7,10 +7,47 @@ import 'package:stellar_pos/core/data/storage/local_storage.dart';
 ///
 /// The cursor is committed only after a caller has durably applied every
 /// change in the corresponding page. This class never fetches or applies data.
+abstract interface class CloudSyncCursorStorage {
+  Object? get(String key);
+  Future<void> put(String key, Object value);
+  Future<void> flush();
+}
+
+class _HiveCursorStorage implements CloudSyncCursorStorage {
+  _HiveCursorStorage(this.boxName);
+  final String boxName;
+  Future<dynamic> get box => LocalStorage.openBox(boxName);
+  Map<String, Object?> cache = <String, Object?>{};
+
+  Future<void> refresh() async {
+    final opened = await box;
+    cache = <String, Object?>{
+      for (final key in opened.keys) key as String: opened.get(key) as Object?,
+    };
+  }
+
+  @override
+  Object? get(String key) => cache[key];
+
+  @override
+  Future<void> put(String key, Object value) async {
+    final opened = await box;
+    await opened.put(key, value);
+    await refresh();
+  }
+
+  @override
+  Future<void> flush() async => (await box).flush();
+}
+
 class CloudSyncCursorStore {
-  CloudSyncCursorStore({this.boxName = 'cloud_sync_cursors'});
+  CloudSyncCursorStore({
+    this.boxName = 'cloud_sync_cursors',
+    CloudSyncCursorStorage? storage,
+  }) : _storage = storage ?? _HiveCursorStorage(boxName);
 
   final String boxName;
+  final CloudSyncCursorStorage _storage;
   Future<void> _tail = Future<void>.value();
 
   Future<T> _serialize<T>(Future<T> Function() action) {
@@ -37,8 +74,8 @@ class CloudSyncCursorStore {
     required String storeId,
     required String deviceId,
   }) => _serialize(() async {
-    final box = await LocalStorage.openBox(boxName);
-    final raw = box.get(_key(storeId, deviceId));
+    if (_storage is _HiveCursorStorage) await _storage.refresh();
+    final raw = _storage.get(_key(storeId, deviceId));
     if (raw == null) return null;
     if (raw is! Map || raw['storeId'] != storeId ||
         raw['deviceId'] != deviceId || raw['version'] is! int ||
@@ -60,9 +97,9 @@ class CloudSyncCursorStore {
   }) => _serialize(() async {
     _key(storeId, deviceId); // Validate both scope segments.
     if (candidate.storeId != storeId || candidate.version < 0) return false;
-    final box = await LocalStorage.openBox(boxName);
+    if (_storage is _HiveCursorStorage) await _storage.refresh();
     final key = _key(storeId, deviceId);
-    final raw = box.get(key);
+    final raw = _storage.get(key);
     if (raw != null) {
       if (raw is! Map || raw['storeId'] != storeId ||
           raw['deviceId'] != deviceId || raw['version'] is! int ||
@@ -73,13 +110,13 @@ class CloudSyncCursorStore {
       if (candidate.version < currentVersion) return false;
       if (candidate.version == currentVersion) return true;
     }
-    await box.put(key, <String, Object?>{
+    await _storage.put(key, <String, Object?>{
       'storeId': storeId,
       'deviceId': deviceId,
       'version': candidate.version,
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     });
-    await box.flush();
+    await _storage.flush();
     return true;
   });
 }
