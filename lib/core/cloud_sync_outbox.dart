@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:stellar_pos/core/cloud_sync_protocol.dart';
@@ -82,6 +83,7 @@ class CloudSyncOutbox {
           stored.entityId != event.entityId ||
           stored.operation != event.operation ||
           stored.localVersion != event.localVersion ||
+          !_samePayload(stored.payload, event.payload) ||
           !stored.createdAt.isAtSameMomentAs(event.createdAt)) {
         throw StateError(
           'El identificador de evento ya existe con otro contenido.',
@@ -180,6 +182,7 @@ class CloudSyncOutbox {
         'createdAt': event.createdAt.toUtc().toIso8601String(),
         'status': event.status.name,
         'attemptCount': event.attemptCount,
+        'payload': event.payload,
       };
 
   CloudSyncEvent _decode(Object? raw) {
@@ -198,6 +201,9 @@ class CloudSyncOutbox {
         createdAt: DateTime.parse(map['createdAt'] as String).toUtc(),
         status: CloudSyncEventStatus.values.byName(map['status'] as String),
         attemptCount: map['attemptCount'] as int,
+        payload: map['payload'] is Map
+            ? Map<String, Object?>.from(map['payload'] as Map)
+            : const <String, Object?>{},
       );
     } on StateError {
       rethrow;
@@ -205,4 +211,21 @@ class CloudSyncOutbox {
       throw StateError('El evento guardado en la cola está corrupto: $error');
     }
   }
+}
+
+
+bool _samePayload(Map<String, Object?> left, Map<String, Object?> right) =>
+    jsonEncode(_canonicalizeJson(left)) == jsonEncode(_canonicalizeJson(right));
+
+Object? _canonicalizeJson(Object? value) {
+  if (value is Map) {
+    final keys = value.keys.map((key) => key.toString()).toList()..sort();
+    return <String, Object?>{
+      for (final key in keys) key: _canonicalizeJson(value[key]),
+    };
+  }
+  if (value is List) {
+    return value.map(_canonicalizeJson).toList(growable: false);
+  }
+  return value;
 }
