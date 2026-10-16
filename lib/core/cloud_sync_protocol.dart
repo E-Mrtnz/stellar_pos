@@ -75,6 +75,7 @@ String? validateCloudSyncEvent(
   if (event.entityId.trim().isEmpty) return 'missing-entity-id';
   if (event.localVersion < 0) return 'invalid-local-version';
   if (event.attemptCount < 0) return 'invalid-attempt-count';
+  if (!_isJsonValue(event.payload)) return 'invalid-payload';
   return null;
 }
 
@@ -140,4 +141,18 @@ CloudSyncConflictAction conflictActionFor(CloudSyncConflictKind kind) {
     case CloudSyncConflictKind.debt:
       return CloudSyncConflictAction.rejectAndReconcile;
   }
+}
+
+
+bool _isJsonValue(Object? value) {
+  if (value == null || value is String || value is bool || value is int) {
+    return true;
+  }
+  if (value is double) return value.isFinite;
+  if (value is List) return value.every(_isJsonValue);
+  if (value is Map) {
+    return value.entries.every((entry) =>
+        entry.key is String && _isJsonValue(entry.value));
+  }
+  return false;
 }
