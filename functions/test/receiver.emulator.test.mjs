@@ -741,3 +741,71 @@ test("cloud ledger accepts purchases and debt movements with stable IDs", async 
   }, "acceptCloudLedgerEntry");
   assert.equal(invalidDebt.body.error.status, "INVALID_ARGUMENT");
 });
+
+
+test("cloud ledger accepts electronic balance transactions and sequences concurrent appends", async () => {
+  const owner = await createUser();
+  const storeId = "ledger-electronic-concurrency";
+  await seedMembership(storeId, owner.localId);
+  const at = "2026-10-16T12:00:00.000Z";
+  const transactionEntry = {
+    id: "balance-tx-1",
+    accountId: "provider-1",
+    type: "purchase",
+    amount: 25,
+    providerCost: 25,
+    createdAt: at,
+    description: "Recarga de prueba",
+  };
+  const accepted = await invoke(owner.idToken, {
+    storeId, entityType: "electronicBalanceTransaction",
+    entityId: transactionEntry.id, entry: transactionEntry,
+  }, "acceptCloudLedgerEntry");
+  assert.equal(accepted.body.result.status, "applied", JSON.stringify(accepted.body));
+  assert.equal(accepted.body.result.version, 1);
+
+  const movement = (id) => ({
+    id, productId: "product-1", quantityDelta: 1,
+    reason: "restock", createdAt: at,
+  });
+  const concurrent = await Promise.all([
+    invoke(owner.idToken, {
+      storeId, entityType: "inventoryMovement",
+      entityId: "concurrent-move-a", entry: movement("concurrent-move-a"),
+    }, "acceptCloudLedgerEntry"),
+    invoke(owner.idToken, {
+      storeId, entityType: "inventoryMovement",
+      entityId: "concurrent-move-b", entry: movement("concurrent-move-b"),
+    }, "acceptCloudLedgerEntry"),
+  ]);
+  assert.deepEqual(
+    concurrent.map((result) => result.body.result?.version).sort((a, b) => a - b),
+    [2, 3],
+    JSON.stringify(concurrent),
+  );
+
+  const duplicateAttempts = await Promise.all([
+    invoke(owner.idToken, {
+      storeId, entityType: "inventoryMovement",
+      entityId: "concurrent-same-id", entry: movement("concurrent-same-id"),
+    }, "acceptCloudLedgerEntry"),
+    invoke(owner.idToken, {
+      storeId, entityType: "inventoryMovement",
+      entityId: "concurrent-same-id", entry: movement("concurrent-same-id"),
+    }, "acceptCloudLedgerEntry"),
+  ]);
+  assert.deepEqual(
+    duplicateAttempts.map((result) => result.body.result?.status).sort(),
+    ["applied", "duplicate"],
+    JSON.stringify(duplicateAttempts),
+  );
+
+  const pull = await invoke(owner.idToken, {
+    storeId, afterVersion: 0, limit: 10,
+  }, "pullCloudLedgerChanges");
+  assert.equal(pull.body.result.changes.length, 4, JSON.stringify(pull.body));
+  assert.deepEqual(
+    pull.body.result.changes.map((change) => change.version),
+    [1, 2, 3, 4],
+  );
+});
