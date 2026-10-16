@@ -48,6 +48,7 @@ void main() {
       final applied = CloudLedgerAcceptance.fromResponse(
         <String, dynamic>{
           'entityType': 'inventoryMovement',
+              'operation': 'append',
           'entityId': 'movement-1',
           'status': 'applied',
           'version': 1,
@@ -61,6 +62,7 @@ void main() {
       final duplicate = CloudLedgerAcceptance.fromResponse(
         <String, dynamic>{
           'entityType': 'inventoryMovement',
+              'operation': 'append',
           'entityId': 'movement-1',
           'status': 'duplicate',
           'version': 1,
@@ -98,6 +100,7 @@ void main() {
               'storeId': 'store-a',
               'eventId': 'inventoryMovement_move-5',
               'entityType': 'inventoryMovement',
+              'operation': 'append',
               'entityId': 'move-5',
               'operation': 'append',
               'version': 5,
@@ -107,6 +110,7 @@ void main() {
               'storeId': 'store-a',
               'eventId': 'debtMovement_debt-6',
               'entityType': 'debtMovement',
+              'operation': 'append',
               'entityId': 'debt-6',
               'operation': 'append',
               'version': 6,
@@ -136,6 +140,7 @@ void main() {
             'storeId': 'store-a',
             'eventId': 'inventoryMovement_move-5',
             'entityType': 'inventoryMovement',
+              'operation': 'append',
             'entityId': 'move-5',
             'version': 5,
             'payload': <String, dynamic>{'id': 'move-5'},
@@ -164,12 +169,12 @@ void main() {
           response(changes: <Map<String, dynamic>>[
             <String, dynamic>{
               'storeId': 'store-a', 'eventId': 'a',
-              'entityType': 'inventoryMovement', 'entityId': 'move-a',
+              'entityType': 'inventoryMovement', 'operation': 'append', 'entityId': 'move-a',
               'version': 6, 'payload': <String, dynamic>{'id': 'move-a'},
             },
             <String, dynamic>{
               'storeId': 'store-a', 'eventId': 'b',
-              'entityType': 'inventoryMovement', 'entityId': 'move-b',
+              'entityType': 'inventoryMovement', 'operation': 'append', 'entityId': 'move-b',
               'version': 5, 'payload': <String, dynamic>{'id': 'move-b'},
             },
           ], next: 5),
