@@ -1,0 +1,143 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:stellar_pos/core/cloud_sync_outbox.dart';
+import 'package:stellar_pos/core/cloud_sync_protocol.dart';
+import 'package:stellar_pos/core/cloud_sync_worker.dart';
+
+class _MemoryStorage implements CloudSyncOutboxStorage {
+  final Map<String, Object> values = <String, Object>{};
+  @override
+  Object? get(String key) => values[key];
+  @override
+  Iterable<Object?> get values => this.values.values;
+  @override
+  Future<void> put(String key, Object value) async {
+    this.values[key] = value;
+  }
+  @override
+  Future<void> flush() async {}
+}
+
+class _Gate implements CloudSyncSessionGate {
+  _Gate(this.allowed);
+  final bool allowed;
+  @override
+  Future<bool> canSyncStore(String storeId) async => allowed;
+}
+
+class _Transport implements CloudSyncTransport {
+  _Transport(this.result);
+  final Future<CloudSyncDeliveryStatus> Function(CloudSyncEvent) result;
+  int calls = 0;
+  @override
+  Future<CloudSyncDeliveryStatus> send(CloudSyncEvent event) {
+    calls++;
+    return result(event);
+  }
+}
+
+CloudSyncEvent _event({
+  String id = 'event-1',
+  String type = 'syntheticTestValue',
+  Map<String, Object?> payload = const <String, Object?>{'value': 'test'},
+}) => CloudSyncEvent(
+  eventId: id,
+  storeId: 'store-a',
+  entityType: type,
+  entityId: 'entity-1',
+  operation: CloudSyncOperation.update,
+  localVersion: 1,
+  createdAt: DateTime.utc(2026, 10, 15),
+  payload: payload,
+);
+
+void main() {
+  group('CloudSyncWorker', () {
+    late _MemoryStorage storage;
+    late CloudSyncOutbox outbox;
+
+    setUp(() {
+      storage = _MemoryStorage();
+      outbox = CloudSyncOutbox(storage: storage);
+    });
+
+    test('pauses without an active authenticated membership', () async {
+      await outbox.enqueue(_event());
+      final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(false),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.paused, isTrue);
+      expect(transport.calls, 0);
+      expect((await outbox.pendingForStore('store-a')), hasLength(1));
+    });
+
+    test('marks a confirmed synthetic event delivered', () async {
+      await outbox.enqueue(_event());
+      final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.applied, 1);
+      expect(result.blocked, 0);
+      expect(transport.calls, 1);
+      expect(storage.values['event-1'], containsPair('status', 'delivered'));
+    });
+
+    test('blocks commercial entities before calling the transport', () async {
+      await outbox.enqueue(_event(type: 'sale'));
+      final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.blocked, 1);
+      expect(transport.calls, 0);
+      expect(storage.values['event-1'], containsPair('status', 'blocked'));
+    });
+
+    test('returns transient failures to pending with stable event ID', () async {
+      await outbox.enqueue(_event());
+      final transport = _Transport((_) async {
+        throw const CloudSyncTransportException('offline', retryable: true);
+      });
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.retried, 1);
+      expect(storage.values['event-1'], containsPair('eventId', 'event-1'));
+      expect(storage.values['event-1'], containsPair('status', 'pending'));
+      expect(storage.values['event-1'], containsPair('attemptCount', 1));
+    });
+
+    test('rejects unbounded batch sizes', () async {
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: _Transport((_) async => CloudSyncDeliveryStatus.applied),
+        sessionGate: _Gate(true),
+      );
+      await expectLater(
+        worker.runOnce(storeId: 'store-a', limit: 101),
+        throwsArgumentError,
+      );
+    });
+  });
+}
