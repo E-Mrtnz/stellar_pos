@@ -344,7 +344,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), 'Tienda de prueba');
+    await tester.enterText(find.byKey(const ValueKey('store-name-field')), 'Tienda de prueba');
     await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
     await tester.pumpAndSettle();
@@ -371,7 +371,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'Tienda principal');
+    await tester.enterText(find.byKey(const ValueKey('store-name-field')), 'Tienda principal');
     await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
     await tester.pumpAndSettle();
@@ -379,7 +379,7 @@ void main() {
     expect(storeGateway.createCalls, 1);
     expect(find.text('store-test-1'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), 'Sucursal nueva');
+    await tester.enterText(find.byKey(const ValueKey('store-name-field')), 'Sucursal nueva');
     await tester.ensureVisible(find.text('Crear tienda'));
     await tester.tap(find.text('Crear tienda'));
     await tester.pumpAndSettle();
