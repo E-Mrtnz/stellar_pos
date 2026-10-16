@@ -43,6 +43,7 @@ jobs:
           lib/core/cloud_sync_retry_policy.dart
           lib/core/cloud_active_store_selection.dart
           lib/core/cloud_sale_acceptance_transport.dart
+          lib/core/cloud_mutation_journal.dart
       - name: Run cloud access and incremental sync regression tests
         run: >-
           flutter test
@@ -52,6 +53,11 @@ jobs:
           test/core/cloud_account_screen_test.dart
           test/core/cloud_active_store_selection_test.dart
           test/core/cloud_sale_acceptance_transport_test.dart
+          test/core/cloud_mutation_journal_test.dart
+          test/core/cloud_sync_worker_test.dart
+          test/core/cloud_sync_pull_test.dart
+          test/core/cloud_sync_cursor_store_test.dart
+          test/core/cloud_sync_cursor_store_hive_test.dart
           test/core/cloud_store_repository_test.dart
           test/cloud_store_access_test.dart
           test/core/cloud_paths_test.dart
