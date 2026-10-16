@@ -600,3 +600,85 @@ test("single-use invitation cannot be consumed by two accounts concurrently", as
   assert.equal(rejected.length, 1, JSON.stringify(attempts));
   assert.equal(rejected[0].body.error.status, "FAILED_PRECONDITION");
 });
+
+
+test("cloud ledger receiver stores inventory movements idempotently and exposes a paginated feed", async () => {
+  const owner = await createUser();
+  const viewer = await createUser();
+  const storeId = "ledger-inventory-idempotency";
+  await seedMembership(storeId, owner.localId);
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}/members/${viewer.localId}`), {
+      uid: viewer.localId, role: "viewer", status: "active", createdAt: new Date(),
+    });
+  });
+  const entry = {
+    id: "movement-1",
+    productId: "product-1",
+    quantityDelta: -3,
+    reason: "sale",
+    createdAt: "2026-10-16T10:00:00.000Z",
+    metadata: {
+      createdAt: "2026-10-16T10:00:00.000Z",
+      updatedAt: "2026-10-16T10:00:00.000Z",
+      version: 1, schemaVersion: 1, syncState: "pending",
+    },
+  };
+  const first = await invoke(owner.idToken, {
+    storeId, entityType: "inventoryMovement", entityId: entry.id, entry,
+  }, "acceptCloudLedgerEntry");
+  assert.equal(first.body.result.status, "applied", JSON.stringify(first.body));
+  assert.equal(first.body.result.version, 1);
+
+  const replay = await invoke(owner.idToken, {
+    storeId, entityType: "inventoryMovement", entityId: entry.id, entry,
+  }, "acceptCloudLedgerEntry");
+  assert.equal(replay.body.result.status, "duplicate", JSON.stringify(replay.body));
+  assert.equal(replay.body.result.version, 1);
+
+  const pull = await invoke(viewer.idToken, {
+    storeId, afterVersion: 0, limit: 1,
+  }, "pullCloudLedgerChanges");
+  assert.equal(pull.body.result.changes.length, 1, JSON.stringify(pull.body));
+  assert.equal(pull.body.result.changes[0].entityType, "inventoryMovement");
+  assert.equal(pull.body.result.changes[0].payload.quantityDelta, -3);
+  assert.equal(pull.body.result.nextCursor, 1);
+});
+
+test("cloud ledger receiver rejects content collisions, invalid movements and nonmembers", async () => {
+  const owner = await createUser();
+  const stranger = await createUser();
+  const storeId = "ledger-negative-cases";
+  await seedMembership(storeId, owner.localId);
+  const entry = {
+    id: "movement-collision", productId: "product-1", quantityDelta: 2,
+    reason: "restock", createdAt: "2026-10-16T10:00:00.000Z",
+  };
+  const first = await invoke(owner.idToken, {
+    storeId, entityType: "inventoryMovement", entityId: entry.id, entry,
+  }, "acceptCloudLedgerEntry");
+  assert.equal(first.body.result.status, "applied", JSON.stringify(first.body));
+
+  const collision = await invoke(owner.idToken, {
+    storeId, entityType: "inventoryMovement", entityId: entry.id,
+    entry: { ...entry, quantityDelta: 7 },
+  }, "acceptCloudLedgerEntry");
+  assert.equal(collision.body.error.status, "ALREADY_EXISTS");
+
+  const invalid = await invoke(owner.idToken, {
+    storeId, entityType: "inventoryMovement", entityId: "zero-movement",
+    entry: { ...entry, id: "zero-movement", quantityDelta: 0 },
+  }, "acceptCloudLedgerEntry");
+  assert.equal(invalid.body.error.status, "INVALID_ARGUMENT");
+
+  const denied = await invoke(stranger.idToken, {
+    storeId, entityType: "inventoryMovement", entityId: "movement-stranger",
+    entry: { ...entry, id: "movement-stranger" },
+  }, "acceptCloudLedgerEntry");
+  assert.equal(denied.body.error.status, "PERMISSION_DENIED");
+
+  const deniedPull = await invoke(stranger.idToken, {
+    storeId, afterVersion: 0, limit: 10,
+  }, "pullCloudLedgerChanges");
+  assert.equal(deniedPull.body.error.status, "PERMISSION_DENIED");
+});
