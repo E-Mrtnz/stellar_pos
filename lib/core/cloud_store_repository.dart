@@ -197,8 +197,7 @@ class CloudStoreRepository implements CloudStoreGateway, CloudInvitationGateway 
         (_) => _alphabet[_random.nextInt(_alphabet.length)],
         growable: false,
       ).join();
-}
-
+  }
 
   @override
   Future<CreatedStoreInvitation> createInvitation({
@@ -253,7 +252,8 @@ class CloudStoreRepository implements CloudStoreGateway, CloudInvitationGateway 
       storeId: data['storeId'] as String,
       role: data['role'] as String,
     );
-  
+  }
+
   @override
   Future<void> revokeInvitation({
     required String storeId,

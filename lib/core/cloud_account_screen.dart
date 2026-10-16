@@ -349,7 +349,7 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: _invitationRole,
+                        initialValue: _invitationRole,
                         decoration: const InputDecoration(
                           labelText: 'Permiso de la persona invitada',
                           border: OutlineInputBorder(),
@@ -387,9 +387,10 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                         ),
                         TextButton.icon(
                           onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
                             await Clipboard.setData(ClipboardData(text: _invitationCode!));
                             if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(content: Text('Código copiado.')),
                             );
                           },
