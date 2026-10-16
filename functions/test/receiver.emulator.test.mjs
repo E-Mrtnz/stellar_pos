@@ -110,6 +110,16 @@ test("isolates identical event IDs across stores", async () => {
   assert.equal((await invoke(user.idToken, otherStore)).body.result.status, "applied");
 });
 
+test("rejects a user who is not a member of the requested store", async () => {
+  const user = await createUser();
+  await seedMembership("receiver-member-store", user.localId);
+  const unauthorized = await invoke(
+    user.idToken,
+    event("receiver-other-store"),
+  );
+  assert.equal(unauthorized.body.error.status, "PERMISSION_DENIED");
+});
+
 test("rejects unauthenticated calls and inactive membership", async () => {
   const anonymous = await invoke(null, event("receiver-no-auth"));
   assert.equal(anonymous.body.error.status, "UNAUTHENTICATED");
@@ -118,6 +128,28 @@ test("rejects unauthenticated calls and inactive membership", async () => {
   await seedMembership("receiver-inactive", user.localId, "revoked");
   const inactive = await invoke(user.idToken, event("receiver-inactive"));
   assert.equal(inactive.body.error.status, "PERMISSION_DENIED");
+});
+
+test("requires strictly sequential versions for each synthetic entity", async () => {
+  const user = await createUser();
+  const storeId = "receiver-version-sequence";
+  await seedMembership(storeId, user.localId);
+
+  const first = event(storeId, { eventId: "version-one", localVersion: 1 });
+  assert.equal((await invoke(user.idToken, first)).body.result.status, "applied");
+
+  const skipped = event(storeId, { eventId: "version-three", localVersion: 3 });
+  assert.equal(
+    (await invoke(user.idToken, skipped)).body.error.status,
+    "FAILED_PRECONDITION",
+  );
+
+  const second = event(storeId, {
+    eventId: "version-two",
+    localVersion: 2,
+    payload: { value: "second-version" },
+  });
+  assert.equal((await invoke(user.idToken, second)).body.result.status, "applied");
 });
 
 test("rejects stale versions without writing a receipt", async () => {
