@@ -55,6 +55,52 @@ async function invoke(idToken, data, functionName = "acceptSyntheticSyncEvent") 
   return { status: response.status, body: await response.json() };
 }
 
+function salePayload(saleId, overrides = {}) {
+  const createdAt = "2026-10-15T10:00:00.000Z";
+  return {
+    id: saleId,
+    ticketNumber: "",
+    saleNumber: null,
+    createdAt,
+    clientId: null,
+    clientName: "",
+    paymentMethod: "Efectivo",
+    items: [],
+    subtotal: 10,
+    discountPercent: 0,
+    discountAmount: 0,
+    cardFeeAmount: 0,
+    total: 10,
+    received: 10,
+    change: 0,
+    status: "completed",
+    operations: [],
+    metadata: {
+      createdAt,
+      updatedAt: createdAt,
+      version: 1,
+      schemaVersion: 1,
+      syncState: "pending",
+      lastSyncedAt: null,
+      deletedAt: null,
+      deviceId: "device-test",
+      storeId: null,
+    },
+    ...overrides,
+  };
+}
+
+async function seedStore(storeId, ownerUid) {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Sale receiver test store",
+      ownerUid,
+      schemaVersion: 1,
+    });
+  });
+}
+
+
 before(async () => {
   env = await initializeTestEnvironment({ projectId });
 });
@@ -62,6 +108,107 @@ before(async () => {
 after(async () => {
   await env?.cleanup();
 });
+
+test("cloud sale acceptance assigns sequential numbers and is idempotent", async () => {
+  const user = await createUser();
+  const storeId = "sale-numbering-idempotency";
+  await seedMembership(storeId, user.localId);
+  await seedStore(storeId, user.localId);
+
+  const firstPayload = salePayload("sale-local-1");
+  const first = await invoke(user.idToken, {
+    storeId, saleId: "sale-local-1", sale: firstPayload,
+  }, "acceptCloudSale");
+  assert.equal(first.body.result.status, "applied");
+  assert.equal(first.body.result.saleNumber, "1");
+  assert.equal(first.body.result.ticketNumber, "1");
+
+  const replayPayload = salePayload("sale-local-1", {
+    saleNumber: "1",
+    ticketNumber: "1",
+    metadata: {
+      ...firstPayload.metadata,
+      syncState: "synced",
+      lastSyncedAt: "2026-10-15T10:01:00.000Z",
+      storeId,
+    },
+  });
+  const replay = await invoke(user.idToken, {
+    storeId, saleId: "sale-local-1", sale: replayPayload,
+  }, "acceptCloudSale");
+  assert.equal(replay.body.result.status, "duplicate");
+  assert.equal(replay.body.result.saleNumber, "1");
+
+  const second = await invoke(user.idToken, {
+    storeId,
+    saleId: "sale-local-2",
+    sale: salePayload("sale-local-2"),
+  }, "acceptCloudSale");
+  assert.equal(second.body.result.saleNumber, "2");
+});
+
+test("cloud sale receiver rejects client-chosen numbers and changed payload collisions", async () => {
+  const user = await createUser();
+  const storeId = "sale-numbering-validation";
+  await seedMembership(storeId, user.localId);
+  await seedStore(storeId, user.localId);
+
+  const chosenNumber = await invoke(user.idToken, {
+    storeId,
+    saleId: "sale-client-number",
+    sale: salePayload("sale-client-number", { saleNumber: "999" }),
+  }, "acceptCloudSale");
+  assert.equal(chosenNumber.body.error.status, "INVALID_ARGUMENT");
+
+  const payload = salePayload("sale-collision");
+  const accepted = await invoke(user.idToken, {
+    storeId, saleId: "sale-collision", sale: payload,
+  }, "acceptCloudSale");
+  assert.equal(accepted.body.result.status, "applied");
+  const collision = await invoke(user.idToken, {
+    storeId,
+    saleId: "sale-collision",
+    sale: salePayload("sale-collision", { total: 99, subtotal: 99, received: 99 }),
+  }, "acceptCloudSale");
+  assert.equal(collision.body.error.status, "ALREADY_EXISTS");
+});
+
+test("cloud sale receiver requires active business-data membership", async () => {
+  const owner = await createUser();
+  const stranger = await createUser();
+  const storeId = "sale-numbering-permissions";
+  await seedMembership(storeId, owner.localId);
+  await seedStore(storeId, owner.localId);
+
+  const denied = await invoke(stranger.idToken, {
+    storeId,
+    saleId: "sale-unauthorized",
+    sale: salePayload("sale-unauthorized"),
+  }, "acceptCloudSale");
+  assert.equal(denied.body.error.status, "PERMISSION_DENIED");
+});
+
+test("concurrent duplicate sale submissions allocate only one number", async () => {
+  const user = await createUser();
+  const storeId = "sale-numbering-concurrent";
+  await seedMembership(storeId, user.localId);
+  await seedStore(storeId, user.localId);
+  const payload = salePayload("sale-concurrent");
+  const request = {
+    storeId, saleId: "sale-concurrent", sale: payload,
+  };
+  const results = await Promise.all([
+    invoke(user.idToken, request, "acceptCloudSale"),
+    invoke(user.idToken, request, "acceptCloudSale"),
+  ]);
+  const statuses = results.map((result) => result.body.result?.status).sort();
+  assert.deepEqual(statuses, ["applied", "duplicate"]);
+  assert.deepEqual(
+    results.map((result) => result.body.result?.saleNumber),
+    ["1", "1"],
+  );
+});
+
 
 test("applies once and returns the original result on duplicate replay", async () => {
   const user = await createUser();
