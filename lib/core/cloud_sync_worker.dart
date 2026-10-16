@@ -82,6 +82,30 @@ class CloudSyncRunSummary {
   final bool paused;
 }
 
+abstract interface class CloudSyncSessionGate {
+  Future<bool> canSyncStore(String storeId);
+}
+
+class FirebaseCloudSyncSessionGate implements CloudSyncSessionGate {
+  FirebaseCloudSyncSessionGate({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth ?? FirebaseAuth.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+
+  @override
+  Future<bool> canSyncStore(String storeId) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    final membership = await _firestore
+        .doc('stores/$storeId/members/${user.uid}')
+        .get();
+    return membership.exists &&
+        membership.data()?['uid'] == user.uid &&
+        membership.data()?['status'] == 'active';
+  }
+}
+
 /// Manually invoked, bounded worker for synthetic test events only.
 /// Not wired to app startup, lifecycle timers, or commercial repositories.
 class CloudSyncWorker {
@@ -89,19 +113,16 @@ class CloudSyncWorker {
     required CloudSyncOutbox outbox,
     required CloudSyncTransport transport,
     CloudSyncRetryPolicy retryPolicy = const CloudSyncRetryPolicy(),
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
+    CloudSyncSessionGate sessionGate = const _AlwaysDeniedSessionGate(),
   })  : _outbox = outbox,
         _transport = transport,
         _retryPolicy = retryPolicy,
-        _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _sessionGate = sessionGate;
 
   final CloudSyncOutbox _outbox;
   final CloudSyncTransport _transport;
   final CloudSyncRetryPolicy _retryPolicy;
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
+  final CloudSyncSessionGate _sessionGate;
 
   Future<CloudSyncRunSummary> runOnce({
     required String storeId,
@@ -113,15 +134,7 @@ class CloudSyncWorker {
     if (limit < 1 || limit > 100) {
       throw ArgumentError.value(limit, 'limit', 'El límite debe estar entre 1 y 100.');
     }
-    final user = _auth.currentUser;
-    if (user == null) return const CloudSyncRunSummary(paused: true);
-
-    final membership = await _firestore
-        .doc('stores/$storeId/members/${user.uid}')
-        .get();
-    if (!membership.exists ||
-        membership.data()?['uid'] != user.uid ||
-        membership.data()?['status'] != 'active') {
+    if (!await _sessionGate.canSyncStore(storeId)) {
       return const CloudSyncRunSummary(paused: true);
     }
 
@@ -173,4 +186,10 @@ class CloudSyncWorker {
       blocked: blocked,
     );
   }
+}
+
+class _AlwaysDeniedSessionGate implements CloudSyncSessionGate {
+  const _AlwaysDeniedSessionGate();
+  @override
+  Future<bool> canSyncStore(String storeId) async => false;
 }
