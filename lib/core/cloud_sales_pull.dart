@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
 import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/models/sale.dart';
+import 'package:stellar_pos/core/data/repositories/sale_repository.dart';
 
 class CloudSaleChange {
   const CloudSaleChange({
@@ -180,5 +183,62 @@ class CloudSalesPullCoordinator {
       if (!advanced) throw StateError('No se pudo avanzar el cursor de ventas.');
     }
     return page;
+  }
+}
+
+
+/// Minimal local write contract used by the remote sale applier.
+abstract interface class CloudSaleLocalStore {
+  Future<SaleRecord?> getById(String id);
+  Future<void> save(SaleRecord sale);
+}
+
+/// Adapter for the app's local Hive repository. It never emits outgoing sync
+/// events; incoming records therefore cannot form an echo loop.
+class SaleRepositoryCloudSaleLocalStore implements CloudSaleLocalStore {
+  SaleRepositoryCloudSaleLocalStore({SaleRepository? repository})
+      : _repository = repository ?? SaleRepository();
+  final SaleRepository _repository;
+
+  @override
+  Future<SaleRecord?> getById(String id) => _repository.getById(id);
+
+  @override
+  Future<void> save(SaleRecord sale) => _repository.save(sale);
+}
+
+/// Idempotent local upsert for accepted remote sales. A same-ID record with
+/// different business facts is preserved and surfaced as a conflict instead
+/// of being silently overwritten.
+class SaleRepositoryCloudRemoteApplier implements CloudSaleRemoteApplier {
+  SaleRepositoryCloudRemoteApplier({required CloudSaleLocalStore local})
+      : _local = local;
+  final CloudSaleLocalStore _local;
+
+  @override
+  Future<void> apply(CloudSaleChange change) async {
+    final incoming = change.sale;
+    final existing = await _local.getById(change.saleId);
+    if (existing != null && _businessFingerprint(existing) != _businessFingerprint(incoming)) {
+      throw StateError('Conflicto: existe una venta local con el mismo ID y distinto contenido.');
+    }
+    await _local.save(incoming);
+  }
+
+  String _businessFingerprint(SaleRecord sale) {
+    final data = Map<String, dynamic>.from(sale.toMap())
+      ..remove('ticketNumber')
+      ..remove('saleNumber')
+      ..remove('metadata');
+    return _canonical(data);
+  }
+
+  String _canonical(Object? value) {
+    if (value is Map) {
+      final keys = value.keys.map((key) => key.toString()).toList()..sort();
+      return '{${keys.map((key) => '${jsonEncode(key)}:${_canonical(value[key])}').join(',')}}';
+    }
+    if (value is List) return '[${value.map(_canonical).join(',')}]';
+    return jsonEncode(value);
   }
 }
