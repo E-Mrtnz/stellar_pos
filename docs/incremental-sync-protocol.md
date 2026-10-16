@@ -114,3 +114,12 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Se añadió `CloudFunctionsLedgerGateway` en Dart para llamar al receptor y leer páginas. Valida tienda, identidad, tipos de entidad, orden de versiones y cursor antes de entregar los datos al coordinador.
 - El inventario remoto usa movimientos firmados e inmutables, no una sobrescritura de `Product.stock`. La recepción de páginas aún requiere un applier local que proyecte movimientos de manera idempotente y un cursor Hive conectado a esa aplicación.
 - **No es todavía sincronización comercial completa ni activada.** La cola general sigue limitada a eventos sintéticos; el gateway ledger no se conecta automáticamente a repositorios ni al planificador. Productos descriptivos, proyección de inventario, recepción/aplicación de compras y movimientos monetarios necesitan coordinadores locales y pruebas end-to-end antes de habilitarse. No desplegar Functions ni reglas en producción.
+
+
+## Applier local durable para ledger — 2026-10-16
+
+- Se añadió `DurableCloudLedgerRemoteApplier`, un dispatcher local con recibos durables por evento. Valida identidad y contenido, evita volver a ejecutar eventos cuyo recibo ya existe y guarda el recibo después de que el manejador de entidad termina correctamente.
+- El dispatcher exige un manejador explícito para cada tipo; si falta, falla de forma cerrada. Esto evita fingir que ya existen reglas de proyección para inventario, compras, deudas o saldo electrónico.
+- Cada manejador sigue obligado a ser idempotente por ID de evento/entidad: una interrupción puede ocurrir después de guardar la proyección local y antes del recibo. Los recibos en una caja separada no garantizan atomicidad entre la proyección comercial y el cursor.
+- Se añadieron pruebas para repetición, colisión de contenido, fallo de persistencia y manejador ausente, integradas en CI.
+- **Estado pendiente:** los manejadores reales aún no están conectados a los repositorios de negocio; el envío comercial general sigue bloqueado y el scheduler no está activado. No habilitar sincronización comercial ni desplegar Functions/reglas a producción hasta cerrar esa integración y validar los flujos completos en emuladores.
