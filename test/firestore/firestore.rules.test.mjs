@@ -389,7 +389,7 @@ test('active membership does not enable writes to synthetic sync-event documents
   }));
 });
 
-test('a revoked member cannot read store metadata or its own membership', async () => {
+test('a revoked member cannot read store metadata but can inspect their own status', async () => {
   const storeId = 'revoked-membership-boundary';
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
@@ -413,6 +413,6 @@ test('a revoked member cannot read store metadata or its own membership', async 
 
   const db = testEnv.authenticatedContext('user-a').firestore();
   await assertFails(getDoc(doc(db, `stores/${storeId}`)));
-  await assertFails(getDoc(doc(db, `stores/${storeId}/members/user-a`)));
+  assert.equal((await getDoc(doc(db, `stores/${storeId}/members/user-a`))).data().status, 'revoked');
 });
 
