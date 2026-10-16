@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stellar_pos/core/cloud_account_screen.dart';
 import 'package:stellar_pos/core/cloud_auth_gateway.dart';
 import 'package:stellar_pos/core/cloud_store_repository.dart';
@@ -131,6 +132,8 @@ class _FakeActiveStoreSelection implements ActiveCloudStoreSelection {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
   testWidgets('local checkout does not require cloud login', (tester) async {
     final gateway = _FakeCloudAuthGateway();
     await tester.pumpWidget(
