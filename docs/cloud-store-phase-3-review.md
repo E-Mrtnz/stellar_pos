@@ -136,6 +136,7 @@ Se incorporan dos callable functions del backend:
 
 - `createStoreInvitation`: exige membresía activa de propietario y que el UID coincida con `ownerUid`; permite solo los roles `manager`, `cashier` y `viewer`; limita la vigencia a 1–168 horas y los usos a 1–10. Genera un código aleatorio de alta entropía, devuelve el código una sola vez y guarda únicamente su hash SHA-256.
 - `acceptStoreInvitation`: exige sesión autenticada, valida el código y la tienda en el servidor y, dentro de una transacción, comprueba vigencia, revocación y límite de usos, crea la membresía activa con el rol autorizado y consume el uso. No permite que el cliente elija su UID o rol.
+- `revokeStoreInvitation`: permite al propietario activo invalidar un código mediante una transacción; el código revocado no puede aceptarse.
 
 Las reglas de Firestore continúan cerrando las escrituras directas a invitaciones y membresías; las funciones usan Admin SDK para la operación confiable. El código de invitación es un secreto tipo bearer: debe compartirse solo con la persona deseada y no registrarse en logs. La membresía de un usuario que ya tenga un documento —incluido uno revocado— no se reactiva automáticamente.
 

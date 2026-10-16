@@ -266,3 +266,47 @@ exports.acceptStoreInvitation = onCall(async (request) => {
     return { storeId: data.storeId, role: invitation.role, status: "active" };
   });
 });
+
+
+/** Revokes an invitation before it has been exhausted. */
+exports.revokeStoreInvitation = onCall(async (request) => {
+  const uid = requireAuthenticatedUid(request);
+  const data = request.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)
+      || Object.keys(data).some((key) => !["storeId", "invitationCode"].includes(key))
+      || typeof data.invitationCode !== "string"
+      || !/^[A-Za-z0-9_-]{32}$/.test(data.invitationCode)) {
+    throw new HttpsError("invalid-argument", "Invitation request is invalid.");
+  }
+  validateStoreId(data.storeId);
+  const tokenHash = hashInvitationCode(data.invitationCode);
+  const storeRef = db.doc(`stores/${data.storeId}`);
+  const memberRef = db.doc(`stores/${data.storeId}/members/${uid}`);
+  const invitationRef = db.doc(`stores/${data.storeId}/invitations/${tokenHash}`);
+
+  await db.runTransaction(async (transaction) => {
+    const [storeSnap, memberSnap, invitationSnap] = await Promise.all([
+      transaction.get(storeRef),
+      transaction.get(memberRef),
+      transaction.get(invitationRef),
+    ]);
+    if (!storeSnap.exists || !invitationSnap.exists) {
+      throw new HttpsError("not-found", "Invitation is invalid or unavailable.");
+    }
+    if (!memberSnap.exists || memberSnap.get("uid") !== uid
+        || memberSnap.get("status") !== "active"
+        || memberSnap.get("role") !== "owner"
+        || storeSnap.get("ownerUid") !== uid) {
+      throw new HttpsError("permission-denied", "Only the active store owner can revoke invitations.");
+    }
+    if (invitationSnap.get("tokenHash") !== tokenHash) {
+      throw new HttpsError("not-found", "Invitation is invalid or unavailable.");
+    }
+    transaction.update(invitationRef, {
+      revoked: true,
+      revokedAt: FieldValue.serverTimestamp(),
+      revokedByUid: uid,
+    });
+  });
+  return { storeId: data.storeId, revoked: true };
+});

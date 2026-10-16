@@ -34,6 +34,11 @@ abstract interface class CloudInvitationGateway {
     required String storeId,
     required String invitationCode,
   });
+
+  Future<void> revokeInvitation({
+    required String storeId,
+    required String invitationCode,
+  });
 }
 
 class CreatedStoreInvitation {
@@ -248,4 +253,21 @@ class CloudStoreRepository implements CloudStoreGateway, CloudInvitationGateway 
       storeId: data['storeId'] as String,
       role: data['role'] as String,
     );
+  
+  @override
+  Future<void> revokeInvitation({
+    required String storeId,
+    required String invitationCode,
+  }) async {
+    await CloudFirebase.ensureReady();
+    if (_auth.currentUser == null) {
+      throw StateError('Inicia sesión para revocar una invitación.');
+    }
+    await _functions.httpsCallable('revokeStoreInvitation').call(
+      <String, Object?>{
+        'storeId': storeId.trim(),
+        'invitationCode': invitationCode.trim(),
+      },
+    );
   }
+}

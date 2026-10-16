@@ -289,3 +289,28 @@ test("invitation cannot be accepted by an unauthenticated caller or another stor
     storeId: "different-store", invitationCode: code,
   })).body.error.status, "NOT_FOUND");
 });
+
+
+test("owner can revoke an invitation and the code can no longer be accepted", async () => {
+  const owner = await createUser();
+  const joiner = await createUser();
+  const storeId = "invitation-revocation";
+  await seedMembership(storeId, owner.localId, "active");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `stores/${storeId}`), {
+      name: "Invitation test store", ownerUid: owner.localId, schemaVersion: 1,
+    });
+  });
+  const created = await invokeInvitation("createStoreInvitation", owner.idToken, {
+    storeId, role: "cashier",
+  });
+  const code = created.body.result.invitationCode;
+  const revoked = await invokeInvitation("revokeStoreInvitation", owner.idToken, {
+    storeId, invitationCode: code,
+  });
+  assert.equal(revoked.body.result.revoked, true);
+  const accepted = await invokeInvitation("acceptStoreInvitation", joiner.idToken, {
+    storeId, invitationCode: code,
+  });
+  assert.equal(accepted.body.error.status, "FAILED_PRECONDITION");
+});

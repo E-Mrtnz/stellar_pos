@@ -396,6 +396,11 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                           icon: const Icon(Icons.copy),
                           label: const Text('Copiar código'),
                         ),
+                        TextButton.icon(
+                          onPressed: _invitationBusy ? null : _revokeInvitation,
+                          icon: const Icon(Icons.link_off),
+                          label: const Text('Revocar código'),
+                        ),
                       ],
                       const Divider(height: 28),
                       Text(
@@ -568,6 +573,30 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
       if (!mounted) return;
       setState(() => _invitationMessage =
           'Error: no se pudo generar la invitación. Comprueba que seas propietario y que las funciones estén desplegadas.');
+    } finally {
+      if (mounted) setState(() => _invitationBusy = false);
+    }
+  }
+
+  Future<void> _revokeInvitation() async {
+    final storeId = _selectedStoreId;
+    final code = _invitationCode;
+    if (_invitationBusy || storeId == null || code == null) return;
+    setState(() { _invitationBusy = true; _invitationMessage = null; });
+    try {
+      await widget.invitationGateway.revokeInvitation(
+        storeId: storeId,
+        invitationCode: code,
+      );
+      if (!mounted) return;
+      setState(() {
+        _invitationCode = null;
+        _invitationMessage = 'Invitación revocada; el código ya no se puede usar.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _invitationMessage =
+          'Error: no se pudo revocar el código. Comprueba que seas propietario y que las funciones estén desplegadas.');
     } finally {
       if (mounted) setState(() => _invitationBusy = false);
     }
