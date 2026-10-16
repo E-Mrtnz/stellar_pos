@@ -1,6 +1,6 @@
 # Contrato de idempotencia remota para sincronización incremental
 
-**Estado:** especificación pendiente de implementación. No es un receptor desplegado ni habilita sincronización comercial.
+**Estado (2026-10-16):** receptor confiable y transporte cliente implementados solo para `syntheticTestValue`, con pruebas de emulador. El contrato comercial sigue pendiente; nada está desplegado en producción ni se habilita sincronización comercial.
 
 ## Objetivo y límite de confianza
 
@@ -88,3 +88,10 @@ La transacción debe leer primero el recibo delimitado por tienda/evento; para u
 ### Condición de activación
 
 No conectar el receptor con la outbox ni con repositorios comerciales hasta que la suite de Functions Emulator cubra los casos anteriores y la suite de reglas permanezca verde. No desplegar Functions ni reglas en producción como parte de esta fase. Las pruebas existentes de reglas verdes no se deben interpretar como prueba de idempotencia de servidor.
+
+
+## Estado adicional del cliente (2026-10-16)
+
+El worker manual `CloudSyncWorker.runOnce` valida sesión/membresía, limita cada lote, conserva el mismo `eventId` en reintentos y solo marca entregado después de respuesta `applied` o `duplicate`. El transporte integrado permite únicamente la entidad sintética de prueba y rechaza otras entidades antes de enviar. La outbox persiste el payload y detecta colisiones comparando JSON canónico. La política de conflictos y el cursor local monotónico están probados de forma aislada.
+
+No hay aún un worker programado en segundo plano, un pull remoto paginado ni coordinación atómica entre las mutaciones de las cajas Hive comerciales y la outbox. Tampoco existe una función de venta comercial que valide todos los campos de `SaleRecord` y asigne `saleNumber` en la misma transacción idempotente. Estos puntos son puertas obligatorias antes de habilitar ventas, productos, inventario, pagos o deudas. Mantener las reglas y Functions sin desplegar en producción.
