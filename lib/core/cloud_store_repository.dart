@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stellar_pos/core/cloud_firebase.dart';
 
@@ -21,6 +22,46 @@ class CloudStore {
 }
 
 /// Application-facing boundary for explicit store creation.
+abstract interface class CloudInvitationGateway {
+  Future<CreatedStoreInvitation> createInvitation({
+    required String storeId,
+    required String role,
+    int expiresInHours = 24,
+    int maxUses = 1,
+  });
+
+  Future<AcceptedStoreInvitation> acceptInvitation({
+    required String storeId,
+    required String invitationCode,
+  });
+}
+
+class CreatedStoreInvitation {
+  const CreatedStoreInvitation({
+    required this.storeId,
+    required this.code,
+    required this.role,
+    required this.expiresAt,
+    required this.maxUses,
+  });
+
+  final String storeId;
+  final String code;
+  final String role;
+  final DateTime expiresAt;
+  final int maxUses;
+}
+
+class AcceptedStoreInvitation {
+  const AcceptedStoreInvitation({
+    required this.storeId,
+    required this.role,
+  });
+
+  final String storeId;
+  final String role;
+}
+
 abstract interface class CloudStoreGateway {
   Future<CloudStore> createStore({required String name});
 
@@ -30,23 +71,30 @@ abstract interface class CloudStoreGateway {
 
 /// Explicit store-creation operations. This repository does not synchronize
 /// products, sales, inventory, or any other local Hive records.
-class CloudStoreRepository implements CloudStoreGateway {
+class CloudStoreRepository implements CloudStoreGateway, CloudInvitationGateway {
   CloudStoreRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
     Random? random,
+    FirebaseFunctions? functions,
   })  : _firestoreOverride = firestore,
         _authOverride = auth,
-        _random = random ?? Random.secure();
+        _random = random ?? Random.secure(),
+        _functionsOverride = functions;
 
   final FirebaseFirestore? _firestoreOverride;
   final FirebaseAuth? _authOverride;
   final Random _random;
+  final FirebaseFunctions? _functionsOverride;
+
 
   FirebaseFirestore get _firestore =>
       _firestoreOverride ?? FirebaseFirestore.instance;
 
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
+
+  FirebaseFunctions get _functions =>
+      _functionsOverride ?? FirebaseFunctions.instance;
 
   static const _alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -145,3 +193,59 @@ class CloudStoreRepository implements CloudStoreGateway {
         growable: false,
       ).join();
 }
+
+
+  @override
+  Future<CreatedStoreInvitation> createInvitation({
+    required String storeId,
+    required String role,
+    int expiresInHours = 24,
+    int maxUses = 1,
+  }) async {
+    await CloudFirebase.ensureReady();
+    if (_auth.currentUser == null) {
+      throw StateError('Inicia sesión para crear una invitación.');
+    }
+    final result = await _functions.httpsCallable('createStoreInvitation').call(
+      <String, Object?>{
+        'storeId': storeId,
+        'role': role,
+        'expiresInHours': expiresInHours,
+        'maxUses': maxUses,
+      },
+    );
+    final data = Map<String, dynamic>.from(result.data as Map);
+    final expiry = DateTime.tryParse(data['expiresAt'] as String? ?? '');
+    if (data['invitationCode'] is! String || expiry == null) {
+      throw const FormatException('El servidor devolvió una invitación inválida.');
+    }
+    return CreatedStoreInvitation(
+      storeId: data['storeId'] as String,
+      code: data['invitationCode'] as String,
+      role: data['role'] as String,
+      expiresAt: expiry,
+      maxUses: data['maxUses'] as int,
+    );
+  }
+
+  @override
+  Future<AcceptedStoreInvitation> acceptInvitation({
+    required String storeId,
+    required String invitationCode,
+  }) async {
+    await CloudFirebase.ensureReady();
+    if (_auth.currentUser == null) {
+      throw StateError('Inicia sesión para aceptar una invitación.');
+    }
+    final result = await _functions.httpsCallable('acceptStoreInvitation').call(
+      <String, Object?>{
+        'storeId': storeId.trim(),
+        'invitationCode': invitationCode.trim(),
+      },
+    );
+    final data = Map<String, dynamic>.from(result.data as Map);
+    return AcceptedStoreInvitation(
+      storeId: data['storeId'] as String,
+      role: data['role'] as String,
+    );
+  }

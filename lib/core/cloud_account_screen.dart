@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 
 import 'cloud_auth_gateway.dart';
 import 'cloud_auth_screen.dart';
@@ -13,11 +14,13 @@ class CloudAccountScreen extends StatefulWidget {
   const CloudAccountScreen({
     required this.gateway,
     this.storeGateway,
+    this.invitationGateway,
     super.key,
   });
 
   final CloudAuthGateway gateway;
   final CloudStoreGateway? storeGateway;
+  final CloudInvitationGateway? invitationGateway;
 
   @override
   State<CloudAccountScreen> createState() => _CloudAccountScreenState();
@@ -75,6 +78,10 @@ class _CloudAccountScreenState extends State<CloudAccountScreen> {
             user: user,
             authGateway: widget.gateway,
             storeGateway: _storeGateway,
+            invitationGateway: widget.invitationGateway ??
+                (_storeGateway is CloudInvitationGateway
+                    ? _storeGateway as CloudInvitationGateway
+                    : CloudStoreRepository()),
           );
         },
       ),
@@ -87,12 +94,14 @@ class _SignedInCloudPanel extends StatefulWidget {
     required this.user,
     required this.authGateway,
     required this.storeGateway,
+    required this.invitationGateway,
     super.key,
   });
 
   final CloudAuthUser user;
   final CloudAuthGateway authGateway;
   final CloudStoreGateway storeGateway;
+  final CloudInvitationGateway invitationGateway;
 
   @override
   State<_SignedInCloudPanel> createState() => _SignedInCloudPanelState();
@@ -104,6 +113,13 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
   String? _errorMessage;
   late Future<List<CloudStore>> _storesFuture;
   String? _selectedStoreId;
+  final _joinStoreIdController = TextEditingController();
+  final _joinCodeController = TextEditingController();
+  String _invitationRole = 'cashier';
+  bool _invitationBusy = false;
+  bool _acceptingInvitation = false;
+  String? _invitationCode;
+  String? _invitationMessage;
 
   @override
   void initState() {
@@ -121,6 +137,8 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
   @override
   void dispose() {
     _storeNameController.dispose();
+    _joinStoreIdController.dispose();
+    _joinCodeController.dispose();
     super.dispose();
   }
 
@@ -319,24 +337,113 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              const Card(
+              Card(
                 child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(Icons.lock_outline),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Las invitaciones todavía no están habilitadas. '
-                          'Se activarán cuando exista una aceptación segura '
-                          'que valide el código y cree la membresía sin '
-                          'permitir que alguien se asigne permisos por su cuenta. '
-                          'Por ahora, no compartas códigos ni cambies permisos '
-                          'manualmente en Firestore.',
+                      const Text(
+                        'Solo el propietario de la tienda puede generar una invitación. '
+                        'El código se muestra una sola vez; compártelo únicamente con la persona autorizada.',
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _invitationRole,
+                        decoration: const InputDecoration(
+                          labelText: 'Permiso de la persona invitada',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'manager', child: Text('Administrador')),
+                          DropdownMenuItem(value: 'cashier', child: Text('Cajero')),
+                          DropdownMenuItem(value: 'viewer', child: Text('Solo lectura')),
+                        ],
+                        onChanged: _invitationBusy ? null : (value) {
+                          if (value != null) setState(() => _invitationRole = value);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: _invitationBusy || _selectedStoreId == null
+                            ? null
+                            : _createInvitation,
+                        icon: _invitationBusy
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.person_add_alt_1),
+                        label: Text(_invitationBusy
+                            ? 'Generando código…'
+                            : 'Generar invitación para la tienda seleccionada'),
+                      ),
+                      if (_invitationCode != null) ...[
+                        const SizedBox(height: 12),
+                        const Text('Código de invitación (cópialo ahora):'),
+                        SelectableText(
+                          _invitationCode!,
+                          key: const ValueKey('store-invitation-code'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            await Clipboard.setData(ClipboardData(text: _invitationCode!));
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Código copiado.')),
+                            );
+                          },
+                          icon: const Icon(Icons.copy),
+                          label: const Text('Copiar código'),
+                        ),
+                      ],
+                      const Divider(height: 28),
+                      Text(
+                        'Unirse a una tienda',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _joinStoreIdController,
+                        decoration: const InputDecoration(
+                          labelText: 'ID de la tienda',
+                          border: OutlineInputBorder(),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _joinCodeController,
+                        autocorrect: false,
+                        decoration: const InputDecoration(
+                          labelText: 'Código de invitación',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _acceptingInvitation ? null : _acceptInvitation,
+                        icon: _acceptingInvitation
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.group_add_outlined),
+                        label: Text(_acceptingInvitation
+                            ? 'Validando invitación…'
+                            : 'Aceptar invitación'),
+                      ),
+                      if (_invitationMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          _invitationMessage!,
+                          key: const ValueKey('store-invitation-message'),
+                          style: TextStyle(
+                            color: _invitationMessage!.startsWith('Error:')
+                                ? Theme.of(context).colorScheme.error
+                                : Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -435,6 +542,71 @@ class _SignedInCloudPanelState extends State<_SignedInCloudPanel> {
         ),
       ),
     );
+  }
+
+
+  Future<void> _createInvitation() async {
+    final storeId = _selectedStoreId;
+    if (_invitationBusy || storeId == null) return;
+    setState(() {
+      _invitationBusy = true;
+      _invitationMessage = null;
+      _invitationCode = null;
+    });
+    try {
+      final invitation = await widget.invitationGateway.createInvitation(
+        storeId: storeId,
+        role: _invitationRole,
+      );
+      if (!mounted) return;
+      setState(() {
+        _invitationCode = invitation.code;
+        _invitationMessage =
+            'Invitación válida hasta ${invitation.expiresAt.toLocal()}.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _invitationMessage =
+          'Error: no se pudo generar la invitación. Comprueba que seas propietario y que las funciones estén desplegadas.');
+    } finally {
+      if (mounted) setState(() => _invitationBusy = false);
+    }
+  }
+
+  Future<void> _acceptInvitation() async {
+    if (_acceptingInvitation) return;
+    final storeId = _joinStoreIdController.text.trim();
+    final code = _joinCodeController.text.trim();
+    if (storeId.isEmpty || code.isEmpty) {
+      setState(() => _invitationMessage =
+          'Error: introduce el ID de la tienda y el código.');
+      return;
+    }
+    setState(() {
+      _acceptingInvitation = true;
+      _invitationMessage = null;
+    });
+    try {
+      final accepted = await widget.invitationGateway.acceptInvitation(
+        storeId: storeId,
+        invitationCode: code,
+      );
+      if (!mounted) return;
+      setState(() {
+        _joinStoreIdController.clear();
+        _joinCodeController.clear();
+        _selectedStoreId = accepted.storeId;
+        _storesFuture = widget.storeGateway.listMyStores();
+        _invitationMessage =
+            'Te uniste a la tienda con el rol: ${accepted.role}.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _invitationMessage =
+          'Error: la invitación no se pudo aceptar. Puede haber vencido, agotado sus usos o no corresponder a esa tienda.');
+    } finally {
+      if (mounted) setState(() => _acceptingInvitation = false);
+    }
   }
 
   Future<void> _signOut(BuildContext context) async {
