@@ -1,6 +1,49 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_ledger_sync.dart';
 
+
+class _MemoryCursorStorage implements CloudSyncCursorStorage {
+  final Map<String, Object?> valuesByKey = <String, Object?>{};
+  @override
+  Object? get(String key) => valuesByKey[key];
+  @override
+  Iterable<Object?> get values => valuesByKey.values;
+  @override
+  Future<void> put(String key, Object value) async => valuesByKey[key] = value;
+  @override
+  Future<void> flush() async {}
+}
+
+class _FakeLedgerGateway implements CloudLedgerGateway {
+  _FakeLedgerGateway(this.page);
+  CloudLedgerPullPage page;
+  @override
+  Future<CloudLedgerAcceptance> append({
+    required String storeId,
+    required CloudLedgerEntityType entityType,
+    required String entityId,
+    required Map<String, dynamic> entry,
+  }) async => CloudLedgerAcceptance(
+    entityType: entityType, entityId: entityId, version: 1, duplicate: false,
+  );
+  @override
+  Future<CloudLedgerPullPage> pull({
+    required String storeId,
+    required int afterVersion,
+    int limit = 50,
+  }) async => page;
+}
+
+class _FakeLedgerApplier implements CloudLedgerRemoteApplier {
+  bool fail = false;
+  final List<String> applied = <String>[];
+  @override
+  Future<void> apply(CloudLedgerChange change) async {
+    if (fail) throw StateError('simulated local persistence failure');
+    applied.add(change.eventId);
+  }
+}
+
 void main() {
   group('CloudLedgerAcceptance', () {
     test('accepts applied and duplicate receipts only for the expected ID', () {
