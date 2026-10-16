@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_account_screen.dart';
 import 'package:stellar_pos/core/cloud_auth_gateway.dart';
 import 'package:stellar_pos/core/cloud_store_repository.dart';
+import 'package:stellar_pos/core/cloud_active_store_selection.dart';
 
 class _FakeCloudAuthGateway implements CloudAuthGateway {
   final StreamController<CloudAuthUser?> controller =
@@ -107,6 +108,25 @@ class _FakeCloudStoreGateway implements CloudStoreGateway {
       name: name.trim(),
       ownerUid: 'uid-1',
     );
+  }
+}
+
+class _FakeActiveStoreSelection implements ActiveCloudStoreSelection {
+  final Map<String, String> values = <String, String>{};
+  Object? writeError;
+
+  @override
+  Future<String?> read(String userId) async => values[userId];
+
+  @override
+  Future<void> write(String userId, String storeId) async {
+    if (writeError != null) throw writeError!;
+    values[userId] = storeId;
+  }
+
+  @override
+  Future<void> clear(String userId) async {
+    values.remove(userId);
   }
 }
 
