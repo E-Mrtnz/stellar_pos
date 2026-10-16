@@ -165,7 +165,7 @@ class CloudSyncPullCoordinator {
           change.operation != 'set' ||
           change.payload.length != 1 ||
           change.payload['value'] is! String ||
-          change.version <= expectedVersion ||
+          change.version != expectedVersion + 1 ||
           change.localVersion < 1) {
         throw const FormatException('El cambio remoto incumple el contrato sintético.');
       }
