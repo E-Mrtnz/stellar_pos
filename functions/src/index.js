@@ -65,6 +65,8 @@ exports.acceptSyntheticSyncEvent = onCall(async (request) => {
   const memberRef = db.doc(`stores/${event.storeId}/members/${uid}`);
   const receiptRef = db.doc(`stores/${event.storeId}/syncReceipts/${event.eventId}`);
   const effectRef = db.doc(`stores/${event.storeId}/syncTestEffects/${event.entityId}`);
+  const cursorRef = db.doc(`stores/${event.storeId}/syncMetadata/cursor`);
+  const changeRef = db.doc(`stores/${event.storeId}/syncTestChanges/${event.eventId}`);
   const fingerprint = canonicalFingerprint(event);
 
   return db.runTransaction(async (transaction) => {
@@ -89,6 +91,7 @@ exports.acceptSyntheticSyncEvent = onCall(async (request) => {
     }
 
     const effectSnap = await transaction.get(effectRef);
+    const cursorSnap = await transaction.get(cursorRef);
     const currentVersion = effectSnap.exists ? effectSnap.get("version") : 0;
     if (event.localVersion !== currentVersion + 1) {
       throw new HttpsError("failed-precondition", "Version conflict.", {
@@ -97,10 +100,11 @@ exports.acceptSyntheticSyncEvent = onCall(async (request) => {
       });
     }
 
+    const remoteVersion = cursorSnap.exists ? cursorSnap.get("version") + 1 : 1;
     const result = {
       eventId: event.eventId,
       status: "applied",
-      remoteVersion: event.localVersion,
+      remoteVersion,
     };
     transaction.set(effectRef, {
       value: event.payload.value,
@@ -108,15 +112,84 @@ exports.acceptSyntheticSyncEvent = onCall(async (request) => {
       updatedBy: uid,
       updatedAt: FieldValue.serverTimestamp(),
     });
+    transaction.set(cursorRef, {
+      storeId: event.storeId,
+      version: remoteVersion,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(changeRef, {
+      storeId: event.storeId,
+      eventId: event.eventId,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      operation: event.operation,
+      localVersion: event.localVersion,
+      version: remoteVersion,
+      payload: { value: event.payload.value },
+      createdAt: FieldValue.serverTimestamp(),
+    });
     transaction.create(receiptRef, {
       eventId: event.eventId,
       fingerprint,
-      remoteVersion: event.localVersion,
+      remoteVersion,
       result,
       createdAt: FieldValue.serverTimestamp(),
     });
     return result;
   });
+});
+
+
+/**
+ * Returns a bounded page of synthetic changes after a per-store cursor.
+ * This callable never returns sales, products, inventory, payments, or debts.
+ */
+exports.pullSyntheticSyncChanges = onCall(async (request) => {
+  const uid = requireAuthenticatedUid(request);
+  const data = request.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)
+      || Object.keys(data).some((key) => !["storeId", "afterVersion", "limit"].includes(key))) {
+    throw new HttpsError("invalid-argument", "Pull request contains unsupported fields.");
+  }
+  validateStoreId(data.storeId);
+  const afterVersion = data.afterVersion === undefined ? 0 : data.afterVersion;
+  const limit = data.limit === undefined ? 50 : data.limit;
+  if (!Number.isSafeInteger(afterVersion) || afterVersion < 0
+      || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new HttpsError("invalid-argument", "Cursor or page size is out of range.");
+  }
+
+  const memberSnap = await db.doc(`stores/${data.storeId}/members/${uid}`).get();
+  if (!memberSnap.exists || memberSnap.get("uid") !== uid
+      || memberSnap.get("status") !== "active") {
+    throw new HttpsError("permission-denied", "Active store membership is required.");
+  }
+
+  const snapshot = await db.collection(`stores/${data.storeId}/syncTestChanges`)
+    .where("version", ">", afterVersion)
+    .orderBy("version", "asc")
+    .limit(limit)
+    .get();
+  const changes = snapshot.docs.map((document) => {
+    const change = document.data();
+    return {
+      storeId: change.storeId,
+      eventId: change.eventId,
+      entityType: change.entityType,
+      entityId: change.entityId,
+      operation: change.operation,
+      localVersion: change.localVersion,
+      version: change.version,
+      payload: change.payload,
+    };
+  });
+  return {
+    storeId: data.storeId,
+    afterVersion,
+    changes,
+    nextCursor: changes.length === 0 ? afterVersion : changes[changes.length - 1].version,
+    hasMore: changes.length === limit,
+  };
 });
 
 
