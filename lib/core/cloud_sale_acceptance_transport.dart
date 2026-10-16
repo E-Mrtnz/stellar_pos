@@ -46,11 +46,19 @@ class CloudSaleAcceptance {
   }
 }
 
+abstract interface class CloudSaleAcceptanceGateway {
+  @override
+  Future<CloudSaleAcceptance> accept({
+    required String storeId,
+    required SaleRecord sale,
+  });
+}
+
 /// Explicit transport for the server's idempotent sale-acceptance endpoint.
 ///
 /// This is intentionally not connected to the local sale repository or worker:
 /// callers must first implement recoverable local-write/outbox coordination.
-class CloudSaleAcceptanceTransport {
+class CloudSaleAcceptanceTransport implements CloudSaleAcceptanceGateway {
   CloudSaleAcceptanceTransport({FirebaseFunctions? functions})
       : _functions = functions ?? FirebaseFunctions.instance;
 
