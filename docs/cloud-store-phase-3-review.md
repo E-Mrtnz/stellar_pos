@@ -106,3 +106,25 @@ En `test/core/cloud_auth_screen_test.dart`, la prueba de proveedor social ahora 
 Los archivos se publicaron en la rama de GitHub, pero no se ejecutó `flutter test`, `flutter analyze` ni la suite de Firebase Emulator desde esta sesión. La consulta de estado de checks para el commit revisado no devolvió checks; por tanto, no debe interpretarse como una ejecución exitosa. Antes de considerar cerrada esta fase, ejecutar localmente las pruebas Flutter y `npm run test:rules`. La prueba del receptor requiere los emuladores Auth, Firestore y Functions mediante `npm run test:receiver`.
 
 Se mantiene la restricción: no desplegar reglas en Firebase real y no conectar ventas, productos, inventario, pagos o deudas a la nube.
+
+## Cierre de validación de la fase — 2026-10-16
+
+La validación automática publicada en GitHub Actions para el commit `5e7ac8988e94b5ce7a977e69a6120d635bb99ee5` terminó correctamente:
+
+- [STELLAR POS validation](https://github.com/E-Mrtnz/stellar_pos/actions/runs/38835184578): Flutter analyze/tests, pruebas del receptor sintético y pruebas de reglas Firestore, todos en verde.
+- [Flutter and cloud access regression tests](https://github.com/E-Mrtnz/stellar_pos/actions/runs/38835184676): pruebas de regresión de acceso a nube, en verde.
+
+La suite de reglas se amplió después para comprobar el comportamiento de una membresía revocada: el usuario pierde acceso a los metadatos de la tienda, pero puede consultar su propio documento de membresía para conocer su estado. La ejecución de CI para ese nuevo cambio debe confirmarse en el commit posterior.
+
+### Criterios de salida de esta fase
+
+Se considera validada la infraestructura de prueba, el control de acceso actual para tiendas, y el receptor **exclusivamente sintético**. No se considera implementada la sincronización comercial ni el flujo de invitaciones. Los siguientes requisitos son trabajo de una fase posterior y no deben resolverse habilitando escrituras genéricas:
+
+1. Diseñar una outbox durable conectada atómicamente a los cambios locales.
+2. Definir resolución de conflictos por entidad y cursores/versiones remotos.
+3. Implementar invitaciones con función confiable, expiración, uso limitado y aceptación atómica.
+4. Crear contratos y reglas específicos para cada tipo de dato comercial, con pruebas de dos dispositivos y modo offline.
+5. Desplegar reglas solo mediante una acción explícita tras confirmar el proyecto Firebase de destino.
+
+Los workflows de prueba usan el proyecto ficticio `demo-stellar-pos`; no despliegan reglas ni escriben en Firebase de producción. La caja local sigue siendo independiente de autenticación y conectividad, y las colecciones de ventas, productos, inventario, compras, pagos y deudas continúan cerradas a la nube.
+
