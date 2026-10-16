@@ -6,7 +6,7 @@ import 'package:stellar_pos/core/cloud_sync_worker.dart';
 class _MemoryStorage implements CloudSyncOutboxStorage {
   final Map<String, Object> data = <String, Object>{};
   @override
-  Object? get(String key) => values[key];
+  Object? get(String key) => data[key];
   @override
   Iterable<Object?> get values => data.values;
   @override
@@ -106,7 +106,7 @@ void main() {
 
       expect(result.blocked, 1);
       expect(transport.calls, 0);
-      expect(storage.values['event-1'], containsPair('status', 'blocked'));
+      expect(storage.data['event-1'], containsPair('status', 'blocked'));
     });
 
     test('returns transient failures to pending with stable event ID', () async {
