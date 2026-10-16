@@ -72,6 +72,8 @@ class CloudLedgerChange {
         map['storeId'] is! String ||
         map['eventId'] is! String ||
         map['entityId'] is! String ||
+        map['eventId'] != '${type.isEmpty ? '' : type.first.name}_${map['entityId']}' ||
+        map['operation'] != 'append' ||
         map['version'] is! int ||
         (map['version'] as int) < 1 ||
         payload is! Map ||
