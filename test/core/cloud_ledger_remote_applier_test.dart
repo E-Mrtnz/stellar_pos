@@ -43,8 +43,26 @@ void main() {
       await applier.apply(_change());
 
       expect(applications, 1);
-      expect(receipts.values, contains('inventoryMovement_move-1'));
+      expect(receipts.values, contains('store-a::inventoryMovement_move-1'));
       expect(receipts.flushes, 1);
+    });
+
+    test('keeps identical entity IDs isolated across stores', () async {
+      final receipts = _MemoryReceipts();
+      var applications = 0;
+      final applier = DurableCloudLedgerRemoteApplier(
+        receipts: receipts,
+        handlers: <CloudLedgerEntityType, CloudLedgerChangeHandler>{
+          CloudLedgerEntityType.inventoryMovement: (_) async { applications++; },
+        },
+      );
+
+      await applier.apply(_change(storeId: 'store-a'));
+      await applier.apply(_change(storeId: 'store-b'));
+
+      expect(applications, 2);
+      expect(receipts.values.keys, contains('store-a::inventoryMovement_move-1'));
+      expect(receipts.values.keys, contains('store-b::inventoryMovement_move-1'));
     });
 
     test('rejects reuse of a receipt ID with different payload', () async {
