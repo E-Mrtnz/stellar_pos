@@ -151,7 +151,7 @@ class SaleDetailDialog extends StatelessWidget {
     return category.isEmpty ? company : '$company · $category';
   }
 
-          String _money(double value) => '\${value.toStringAsFixed(2)}';
+  String _money(double value) => '\${value.toStringAsFixed(2)}';
 
   @override
   Widget build(BuildContext context) {
@@ -638,8 +638,8 @@ class SaleDetailDialog extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 7),
-          ...operation.itemsOut.map((item) => _operationLine('Sale', item)),
-          ...operation.itemsIn.map((item) => _operationLine('Entra', item)),
+          ...operation.itemsOut.map((item) => _operationLine(context, 'Sale', item)),
+          ...operation.itemsIn.map((item) => _operationLine(context, 'Entra', item)),
           const SizedBox(height: 5),
           Align(
             alignment: Alignment.centerRight,
@@ -665,7 +665,7 @@ class SaleDetailDialog extends StatelessWidget {
     );
   }
 
-  Widget _operationLine(String prefix, SaleItemRecord item) => Padding(
+  Widget _operationLine(BuildContext context, String prefix, SaleItemRecord item) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 1),
     child: Row(
       children: [
