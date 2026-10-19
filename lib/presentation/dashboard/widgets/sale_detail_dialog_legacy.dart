@@ -224,10 +224,10 @@ class SaleDetailDialog extends StatelessWidget {
                   children: [
                     _buildHeader(),
                     const SizedBox(height: 14),
-                    _buildItemsTable(),
+                    _buildItemsTable(context),
                     if (sale.operations.isNotEmpty) ...[
                       const SizedBox(height: 14),
-                      _buildOperations(),
+                      _buildOperations(context),
                     ],
                     const SizedBox(height: 14),
                     _buildTotals(),
@@ -456,7 +456,7 @@ class SaleDetailDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildItemsTable() => Container(
+  Widget _buildItemsTable(BuildContext context) => Container(
     decoration: BoxDecoration(
       border: Border.all(color: AppColors.border),
       borderRadius: BorderRadius.circular(9),
@@ -587,7 +587,7 @@ class SaleDetailDialog extends StatelessWidget {
     ),
   );
 
-  Widget _buildOperations() => Container(
+  Widget _buildOperations(BuildContext context) => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(11),
     decoration: BoxDecoration(
@@ -603,12 +603,12 @@ class SaleDetailDialog extends StatelessWidget {
           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        ...sale.operations.map(_operationCard),
+        ...sale.operations.map((operation) => _operationCard(context, operation)),
       ],
     ),
   );
 
-  Widget _operationCard(SaleOperationRecord operation) {
+  Widget _operationCard(BuildContext context, SaleOperationRecord operation) {
     final color = operation.type == SaleOperationType.change
         ? AppColors.primary
         : AppColors.warningOrange;
