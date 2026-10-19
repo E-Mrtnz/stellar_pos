@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_ledger_pull_sync_coordinator.dart';
 import 'package:stellar_pos/core/cloud_ledger_sync.dart';
 import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
-import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 import 'package:stellar_pos/core/cloud_sync_worker.dart';
 
 class _Gate implements CloudSyncSessionGate {
