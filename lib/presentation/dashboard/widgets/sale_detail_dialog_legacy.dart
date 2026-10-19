@@ -651,7 +651,7 @@ class SaleDetailDialog extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            '$prefix: $item.productName × $item.quantity',
+            '${prefix}: ${item.productName} × ${item.quantity}',
             style: const TextStyle(fontSize: 10),
           ),
         ),
