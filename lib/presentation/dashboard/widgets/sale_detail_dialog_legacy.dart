@@ -131,7 +131,7 @@ class SaleDetailDialog extends StatelessWidget {
     }
   }
 
-  String _displayProductName(SaleItemRecord item) {
+  String _displayProductName(BuildContext context, SaleItemRecord item) {
     final name = item.productName.trim();
     if (!item.isElectronicBalance || !name.contains("Instance of")) {
       return name;
@@ -528,7 +528,7 @@ class SaleDetailDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _displayProductName(item),
+                        _displayProductName(context, item),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 11),
@@ -671,7 +671,7 @@ class SaleDetailDialog extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            '${prefix}: ${item.productName} × ${item.quantity}',
+            '$prefix: ${_displayProductName(context, item)} × ${item.quantity}',
             style: const TextStyle(fontSize: 10),
           ),
         ),
