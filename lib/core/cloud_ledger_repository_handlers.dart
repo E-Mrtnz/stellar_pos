@@ -111,7 +111,7 @@ class CloudLedgerRepositoryHandlers {
     CloudLedgerEntityType type,
   ) {
     if (_canonicalJson(existing) != _canonicalJson(incoming)) {
-      throw StateError('Conflicto de contenido para ' + type.name + '.');
+      throw StateError('Conflicto de contenido para ${type.name}.');
     }
   }
 
