@@ -130,3 +130,10 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Se añadió `HiveCloudLedgerApplyReceiptStore`, que guarda recibos de aplicación por ID de evento en una caja Hive separada y permite recuperarlos tras cerrar/reabrir la base local.
 - El test de persistencia cubre que el recibo y su ámbito de tienda sobreviven a la reapertura. El dispatcher durable y esta implementación se incluyen en el análisis y las pruebas de CI.
 - Esto cierra la persistencia del recibo, pero no la atomicidad entre recibo y proyección comercial. Los handlers de cada entidad todavía deben hacer upsert idempotente y no generar eventos de salida al aplicar cambios remotos. Por esa razón, no se activa el pull comercial en la interfaz ni en el inicio de la app.
+
+
+## Aplicación local de registros del ledger — 2026-10-18
+
+- Se añadieron manejadores que hacen upsert idempotente por ID para registros de compra, movimientos de deuda y transacciones de saldo electrónico, rechazando reutilizaciones del mismo ID con contenido diferente.
+- Los movimientos de inventario remoto se conservan en una caja local inmutable con validación de producto y delta. **Todavía no modifican `Product.stock`**: hace falta una estrategia de proyección recuperable para evitar aplicar el delta dos veces si la app se interrumpe entre la escritura del stock y la del recibo.
+- Estos manejadores se conectan al dispatcher mediante un mapa explícito y no crean eventos de salida, pero todavía no se han conectado al pull comercial ni al scheduler. La sincronización sigue desactivada por defecto.
