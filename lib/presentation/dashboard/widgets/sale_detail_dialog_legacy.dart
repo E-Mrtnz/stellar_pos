@@ -53,7 +53,7 @@ class SaleDetailDialog extends StatelessWidget {
   }
 
   String _formatDate(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   String _formatTime(DateTime value) {
     final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
     final period = value.hour >= 12 ? 'PM' : 'AM';
@@ -82,7 +82,7 @@ class SaleDetailDialog extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Anular venta'),
         content: Text(
-          '¿Seguro que deseas anular la venta #$sale.ticketNumber? La venta permanecerá en el historial y se revertirá el inventario asociado.',
+          '¿Seguro que deseas anular la venta #${sale.ticketNumber}? La venta permanecerá en el historial y se revertirá el inventario asociado.',
         ),
         actions: [
           TextButton(
@@ -117,7 +117,7 @@ class SaleDetailDialog extends StatelessWidget {
       Navigator.of(context).pop();
       AppAlert.show(
         context,
-        'La venta #$sale.ticketNumber fue anulada y permanece en el historial.',
+        'La venta #${sale.ticketNumber} fue anulada y permanece en el historial.',
         title: 'Venta anulada',
         type: AppAlertType.success,
       );
@@ -182,7 +182,7 @@ class SaleDetailDialog extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '#$sale.ticketNumber',
+                    '#${sale.ticketNumber}',
                     style: AppTextStyles.ticketValue,
                   ),
                   const SizedBox(width: 8),
@@ -226,7 +226,7 @@ class SaleDetailDialog extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            'Código de ticket: $sale.ticketNumber',
+                            'Código de ticket: ${sale.ticketNumber}',
                             style: const TextStyle(
                               fontSize: 10,
                               color: AppColors.textSecondary,
@@ -386,7 +386,7 @@ class SaleDetailDialog extends StatelessWidget {
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 9),
-      _infoRow('N.º de ticket', '#$sale.ticketNumber'),
+      _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
       _infoRow('Estado', sale.isAnnulled ? 'ANULADA' : 'COMPLETADA'),
       _dateInfoRow(),
 
@@ -530,7 +530,7 @@ class SaleDetailDialog extends StatelessWidget {
                 SizedBox(
                   width: 40,
                   child: Text(
-                    '$item.quantity',
+                    '${item.quantity}',
                     textAlign: TextAlign.right,
                     style: AppTextStyles.ticketValue,
                   ),
@@ -835,7 +835,7 @@ class _ReturnDialogState extends State<_ReturnDialog> {
                 DropdownMenuItem(
                   value: item.productId,
                   child: Text(
-                    '$item.productName · $item.quantity disponibles',
+                    '${item.productName} · ${item.quantity} disponibles',
                   ),
                 ),
             ],
@@ -952,7 +952,7 @@ class _ChangeDialogState extends State<_ChangeDialog> {
                 DropdownMenuItem(
                   value: item.productId,
                   child: Text(
-                    '$item.productName · $item.quantity disponibles',
+                    '${item.productName} · ${item.quantity} disponibles',
                   ),
                 ),
             ],
@@ -980,7 +980,7 @@ class _ChangeDialogState extends State<_ChangeDialog> {
                 DropdownMenuItem(
                   value: product.id,
                   child: Text(
-                    '$product.name · ${_moneyValue(product.price)}',
+                    '${product.name} · ${_moneyValue(product.price)}',
                   ),
                 ),
             ],
