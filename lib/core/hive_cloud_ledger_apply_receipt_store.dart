@@ -12,7 +12,7 @@ class HiveCloudLedgerApplyReceiptStore
     _refreshCache();
   }
 
-  static Future<HiveCloudLedgerApplyReceiptStore> open({
+  /// Creates a store around an already-open Hive box (also useful in tests).\n  factory HiveCloudLedgerApplyReceiptStore.forBox(\n    String boxName,\n    Box<dynamic> box,\n  ) => HiveCloudLedgerApplyReceiptStore._(boxName, box);\n\n  static Future<HiveCloudLedgerApplyReceiptStore> open({
     String boxName = 'cloud_ledger_apply_receipts',
   }) async {
     final box = await LocalStorage.openBox(boxName);
