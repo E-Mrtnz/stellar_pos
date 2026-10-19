@@ -1,4 +1,5 @@
 import 'package:stellar_pos/core/cloud_ledger_sync.dart';
+import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
 import 'package:stellar_pos/core/cloud_sync_worker.dart';
 
 /// Membership-gated wrapper for an explicit ledger pull. The underlying
