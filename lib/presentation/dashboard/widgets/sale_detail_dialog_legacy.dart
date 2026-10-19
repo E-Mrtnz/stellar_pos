@@ -151,7 +151,7 @@ class SaleDetailDialog extends StatelessWidget {
     return category.isEmpty ? company : '$company · $category';
   }
 
-        String _money(double value) => '\${value.toStringAsFixed(2)}';
+          String _money(double value) => '\${value.toStringAsFixed(2)}';
 
   @override
   Widget build(BuildContext context) {
