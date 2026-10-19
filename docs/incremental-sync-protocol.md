@@ -144,3 +144,6 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Se añadió `CloudLedgerSyncCoordinator`: antes de enviar una entrada inmutable valida IDs estables y exige sesión/membresía activa. No reintenta con IDs nuevos ni altera el registro local.
 - Incluye pruebas de membresía denegada, identidad estable y aceptación explícita.
 - Sigue siendo un punto de entrada manual para quien lo integre; no está enlazado a mutaciones de repositorios, checkout ni ejecución en segundo plano. La sincronización automática permanece deshabilitada hasta completar la proyección de inventario y la integración recoverable con el diario local.
+
+
+- Se añadió una fábrica de composición que conecta el dispatcher durable, los recibos Hive y los manejadores locales actuales. La fábrica solo construye servicios: no inicia pulls, no activa el scheduler ni cambia el comportamiento de caja.
