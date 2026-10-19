@@ -57,7 +57,7 @@ class DurableCloudLedgerRemoteApplier implements CloudLedgerRemoteApplier {
 
   Future<void> _applySerialized(CloudLedgerChange change) async {
     _validate(change);
-    final existing = _receipts.get(change.eventId);
+    final receiptKey = _receiptKey(change);\n    final existing = _receipts.get(receiptKey);
     if (existing != null) {
       if (existing is! Map ||
           existing['storeId'] != change.storeId ||
@@ -75,7 +75,7 @@ class DurableCloudLedgerRemoteApplier implements CloudLedgerRemoteApplier {
       throw StateError('No hay un applier local para ${change.entityType.name}.');
     }
     await handler(change);
-    await _receipts.put(change.eventId, <String, Object?>{
+    await _receipts.put(receiptKey, <String, Object?>{
       'storeId': change.storeId,
       'entityType': change.entityType.name,
       'entityId': change.entityId,
@@ -99,7 +99,7 @@ class DurableCloudLedgerRemoteApplier implements CloudLedgerRemoteApplier {
     jsonEncode(change.payload);
   }
 
-  String _fingerprint(CloudLedgerChange change) =>
+  String _receiptKey(CloudLedgerChange change) =>\n      '${change.storeId}::${change.eventId}';\n\n  String _fingerprint(CloudLedgerChange change) =>
       jsonEncode(_canonical(change.payload));
 
   Object? _canonical(Object? value) {
