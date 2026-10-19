@@ -70,6 +70,7 @@ jobs:
           test/core/cloud_ledger_remote_applier_test.dart
           test/core/hive_cloud_ledger_apply_receipt_store_test.dart
           test/core/cloud_ledger_sync_coordinator_test.dart
+          test/core/cloud_ledger_pull_sync_coordinator_test.dart
           test/core/cloud_sync_scheduler_test.dart
           test/core/cloud_sync_worker_test.dart
           test/core/cloud_sync_pull_test.dart
