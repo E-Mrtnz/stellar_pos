@@ -131,7 +131,27 @@ class SaleDetailDialog extends StatelessWidget {
     }
   }
 
-  String _money(double value) => '\$${value.toStringAsFixed(2)}';
+  String _displayProductName(SaleItemRecord item) {
+    final name = item.productName.trim();
+    if (!item.isElectronicBalance || !name.contains("Instance of")) {
+      return name;
+    }
+
+    final provider = context.read<ElectronicBalanceProvider>();
+    final accountId = item.electronicBalanceAccountId ??
+        (item.productId.startsWith('electronic-balance:')
+            ? item.productId.substring('electronic-balance:'.length)
+            : '');
+    final account = accountId.isEmpty ? null : provider.findAccount(accountId);
+    final company = account?.companyName.trim() ?? '';
+    final category = item.electronicBalanceCategory?.trim() ?? '';
+    if (company.isEmpty) {
+      return category.isEmpty ? 'Saldo electrónico' : 'Saldo electrónico · $category';
+    }
+    return category.isEmpty ? company : '$company · $category';
+  }
+
+  String _money(double value) => '\${value.toStringAsFixed(2)}';
 
   @override
   Widget build(BuildContext context) {
@@ -508,7 +528,7 @@ class SaleDetailDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.productName,
+                        _displayProductName(item),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 11),
