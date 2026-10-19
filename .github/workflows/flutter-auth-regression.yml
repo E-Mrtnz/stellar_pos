@@ -53,6 +53,7 @@ jobs:
           lib/core/cloud_ledger_repository_handlers.dart
           lib/core/cloud_ledger_sync_coordinator.dart
           lib/core/cloud_ledger_sync_composition.dart
+          lib/core/cloud_ledger_pull_sync_coordinator.dart
       - name: Run cloud access and incremental sync regression tests
         run: >-
           flutter test
