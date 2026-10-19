@@ -181,7 +181,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
 
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _dateText(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
   List<Product> _visibleProducts(ProductProvider provider) {
     final query = _searchController.text.trim().toLowerCase();
@@ -404,7 +404,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                 ),
               ),
               Text(
-                '$products.length disponibles',
+                '${products.length} disponibles',
                 style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
               ),
             ],
@@ -522,7 +522,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Costo ${_money(product.cost)} · Stock $product.stock',
+                    'Costo ${_money(product.cost)} · Stock ${product.stock}',
                     style: const TextStyle(
                       fontSize: 7,
                       color: AppColors.textSecondary,
@@ -793,17 +793,17 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
       }
       if (item.unitsPerPresentation <= 0) {
         _error(
-          'Las unidades por presentación deben ser mayores que cero en $item.product.name.',
+          'Las unidades por presentación deben ser mayores que cero en ${item.product.name}.',
         );
         return;
       }
       if (item.originalPresentationPrice <= 0) {
-        _error('Ingresa el precio sin descuento en $item.product.name.');
+        _error('Ingresa el precio sin descuento en ${item.product.name}.');
         return;
       }
       if (item.discountedPresentationPrice <= 0) {
         _error(
-          'El precio con descuento debe ser mayor que cero en $item.product.name.',
+          'El precio con descuento debe ser mayor que cero en ${item.product.name}.',
         );
         return;
       }
@@ -1116,17 +1116,17 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     _purchasedController = TextEditingController(
       text: widget.useDefaultHints
           ? (rememberedPresentation ? '1' : '')
-          : '$item.purchasedQuantity',
+          : '${item.purchasedQuantity}',
     );
     _bonusController = TextEditingController(
-      text: widget.useDefaultHints ? '' : '$item.bonusQuantity',
+      text: widget.useDefaultHints ? '' : '${item.bonusQuantity}',
     );
     _presentationController = TextEditingController(
       text: widget.useDefaultHints
           ? (rememberedPresentation
-                ? '$item.product.purchaseUnitsPerPresentation'
+                ? '${item.product.purchaseUnitsPerPresentation}'
                 : '')
-          : '$item.unitsPerPresentation',
+          : '${item.unitsPerPresentation}',
     );
     _originalController = TextEditingController(
       text: widget.useDefaultHints
@@ -1159,15 +1159,15 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
     _item = current;
     if (old.purchasedQuantity != current.purchasedQuantity &&
         _shouldSync(_purchasedController, current.purchasedQuantity)) {
-      _replace(_purchasedController, '$current.purchasedQuantity');
+      _replace(_purchasedController, '${current.purchasedQuantity}');
     }
     if (old.bonusQuantity != current.bonusQuantity &&
         _shouldSync(_bonusController, current.bonusQuantity)) {
-      _replace(_bonusController, '$current.bonusQuantity');
+      _replace(_bonusController, '${current.bonusQuantity}');
     }
     if (old.unitsPerPresentation != current.unitsPerPresentation &&
         _shouldSync(_presentationController, current.unitsPerPresentation)) {
-      _replace(_presentationController, '$current.unitsPerPresentation');
+      _replace(_presentationController, '${current.unitsPerPresentation}');
     }
     if ((old.originalPresentationPrice - current.originalPresentationPrice)
                 .abs() >
@@ -1463,7 +1463,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 _currentPrices(item.product),
                 const SizedBox(height: 3),
                 Text(
-                  'Stock $widget.baseStock → ${widget.baseStock + item.received}',
+                  'Stock ${widget.baseStock} → ${widget.baseStock + item.received}',
                   style: const TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
@@ -1509,7 +1509,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _readonly(
                     'Recibidas',
-                    '$item.received',
+                    '${item.received}',
                     Icons.check_box_outlined,
                   ),
                 ),
@@ -1911,7 +1911,7 @@ class _CostChangesDialogState extends State<_CostChangesDialog> {
                         style: AppTextStyles.sectionTitle,
                       ),
                       Text(
-                        '$widget.changes.length productos tienen un costo diferente al registrado.',
+                        '${widget.changes.length} productos tienen un costo diferente al registrado.',
                         style: const TextStyle(
                           fontSize: 9,
                           color: AppColors.textSecondary,
