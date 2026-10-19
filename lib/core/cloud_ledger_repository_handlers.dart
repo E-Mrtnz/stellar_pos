@@ -40,7 +40,7 @@ class CloudLedgerRepositoryHandlers {
       if (existing is! Map ||
           _canonicalJson(Map<String, dynamic>.from(existing)) !=
               _canonicalJson(incoming)) {
-        throw StateError('Conflicto de contenido para ' + type.name + '.');
+        throw StateError('Conflicto de contenido para ${type.name}.');
       }
       return;
     }
