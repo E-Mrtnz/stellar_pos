@@ -219,45 +219,17 @@ class _SalesLayoutState extends State<SalesLayout> {
 
   Map<String, double> _paidBySale(
     List<SaleRecord> allSales,
-    List<DebtMovement> movements,
+    DebtProvider debtProvider,
   ) {
-    final credits =
-        allSales
-            .where(
-              (sale) =>
-                  sale.paymentMethod == AppStrings.creditPayment &&
-                  sale.clientId != null,
-            )
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    final paid = <String, double>{
-      for (final sale in credits) sale.id: 0,
-    };
-    final payments =
-        movements
-            .where(
-              (movement) => movement.type == DebtMovementType.payment,
-            )
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    for (final payment in payments) {
-      var remaining = payment.amount;
-      for (final sale in credits.where(
-        (sale) => sale.clientId == payment.clientId,
-      )) {
-        final outstanding = sale.effectiveTotal - (paid[sale.id] ?? 0);
-        if (outstanding <= 0.005) {
-          continue;
-        }
-        final applied = remaining > outstanding
-            ? outstanding
-            : remaining;
-        paid[sale.id] = (paid[sale.id] ?? 0) + applied;
-        remaining -= applied;
-        if (remaining <= 0.005) {
-          break;
-        }
-      }
+    final paid = <String, double>{};
+    final clientIds = allSales
+        .where((sale) =>
+            sale.paymentMethod == AppStrings.creditPayment &&
+            sale.clientId != null)
+        .map((sale) => sale.clientId!)
+        .toSet();
+    for (final clientId in clientIds) {
+      paid.addAll(debtProvider.paidBySaleForClient(clientId));
     }
     return paid;
   }
@@ -342,7 +314,7 @@ class _SalesLayoutState extends State<SalesLayout> {
       ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final paidBySale = _paidBySale(
         salesProvider.sales,
-        debtProvider.movements,
+        debtProvider,
       );
       final range = _range();
       final totalSold = sales.fold(
