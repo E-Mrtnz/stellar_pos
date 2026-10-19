@@ -137,3 +137,10 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Se añadieron manejadores que hacen upsert idempotente por ID para registros de compra, movimientos de deuda y transacciones de saldo electrónico, rechazando reutilizaciones del mismo ID con contenido diferente.
 - Los movimientos de inventario remoto se conservan en una caja local inmutable con validación de producto y delta. **Todavía no modifican `Product.stock`**: hace falta una estrategia de proyección recuperable para evitar aplicar el delta dos veces si la app se interrumpe entre la escritura del stock y la del recibo.
 - Estos manejadores se conectan al dispatcher mediante un mapa explícito y no crean eventos de salida, pero todavía no se han conectado al pull comercial ni al scheduler. La sincronización sigue desactivada por defecto.
+
+
+## Coordinador explícito de envío del ledger — 2026-10-18
+
+- Se añadió `CloudLedgerSyncCoordinator`: antes de enviar una entrada inmutable valida IDs estables y exige sesión/membresía activa. No reintenta con IDs nuevos ni altera el registro local.
+- Incluye pruebas de membresía denegada, identidad estable y aceptación explícita.
+- Sigue siendo un punto de entrada manual para quien lo integre; no está enlazado a mutaciones de repositorios, checkout ni ejecución en segundo plano. La sincronización automática permanece deshabilitada hasta completar la proyección de inventario y la integración recoverable con el diario local.
