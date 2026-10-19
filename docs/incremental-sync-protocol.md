@@ -154,3 +154,6 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Las proyecciones del ledger entrante se guardan ahora en cajas Hive separadas por tipo de entidad y `storeId`. No se mezclan con los repositorios comerciales globales, porque esos repositorios todavía no están aislados por tienda.
 - Esto evita que un registro remoto de otra tienda sobrescriba una compra, deuda o transacción local con el mismo ID. La proyección es almacenamiento remoto aislado, no una integración visual completa en las pantallas comerciales.
 - El inventario sigue siendo un ledger de movimientos; `Product.stock` no se modifica automáticamente. La futura integración con la UI requiere un modelo de datos comercial realmente aislado por tienda y una proyección de stock recuperable.
+
+
+- Los recibos de aplicación se identifican por `storeId + eventId`, no solo por el ID de entidad. Así, dos tiendas pueden usar IDs locales iguales sin colisionar en el registro de recibos del dispositivo; se añadió una prueba de regresión para este caso.
