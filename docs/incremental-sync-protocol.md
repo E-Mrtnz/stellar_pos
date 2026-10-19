@@ -157,3 +157,6 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 
 
 - Los recibos de aplicación se identifican por `storeId + eventId`, no solo por el ID de entidad. Así, dos tiendas pueden usar IDs locales iguales sin colisionar en el registro de recibos del dispositivo; se añadió una prueba de regresión para este caso.
+
+
+- Se añadió un wrapper de pull que comprueba la membresía activa antes de consultar el ledger. Si la sesión no tiene acceso a la tienda, no realiza llamadas remotas; sigue siendo una operación explícita y no se inicia automáticamente.
