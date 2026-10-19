@@ -123,3 +123,10 @@ Este documento combina el contrato de diseño con el estado de implementación; 
 - Cada manejador sigue obligado a ser idempotente por ID de evento/entidad: una interrupción puede ocurrir después de guardar la proyección local y antes del recibo. Los recibos en una caja separada no garantizan atomicidad entre la proyección comercial y el cursor.
 - Se añadieron pruebas para repetición, colisión de contenido, fallo de persistencia y manejador ausente, integradas en CI.
 - **Estado pendiente:** los manejadores reales aún no están conectados a los repositorios de negocio; el envío comercial general sigue bloqueado y el scheduler no está activado. No habilitar sincronización comercial ni desplegar Functions/reglas a producción hasta cerrar esa integración y validar los flujos completos en emuladores.
+
+
+## Recibos remotos persistentes en Hive — 2026-10-18
+
+- Se añadió `HiveCloudLedgerApplyReceiptStore`, que guarda recibos de aplicación por ID de evento en una caja Hive separada y permite recuperarlos tras cerrar/reabrir la base local.
+- El test de persistencia cubre que el recibo y su ámbito de tienda sobreviven a la reapertura. El dispatcher durable y esta implementación se incluyen en el análisis y las pruebas de CI.
+- Esto cierra la persistencia del recibo, pero no la atomicidad entre recibo y proyección comercial. Los handlers de cada entidad todavía deben hacer upsert idempotente y no generar eventos de salida al aplicar cambios remotos. Por esa razón, no se activa el pull comercial en la interfaz ni en el inicio de la app.
