@@ -1284,7 +1284,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
         const DropdownMenuItem<String?>(
           value: null,
           child: Text(
-            'Sin seleccionar',
+            hint,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
