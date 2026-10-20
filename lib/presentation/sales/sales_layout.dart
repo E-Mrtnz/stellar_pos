@@ -841,7 +841,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             style: AppTextStyles.ticketLabel,
           ),
         ),
-        SizedBox(width: 66),
+        SizedBox(width: 44),
       ],
     ),
   );
@@ -949,7 +949,7 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
             ),
             SizedBox(
-              width: 66,
+              width: 44,
               child: const Align(
                 alignment: Alignment.centerRight,
                 child: Icon(
@@ -1056,7 +1056,7 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
             ),
             SizedBox(
-              width: 66,
+              width: 44,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
