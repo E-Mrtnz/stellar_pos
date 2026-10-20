@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:ui' show Rect;
 
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
@@ -137,6 +138,8 @@ class DatabaseBackupService {
             files: <XFile>[XFile(result.filePath)],
             subject: 'Copia de seguridad de STELLAR POS',
             title: 'Guardar copia de seguridad',
+            // iPad requires a non-empty popover anchor rectangle.
+            sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
           ),
         );
         onProgress?.call(1);
