@@ -5,7 +5,6 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
-import 'package:cross_file/cross_file.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart';
 
@@ -261,7 +260,7 @@ class DatabaseBackupService {
       }), flush: true);
       encoder.create(zipFile.path, level: 0);
       encoderOpen = true;
-      encoder.addFile(manifestFile, filename: 'manifest.json');
+      encoder.addFile(manifestFile, archivePath: 'manifest.json');
       onProgress?.call(0.05);
 
       for (var index = 0; index < _backupBoxNames.length; index++) {
@@ -286,7 +285,7 @@ class DatabaseBackupService {
           await sink.flush();
           await sink.close();
         }
-        encoder.addFile(jsonFile, filename: '$boxName.json');
+        encoder.addFile(jsonFile, archivePath: '$boxName.json');
         onProgress?.call(0.08 + ((index + 1) / _backupBoxNames.length) * 0.82);
         await Future<void>.delayed(Duration.zero);
       }
