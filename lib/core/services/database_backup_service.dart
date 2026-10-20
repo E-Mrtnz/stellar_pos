@@ -260,7 +260,7 @@ class DatabaseBackupService {
       }), flush: true);
       encoder.create(zipFile.path, level: 0);
       encoderOpen = true;
-      encoder.addFile(manifestFile, archivePath: 'manifest.json');
+      encoder.addFile(manifestFile);
       onProgress?.call(0.05);
 
       for (var index = 0; index < _backupBoxNames.length; index++) {
@@ -285,7 +285,7 @@ class DatabaseBackupService {
           await sink.flush();
           await sink.close();
         }
-        encoder.addFile(jsonFile, archivePath: '$boxName.json');
+        encoder.addFile(jsonFile);
         onProgress?.call(0.08 + ((index + 1) / _backupBoxNames.length) * 0.82);
         await Future<void>.delayed(Duration.zero);
       }
