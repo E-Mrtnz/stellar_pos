@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -14,6 +15,7 @@ class CompactCameraBarcodeScanner extends StatefulWidget {
 
 class _CompactCameraBarcodeScannerState extends State<CompactCameraBarcodeScanner> {
   late final MobileScannerController _controller;
+  final AudioPlayer _feedbackPlayer = AudioPlayer();
   Timer? _releaseTimer;
   String? _lastBarcode;
   String _status = 'Apunta al código de barras del producto';
@@ -26,8 +28,18 @@ class _CompactCameraBarcodeScannerState extends State<CompactCameraBarcodeScanne
   void dispose() {
     _releaseTimer?.cancel();
     unawaited(_controller.dispose());
+    unawaited(_feedbackPlayer.dispose());
     super.dispose();
   }
+  Future<void> _playFeedback(String asset) async {
+    try {
+      await _feedbackPlayer.stop();
+      await _feedbackPlayer.play(AssetSource(asset));
+    } catch (_) {
+      // Audio feedback must never interrupt barcode scanning.
+    }
+  }
+
   void _detect(BarcodeCapture capture) {
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue?.trim();
@@ -39,6 +51,7 @@ class _CompactCameraBarcodeScannerState extends State<CompactCameraBarcodeScanne
       if (!mounted) return;
       setState(() => _status = productId == null ? 'No se encontró el código: $value' : 'Producto agregado correctamente');
       unawaited(productId == null ? HapticFeedback.heavyImpact() : HapticFeedback.selectionClick());
+      unawaited(_playFeedback(productId == null ? 'audio/barcode_error.mp3' : 'audio/barcode_success.mp3'));
       return;
     }
   }
