@@ -1443,9 +1443,13 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
         borderRadius: BorderRadius.circular(9),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: 1120,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
           _image(item.product.imageData, productId: item.product.id),
           const SizedBox(width: 8),
           SizedBox(
@@ -1589,7 +1593,9 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.delete_outline, size: 18),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
