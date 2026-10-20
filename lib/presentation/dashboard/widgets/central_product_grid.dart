@@ -27,6 +27,7 @@ class CentralProductGrid extends StatefulWidget {
   final ValueChanged<String>? onSearchChanged;
   final String searchQuery;
   final bool isLoading;
+  final VoidCallback? onOpenCameraScanner;
 
   const CentralProductGrid({
     super.key,
@@ -47,6 +48,7 @@ class CentralProductGrid extends StatefulWidget {
     this.onSearchChanged,
     this.searchQuery = '',
     this.isLoading = false,
+    this.onOpenCameraScanner,
   });
 
   @override
@@ -198,9 +200,31 @@ class _CentralProductGridState extends State<CentralProductGrid> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProductSearchBar(
-            controller: _searchController,
-            onChanged: widget.onSearchChanged ?? (_) {},
+          Row(
+            children: [
+              Expanded(
+                child: ProductSearchBar(
+                  controller: _searchController,
+                  onChanged: widget.onSearchChanged ?? (_) {},
+                ),
+              ),
+              if (widget.onOpenCameraScanner != null) ...[
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  tooltip: 'Escanear productos con la cámara',
+                  onPressed: widget.onOpenCameraScanner,
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    backgroundColor: AppColors.primary.withAlpha(18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    fixedSize: const Size(48, 48),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 12),
           ProductFilterBar(

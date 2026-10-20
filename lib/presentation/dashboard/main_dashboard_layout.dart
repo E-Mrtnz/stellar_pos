@@ -15,6 +15,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/compact_camera_barcode_scanner.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_management_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_detail_dialog.dart';
@@ -45,6 +46,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   String? _selectedFilter;
   String _searchQuery = '';
   bool _isSidebarExpanded = true;
+  bool _showTabletCameraScanner = false;
   final AudioPlayer _saleFeedbackPlayer = AudioPlayer();
   final Map<String, int> _cartQuantities = {};
   final Set<String> _preparedProductIds = {};
@@ -1085,6 +1087,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _onTagChanged(int index) => setState(() => _selectedTagIndex = index);
   void _onFilterChanged(String? filter) =>
       setState(() => _selectedFilter = filter);
+  bool _isTabletCameraSupported(BuildContext context) =>
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.iOS &&
+      MediaQuery.sizeOf(context).shortestSide >= 600;
+
   bool _isMobilePlatform(BuildContext context) =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -1112,7 +1119,27 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                 onItemSelected: _onNavigationChanged,
               ),
-              Expanded(child: _buildMainContent()),
+              Expanded(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildMainContent(),
+                    if (_showTabletCameraScanner &&
+                        _isTabletCameraSupported(context) &&
+                        _selectedNavIndex == AppNavigation.home)
+                      Positioned(
+                        top: 76,
+                        left: 24,
+                        child: CompactCameraBarcodeScanner(
+                          onBarcodeDetected: _handleScannedBarcode,
+                          onClose: () => setState(
+                            () => _showTabletCameraScanner = false,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1365,6 +1392,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           child: CentralProductGrid(
             products: products,
             isLoading: productProvider.isLoading,
+            onOpenCameraScanner: _isTabletCameraSupported(context)
+                ? () => setState(
+                    () => _showTabletCameraScanner = !_showTabletCameraScanner,
+                  )
+                : null,
             cartQuantities: combinedCart,
             preparedProductIds: _preparedProductIds,
             tags: tags,
