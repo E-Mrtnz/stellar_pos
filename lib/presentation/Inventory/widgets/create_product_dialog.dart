@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -73,6 +74,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   Timer? _validationTimer;
   String? _imageData;
   bool _isPickingImage = false;
+  final AudioPlayer _scannerFeedbackPlayer = AudioPlayer();
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
   List<String> get _brands => context.watch<CatalogProvider>().brands;
@@ -155,6 +157,15 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     });
   }
 
+  Future<void> _playScannerSuccess() async {
+    try {
+      await _scannerFeedbackPlayer.stop();
+      await _scannerFeedbackPlayer.play(AssetSource('audio/barcode_success.mp3'));
+    } catch (_) {
+      // Audio feedback must never interrupt barcode scanning.
+    }
+  }
+
   Future<void> _scanBarcode() async {
     if (kIsWeb ||
         (defaultTargetPlatform != TargetPlatform.android &&
@@ -197,6 +208,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                         final value = item.rawValue?.trim();
                         if (value == null || value.isEmpty) continue;
                         handled = true;
+                        unawaited(_playScannerSuccess());
                         Navigator.of(dialogContext).pop(value);
                         break;
                       }
@@ -480,6 +492,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   @override
   void dispose() {
     _validationTimer?.cancel();
+    unawaited(_scannerFeedbackPlayer.dispose());
     _validationOverlay?.remove();
     for (final c in [
       _nameController,
