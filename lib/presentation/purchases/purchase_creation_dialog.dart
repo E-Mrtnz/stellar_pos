@@ -1553,7 +1553,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 ),
                 const SizedBox(width: 2),
                 Expanded(
-                  child: _numberField(
+                  child: _editablePrice(
                     _ivaController,
                     'IVA \$',
                     Icons.receipt_long_outlined,
