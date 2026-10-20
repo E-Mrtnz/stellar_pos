@@ -490,7 +490,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             Expanded(
               child: Text(
                 purchase.isElectronicBalancePurchase
-                    ? '\${purchase.total.toStringAsFixed(2)} de saldo'
+                    ? '${_money(purchase.total)} de saldo'
                     : '${purchase.itemCount} unidades',
                 style: const TextStyle(
                   fontSize: 10,
