@@ -1555,7 +1555,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 Expanded(
                   child: _editablePrice(
                     _ivaController,
-                    'IVA \$',
+                    'IVA',
                     Icons.receipt_long_outlined,
                     onChanged: _emit,
                     hint: '0.00',
