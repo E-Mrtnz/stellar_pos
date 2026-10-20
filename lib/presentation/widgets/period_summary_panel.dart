@@ -38,18 +38,56 @@ class PeriodSummaryPanel extends StatelessWidget {
     final displayMetrics = _displayMetrics();
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppDimensions.cardRadius), border: Border.all(color: AppColors.border), boxShadow: const [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4))]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('Resumen del período', style: AppTextStyles.sectionTitle),
-        const SizedBox(height: 12),
-        ...displayMetrics.asMap().entries.expand((entry) {
-          final children = <Widget>[_Metric(entry.value)];
-          if (entry.key == 2 && displayMetrics.length > 3) children.add(const Divider(height: 22, color: AppColors.border));
-          return children;
-        }),
-        const Spacer(),
-        Text(rangeLabel, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-      ]),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadowColor,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Resumen del período',
+            style: AppTextStyles.sectionTitle,
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ...displayMetrics.asMap().entries.expand((entry) {
+                    final children = <Widget>[_Metric(entry.value)];
+                    if (entry.key == 2 && displayMetrics.length > 3) {
+                      children.add(
+                        const Divider(height: 22, color: AppColors.border),
+                      );
+                    }
+                    return children;
+                  }),
+                  const SizedBox(height: 12),
+                  Text(
+                    rangeLabel,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
