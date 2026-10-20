@@ -675,7 +675,7 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
               ),
             ),
             Text(
-              _money(_total),
+              _money(_totalWithIva),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
@@ -1036,9 +1036,12 @@ class _DraftPurchaseItem {
 
   double get netSubtotal => discountedPresentationPrice * purchasedQuantity;
 
+  /// Cost per inventory unit includes any explicitly entered VAT.
+  /// If VAT is blank, the entered purchase price is treated as VAT-inclusive.
   double get unitCost => unitsPerPresentation <= 0
       ? 0.0
-      : originalPresentationPrice / unitsPerPresentation;
+      : (discountedPresentationPrice + (ivaPerPresentation ?? 0.0)) /
+            unitsPerPresentation;
   _DraftPurchaseItem copyWith({
     int? purchasedQuantity,
     int? bonusQuantity,
