@@ -41,7 +41,6 @@ class _PurchaseCreationDialogState extends State<PurchaseCreationDialog> {
   bool _saving = false;
   bool _dirty = false;
   bool get _editing => widget.purchase != null;
-  double get _total => _items.fold(0.0, (sum, item) => sum + item.totalCost);
   double get _totalWithIva =>
       _items.fold(0.0, (sum, item) => sum + item.totalCostWithIva);
   int get _received => _items.fold(0, (sum, item) => sum + item.received);
