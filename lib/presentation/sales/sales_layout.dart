@@ -397,21 +397,33 @@ class _SalesLayoutState extends State<SalesLayout> {
             _buildFilters(),
             const SizedBox(height: 12),
             Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: _buildList(history, paidBySale),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: PeriodSummaryPanel(
-                      metrics: summaryMetrics,
-                      rangeLabel:
-                          '${_date(range.start)} → ${_date(range.end.subtract(const Duration(days: 1)))}',
-                    ),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final keyboardVisible =
+                      MediaQuery.viewInsetsOf(context).bottom > 0;
+                  // Keep the history usable while the on-screen keyboard is open.
+                  // Hide the side summary temporarily rather than squeezing it into
+                  // the reduced height and causing a bottom overflow.
+                  if (keyboardVisible) {
+                    return _buildList(history, paidBySale);
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildList(history, paidBySale),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PeriodSummaryPanel(
+                          metrics: summaryMetrics,
+                          rangeLabel:
+                              '${_date(range.start)} → ${_date(range.end.subtract(const Duration(days: 1)))}',
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 7),
