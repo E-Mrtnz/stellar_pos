@@ -1281,7 +1281,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
             ],
           ),
         ),
-        const DropdownMenuItem<String?>(
+        DropdownMenuItem<String?>(
           value: null,
           child: Text(
             hint,
