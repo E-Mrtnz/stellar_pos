@@ -53,7 +53,7 @@ class SaleDetailDialog extends StatelessWidget {
   }
 
   String _formatDate(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/$value.year';
+      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   String _formatTime(DateTime value) {
     final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
     final period = value.hour >= 12 ? 'PM' : 'AM';
@@ -82,7 +82,7 @@ class SaleDetailDialog extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Anular venta'),
         content: Text(
-          '¿Seguro que deseas anular la venta #$sale.ticketNumber? La venta permanecerá en el historial y se revertirá el inventario asociado.',
+          '¿Seguro que deseas anular la venta #${sale.ticketNumber}? La venta permanecerá en el historial y se revertirá el inventario asociado.',
         ),
         actions: [
           TextButton(
@@ -117,7 +117,7 @@ class SaleDetailDialog extends StatelessWidget {
       Navigator.of(context).pop();
       AppAlert.show(
         context,
-        'La venta #$sale.ticketNumber fue anulada y permanece en el historial.',
+        'La venta #${sale.ticketNumber} fue anulada y permanece en el historial.',
         title: 'Venta anulada',
         type: AppAlertType.success,
       );
@@ -129,6 +129,26 @@ class SaleDetailDialog extends StatelessWidget {
         type: AppAlertType.error,
       );
     }
+  }
+
+  String _displayProductName(BuildContext context, SaleItemRecord item) {
+    final name = item.productName.trim();
+    if (!item.isElectronicBalance || !name.contains("Instance of")) {
+      return name;
+    }
+
+    final provider = context.read<ElectronicBalanceProvider>();
+    final accountId = item.electronicBalanceAccountId ??
+        (item.productId.startsWith('electronic-balance:')
+            ? item.productId.substring('electronic-balance:'.length)
+            : '');
+    final account = accountId.isEmpty ? null : provider.findAccount(accountId);
+    final company = account?.companyName.trim() ?? '';
+    final category = item.electronicBalanceCategory?.trim() ?? '';
+    if (company.isEmpty) {
+      return category.isEmpty ? 'Saldo electrónico' : 'Saldo electrónico · $category';
+    }
+    return category.isEmpty ? company : '$company · $category';
   }
 
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
@@ -182,7 +202,7 @@ class SaleDetailDialog extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '#$sale.ticketNumber',
+                    '#${sale.ticketNumber}',
                     style: AppTextStyles.ticketValue,
                   ),
                   const SizedBox(width: 8),
@@ -204,10 +224,10 @@ class SaleDetailDialog extends StatelessWidget {
                   children: [
                     _buildHeader(),
                     const SizedBox(height: 14),
-                    _buildItemsTable(),
+                    _buildItemsTable(context),
                     if (sale.operations.isNotEmpty) ...[
                       const SizedBox(height: 14),
-                      _buildOperations(),
+                      _buildOperations(context),
                     ],
                     const SizedBox(height: 14),
                     _buildTotals(),
@@ -226,7 +246,7 @@ class SaleDetailDialog extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            'Código de ticket: $sale.ticketNumber',
+                            'Código de ticket: ${sale.ticketNumber}',
                             style: const TextStyle(
                               fontSize: 10,
                               color: AppColors.textSecondary,
@@ -386,7 +406,7 @@ class SaleDetailDialog extends StatelessWidget {
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 9),
-      _infoRow('N.º de ticket', '#$sale.ticketNumber'),
+      _infoRow('N.º de ticket', '#${sale.ticketNumber}'),
       _infoRow('Estado', sale.isAnnulled ? 'ANULADA' : 'COMPLETADA'),
       _dateInfoRow(),
 
@@ -436,7 +456,7 @@ class SaleDetailDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildItemsTable() => Container(
+  Widget _buildItemsTable(BuildContext context) => Container(
     decoration: BoxDecoration(
       border: Border.all(color: AppColors.border),
       borderRadius: BorderRadius.circular(9),
@@ -508,7 +528,7 @@ class SaleDetailDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.productName,
+                        _displayProductName(context, item),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 11),
@@ -530,7 +550,7 @@ class SaleDetailDialog extends StatelessWidget {
                 SizedBox(
                   width: 40,
                   child: Text(
-                    '$item.quantity',
+                    '${item.quantity}',
                     textAlign: TextAlign.right,
                     style: AppTextStyles.ticketValue,
                   ),
@@ -567,7 +587,7 @@ class SaleDetailDialog extends StatelessWidget {
     ),
   );
 
-  Widget _buildOperations() => Container(
+  Widget _buildOperations(BuildContext context) => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(11),
     decoration: BoxDecoration(
@@ -583,12 +603,12 @@ class SaleDetailDialog extends StatelessWidget {
           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        ...sale.operations.map(_operationCard),
+        ...sale.operations.map((operation) => _operationCard(context, operation)),
       ],
     ),
   );
 
-  Widget _operationCard(SaleOperationRecord operation) {
+  Widget _operationCard(BuildContext context, SaleOperationRecord operation) {
     final color = operation.type == SaleOperationType.change
         ? AppColors.primary
         : AppColors.warningOrange;
@@ -618,8 +638,8 @@ class SaleDetailDialog extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 7),
-          ...operation.itemsOut.map((item) => _operationLine('Sale', item)),
-          ...operation.itemsIn.map((item) => _operationLine('Entra', item)),
+          ...operation.itemsOut.map((item) => _operationLine(context, 'Sale', item)),
+          ...operation.itemsIn.map((item) => _operationLine(context, 'Entra', item)),
           const SizedBox(height: 5),
           Align(
             alignment: Alignment.centerRight,
@@ -645,13 +665,13 @@ class SaleDetailDialog extends StatelessWidget {
     );
   }
 
-  Widget _operationLine(String prefix, SaleItemRecord item) => Padding(
+  Widget _operationLine(BuildContext context, String prefix, SaleItemRecord item) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 1),
     child: Row(
       children: [
         Expanded(
           child: Text(
-            '$prefix: $item.productName × $item.quantity',
+            '$prefix: ${_displayProductName(context, item)} × ${item.quantity}',
             style: const TextStyle(fontSize: 10),
           ),
         ),
@@ -835,7 +855,7 @@ class _ReturnDialogState extends State<_ReturnDialog> {
                 DropdownMenuItem(
                   value: item.productId,
                   child: Text(
-                    '$item.productName · $item.quantity disponibles',
+                    '${item.productName} · ${item.quantity} disponibles',
                   ),
                 ),
             ],
@@ -952,7 +972,7 @@ class _ChangeDialogState extends State<_ChangeDialog> {
                 DropdownMenuItem(
                   value: item.productId,
                   child: Text(
-                    '$item.productName · $item.quantity disponibles',
+                    '${item.productName} · ${item.quantity} disponibles',
                   ),
                 ),
             ],
@@ -980,7 +1000,7 @@ class _ChangeDialogState extends State<_ChangeDialog> {
                 DropdownMenuItem(
                   value: product.id,
                   child: Text(
-                    '$product.name · ${_moneyValue(product.price)}',
+                    '${product.name} · ${_moneyValue(product.price)}',
                   ),
                 ),
             ],

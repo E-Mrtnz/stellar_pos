@@ -490,7 +490,7 @@ class _PurchasesLayoutState extends State<PurchasesLayout> {
             Expanded(
               child: Text(
                 purchase.isElectronicBalancePurchase
-                    ? '\${purchase.total.toStringAsFixed(2)} de saldo'
+                    ? '${_money(purchase.total)} de saldo'
                     : '${purchase.itemCount} unidades',
                 style: const TextStyle(
                   fontSize: 10,
@@ -657,7 +657,7 @@ class _ElectronicBalancePurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
   const _ElectronicBalancePurchaseDetailDialog(this.purchase);
 
-  String _money(double value) => '\${value.toStringAsFixed(2)}';
+  String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   String _time(DateTime value) =>
@@ -1011,7 +1011,7 @@ class _PurchaseDetailDialog extends StatelessWidget {
   final PurchaseRecord purchase;
   const _PurchaseDetailDialog(this.purchase);
 
-  String _money(double value) => '\${value.toStringAsFixed(2)}';
+  String _money(double value) => '\$${value.toStringAsFixed(2)}';
   String _date(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   String _time(DateTime value) =>

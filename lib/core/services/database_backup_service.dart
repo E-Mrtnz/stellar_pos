@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:ui' show Rect;
 
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
@@ -128,11 +130,27 @@ class DatabaseBackupService {
     required String destinationDirectory,
     void Function(double progress)? onProgress,
   }) async {
-    final result = await _createUniversalBackup(
-      onProgress: onProgress,
-    );
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      final result = await _createUniversalBackupFile(onProgress: onProgress);
+      try {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: <XFile>[XFile(result.filePath)],
+            subject: 'Copia de seguridad de STELLAR POS',
+            title: 'Guardar copia de seguridad',
+            // iPad requires a non-empty popover anchor rectangle.
+            sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        );
+        onProgress?.call(1);
+        return result;
+      } catch (_) {
+        rethrow;
+      }
+    }
 
-    if (kIsWeb || Platform.isAndroid || Platform.isIOS) {
+    final result = await _createUniversalBackup(onProgress: onProgress);
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
       final stamp = _backupStamp();
       final fileName = 'stellar_pos_backup_$stamp';
       await FileSaver.instance.saveFile(
@@ -141,7 +159,6 @@ class DatabaseBackupService {
         fileExtension: 'zip',
         mimeType: MimeType.other,
       );
-
       onProgress?.call(1);
       return BackupResult(
         filePath: '$fileName.zip',
@@ -154,10 +171,8 @@ class DatabaseBackupService {
     if (!await destination.exists()) {
       await destination.create(recursive: true);
     }
-
     final zipFile = await _nextBackupFile(destination);
     await zipFile.writeAsBytes(result.bytes, flush: true);
-
     onProgress?.call(1);
     return BackupResult(
       filePath: zipFile.path,
@@ -165,7 +180,6 @@ class DatabaseBackupService {
       sizeBytes: result.bytes.length,
     );
   }
-
   static Future<RestoreResult> restoreBackup({
     required BackupFileSelection backupFile,
     void Function(double progress, String status)? onProgress,
@@ -225,6 +239,71 @@ class DatabaseBackupService {
     return bytes;
   }
 
+  /// iPad/iOS backup path: serialize one storage box at a time to disk,
+  /// then ZIP files from disk rather than retaining all JSON and ZIP bytes in RAM.
+  static Future<BackupResult> _createUniversalBackupFile({
+    void Function(double progress)? onProgress,
+  }) async {
+    await LocalStorage.flush();
+    final tempRoot = await Directory.systemTemp.createTemp('stellar_pos_backup_');
+    final zipFile = File('${tempRoot.path}/stellar_pos_backup_${_backupStamp()}.zip');
+    final encoder = ZipFileEncoder();
+    var totalEntries = 0;
+    var encoderOpen = false;
+    try {
+      final manifestFile = File('${tempRoot.path}/manifest.json');
+      await manifestFile.writeAsString(jsonEncode(<String, dynamic>{
+        'format': _backupFormat,
+        'version': _backupFormatVersion,
+        'schemaVersion': StorageSchema.currentVersion,
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'platform': _platformName(),
+        'boxes': _backupBoxNames,
+        'compression': 'none',
+      }), flush: true);
+      encoder.create(zipFile.path, level: 0);
+      encoderOpen = true;
+      encoder.addFile(manifestFile);
+      onProgress?.call(0.05);
+
+      for (var index = 0; index < _backupBoxNames.length; index++) {
+        final boxName = _backupBoxNames[index];
+        final box = await LocalStorage.openBox(boxName);
+        final jsonFile = File('${tempRoot.path}/$boxName.json');
+        final sink = jsonFile.openWrite();
+        try {
+          sink.write('{"box":${jsonEncode(boxName)},"entries":[');
+          var first = true;
+          for (final key in box.keys) {
+            if (!first) sink.write(',');
+            first = false;
+            sink.write(jsonEncode(<String, dynamic>{
+              'key': _jsonSafeValue(key),
+              'value': _jsonSafeValue(box.get(key)),
+            }));
+            totalEntries++;
+          }
+          sink.write(']}');
+        } finally {
+          await sink.flush();
+          await sink.close();
+        }
+        encoder.addFile(jsonFile);
+        onProgress?.call(0.08 + ((index + 1) / _backupBoxNames.length) * 0.82);
+        await Future<void>.delayed(Duration.zero);
+      }
+      encoder.close();
+      encoderOpen = false;
+      final size = await zipFile.length();
+      if (size == 0) throw StateError('No fue posible generar el archivo ZIP del backup.');
+      return BackupResult(filePath: zipFile.path, fileCount: totalEntries, sizeBytes: size);
+    } catch (_) {
+      if (encoderOpen) {
+        try { encoder.close(); } catch (_) {}
+      }
+      rethrow;
+    }
+  }
   static Future<({Uint8List bytes, int fileCount})> _createUniversalBackup({
     void Function(double progress)? onProgress,
   }) async {
@@ -276,7 +355,7 @@ class DatabaseBackupService {
     }
 
     return (
-      bytes: Uint8List.fromList(encoded),
+      bytes: encoded is Uint8List ? encoded : Uint8List.fromList(encoded),
       fileCount: totalEntries,
     );
   }

@@ -70,6 +70,19 @@ class ProductFilterUtils {
         return products.where(_hasMissingTag).toList();
       case 'missing_department':
         return products.where(_hasMissingDepartment).toList();
+      case 'negative_stock':
+        return products.where((product) => ProductUtils.stock(product) < 0).toList();
+      case 'low_stock':
+        return products.where((product) {
+          final stock = ProductUtils.stock(product);
+          final minimum = ProductUtils.minStock(product);
+          return stock >= 0 && stock > 0 && stock <= minimum;
+        }).toList();
+      case 'max_stock':
+        return products.where((product) {
+          final maximum = ProductUtils.maxStock(product);
+          return maximum > 0 && ProductUtils.stock(product) >= maximum;
+        }).toList();
       default:
         return products;
     }
