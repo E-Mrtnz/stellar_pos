@@ -1445,7 +1445,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: 1120,
+          width: 1390,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -1558,7 +1558,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                     'IVA \$',
                     Icons.receipt_long_outlined,
                     onChanged: _emit,
-                    hint: '—',
+                    hint: '0.00',
                   ),
                 ),
                 const SizedBox(width: 2),
@@ -1573,7 +1573,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
                 ),
                 const SizedBox(width: 2),
                 Expanded(
-                  child: _numberField(
+                  child: _editablePrice(
                     _saleController,
                     'Precio de venta',
                     Icons.edit_outlined,
@@ -1684,6 +1684,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
         border: InputBorder.none,
         isDense: true,
         contentPadding: EdgeInsets.zero,
+        prefixText: '\$ ',
         hintText: hint,
         hintStyle: const TextStyle(fontWeight: FontWeight.normal),
       ),
@@ -1713,6 +1714,7 @@ class _PurchaseItemCardState extends State<_PurchaseItemCard> {
         border: InputBorder.none,
         isDense: true,
         contentPadding: EdgeInsets.zero,
+        suffixText: '%',
         hintText: hint,
         hintStyle: const TextStyle(fontWeight: FontWeight.normal),
       ),
