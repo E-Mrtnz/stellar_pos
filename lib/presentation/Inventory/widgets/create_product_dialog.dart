@@ -465,7 +465,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
   void _showValidation(String message) {
     _validationTimer?.cancel();
-    unawaited(_scannerFeedbackPlayer.dispose());
     _validationOverlay?.remove();
     final overlay = Overlay.of(context, rootOverlay: true);
     late OverlayEntry entry;
@@ -493,6 +492,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   @override
   void dispose() {
     _validationTimer?.cancel();
+    unawaited(_scannerFeedbackPlayer.dispose());
     _validationOverlay?.remove();
     for (final c in [
       _nameController,
