@@ -1057,36 +1057,47 @@ class _SalesLayoutState extends State<SalesLayout> {
             ),
             SizedBox(
               width: 44,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    tooltip: 'Editar abono',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    onPressed: () =>
-                        DebtPaymentActions.edit(context, movement),
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    color: AppColors.textSecondary,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: PopupMenuButton<String>(
+                  tooltip: 'Acciones del abono',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
                   ),
-                  IconButton(
-                    tooltip: 'Eliminar abono',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
+                  iconSize: 17,
+                  onSelected: (action) {
+                    if (action == 'edit') {
+                      DebtPaymentActions.edit(context, movement);
+                    } else if (action == 'delete') {
+                      DebtPaymentActions.delete(context, movement);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18),
+                          SizedBox(width: 10),
+                          Text('Editar abono'),
+                        ],
+                      ),
                     ),
-                    onPressed: () =>
-                        DebtPaymentActions.delete(context, movement),
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    color: AppColors.dangerRed,
-                  ),
-                ],
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 18),
+                          SizedBox(width: 10),
+                          Text('Eliminar abono'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  icon: const Icon(Icons.more_vert),
+                ),
               ),
             ),
           ],
