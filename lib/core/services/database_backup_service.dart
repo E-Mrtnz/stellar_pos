@@ -276,7 +276,7 @@ class DatabaseBackupService {
     }
 
     return (
-      bytes: Uint8List.fromList(encoded),
+      bytes: encoded is Uint8List ? encoded : Uint8List.fromList(encoded),
       fileCount: totalEntries,
     );
   }

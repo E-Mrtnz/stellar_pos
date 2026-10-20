@@ -27,6 +27,9 @@ class ProductFilterBar extends StatelessWidget {
     _FilterOption(id: 'missing_barcode', label: 'Sin código de barras'),
     _FilterOption(id: 'missing_tag', label: 'Sin categoría'),
     _FilterOption(id: 'missing_department', label: 'Sin distribuidora'),
+    _FilterOption(id: 'negative_stock', label: 'Stock negativo'),
+    _FilterOption(id: 'low_stock', label: 'Stock mínimo / por agotarse'),
+    _FilterOption(id: 'max_stock', label: 'Stock máximo'),
   ];
 
   static const _dropdownTextStyle = TextStyle(
