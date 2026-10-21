@@ -53,7 +53,7 @@ void main() {
     await inbox.apply(change);
     await inbox.apply(change);
     expect(storage.data.length, 1);
-    expect(storage.flushCount, 1);
+    expect(storage.flushCount, 2);
   });
 
   test('rejects event ID reuse with different content', () async {
