@@ -143,11 +143,10 @@ class CloudSyncWorker {
     var duplicates = 0;
     var retried = 0;
     var blocked = 0;
-    for (final event in pending.take(limit)) {
-      final nextAttemptAt = event.nextAttemptAt;
-      if (nextAttemptAt != null && nextAttemptAt.isAfter(DateTime.now().toUtc())) {
-        continue;
-      }
+    final now = DateTime.now().toUtc();
+    final ready = pending.where((event) =>
+        event.nextAttemptAt == null || !event.nextAttemptAt!.isAfter(now));
+    for (final event in ready.take(limit)) {
       // Commercial entities stay blocked until their own server contract exists.
       if (event.entityType != 'syntheticTestValue') {
         await _outbox.markBlocked(event.eventId);
