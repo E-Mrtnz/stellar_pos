@@ -5,9 +5,18 @@ import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 
 class _MemoryStorage implements CloudSyncOutboxStorage, CloudMutationJournalStorage {
   final Map<String, Object> data = <String, Object>{};
+  int putCalls = 0;
+  int? failOnPutCall;
   @override Object? get(String key) => data[key];
   @override Iterable<Object?> get values => data.values;
-  @override Future<void> put(String key, Object value) async { data[key] = value; }
+  @override Future<void> put(String key, Object value) async {
+    putCalls++;
+    if (putCalls == failOnPutCall) {
+      failOnPutCall = null;
+      throw StateError('simulated durable storage failure');
+    }
+    data[key] = value;
+  }
   @override Future<void> flush() async {}
 }
 
@@ -104,6 +113,44 @@ void main() {
     expect(count, 1);
     expect(applied, ['sale-1']);
     expect((journalStorage.data['b'] as Map)['status'], 'prepared');
+  });
+
+  test('recovers when the outbox was queued but journal status write failed', () async {
+    final local = <String, Object?>{};
+    var applyCalls = 0;
+
+    // Journal writes: prepared (1), localApplied (2), eventQueued (3).
+    // Fail at step 3: the outbox already contains the event, while the journal
+    // still says localApplied. Recovery must safely replay both operations.
+    journalStorage.failOnPutCall = 3;
+    await expectLater(
+      journal.commit(entry: _entry(), applyLocal: (mutation) async {
+        applyCalls++;
+        local.putIfAbsent(mutation['saleId'] as String, () => mutation['total']);
+      }),
+      throwsStateError,
+    );
+
+    expect(local['sale-1'], 4);
+    expect(await outbox.pendingForStore('store-a'), hasLength(1));
+    expect(
+      (journalStorage.data['mutation-1'] as Map)['status'],
+      'localApplied',
+    );
+
+    final recovered = await journal.recover(
+      storeId: 'store-a',
+      applyLocal: (mutation) async {
+        applyCalls++;
+        local.putIfAbsent(mutation['saleId'] as String, () => mutation['total']);
+      },
+    );
+
+    expect(recovered, 1);
+    expect(applyCalls, 2);
+    expect(local['sale-1'], 4);
+    expect(await outbox.pendingForStore('store-a'), hasLength(1));
+    expect((journalStorage.data['mutation-1'] as Map)['status'], 'completed');
   });
 
   test('rejects reusing a mutation ID for different content', () async {
