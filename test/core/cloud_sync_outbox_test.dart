@@ -171,6 +171,9 @@ void main() {
 
       expect(storage.data['evt-1'], containsPair('status', 'pending'));
       expect(storage.data['evt-1'], containsPair('attemptCount', 1));
+      expect(storage.data['evt-1'], contains('nextAttemptAt'));
+      expect(DateTime.parse((storage.data['evt-1']! as Map<String, Object?>)['nextAttemptAt'] as String),
+          isA<DateTime>());
       expect((await outbox.pendingForStore('store-a')).single.eventId,
           'evt-1');
     });
