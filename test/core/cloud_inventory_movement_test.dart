@@ -58,6 +58,12 @@ void main() {
   test('rejects invalid identity, zero delta, missing reason and version', () {
     expect(movement(movementId: 'bad/id').validate(activeStoreId: 'store-a'),
         'invalid-movement-id');
+    expect(movement(movementId: 'id with spaces').validate(activeStoreId: 'store-a'),
+        'invalid-movement-id');
+    expect(movement(storeId: 'store/invalid').validate(activeStoreId: 'store/invalid'),
+        'invalid-store-id');
+    expect(movement(productId: 'product.invalid').validate(activeStoreId: 'store-a'),
+        'invalid-product-id');
     expect(movement(productId: ' ').validate(activeStoreId: 'store-a'),
         'invalid-product-id');
     expect(movement(delta: 0).validate(activeStoreId: 'store-a'), 'zero-delta');
@@ -76,7 +82,7 @@ void main() {
     final value = movement();
     final event = value.toSyncEvent();
 
-    expect(event.eventId, 'inventory-movement:movement-1');
+    expect(event.eventId, 'inventory-movement-movement-1');
     expect(event.storeId, 'store-a');
     expect(event.entityType, 'inventoryMovement');
     expect(event.entityId, 'movement-1');
