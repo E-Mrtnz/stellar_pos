@@ -103,6 +103,10 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
           jsonEncode(existing) != jsonEncode(record)) {
         throw StateError('Colisión de ID en el inbox de inventario.');
       }
+      // A prior attempt may have written to Hive but failed while flushing.
+      // Re-flush an identical replay before allowing the caller to advance its
+      // ledger cursor.
+      await _storage.flush();
       return;
     }
     await _storage.put(change.eventId, record);
