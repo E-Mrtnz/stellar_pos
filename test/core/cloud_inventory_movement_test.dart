@@ -67,6 +67,8 @@ void main() {
     expect(movement(productId: ' ').validate(activeStoreId: 'store-a'),
         'invalid-product-id');
     expect(movement(delta: 0).validate(activeStoreId: 'store-a'), 'zero-delta');
+    expect(movement(delta: 9007199254740992).validate(activeStoreId: 'store-a'),
+        'delta-out-of-range');
     expect(movement(reason: ' ').validate(activeStoreId: 'store-a'),
         'missing-reason');
     expect(movement(reason: ' sale ').validate(activeStoreId: 'store-a'),
@@ -78,7 +80,7 @@ void main() {
   });
 
 
-  test('creates a stable outbox envelope without enabling transport', () {
+  test('creates a stable outbox envelope for durable delivery', () {
     final value = movement();
     final event = value.toSyncEvent();
 
