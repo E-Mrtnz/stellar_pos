@@ -74,6 +74,7 @@ class CloudInventoryMovement {
     }
     if (delta == 0) return 'zero-delta';
     if (reason.trim().isEmpty) return 'missing-reason';
+    if (reason != reason.trim()) return 'reason-not-normalized';
     if (localVersion < 0) return 'invalid-local-version';
     return null;
   }
