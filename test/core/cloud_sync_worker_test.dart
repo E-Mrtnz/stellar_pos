@@ -133,6 +133,26 @@ void main() {
       expect(transport.calls, 1);
     });
 
+    test('a deferred retry does not starve ready events in the same batch', () async {
+      await outbox.enqueue(_event(id: 'deferred').copyWith(
+        nextAttemptAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      ));
+      await outbox.enqueue(_event(id: 'ready'));
+      final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a', limit: 1);
+
+      expect(result.applied, 1);
+      expect(transport.calls, 1);
+      expect(storage.data['deferred'], containsPair('status', 'pending'));
+      expect(storage.data['ready'], containsPair('status', 'delivered'));
+    });
+
     test('rejects unbounded batch sizes', () async {
       final worker = CloudSyncWorker(
         outbox: outbox,
