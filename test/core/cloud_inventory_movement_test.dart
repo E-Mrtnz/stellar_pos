@@ -63,6 +63,8 @@ void main() {
     expect(movement(delta: 0).validate(activeStoreId: 'store-a'), 'zero-delta');
     expect(movement(reason: ' ').validate(activeStoreId: 'store-a'),
         'missing-reason');
+    expect(movement(reason: ' sale ').validate(activeStoreId: 'store-a'),
+        'reason-not-normalized');
     expect(movement(localVersion: -1).validate(activeStoreId: 'store-a'),
         'invalid-local-version');
   });
