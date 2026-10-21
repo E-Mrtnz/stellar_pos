@@ -101,6 +101,7 @@ class CloudFunctionsSyntheticSyncTransport implements CloudSyncTransport {
         RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(productId) &&
         delta is int &&
         delta != 0 &&
+        delta.abs() <= 9007199254740991 &&
         reason is String &&
         reason.isNotEmpty &&
         reason == reason.trim() &&
@@ -253,7 +254,7 @@ bool _isValidInventoryMovementEnvelope(CloudSyncEvent event) {
       payload['movementId'] == event.entityId &&
       productId is String &&
       RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(productId) &&
-      delta is int && delta != 0 &&
+      delta is int && delta != 0 && delta.abs() <= 9007199254740991 &&
       reason is String && reason.isNotEmpty &&
       reason == reason.trim() && reason.length <= 500 &&
       occurredAt is String && DateTime.tryParse(occurredAt) != null &&
