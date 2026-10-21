@@ -1,3 +1,5 @@
+import 'package:stellar_pos/core/cloud_sync_protocol.dart';
+
 /// Immutable inventory delta for future conflict-safe cloud synchronization.
 ///
 /// Inventory is represented as movements instead of synchronizing whole stock
@@ -26,6 +28,29 @@ class CloudInventoryMovement {
   final DateTime occurredAt;
   final int localVersion;
 
+  /// Converts the movement to the durable outbox envelope.
+  ///
+  /// The stable event ID makes retries idempotent. This only builds the local
+  /// envelope; the current worker intentionally blocks this entity type until
+  /// a server-side inventory contract and emulator tests are available.
+  CloudSyncEvent toSyncEvent() {
+    final validationError = validate(activeStoreId: storeId);
+    if (validationError != null) {
+      throw ArgumentError.value(validationError, 'movement',
+          'Movimiento de inventario inválido.');
+    }
+    return CloudSyncEvent(
+      eventId: 'inventory-movement:$movementId',
+      storeId: storeId,
+      entityType: 'inventoryMovement',
+      entityId: movementId,
+      operation: CloudSyncOperation.create,
+      localVersion: localVersion,
+      createdAt: occurredAt,
+      payload: toPayload(),
+    );
+  }
+
   Map<String, Object?> toPayload() => <String, Object?>{
     'movementId': movementId,
     'productId': productId,
@@ -37,14 +62,14 @@ class CloudInventoryMovement {
 
   /// Returns a stable validation error code, or null when the movement is valid.
   String? validate({required String activeStoreId}) {
-    if (movementId.trim().isEmpty || movementId.contains('/')) {
+    if (movementId.trim().isEmpty || movementId != movementId.trim() || movementId.contains('/')) {
       return 'invalid-movement-id';
     }
-    if (storeId.trim().isEmpty || storeId.contains('/')) {
+    if (storeId.trim().isEmpty || storeId != storeId.trim() || storeId.contains('/')) {
       return 'invalid-store-id';
     }
     if (storeId != activeStoreId) return 'store-mismatch';
-    if (productId.trim().isEmpty || productId.contains('/')) {
+    if (productId.trim().isEmpty || productId != productId.trim() || productId.contains('/')) {
       return 'invalid-product-id';
     }
     if (delta == 0) return 'zero-delta';
