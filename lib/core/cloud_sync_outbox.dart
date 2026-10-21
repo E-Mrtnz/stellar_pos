@@ -148,7 +148,7 @@ class CloudSyncOutbox {
     return recovered;
   });
 
-  Future<void> retry(String eventId) => _serialize(() async {
+  Future<void> retry(String eventId, {Duration delay = Duration.zero}) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
@@ -158,6 +158,7 @@ class CloudSyncOutbox {
       _encode(event.copyWith(
         status: CloudSyncEventStatus.pending,
         attemptCount: event.attemptCount + 1,
+        nextAttemptAt: DateTime.now().toUtc().add(delay),
       )),
     );
     await _storage.flush();
@@ -182,6 +183,7 @@ class CloudSyncOutbox {
         'createdAt': event.createdAt.toUtc().toIso8601String(),
         'status': event.status.name,
         'attemptCount': event.attemptCount,
+        'nextAttemptAt': event.nextAttemptAt?.toUtc().toIso8601String(),
         'payload': event.payload,
       };
 
@@ -201,6 +203,9 @@ class CloudSyncOutbox {
         createdAt: DateTime.parse(map['createdAt'] as String).toUtc(),
         status: CloudSyncEventStatus.values.byName(map['status'] as String),
         attemptCount: map['attemptCount'] as int,
+        nextAttemptAt: map['nextAttemptAt'] is String
+            ? DateTime.parse(map['nextAttemptAt'] as String).toUtc()
+            : null,
         payload: map['payload'] is Map
             ? Map<String, Object?>.from(map['payload'] as Map)
             : const <String, Object?>{},
