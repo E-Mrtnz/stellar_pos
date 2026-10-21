@@ -100,4 +100,14 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test('rejects unknown fields in serialized payloads', () {
+    final payload = Map<String, dynamic>.from(movement().toPayload())
+      ..['unexpected'] = true;
+
+    expect(
+      () => CloudInventoryMovement.fromPayload(payload, storeId: 'store-a'),
+      throwsFormatException,
+    );
+  });
 }
