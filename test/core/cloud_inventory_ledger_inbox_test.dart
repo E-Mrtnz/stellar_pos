@@ -5,6 +5,7 @@ import 'package:stellar_pos/core/cloud_inventory_ledger_pull.dart';
 class _MemoryInboxStorage implements CloudInventoryLedgerInboxStorage {
   final Map<String, Object> data = <String, Object>{};
   int flushCount = 0;
+  bool failNextFlush = false;
   @override
   Object? get(String eventId) => data[eventId];
   @override
@@ -12,7 +13,13 @@ class _MemoryInboxStorage implements CloudInventoryLedgerInboxStorage {
     data[eventId] = Map<String, Object?>.from(value);
   }
   @override
-  Future<void> flush() async { flushCount++; }
+  Future<void> flush() async {
+    flushCount++;
+    if (failNextFlush) {
+      failNextFlush = false;
+      throw StateError('simulated flush failure');
+    }
+  }
 }
 
 CloudInventoryLedgerChange _movementChange({
@@ -51,6 +58,20 @@ void main() {
     final inbox = CloudInventoryLedgerInbox(storage: storage);
     final change = _movementChange();
     await inbox.apply(change);
+    await inbox.apply(change);
+    expect(storage.data.length, 1);
+    expect(storage.flushCount, 2);
+  });
+
+  test('retry flushes an already-written inbox record after failure', () async {
+    final storage = _MemoryInboxStorage()..failNextFlush = true;
+    final inbox = CloudInventoryLedgerInbox(storage: storage);
+    final change = _movementChange();
+
+    await expectLater(inbox.apply(change), throwsA(isA<StateError>()));
+    expect(storage.data.length, 1);
+    expect(storage.flushCount, 1);
+
     await inbox.apply(change);
     expect(storage.data.length, 1);
     expect(storage.flushCount, 2);
