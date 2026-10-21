@@ -125,7 +125,7 @@ void main() {
     expect(localMovements[movement.movementId]?['delta'], -2);
     final pending = await outbox.pendingForStore(movement.storeId);
     expect(pending, hasLength(1));
-    expect(pending.single.eventId, 'inventory-movement:movement-restart-1');
+    expect(pending.single.eventId, 'inventory-movement-movement-restart-1');
     expect(pending.single.payload, movement.toPayload());
     expect(
       (journalBox.get(event.eventId) as Map)['status'],
