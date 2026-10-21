@@ -58,10 +58,10 @@ CloudInventoryLedgerChange _change(int version, String id) =>
 void main() {
   test('parses the server ledger schema as an immutable movement', () {
     final change = _change(1, 'movement-1');
-    expect(change.movement.movementId, 'movement-1');
-    expect(change.movement.productId, 'product-1');
-    expect(change.movement.delta, -2);
-    expect(change.movement.storeId, 'store-a');
+    expect(change.movement!.movementId, 'movement-1');
+    expect(change.movement!.productId, 'product-1');
+    expect(change.movement!.delta, -2);
+    expect(change.movement!.storeId, 'store-a');
   });
 
   test('rejects mismatched identity and unsafe movement data', () {
@@ -133,6 +133,36 @@ void main() {
       throwsA(isA<StateError>()),
     );
     expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
+  });
+
+
+  test('advances shared ledger cursor across other immutable entity types', () async {
+    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
+    final other = CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+      'storeId': 'store-a',
+      'eventId': 'purchase_purchase-1',
+      'entityType': 'purchase',
+      'entityId': 'purchase-1',
+      'operation': 'append',
+      'version': 1,
+      'payload': <String, Object?>{'id': 'purchase-1'},
+    });
+    final transport = _FakeTransport(CloudInventoryLedgerPage(
+      storeId: 'store-a',
+      afterVersion: 0,
+      changes: <CloudInventoryLedgerChange>[other, _change(2, 'movement-2')],
+      nextCursor: 2,
+      hasMore: false,
+    ));
+    final applier = _FakeApplier();
+    final coordinator = CloudInventoryLedgerPullCoordinator(
+      transport: transport,
+      applier: applier,
+      cursors: cursors,
+    );
+    await coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a');
+    expect(applier.applied, <String>['inventoryMovement_movement-2']);
+    expect((await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version, 2);
   });
 
   test('rejects gaps in ledger sequence before applying anything', () async {
