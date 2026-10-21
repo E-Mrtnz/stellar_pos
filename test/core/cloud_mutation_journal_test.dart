@@ -147,7 +147,9 @@ void main() {
     );
 
     expect(recovered, 1);
-    expect(applyCalls, 2);
+    // The durable journal already recorded localApplied before the failure,
+    // so recovery must enqueue/complete the event without applying locally again.
+    expect(applyCalls, 1);
     expect(local['sale-1'], 4);
     expect(await outbox.pendingForStore('store-a'), hasLength(1));
     expect((journalStorage.data['mutation-1'] as Map)['status'], 'completed');
