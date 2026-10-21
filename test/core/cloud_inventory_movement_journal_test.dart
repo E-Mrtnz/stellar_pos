@@ -71,7 +71,7 @@ void main() {
 
     final pending = await outbox.pendingForStore('store-a');
     expect(pending, hasLength(1));
-    expect(pending.single.eventId, 'inventory-movement:movement-001');
+    expect(pending.single.eventId, 'inventory-movement-movement-001');
     expect(pending.single.entityType, 'inventoryMovement');
     expect(pending.single.entityId, 'movement-001');
     expect(pending.single.payload, movement.toPayload());
