@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_inventory_movement.dart';
+import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 
 void main() {
   final occurredAt = DateTime.utc(2026, 10, 20, 12);
@@ -64,6 +65,28 @@ void main() {
         'missing-reason');
     expect(movement(localVersion: -1).validate(activeStoreId: 'store-a'),
         'invalid-local-version');
+  });
+
+
+  test('creates a stable outbox envelope without enabling transport', () {
+    final value = movement();
+    final event = value.toSyncEvent();
+
+    expect(event.eventId, 'inventory-movement:movement-1');
+    expect(event.storeId, 'store-a');
+    expect(event.entityType, 'inventoryMovement');
+    expect(event.entityId, 'movement-1');
+    expect(event.operation, CloudSyncOperation.create);
+    expect(event.localVersion, 1);
+    expect(event.payload, value.toPayload());
+    expect(event.status, CloudSyncEventStatus.pending);
+  });
+
+  test('does not create an envelope for an invalid movement', () {
+    expect(
+      () => movement(delta: 0).toSyncEvent(),
+      throwsArgumentError,
+    );
   });
 
   test('rejects malformed serialized payloads', () {
