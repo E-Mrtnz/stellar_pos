@@ -144,6 +144,10 @@ class CloudSyncWorker {
     var retried = 0;
     var blocked = 0;
     for (final event in pending.take(limit)) {
+      final nextAttemptAt = event.nextAttemptAt;
+      if (nextAttemptAt != null && nextAttemptAt.isAfter(DateTime.now().toUtc())) {
+        continue;
+      }
       // Commercial entities stay blocked until their own server contract exists.
       if (event.entityType != 'syntheticTestValue') {
         await _outbox.markBlocked(event.eventId);
@@ -168,7 +172,11 @@ class CloudSyncWorker {
         }
       } on CloudSyncTransportException catch (error) {
         if (error.retryable && _retryPolicy.canRetry(event.attemptCount + 1)) {
-          await _outbox.retry(event.eventId);
+          final nextAttempt = event.attemptCount + 1;
+          await _outbox.retry(
+            event.eventId,
+            delay: _retryPolicy.delayForAttempt(nextAttempt),
+          );
           retried++;
         } else {
           await _outbox.markBlocked(event.eventId);
