@@ -93,6 +93,77 @@ void main() {
       expect(storage.data['event-1'], containsPair('status', 'delivered'));
     });
 
+    test('delivers a validated immutable inventory movement', () async {
+      final movement = CloudSyncEvent(
+        eventId: 'inventory-movement-movement-1',
+        storeId: 'store-a',
+        entityType: 'inventoryMovement',
+        entityId: 'movement-1',
+        operation: CloudSyncOperation.create,
+        localVersion: 1,
+        createdAt: DateTime.utc(2026, 10, 15),
+        payload: <String, Object?>{
+          'movementId': 'movement-1',
+          'productId': 'product-1',
+          'delta': 4,
+          'reason': 'restock',
+          'occurredAt': DateTime.utc(2026, 10, 15).toIso8601String(),
+          'localVersion': 1,
+        },
+      );
+      await outbox.enqueue(movement);
+      final transport = _Transport((event) async {
+        expect(event.entityType, 'inventoryMovement');
+        expect(event.operation, CloudSyncOperation.create);
+        return CloudSyncDeliveryStatus.applied;
+      });
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.applied, 1);
+      expect(result.blocked, 0);
+      expect(transport.calls, 1);
+      expect(storage.data[movement.eventId], containsPair('status', 'delivered'));
+    });
+
+    test('blocks malformed inventory movement before calling transport', () async {
+      final movement = CloudSyncEvent(
+        eventId: 'inventory-movement-movement-2',
+        storeId: 'store-a',
+        entityType: 'inventoryMovement',
+        entityId: 'movement-2',
+        operation: CloudSyncOperation.create,
+        localVersion: 1,
+        createdAt: DateTime.utc(2026, 10, 15),
+        payload: <String, Object?>{
+          'movementId': 'movement-2',
+          'productId': 'product/unsafe',
+          'delta': 4,
+          'reason': 'restock',
+          'occurredAt': DateTime.utc(2026, 10, 15).toIso8601String(),
+          'localVersion': 1,
+        },
+      );
+      await outbox.enqueue(movement);
+      final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.blocked, 1);
+      expect(transport.calls, 0);
+      expect(storage.data[movement.eventId], containsPair('status', 'blocked'));
+    });
+
     test('blocks commercial entities before calling the transport', () async {
       await outbox.enqueue(_event(type: 'sale'));
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
