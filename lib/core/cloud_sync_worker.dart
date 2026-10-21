@@ -26,19 +26,15 @@ class CloudFunctionsSyntheticSyncTransport implements CloudSyncTransport {
 
   @override
   Future<CloudSyncDeliveryStatus> send(CloudSyncEvent event) async {
-    if (event.entityType != 'syntheticTestValue' ||
-        event.operation != CloudSyncOperation.update ||
-        event.payload.length != 1 ||
-        event.payload['value'] is! String) {
-      throw const CloudSyncTransportException(
-        'El transporte remoto solo admite eventos sintéticos.',
-        retryable: false,
-      );
-    }
-    try {
-      final response = await _functions
-          .httpsCallable('acceptSyntheticSyncEvent')
-          .call(<String, Object?>{
+    late final String callableName;
+    late final Map<String, Object?> requestData;
+
+    if (event.entityType == 'syntheticTestValue' &&
+        event.operation == CloudSyncOperation.update &&
+        event.payload.length == 1 &&
+        event.payload['value'] is String) {
+      callableName = 'acceptSyntheticSyncEvent';
+      requestData = <String, Object?>{
         'schemaVersion': 1,
         'storeId': event.storeId,
         'eventId': event.eventId,
@@ -47,7 +43,32 @@ class CloudFunctionsSyntheticSyncTransport implements CloudSyncTransport {
         'operation': 'set',
         'localVersion': event.localVersion,
         'payload': event.payload,
-      });
+      };
+    } else if (event.entityType == 'inventoryMovement' &&
+        event.operation == CloudSyncOperation.create &&
+        _isValidInventoryMovementEvent(event)) {
+      callableName = 'acceptCloudLedgerEntry';
+      requestData = <String, Object?>{
+        'storeId': event.storeId,
+        'entityType': 'inventoryMovement',
+        'entityId': event.entityId,
+        'entry': <String, Object?>{
+          'id': event.entityId,
+          'productId': event.payload['productId'],
+          'quantityDelta': event.payload['delta'],
+          'reason': event.payload['reason'],
+          'createdAt': event.payload['occurredAt'],
+        },
+      };
+    } else {
+      throw const CloudSyncTransportException(
+        'El transporte remoto no admite este tipo de evento o su contenido es inválido.',
+        retryable: false,
+      );
+    }
+
+    try {
+      final response = await _functions.httpsCallable(callableName).call(requestData);
       final data = Map<String, dynamic>.from(response.data as Map);
       if (data['status'] == 'applied') return CloudSyncDeliveryStatus.applied;
       if (data['status'] == 'duplicate') return CloudSyncDeliveryStatus.duplicate;
@@ -65,7 +86,32 @@ class CloudFunctionsSyntheticSyncTransport implements CloudSyncTransport {
       );
     }
   }
-}
+
+  bool _isValidInventoryMovementEvent(CloudSyncEvent event) {
+    final payload = event.payload;
+    final movementId = payload['movementId'];
+    final productId = payload['productId'];
+    final delta = payload['delta'];
+    final reason = payload['reason'];
+    final occurredAt = payload['occurredAt'];
+    final localVersion = payload['localVersion'];
+    return event.eventId == 'inventory-movement-${event.entityId}' &&
+        movementId == event.entityId &&
+        productId is String &&
+        RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(productId) &&
+        delta is int &&
+        delta != 0 &&
+        reason is String &&
+        reason.isNotEmpty &&
+        reason == reason.trim() &&
+        reason.length <= 500 &&
+        occurredAt is String &&
+        DateTime.tryParse(occurredAt) != null &&
+        localVersion is int &&
+        localVersion >= 1 &&
+        payload.length == 6;
+  }
+}}
 
 class CloudSyncRunSummary {
   const CloudSyncRunSummary({
@@ -147,15 +193,16 @@ class CloudSyncWorker {
     final ready = pending.where((event) =>
         event.nextAttemptAt == null || !event.nextAttemptAt!.isAfter(now));
     for (final event in ready.take(limit)) {
-      // Commercial entities stay blocked until their own server contract exists.
-      if (event.entityType != 'syntheticTestValue') {
-        await _outbox.markBlocked(event.eventId);
-        blocked++;
-        continue;
-      }
+      final isSynthetic = event.entityType == 'syntheticTestValue' &&
+          event.operation == CloudSyncOperation.update &&
+          event.payload.length == 1 &&
+          event.payload['value'] is String;
+      final isInventoryMovement = event.entityType == 'inventoryMovement' &&
+          event.operation == CloudSyncOperation.create &&
+          _isValidInventoryMovementEnvelope(event);
+      // Mutable product snapshots and all other commercial entities remain blocked.
       final invalid = validateCloudSyncEvent(event, activeStoreId: storeId);
-      if (invalid != null || event.payload.length != 1 ||
-          event.payload['value'] is! String) {
+      if (invalid != null || (!isSynthetic && !isInventoryMovement)) {
         await _outbox.markBlocked(event.eventId);
         blocked++;
         continue;
@@ -195,7 +242,12 @@ class CloudSyncWorker {
   }
 }
 
-class _AlwaysDeniedSessionGate implements CloudSyncSessionGate {
+bool _isValidInventoryMovementEnvelope(CloudSyncEvent event) {\n  final payload = event.payload;\n  return event.eventId == 'inventory-movement-${event.entityId}' &&\n      payload.length == 6 &&\n      payload['movementId'] == event.entityId &&\n      payload['productId'] is String &&\n      RegExp(r'^[A-Za-z0-9_-]{1,120}
+  const _AlwaysDeniedSessionGate();
+  @override
+  Future<bool> canSyncStore(String storeId) async => false;
+}
+).hasMatch(payload['productId'] as String) &&\n      payload['delta'] is int && payload['delta'] != 0 &&\n      payload['reason'] is String && (payload['reason'] as String).isNotEmpty &&\n      payload['reason'] == (payload['reason'] as String).trim() &&\n      (payload['reason'] as String).length <= 500 &&\n      payload['occurredAt'] is String &&\n      DateTime.tryParse(payload['occurredAt'] as String) != null &&\n      payload['localVersion'] is int && (payload['localVersion'] as int) >= 1;\n}\n\nclass _AlwaysDeniedSessionGate implements CloudSyncSessionGate {
   const _AlwaysDeniedSessionGate();
   @override
   Future<bool> canSyncStore(String storeId) async => false;
