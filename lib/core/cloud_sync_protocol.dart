@@ -6,7 +6,7 @@ enum CloudSyncOperation { create, update, delete }
 
 enum CloudSyncEventStatus { pending, inFlight, delivered, blocked }
 
-/// Durable-event shape that a future Hive-backed outbox must persist.
+/// Durable event envelope persisted by the local Hive-backed outbox.
 ///
 /// [eventId] must remain stable across retries. [storeId] prevents an event
 /// from being sent to a different store after the active account changes.
