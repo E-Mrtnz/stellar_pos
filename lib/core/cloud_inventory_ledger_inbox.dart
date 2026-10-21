@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:stellar_pos/core/cloud_inventory_ledger_pull.dart';
-import 'package:stellar_pos/core/cloud_inventory_movement.dart';
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
 
 /// Durable inbox for remote movements. Receiving a movement does not directly
