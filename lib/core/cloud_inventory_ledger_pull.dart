@@ -40,9 +40,34 @@ class CloudInventoryLedgerChange {
     if (entityType != 'inventoryMovement' || operation != 'append') {
       throw const FormatException('El cambio remoto no es un movimiento de inventario.');
     }
-    final movement = CloudInventoryMovement.fromPayload(
-      Map<String, dynamic>.from(map['payload'] as Map),
+    final rawPayload = Map<String, dynamic>.from(map['payload'] as Map);
+    // The server ledger schema uses business field names, not the local outbox
+    // envelope. Reconstruct the domain movement explicitly at this boundary.
+    if (rawPayload.keys.toSet().difference(
+      <String>{'id', 'productId', 'quantityDelta', 'reason', 'createdAt'},
+    ).isNotEmpty ||
+        rawPayload.length != 5 ||
+        rawPayload['id'] is! String ||
+        rawPayload['productId'] is! String ||
+        rawPayload['quantityDelta'] is! int ||
+        rawPayload['reason'] is! String ||
+        rawPayload['createdAt'] is! String) {
+      throw const FormatException('El contenido del movimiento remoto es inválido.');
+    }
+    final occurredAt = DateTime.tryParse(rawPayload['createdAt'] as String);
+    if (occurredAt == null) {
+      throw const FormatException('La fecha del movimiento remoto es inválida.');
+    }
+    final movement = CloudInventoryMovement(
+      movementId: rawPayload['id'] as String,
       storeId: storeId,
+      productId: rawPayload['productId'] as String,
+      delta: rawPayload['quantityDelta'] as int,
+      reason: rawPayload['reason'] as String,
+      occurredAt: occurredAt,
+      // The ledger sequence is the authoritative cloud ordering cursor.
+      // localVersion is device-local metadata and is not stored by the server.
+      localVersion: 1,
     );
     if (movement.movementId != entityId ||
         map['eventId'] != 'inventoryMovement_$entityId' ||
