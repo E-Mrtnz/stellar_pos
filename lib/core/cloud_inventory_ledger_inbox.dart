@@ -37,8 +37,10 @@ class _HiveCloudInventoryLedgerInboxStorage
   @override
   Future<void> put(String eventId, Map<String, Object?> value) async {
     final box = await _box;
+    // Do not update the in-memory cache until flush succeeds. If persistence
+    // fails, a retry must not mistake an uncommitted write for a durable inbox
+    // record and allow the ledger cursor to advance.
     await box.put(eventId, value);
-    await _refresh();
   }
 
   @override
