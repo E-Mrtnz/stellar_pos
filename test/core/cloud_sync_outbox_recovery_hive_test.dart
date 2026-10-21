@@ -60,4 +60,40 @@ void main() {
     expect(pending.single.status, CloudSyncEventStatus.pending);
     expect(pending.single.attemptCount, 1);
   });
+  test('scheduled retry timestamp survives Hive close and reopen', () async {
+    final box = await Hive.openBox<dynamic>(boxName);
+    final outbox = CloudSyncOutbox(storage: _HiveOutboxRecoveryStorage(box));
+    await outbox.enqueue(CloudSyncEvent(
+      eventId: 'evt-retry-persisted',
+      storeId: 'store-a',
+      entityType: 'product',
+      entityId: 'product-9',
+      operation: CloudSyncOperation.update,
+      localVersion: 9,
+      createdAt: DateTime.utc(2026, 10, 20, 13),
+    ));
+
+    await outbox.retry(
+      'evt-retry-persisted',
+      delay: const Duration(minutes: 5),
+    );
+    final beforeRestart = DateTime.parse(
+      (box.get('evt-retry-persisted') as Map)['nextAttemptAt'] as String,
+    );
+    await Hive.close();
+
+    Hive.init(directory.path);
+    final reopenedBox = await Hive.openBox<dynamic>(boxName);
+    final reopened = CloudSyncOutbox(
+      storage: _HiveOutboxRecoveryStorage(reopenedBox),
+    );
+    final pending = await reopened.pendingForStore('store-a');
+
+    expect(pending, hasLength(1));
+    expect(pending.single.eventId, 'evt-retry-persisted');
+    expect(pending.single.attemptCount, 1);
+    expect(pending.single.nextAttemptAt, beforeRestart);
+    expect(pending.single.nextAttemptAt!.isAfter(DateTime.now().toUtc()), isTrue);
+  });
+
 }
