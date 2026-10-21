@@ -67,6 +67,8 @@ void main() {
         'reason-not-normalized');
     expect(movement(localVersion: -1).validate(activeStoreId: 'store-a'),
         'invalid-local-version');
+    expect(movement(localVersion: 0).validate(activeStoreId: 'store-a'),
+        'invalid-local-version');
   });
 
 
