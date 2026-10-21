@@ -126,6 +126,11 @@ void main() {
       expect(storage.data['event-1'], containsPair('eventId', 'event-1'));
       expect(storage.data['event-1'], containsPair('status', 'pending'));
       expect(storage.data['event-1'], containsPair('attemptCount', 1));
+      expect(storage.data['event-1'], contains('nextAttemptAt'));
+
+      final immediateRetry = await worker.runOnce(storeId: 'store-a');
+      expect(immediateRetry.retried, 0);
+      expect(transport.calls, 1);
     });
 
     test('rejects unbounded batch sizes', () async {
