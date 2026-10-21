@@ -111,7 +111,7 @@ class CloudFunctionsSyntheticSyncTransport implements CloudSyncTransport {
         localVersion >= 1 &&
         payload.length == 6;
   }
-}}
+}
 
 class CloudSyncRunSummary {
   const CloudSyncRunSummary({
@@ -152,8 +152,8 @@ class FirebaseCloudSyncSessionGate implements CloudSyncSessionGate {
   }
 }
 
-/// Manually invoked, bounded worker for synthetic test events only.
-/// Not wired to app startup, lifecycle timers, or commercial repositories.
+/// Manually invoked, bounded worker for synthetic events and immutable inventory
+/// movements. It is not wired to app startup or lifecycle timers.
 class CloudSyncWorker {
   CloudSyncWorker({
     required CloudSyncOutbox outbox,
@@ -200,7 +200,6 @@ class CloudSyncWorker {
       final isInventoryMovement = event.entityType == 'inventoryMovement' &&
           event.operation == CloudSyncOperation.create &&
           _isValidInventoryMovementEnvelope(event);
-      // Mutable product snapshots and all other commercial entities remain blocked.
       final invalid = validateCloudSyncEvent(event, activeStoreId: storeId);
       if (invalid != null || (!isSynthetic && !isInventoryMovement)) {
         await _outbox.markBlocked(event.eventId);
@@ -242,12 +241,26 @@ class CloudSyncWorker {
   }
 }
 
-bool _isValidInventoryMovementEnvelope(CloudSyncEvent event) {\n  final payload = event.payload;\n  return event.eventId == 'inventory-movement-${event.entityId}' &&\n      payload.length == 6 &&\n      payload['movementId'] == event.entityId &&\n      payload['productId'] is String &&\n      RegExp(r'^[A-Za-z0-9_-]{1,120}
-  const _AlwaysDeniedSessionGate();
-  @override
-  Future<bool> canSyncStore(String storeId) async => false;
+bool _isValidInventoryMovementEnvelope(CloudSyncEvent event) {
+  final payload = event.payload;
+  final productId = payload['productId'];
+  final delta = payload['delta'];
+  final reason = payload['reason'];
+  final occurredAt = payload['occurredAt'];
+  final localVersion = payload['localVersion'];
+  return event.eventId == 'inventory-movement-${event.entityId}' &&
+      payload.length == 6 &&
+      payload['movementId'] == event.entityId &&
+      productId is String &&
+      RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(productId) &&
+      delta is int && delta != 0 &&
+      reason is String && reason.isNotEmpty &&
+      reason == reason.trim() && reason.length <= 500 &&
+      occurredAt is String && DateTime.tryParse(occurredAt) != null &&
+      localVersion is int && localVersion >= 1;
 }
-).hasMatch(payload['productId'] as String) &&\n      payload['delta'] is int && payload['delta'] != 0 &&\n      payload['reason'] is String && (payload['reason'] as String).isNotEmpty &&\n      payload['reason'] == (payload['reason'] as String).trim() &&\n      (payload['reason'] as String).length <= 500 &&\n      payload['occurredAt'] is String &&\n      DateTime.tryParse(payload['occurredAt'] as String) != null &&\n      payload['localVersion'] is int && (payload['localVersion'] as int) >= 1;\n}\n\nclass _AlwaysDeniedSessionGate implements CloudSyncSessionGate {
+
+class _AlwaysDeniedSessionGate implements CloudSyncSessionGate {
   const _AlwaysDeniedSessionGate();
   @override
   Future<bool> canSyncStore(String storeId) async => false;
