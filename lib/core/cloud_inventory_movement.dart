@@ -1,9 +1,10 @@
 import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 
-/// Immutable inventory delta for future conflict-safe cloud synchronization.
+/// Immutable inventory delta for conflict-safe cloud ledger synchronization.
 ///
-/// This contract is intentionally not wired to ProductProvider or the network
-/// transport until the server-side inventory contract is implemented.
+/// This is an append-only movement contract. It deliberately does not mutate
+/// Product.stock directly: local stock application and inbound reconciliation
+/// must be coordinated by the inventory domain layer.
 class CloudInventoryMovement {
   const CloudInventoryMovement({
     required this.movementId,
@@ -69,6 +70,7 @@ class CloudInventoryMovement {
       return 'invalid-product-id';
     }
     if (delta == 0) return 'zero-delta';
+    if (delta.abs() > 9007199254740991) return 'delta-out-of-range';
     if (reason.trim().isEmpty) return 'missing-reason';
     if (reason != reason.trim()) return 'reason-not-normalized';
     if (localVersion < 1) return 'invalid-local-version';
