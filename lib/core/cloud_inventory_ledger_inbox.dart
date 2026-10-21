@@ -44,7 +44,10 @@ class _HiveCloudInventoryLedgerInboxStorage
   }
 
   @override
-  Future<void> flush() async => (await _box).flush();
+  Future<void> flush() async {
+    await (await _box).flush();
+    await _refresh();
+  }
 }
 
 class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
