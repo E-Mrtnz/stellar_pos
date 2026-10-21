@@ -21,6 +21,7 @@ class CloudSyncEvent {
     required this.createdAt,
     this.status = CloudSyncEventStatus.pending,
     this.attemptCount = 0,
+    this.nextAttemptAt,
     this.payload = const <String, Object?>{},
   })  : assert(eventId != ''),
         assert(storeId != ''),
@@ -36,12 +37,15 @@ class CloudSyncEvent {
   final DateTime createdAt;
   final CloudSyncEventStatus status;
   final int attemptCount;
+  /// Earliest UTC time this pending event may be retried after a transient failure.
+  final DateTime? nextAttemptAt;
   /// Entity-specific data. The trusted server must still validate its schema.
   final Map<String, Object?> payload;
 
   CloudSyncEvent copyWith({
     CloudSyncEventStatus? status,
     int? attemptCount,
+    DateTime? nextAttemptAt,
     Map<String, Object?>? payload,
   }) {
     return CloudSyncEvent(
@@ -54,6 +58,7 @@ class CloudSyncEvent {
       createdAt: createdAt,
       status: status ?? this.status,
       attemptCount: attemptCount ?? this.attemptCount,
+      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
       payload: payload ?? this.payload,
     );
   }
