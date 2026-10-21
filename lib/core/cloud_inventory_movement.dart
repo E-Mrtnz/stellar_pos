@@ -86,7 +86,17 @@ class CloudInventoryMovement {
     final occurredAt = DateTime.tryParse(
       payload['occurredAt']?.toString() ?? '',
     );
-    if (payload['movementId'] is! String ||
+    const expectedKeys = <String>{
+      'movementId',
+      'productId',
+      'delta',
+      'reason',
+      'occurredAt',
+      'localVersion',
+    };
+    if (payload.keys.toSet().difference(expectedKeys).isNotEmpty ||
+        !expectedKeys.every(payload.containsKey) ||
+        payload['movementId'] is! String ||
         payload['productId'] is! String ||
         payload['delta'] is! int ||
         payload['reason'] is! String ||
