@@ -126,7 +126,7 @@ void main() {
       expect(storage.data['event-1'], containsPair('eventId', 'event-1'));
       expect(storage.data['event-1'], containsPair('status', 'pending'));
       expect(storage.data['event-1'], containsPair('attemptCount', 1));
-      expect(storage.data['event-1'], contains('nextAttemptAt'));
+      expect((storage.data['event-1']! as Map<String, Object?>)['nextAttemptAt'], isA<String>());
 
       final immediateRetry = await worker.runOnce(storeId: 'store-a');
       expect(immediateRetry.retried, 0);
