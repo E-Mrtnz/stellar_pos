@@ -164,7 +164,7 @@ class CloudSalesPullCoordinator {
         deviceId.trim().isEmpty || deviceId.contains('/')) {
       throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
-    final key = '${deviceId}::${storeId}';
+    final key = '$deviceId::$storeId';
     return _runExclusive(
       key,
       () => _pullOnce(storeId: storeId, deviceId: deviceId, limit: limit),
