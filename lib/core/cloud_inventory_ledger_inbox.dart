@@ -22,14 +22,18 @@ class CloudInventoryInboxEntry {
     required this.eventId,
     required this.entityId,
     required this.version,
-    required this.movement,
+    required this.entityType,
+    required this.payload,
+    this.movement,
   });
 
   final String storeId;
   final String eventId;
   final String entityId;
   final int version;
-  final CloudInventoryMovement movement;
+  final String entityType;
+  final Map<String, dynamic> payload;
+  final CloudInventoryMovement? movement;
 }
 
 class _HiveCloudInventoryLedgerInboxStorage
@@ -116,31 +120,45 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
           final eventId = value['eventId'];
           final entityId = value['entityId'];
           final version = value['version'];
+          final entityType = value['entityType'];
+          final rawPayload = value['payload'];
           final rawMovement = value['movement'];
           if (eventId is! String ||
               entityId is! String ||
+              entityType is! String ||
               version is! int ||
               version < 1 ||
-              rawMovement is! Map) {
+              rawPayload is! Map ||
+              eventId != '${entityType}_$entityId') {
             throw const FormatException(
-              'Registro del inbox de inventario inválido.',
+              'Registro del inbox del ledger inválido.',
             );
           }
-          final movement = CloudInventoryMovement.fromPayload(
-            Map<String, dynamic>.from(rawMovement),
-            storeId: storeId,
-          );
-          if (eventId != 'inventoryMovement_${movement.movementId}' ||
-              entityId != movement.movementId) {
-            throw const FormatException(
-              'La identidad del inbox de inventario no coincide.',
+          CloudInventoryMovement? movement;
+          if (entityType == 'inventoryMovement') {
+            if (rawMovement is! Map) {
+              throw const FormatException(
+                'Falta el movimiento de inventario normalizado.',
+              );
+            }
+            movement = CloudInventoryMovement.fromPayload(
+              Map<String, dynamic>.from(rawMovement),
+              storeId: storeId,
             );
+            if (eventId != 'inventoryMovement_${movement.movementId}' ||
+                entityId != movement.movementId) {
+              throw const FormatException(
+                'La identidad del movimiento del inbox no coincide.',
+              );
+            }
           }
           entries.add(CloudInventoryInboxEntry(
             storeId: storeId,
             eventId: eventId,
             entityId: entityId,
             version: version,
+            entityType: entityType,
+            payload: Map<String, dynamic>.from(rawPayload),
             movement: movement,
           ));
         }
@@ -154,17 +172,31 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
   Future<void> apply(CloudInventoryLedgerChange change) =>
       _serialize(() async {
         final movement = change.movement;
-        if (!change.isInventoryMovement || movement == null) {
-          throw ArgumentError(
-            'El inbox solo admite movimientos de inventario.',
+        const supportedEntityTypes = <String>{
+          'inventoryMovement',
+          'purchase',
+          'debtMovement',
+          'electronicBalanceTransaction',
+        };
+        if (!supportedEntityTypes.contains(change.entityType) ||
+            change.storeId.trim().isEmpty ||
+            change.version < 1 ||
+            change.eventId != '${change.entityType}_${change.entityId}') {
+          throw const FormatException(
+            'La identidad o el tipo del registro del inbox no coincide.',
           );
         }
-        if (change.eventId != 'inventoryMovement_${movement.movementId}' ||
-            change.entityId != movement.movementId ||
-            change.storeId != movement.storeId ||
-            change.version < 1) {
+        if (change.isInventoryMovement &&
+            (movement == null ||
+                change.entityId != movement.movementId ||
+                change.storeId != movement.storeId)) {
           throw const FormatException(
             'La identidad del movimiento del inbox no coincide.',
+          );
+        }
+        if (!change.isInventoryMovement && movement != null) {
+          throw const FormatException(
+            'Una entidad comercial no puede contener un movimiento normalizado.',
           );
         }
         if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
@@ -176,7 +208,8 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
           'entityType': change.entityType,
           'entityId': change.entityId,
           'version': change.version,
-          'movement': movement.toPayload(),
+          'payload': change.payload,
+          'movement': movement?.toPayload(),
         };
         // Movement IDs are unique only within a store; scope inbox keys to
         // avoid collisions when stores independently create the same event ID.
