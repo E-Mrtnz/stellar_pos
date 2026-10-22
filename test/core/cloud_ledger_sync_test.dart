@@ -169,6 +169,57 @@ void main() {
       expect(page.changes, hasLength(2));
     });
 
+    test('rejects invalid ledger identifiers and duplicate event IDs', () {
+      final invalidIdentity = <String, dynamic>{
+        'storeId': 'store/a',
+        'eventId': 'inventoryMovement_move-1',
+        'entityType': 'inventoryMovement',
+        'entityId': 'move-1',
+        'operation': 'append',
+        'version': 1,
+        'payload': <String, dynamic>{'id': 'move-1'},
+      };
+      expect(
+        () => CloudLedgerChange.fromMap(invalidIdentity),
+        throwsFormatException,
+      );
+
+      final duplicate = <String, dynamic>{
+        'storeId': 'store-a',
+        'afterVersion': 0,
+        'nextCursor': 2,
+        'hasMore': false,
+        'changes': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'storeId': 'store-a',
+            'eventId': 'inventoryMovement_move-1',
+            'entityType': 'inventoryMovement',
+            'entityId': 'move-1',
+            'operation': 'append',
+            'version': 1,
+            'payload': <String, dynamic>{'id': 'move-1'},
+          },
+          <String, dynamic>{
+            'storeId': 'store-a',
+            'eventId': 'inventoryMovement_move-1',
+            'entityType': 'inventoryMovement',
+            'entityId': 'move-1',
+            'operation': 'append',
+            'version': 2,
+            'payload': <String, dynamic>{'id': 'move-1'},
+          },
+        ],
+      };
+      expect(
+        () => CloudLedgerPullPage.fromResponse(
+          duplicate,
+          expectedStoreId: 'store-a',
+          expectedCursor: 0,
+        ),
+        throwsFormatException,
+      );
+    });
+
     test('rejects cross-store changes, nonmonotonic versions and wrong cursors', () {
       Map<String, dynamic> response({
         String store = 'store-a',
