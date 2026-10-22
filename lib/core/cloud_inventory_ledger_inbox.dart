@@ -248,12 +248,21 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
         final inboxKey = '${change.storeId}::${change.eventId}';
         final existing = _storage.get(inboxKey);
         if (existing != null) {
-          if (existing is! Map ||
-              jsonEncode(existing) != jsonEncode(record)) {
+          if (existing is! Map) {
             throw StateError('Colisión de ID en el inbox del ledger.');
           }
-          // A prior attempt may have written to Hive but failed while flushing.
-          // Re-flush an identical replay before allowing the cursor to advance.
+          final comparableExisting = Map<String, Object?>.from(existing);
+          final existingStatus = comparableExisting.remove('status');
+          final comparableRecord = Map<String, Object?>.from(record)
+            ..remove('status');
+          if ((existingStatus != null &&
+                  existingStatus != 'pending' &&
+                  existingStatus != 'applied') ||
+              jsonEncode(comparableExisting) != jsonEncode(comparableRecord)) {
+            throw StateError('Colisión de ID en el inbox del ledger.');
+          }
+          // Preserve applied status on replay. Re-flush an identical record
+          // before allowing the caller to acknowledge a retried ledger page.
           await _storage.flush();
           return;
         }
