@@ -84,6 +84,34 @@ void main() {
     );
   });
 
+  test('rejects unsupported ledger entity types and mismatched event IDs', () {
+    final base = <String, dynamic>{
+      'storeId': 'store-a',
+      'eventId': 'purchase_purchase-1',
+      'entityType': 'purchase',
+      'entityId': 'purchase-1',
+      'operation': 'append',
+      'version': 1,
+      'payload': <String, Object?>{'id': 'purchase-1'},
+    };
+    expect(
+      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+        ...base,
+        'entityType': 'futureEntity',
+        'eventId': 'futureEntity_item-1',
+        'entityId': 'item-1',
+      }),
+      throwsFormatException,
+    );
+    expect(
+      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+        ...base,
+        'eventId': 'purchase_another-id',
+      }),
+      throwsFormatException,
+    );
+  });
+
   test('applies the page before advancing its durable cursor', () async {
     final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
     final transport = _FakeTransport(CloudInventoryLedgerPage(
