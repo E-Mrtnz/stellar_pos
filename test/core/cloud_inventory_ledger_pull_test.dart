@@ -84,6 +84,32 @@ void main() {
     );
   });
 
+  test('rejects store IDs outside the server identifier contract', () {
+    final base = <String, dynamic>{
+      'storeId': 'store-a',
+      'eventId': 'purchase_purchase-1',
+      'entityType': 'purchase',
+      'entityId': 'purchase-1',
+      'operation': 'append',
+      'version': 1,
+      'payload': <String, Object?>{'id': 'purchase-1'},
+    };
+    expect(
+      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+        ...base,
+        'storeId': 'store/other',
+      }),
+      throwsFormatException,
+    );
+    expect(
+      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+        ...base,
+        'storeId': 's' * 81,
+      }),
+      throwsFormatException,
+    );
+  });
+
   test('rejects unsupported ledger entity types and mismatched event IDs', () {
     final base = <String, dynamic>{
       'storeId': 'store-a',
