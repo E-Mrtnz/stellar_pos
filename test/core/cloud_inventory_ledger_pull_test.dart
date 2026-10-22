@@ -197,7 +197,7 @@ void main() {
       'entityType': 'purchase',
       'entityId': 'purchase-1',
       'operation': 'append',
-      'version': 1,
+      'version': 2,
       'payload': <String, Object?>{'id': 'purchase-1'},
     });
     final transport = _FakeTransport(CloudInventoryLedgerPage(
