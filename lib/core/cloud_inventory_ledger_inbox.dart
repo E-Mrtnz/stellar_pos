@@ -25,6 +25,7 @@ class CloudInventoryInboxEntry {
     required this.entityId,
     required this.version,
     required this.entityType,
+    required this.operation,
     required this.payload,
     this.movement,
   });
@@ -34,6 +35,7 @@ class CloudInventoryInboxEntry {
   final String entityId;
   final int version;
   final String entityType;
+  final String operation;
   final Map<String, dynamic> payload;
   final CloudInventoryMovement? movement;
 }
@@ -123,6 +125,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
           final entityId = value['entityId'];
           final version = value['version'];
           final entityType = value['entityType'];
+          final operation = value['operation'];
           final rawPayload = value['payload'];
           final rawMovement = value['movement'];
           const supportedEntityTypes = <String>{
@@ -135,6 +138,8 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
               entityId is! String ||
               entityType is! String ||
               !supportedEntityTypes.contains(entityType) ||
+              operation is! String ||
+              operation != 'append' ||
               version is! int ||
               version < 1 ||
               rawPayload is! Map ||
@@ -167,6 +172,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
             entityId: entityId,
             version: version,
             entityType: entityType,
+            operation: operation,
             payload: Map<String, dynamic>.from(rawPayload),
             movement: movement,
           ));
@@ -216,6 +222,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
           'eventId': change.eventId,
           'entityType': change.entityType,
           'entityId': change.entityId,
+          'operation': change.operation,
           'version': change.version,
           'payload': change.payload,
           'movement': movement?.toPayload(),
