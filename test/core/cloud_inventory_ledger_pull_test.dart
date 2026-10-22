@@ -189,7 +189,7 @@ void main() {
   });
 
 
-  test('does not skip unsupported ledger entities or advance the cursor', () async {
+  test('durably hands every supported ledger entity to the inbox before cursor advance', () async {
     final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
     final other = CloudInventoryLedgerChange.fromMap(<String, dynamic>{
       'storeId': 'store-a',
@@ -198,7 +198,7 @@ void main() {
       'entityId': 'purchase-1',
       'operation': 'append',
       'version': 2,
-      'payload': <String, Object?>{'id': 'purchase-1'},
+      'payload': <String, Object?>{'id': 'purchase-1', 'total': 12.5},
     });
     final transport = _FakeTransport(CloudInventoryLedgerPage(
       storeId: 'store-a',
@@ -217,12 +217,12 @@ void main() {
       cursors: cursors,
     );
 
-    await expectLater(
-      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
-      throwsUnsupportedError,
-    );
-    expect(applier.applied, isEmpty);
-    expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
+    await coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a');
+    expect(applier.applied, <String>[
+      'inventoryMovement_movement-1',
+      'purchase_purchase-1',
+    ]);
+    expect((await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version, 2);
   });
 
   test('rejects inconsistent hasMore metadata before applying changes', () async {
