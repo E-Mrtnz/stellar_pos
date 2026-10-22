@@ -5,9 +5,11 @@ import 'package:stellar_pos/core/cloud_inventory_ledger_pull.dart';
 import 'package:stellar_pos/core/cloud_inventory_movement.dart';
 import 'package:stellar_pos/core/data/storage/local_storage.dart';
 
-/// Durable inbox for remote movements. Receiving a movement does not directly
-/// change Product.stock; a separate inventory-domain operation must reconcile
-/// the inbox with the local catalog and mark the movement as applied.
+/// Durable inbox for supported remote ledger entities.
+///
+/// Receiving records never directly mutates the local commercial repositories.
+/// Entity-specific reconciliation must be implemented separately and must be
+/// idempotent before it changes stock, purchases, debts, or balances.
 abstract interface class CloudInventoryLedgerInboxStorage {
   Object? get(String eventId);
   Iterable<Object?> get values;
@@ -15,7 +17,7 @@ abstract interface class CloudInventoryLedgerInboxStorage {
   Future<void> flush();
 }
 
-/// A durable remote movement waiting for a future store-scoped stock reconciler.
+/// A durable ledger record waiting for its store-scoped domain reconciler.
 class CloudInventoryInboxEntry {
   const CloudInventoryInboxEntry({
     required this.storeId,
@@ -123,9 +125,16 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
           final entityType = value['entityType'];
           final rawPayload = value['payload'];
           final rawMovement = value['movement'];
+          const supportedEntityTypes = <String>{
+            'inventoryMovement',
+            'purchase',
+            'debtMovement',
+            'electronicBalanceTransaction',
+          };
           if (eventId is! String ||
               entityId is! String ||
               entityType is! String ||
+              !supportedEntityTypes.contains(entityType) ||
               version is! int ||
               version < 1 ||
               rawPayload is! Map ||
@@ -166,8 +175,8 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
         return List<CloudInventoryInboxEntry>.unmodifiable(entries);
       });
 
-  /// Stores only inventory movements. Replaying an identical event is a
-  /// no-op; reusing an event ID for different content is a hard error.
+  /// Stores supported ledger records. Replaying identical content is a no-op;
+  /// reusing an event ID for different content is a hard error.
   @override
   Future<void> apply(CloudInventoryLedgerChange change) =>
       _serialize(() async {
@@ -218,7 +227,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
         if (existing != null) {
           if (existing is! Map ||
               jsonEncode(existing) != jsonEncode(record)) {
-            throw StateError('Colisión de ID en el inbox de inventario.');
+            throw StateError('Colisión de ID en el inbox del ledger.');
           }
           // A prior attempt may have written to Hive but failed while flushing.
           // Re-flush an identical replay before allowing the cursor to advance.
