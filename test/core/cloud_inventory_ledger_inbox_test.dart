@@ -9,6 +9,8 @@ class _MemoryInboxStorage implements CloudInventoryLedgerInboxStorage {
   @override
   Object? get(String eventId) => data[eventId];
   @override
+  Iterable<Object?> get values => data.values;
+  @override
   Future<void> put(String eventId, Map<String, Object?> value) async {
     data[eventId] = Map<String, Object?>.from(value);
   }
@@ -76,6 +78,34 @@ void main() {
     await inbox.apply(change);
     expect(storage.data.length, 1);
     expect(storage.flushCount, 2);
+  });
+
+  test('lists pending movements only for the requested store in ledger order', () async {
+    final storage = _MemoryInboxStorage();
+    final inbox = CloudInventoryLedgerInbox(storage: storage);
+
+    await inbox.apply(_movementChange(
+      version: 2,
+      eventId: 'inventoryMovement_move-2',
+      movementId: 'move-2',
+    ));
+    await inbox.apply(_movementChange(
+      version: 1,
+      eventId: 'inventoryMovement_move-1',
+      movementId: 'move-1',
+    ));
+    await inbox.apply(_movementChange(
+      storeId: 'store-b',
+      version: 1,
+      eventId: 'inventoryMovement_move-1',
+      movementId: 'move-1',
+    ));
+
+    final pending = await inbox.pendingForStore('store-a');
+    expect(pending.map((entry) => entry.entityId), <String>['move-1', 'move-2']);
+    expect(pending.map((entry) => entry.version), <int>[1, 2]);
+    expect(pending.every((entry) => entry.storeId == 'store-a'), isTrue);
+    expect((await inbox.pendingForStore('store-b')), hasLength(1));
   });
 
   test('isolates identical event IDs across different stores', () async {
