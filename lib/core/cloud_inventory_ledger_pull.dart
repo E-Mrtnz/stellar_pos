@@ -48,7 +48,7 @@ class CloudInventoryLedgerChange {
       'electronicBalanceTransaction',
     };
     if (storeId.trim().isEmpty ||
-        storeId.contains('/') ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(storeId) ||
         !RegExp(r'^[A-Za-z0-9_-]{1,200}$').hasMatch(eventId) ||
         !RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(entityId) ||
         !supportedEntityTypes.contains(entityType) ||
