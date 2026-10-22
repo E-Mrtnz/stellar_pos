@@ -14,6 +14,7 @@ class CloudInventoryLedgerChange {
     required this.entityId,
     required this.operation,
     required this.version,
+    this.payload = const <String, dynamic>{},
     this.movement,
   });
 
@@ -23,6 +24,8 @@ class CloudInventoryLedgerChange {
   final String entityId;
   final String operation;
   final int version;
+  /// Original remote payload retained for entity types not yet reconciled locally.
+  final Map<String, dynamic> payload;
   final CloudInventoryMovement? movement;
 
   bool get isInventoryMovement => entityType == 'inventoryMovement';
@@ -59,6 +62,7 @@ class CloudInventoryLedgerChange {
         operation != 'append') {
       throw const FormatException('La identidad o el tipo del cambio remoto es inválido.');
     }
+    final payload = Map<String, dynamic>.from(map['payload'] as Map);
     if (entityType != 'inventoryMovement') {
       return CloudInventoryLedgerChange(
         storeId: storeId,
@@ -67,9 +71,9 @@ class CloudInventoryLedgerChange {
         entityId: entityId,
         operation: operation,
         version: version,
+        payload: payload,
       );
     }
-    final payload = Map<String, dynamic>.from(map['payload'] as Map);
     const expectedKeys = <String>{
       'id', 'productId', 'quantityDelta', 'reason', 'createdAt',
     };
@@ -111,6 +115,7 @@ class CloudInventoryLedgerChange {
       entityId: entityId,
       operation: operation,
       version: version,
+      payload: payload,
       movement: movement,
     );
   }
@@ -277,16 +282,9 @@ class CloudInventoryLedgerPullCoordinator {
     if (page.nextCursor != expectedCursor) {
       throw const FormatException('El cursor del ledger no coincide con el último movimiento.');
     }
-    // This inbox currently persists inventory movements only. Never skip
-    // another ledger entity and advance the shared cursor: doing so would
-    // permanently hide purchases, debts, or electronic-balance transactions
-    // from a future applier. Reject the whole page before applying any item.
-    if (page.changes.any((change) => !change.isInventoryMovement)) {
-      throw UnsupportedError(
-        'El ledger contiene entidades comerciales que aún no tienen un '
-        'aplicador durable.',
-      );
-    }
+    // The durable inbox must retain every supported ledger entity before
+    // the shared cursor advances. Entity-specific business reconciliation is
+    // a separate step and must not cause other records to be skipped.
     for (final change in page.changes) {
       await _applier.apply(change);
     }
