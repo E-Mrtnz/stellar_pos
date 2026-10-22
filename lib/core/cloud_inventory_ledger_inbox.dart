@@ -97,7 +97,10 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
       'version': change.version,
       'movement': movement.toPayload(),
     };
-    final existing = _storage.get(change.eventId);
+    // Movement IDs are unique only within a store; scope inbox keys to avoid
+    // collisions when two stores independently create the same event ID.
+    final inboxKey = '${change.storeId}::${change.eventId}';
+    final existing = _storage.get(inboxKey);
     if (existing != null) {
       if (existing is! Map ||
           jsonEncode(existing) != jsonEncode(record)) {
@@ -109,7 +112,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
       await _storage.flush();
       return;
     }
-    await _storage.put(change.eventId, record);
+    await _storage.put(inboxKey, record);
     await _storage.flush();
   });
 }
