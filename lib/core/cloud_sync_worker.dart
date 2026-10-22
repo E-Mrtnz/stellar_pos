@@ -211,7 +211,12 @@ class CloudSyncWorker {
         blocked++;
         continue;
       }
-      await _outbox.markInFlight(event.eventId);
+      final claimed = await _outbox.claimForDelivery(
+        eventId: event.eventId,
+        storeId: storeId,
+        now: DateTime.now().toUtc(),
+      );
+      if (!claimed) continue;
       try {
         final result = await _transport.send(event);
         await _outbox.markDelivered(event.eventId);
