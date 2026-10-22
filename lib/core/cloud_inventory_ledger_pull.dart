@@ -63,6 +63,9 @@ class CloudInventoryLedgerChange {
       throw const FormatException('La identidad o el tipo del cambio remoto es inválido.');
     }
     final payload = Map<String, dynamic>.from(map['payload'] as Map);
+    if (payload['id'] != entityId) {
+      throw const FormatException('El ID del payload no coincide con la entidad del ledger.');
+    }
     if (entityType != 'inventoryMovement') {
       return CloudInventoryLedgerChange(
         storeId: storeId,
