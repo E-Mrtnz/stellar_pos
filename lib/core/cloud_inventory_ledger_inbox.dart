@@ -130,7 +130,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
             Map<String, dynamic>.from(rawMovement),
             storeId: storeId,
           );
-          if (eventId != 'inventoryMovement_' + movement.movementId ||
+          if (eventId != 'inventoryMovement_${movement.movementId}' ||
               entityId != movement.movementId) {
             throw const FormatException(
               'La identidad del inbox de inventario no coincide.',
@@ -159,7 +159,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
             'El inbox solo admite movimientos de inventario.',
           );
         }
-        if (change.eventId != 'inventoryMovement_' + movement.movementId ||
+        if (change.eventId != 'inventoryMovement_${movement.movementId}' ||
             change.entityId != movement.movementId ||
             change.storeId != movement.storeId ||
             change.version < 1) {
@@ -180,7 +180,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
         };
         // Movement IDs are unique only within a store; scope inbox keys to
         // avoid collisions when stores independently create the same event ID.
-        final inboxKey = change.storeId + '::' + change.eventId;
+        final inboxKey = '${change.storeId}::${change.eventId}';
         final existing = _storage.get(inboxKey);
         if (existing != null) {
           if (existing is! Map ||
