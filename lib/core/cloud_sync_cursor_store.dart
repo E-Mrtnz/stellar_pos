@@ -32,12 +32,17 @@ class _HiveCursorStorage implements CloudSyncCursorStorage {
   @override
   Future<void> put(String key, Object value) async {
     final opened = await box;
+    // Keep the committed cache unchanged until flush succeeds. If the Hive
+    // write reaches the in-memory box but persistence fails, callers must not
+    // observe an advanced cursor and skip unapplied remote events.
     await opened.put(key, value);
-    await refresh();
   }
 
   @override
-  Future<void> flush() async => (await box).flush();
+  Future<void> flush() async {
+    await (await box).flush();
+    await refresh();
+  }
 }
 
 class CloudSyncCursorStore {
