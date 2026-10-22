@@ -142,6 +142,26 @@ void main() {
     expect(storage.flushCount, 1);
   });
 
+  test('marks a ledger entry applied and preserves that status on replay', () async {
+    final storage = _MemoryInboxStorage();
+    final inbox = CloudInventoryLedgerInbox(storage: storage);
+    final change = _movementChange();
+    await inbox.apply(change);
+
+    await inbox.markApplied(
+      storeId: 'store-a',
+      eventId: 'inventoryMovement_move-1',
+    );
+    expect(await inbox.pendingForStore('store-a'), isEmpty);
+
+    await inbox.apply(change);
+    expect(await inbox.pendingForStore('store-a'), isEmpty);
+    expect(
+      (storage.data['store-a::inventoryMovement_move-1'] as Map)['status'],
+      'applied',
+    );
+  });
+
   test('isolates identical event IDs across different stores', () async {
     final storage = _MemoryInboxStorage();
     final inbox = CloudInventoryLedgerInbox(storage: storage);
