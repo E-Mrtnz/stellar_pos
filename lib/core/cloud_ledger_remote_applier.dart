@@ -88,78 +88,9 @@ class DurableCloudLedgerRemoteApplier implements CloudLedgerRemoteApplier {
   }
 
   void _validate(CloudLedgerChange change) {
-    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}
-      throw const FormatException('Cambio remoto incompatible con el applier local.');
-    }
-    jsonEncode(change.payload);
-  }
-
-  String _receiptKey(CloudLedgerChange change) =>
-      '${change.storeId}::${change.eventId}';
-
-  String _fingerprint(CloudLedgerChange change) =>
-      jsonEncode(_canonical(change.payload));
-
-  Object? _canonical(Object? value) {
-    if (value is Map) {
-      final keys = value.keys.map((key) => key.toString()).toList()..sort();
-      return <String, Object?>{
-        for (final key in keys) key: _canonical(value[key]),
-      };
-    }
-    if (value is List) return value.map(_canonical).toList(growable: false);
-    return value;
-  }
-}
-).hasMatch(change.storeId) ||
-        !RegExp(r'^[A-Za-z0-9_-]{1,120}
-      throw const FormatException('Cambio remoto incompatible con el applier local.');
-    }
-    jsonEncode(change.payload);
-  }
-
-  String _receiptKey(CloudLedgerChange change) =>
-      '${change.storeId}::${change.eventId}';
-
-  String _fingerprint(CloudLedgerChange change) =>
-      jsonEncode(_canonical(change.payload));
-
-  Object? _canonical(Object? value) {
-    if (value is Map) {
-      final keys = value.keys.map((key) => key.toString()).toList()..sort();
-      return <String, Object?>{
-        for (final key in keys) key: _canonical(value[key]),
-      };
-    }
-    if (value is List) return value.map(_canonical).toList(growable: false);
-    return value;
-  }
-}
-).hasMatch(change.entityId) ||
-        !RegExp(r'^[A-Za-z0-9_-]{1,200}
-      throw const FormatException('Cambio remoto incompatible con el applier local.');
-    }
-    jsonEncode(change.payload);
-  }
-
-  String _receiptKey(CloudLedgerChange change) =>
-      '${change.storeId}::${change.eventId}';
-
-  String _fingerprint(CloudLedgerChange change) =>
-      jsonEncode(_canonical(change.payload));
-
-  Object? _canonical(Object? value) {
-    if (value is Map) {
-      final keys = value.keys.map((key) => key.toString()).toList()..sort();
-      return <String, Object?>{
-        for (final key in keys) key: _canonical(value[key]),
-      };
-    }
-    if (value is List) return value.map(_canonical).toList(growable: false);
-    return value;
-  }
-}
-).hasMatch(change.eventId) ||
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(change.storeId) ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(change.entityId) ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,200}$').hasMatch(change.eventId) ||
         change.eventId != '${change.entityType.name}_${change.entityId}' ||
         change.version < 1 ||
         change.payload['id'] != change.entityId) {
