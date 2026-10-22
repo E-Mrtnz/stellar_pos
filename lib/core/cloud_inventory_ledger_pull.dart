@@ -237,8 +237,6 @@ class CloudInventoryLedgerPullCoordinator {
     int limit = 50,
   }) {
     if (!RegExp(r'^[A-Za-z0-9_-]{1,80}
-      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
-    }
     final key = '$deviceId::$storeId';
     return _runExclusive(
       key,
@@ -301,8 +299,6 @@ class CloudInventoryLedgerPullCoordinator {
 }
 ).hasMatch(storeId) ||
         !RegExp(r'^[A-Za-z0-9_-]{1,120}
-      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
-    }
     final key = '$deviceId::$storeId';
     return _runExclusive(
       key,
