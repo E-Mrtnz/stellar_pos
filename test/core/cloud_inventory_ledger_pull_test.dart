@@ -189,7 +189,7 @@ void main() {
   });
 
 
-  test('advances shared ledger cursor across other immutable entity types', () async {
+  test('does not skip unsupported ledger entities or advance the cursor', () async {
     final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
     final other = CloudInventoryLedgerChange.fromMap(<String, dynamic>{
       'storeId': 'store-a',
@@ -203,7 +203,10 @@ void main() {
     final transport = _FakeTransport(CloudInventoryLedgerPage(
       storeId: 'store-a',
       afterVersion: 0,
-      changes: <CloudInventoryLedgerChange>[other, _change(2, 'movement-2')],
+      changes: <CloudInventoryLedgerChange>[
+        _change(1, 'movement-1'),
+        other,
+      ],
       nextCursor: 2,
       hasMore: false,
     ));
@@ -213,9 +216,13 @@ void main() {
       applier: applier,
       cursors: cursors,
     );
-    await coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a');
-    expect(applier.applied, <String>['inventoryMovement_movement-2']);
-    expect((await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version, 2);
+
+    await expectLater(
+      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+      throwsUnsupportedError,
+    );
+    expect(applier.applied, isEmpty);
+    expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
   });
 
   test('rejects inconsistent hasMore metadata before applying changes', () async {
