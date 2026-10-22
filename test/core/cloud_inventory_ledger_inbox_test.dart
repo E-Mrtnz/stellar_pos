@@ -27,8 +27,9 @@ CloudInventoryLedgerChange _movementChange({
   String eventId = 'inventoryMovement_move-1',
   String movementId = 'move-1',
   int delta = -3,
+  String storeId = 'store-a',
 }) => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
-  'storeId': 'store-a',
+  'storeId': storeId,
   'eventId': eventId,
   'entityType': 'inventoryMovement',
   'entityId': movementId,
@@ -48,7 +49,7 @@ void main() {
     final storage = _MemoryInboxStorage();
     final inbox = CloudInventoryLedgerInbox(storage: storage);
     await inbox.apply(_movementChange());
-    expect(storage.data.keys, <String>['inventoryMovement_move-1']);
+    expect(storage.data.keys, <String>['store-a::inventoryMovement_move-1']);
     expect(storage.flushCount, 1);
     expect((storage.data.values.single as Map)['version'], 1);
   });
@@ -74,6 +75,21 @@ void main() {
 
     await inbox.apply(change);
     expect(storage.data.length, 1);
+    expect(storage.flushCount, 2);
+  });
+
+  test('isolates identical event IDs across different stores', () async {
+    final storage = _MemoryInboxStorage();
+    final inbox = CloudInventoryLedgerInbox(storage: storage);
+
+    await inbox.apply(_movementChange(storeId: 'store-a'));
+    await inbox.apply(_movementChange(storeId: 'store-b'));
+
+    expect(storage.data.keys, containsAll(<String>[
+      'store-a::inventoryMovement_move-1',
+      'store-b::inventoryMovement_move-1',
+    ]));
+    expect(storage.data.length, 2);
     expect(storage.flushCount, 2);
   });
 
