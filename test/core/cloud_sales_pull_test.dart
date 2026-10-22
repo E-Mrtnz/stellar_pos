@@ -32,6 +32,34 @@ class _SalesTransport implements CloudSalesPullTransport {
   }
 }
 
+class _SequentialSalesTransport implements CloudSalesPullTransport {
+  final List<int> requestedCursors = <int>[];
+
+  @override
+  Future<CloudSalesPullPage> fetchPage({
+    required String storeId,
+    required int afterVersion,
+    required int limit,
+  }) async {
+    requestedCursors.add(afterVersion);
+    if (afterVersion == 0) {
+      return CloudSalesPullPage(
+        storeId: storeId,
+        afterVersion: 0,
+        changes: <CloudSaleChange>[_change('sale-1', 1)],
+        nextCursor: 1,
+        hasMore: false,
+      );
+    }
+    return CloudSalesPullPage(
+      storeId: storeId,
+      afterVersion: afterVersion,
+      changes: const <CloudSaleChange>[],
+      nextCursor: afterVersion,
+      hasMore: false,
+    );
+  }
+}
 class _Applier implements CloudSaleRemoteApplier {
   final List<String> applied = <String>[];
   bool fail = false;
@@ -103,6 +131,28 @@ void main() {
     expect(local.sales['sale-1']?.total, 500);
   });
 
+  test('serializes simultaneous sales pulls for the same store and device', () async {
+    final transport = _SequentialSalesTransport();
+    final applier = _Applier();
+    final coordinator = CloudSalesPullCoordinator(
+      transport: transport,
+      applier: applier,
+      cursors: cursors,
+    );
+
+    final pages = await Future.wait(<Future<CloudSalesPullPage>>[
+      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+    ]);
+
+    expect(transport.requestedCursors, <int>[0, 1]);
+    expect(pages.map((page) => page.changes.length), <int>[1, 0]);
+    expect(applier.applied, <String>['sale-1']);
+    expect(
+      (await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version,
+      1,
+    );
+  });
   test('applies a complete sale page before advancing its cursor', () async {
     final transport = _SalesTransport(CloudSalesPullPage(
       storeId: 'store-a', afterVersion: 0,
