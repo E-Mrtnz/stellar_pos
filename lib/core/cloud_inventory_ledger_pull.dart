@@ -52,7 +52,7 @@ class CloudInventoryLedgerChange {
         !RegExp(r'^[A-Za-z0-9_-]{1,200}$').hasMatch(eventId) ||
         !RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(entityId) ||
         !supportedEntityTypes.contains(entityType) ||
-        eventId != entityType + '_' + entityId ||
+        eventId != '${entityType}_$entityId' ||
         version < 1 ||
         operation != 'append') {
       throw const FormatException('La identidad o el tipo del cambio remoto es inválido.');
