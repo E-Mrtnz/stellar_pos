@@ -37,11 +37,12 @@ class _Transport implements CloudSyncTransport {
 
 CloudSyncEvent _event({
   String id = 'event-1',
+  String storeId = 'store-a',
   String type = 'syntheticTestValue',
   Map<String, Object?> payload = const <String, Object?>{'value': 'test'},
 }) => CloudSyncEvent(
   eventId: id,
-  storeId: 'store-a',
+  storeId: storeId,
   entityType: type,
   entityId: 'entity-1',
   operation: CloudSyncOperation.update,
@@ -79,7 +80,7 @@ void main() {
     test('recovers interrupted events only for the authorized store', () async {
       await outbox.enqueue(_event(id: 'store-a-inflight'));
       await outbox.markInFlight('store-a-inflight');
-      await outbox.enqueue(_event(id: 'store-b-inflight').copyWith(storeId: 'store-b'));
+      await outbox.enqueue(_event(id: 'store-b-inflight', storeId: 'store-b'));
       await outbox.markInFlight('store-b-inflight');
 
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
