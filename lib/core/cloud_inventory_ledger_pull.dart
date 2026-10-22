@@ -49,7 +49,15 @@ class CloudInventoryLedgerChange {
     };
     if (storeId.trim().isEmpty ||
         storeId.contains('/') ||
-        !RegExp(r'^[A-Za-z0-9_-]{1,200}
+        !RegExp(r'^[A-Za-z0-9_-]{1,200}$').hasMatch(eventId) ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(entityId) ||
+        !supportedEntityTypes.contains(entityType) ||
+        eventId != entityType + '_' + entityId ||
+        version < 1 ||
+        operation != 'append') {
+      throw const FormatException('La identidad o el tipo del cambio remoto es inválido.');
+    }
+    if (entityType != 'inventoryMovement') {
       return CloudInventoryLedgerChange(
         storeId: storeId,
         eventId: eventId,
@@ -59,7 +67,6 @@ class CloudInventoryLedgerChange {
         version: version,
       );
     }
-
     final payload = Map<String, dynamic>.from(map['payload'] as Map);
     const expectedKeys = <String>{
       'id', 'productId', 'quantityDelta', 'reason', 'createdAt',
