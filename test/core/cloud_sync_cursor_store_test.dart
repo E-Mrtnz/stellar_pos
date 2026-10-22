@@ -4,19 +4,27 @@ import 'package:stellar_pos/core/cloud_sync_protocol.dart';
 
 class _MemoryCursorStorage implements CloudSyncCursorStorage {
   final Map<String, Object> values = <String, Object>{};
+  final Map<String, Object> staged = <String, Object>{};
   int flushes = 0;
+  bool failNextFlush = false;
 
   @override
   Object? get(String key) => values[key];
 
   @override
   Future<void> put(String key, Object value) async {
-    values[key] = value;
+    staged[key] = value;
   }
 
   @override
   Future<void> flush() async {
     flushes++;
+    if (failNextFlush) {
+      failNextFlush = false;
+      throw StateError('simulated cursor flush failure');
+    }
+    values.addAll(staged);
+    staged.clear();
   }
 }
 
@@ -76,6 +84,27 @@ void main() {
         candidate: cursor,
       ), isTrue);
       expect(storage.flushes, flushes);
+    });
+
+    test('does not expose an advanced cursor after durable flush fails', () async {
+      storage.failNextFlush = true;
+      await expectLater(
+        cursors.advance(
+          storeId: 'store-a',
+          deviceId: 'device-1',
+          candidate: const CloudSyncCursor(storeId: 'store-a', version: 3),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(await cursors.read(storeId: 'store-a', deviceId: 'device-1'), isNull);
+
+      expect(await cursors.advance(
+        storeId: 'store-a',
+        deviceId: 'device-1',
+        candidate: const CloudSyncCursor(storeId: 'store-a', version: 3),
+      ), isTrue);
+      expect((await cursors.read(storeId: 'store-a', deviceId: 'device-1'))?.version, 3);
     });
 
     test('rejects malformed persisted cursor metadata', () async {
