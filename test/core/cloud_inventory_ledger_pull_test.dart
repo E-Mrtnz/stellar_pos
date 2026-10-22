@@ -138,6 +138,21 @@ void main() {
     );
   });
 
+  test('rejects non-inventory payloads with a mismatched entity ID', () {
+    expect(
+      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+        'storeId': 'store-a',
+        'eventId': 'purchase_purchase-1',
+        'entityType': 'purchase',
+        'entityId': 'purchase-1',
+        'operation': 'append',
+        'version': 1,
+        'payload': <String, Object?>{'id': 'another-purchase', 'total': 12.5},
+      }),
+      throwsFormatException,
+    );
+  });
+
   test('applies the page before advancing its durable cursor', () async {
     final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
     final transport = _FakeTransport(CloudInventoryLedgerPage(
