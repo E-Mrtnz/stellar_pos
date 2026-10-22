@@ -236,10 +236,134 @@ class CloudInventoryLedgerPullCoordinator {
     required String deviceId,
     int limit = 50,
   }) {
-    if (storeId.trim().isEmpty ||
-        storeId.contains('/') ||
-        deviceId.trim().isEmpty ||
-        deviceId.contains('/')) {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}
+      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
+    }
+    final key = '$deviceId::$storeId';
+    return _runExclusive(
+      key,
+      () => _pullOnce(storeId: storeId, deviceId: deviceId, limit: limit),
+    );
+  }
+
+  Future<CloudInventoryLedgerPage> _pullOnce({
+    required String storeId,
+    required String deviceId,
+    required int limit,
+  }) async {
+    if (limit < 1 || limit > 100) {
+      throw ArgumentError.value(limit, 'limit', 'El límite debe estar entre 1 y 100.');
+    }
+    final current = await _cursors.read(storeId: storeId, deviceId: deviceId) ??
+        CloudSyncCursor(storeId: storeId, version: 0);
+    final page = await _transport.fetchPage(
+      storeId: storeId,
+      afterVersion: current.version,
+      limit: limit,
+    );
+    if (page.storeId != storeId ||
+        page.afterVersion != current.version ||
+        page.nextCursor < current.version ||
+        page.changes.length > limit ||
+        page.hasMore != (page.changes.length == limit)) {
+      throw const FormatException(
+        'La página del ledger no coincide con el cursor o el límite solicitado.',
+      );
+    }
+    var expectedVersion = current.version;
+    for (final change in page.changes) {
+      if (change.storeId != storeId || change.version != expectedVersion + 1) {
+        throw const FormatException('El ledger remoto tiene versiones faltantes o de otra tienda.');
+      }
+      expectedVersion = change.version;
+    }
+    final expectedCursor =
+        page.changes.isEmpty ? current.version : page.changes.last.version;
+    if (page.nextCursor != expectedCursor) {
+      throw const FormatException('El cursor del ledger no coincide con el último movimiento.');
+    }
+    // The durable inbox must retain every supported ledger entity before
+    // the shared cursor advances. Entity-specific business reconciliation is
+    // a separate step and must not cause other records to be skipped.
+    for (final change in page.changes) {
+      await _applier.apply(change);
+    }
+    if (page.nextCursor > current.version) {
+      final advanced = await _cursors.advance(
+        storeId: storeId,
+        deviceId: deviceId,
+        candidate: CloudSyncCursor(storeId: storeId, version: page.nextCursor),
+      );
+      if (!advanced) throw StateError('No se pudo guardar el cursor del ledger.');
+    }
+    return page;
+  }
+}
+).hasMatch(storeId) ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,120}
+      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
+    }
+    final key = '$deviceId::$storeId';
+    return _runExclusive(
+      key,
+      () => _pullOnce(storeId: storeId, deviceId: deviceId, limit: limit),
+    );
+  }
+
+  Future<CloudInventoryLedgerPage> _pullOnce({
+    required String storeId,
+    required String deviceId,
+    required int limit,
+  }) async {
+    if (limit < 1 || limit > 100) {
+      throw ArgumentError.value(limit, 'limit', 'El límite debe estar entre 1 y 100.');
+    }
+    final current = await _cursors.read(storeId: storeId, deviceId: deviceId) ??
+        CloudSyncCursor(storeId: storeId, version: 0);
+    final page = await _transport.fetchPage(
+      storeId: storeId,
+      afterVersion: current.version,
+      limit: limit,
+    );
+    if (page.storeId != storeId ||
+        page.afterVersion != current.version ||
+        page.nextCursor < current.version ||
+        page.changes.length > limit ||
+        page.hasMore != (page.changes.length == limit)) {
+      throw const FormatException(
+        'La página del ledger no coincide con el cursor o el límite solicitado.',
+      );
+    }
+    var expectedVersion = current.version;
+    for (final change in page.changes) {
+      if (change.storeId != storeId || change.version != expectedVersion + 1) {
+        throw const FormatException('El ledger remoto tiene versiones faltantes o de otra tienda.');
+      }
+      expectedVersion = change.version;
+    }
+    final expectedCursor =
+        page.changes.isEmpty ? current.version : page.changes.last.version;
+    if (page.nextCursor != expectedCursor) {
+      throw const FormatException('El cursor del ledger no coincide con el último movimiento.');
+    }
+    // The durable inbox must retain every supported ledger entity before
+    // the shared cursor advances. Entity-specific business reconciliation is
+    // a separate step and must not cause other records to be skipped.
+    for (final change in page.changes) {
+      await _applier.apply(change);
+    }
+    if (page.nextCursor > current.version) {
+      final advanced = await _cursors.advance(
+        storeId: storeId,
+        deviceId: deviceId,
+        candidate: CloudSyncCursor(storeId: storeId, version: page.nextCursor),
+      );
+      if (!advanced) throw StateError('No se pudo guardar el cursor del ledger.');
+    }
+    return page;
+  }
+}
+).hasMatch(deviceId)) {
       throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
     final key = '$deviceId::$storeId';
