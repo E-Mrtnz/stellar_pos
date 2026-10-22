@@ -2,8 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stellar_pos/core/cloud_inventory_ledger_pull.dart';
 import 'package:stellar_pos/core/cloud_inventory_ledger_sync_service.dart';
 import 'package:stellar_pos/core/cloud_sync_cursor_store.dart';
-import 'package:stellar_pos/core/cloud_sync_protocol.dart';
-import 'package:stellar_pos/core/cloud_inventory_movement.dart';
 
 class _CursorStorage implements CloudSyncCursorStorage {
   final Map<String, Object> values = <String, Object>{};
