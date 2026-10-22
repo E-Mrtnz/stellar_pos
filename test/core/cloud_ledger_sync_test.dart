@@ -32,6 +32,54 @@ class _FakeLedgerGateway implements CloudLedgerGateway {
   }) async => page;
 }
 
+class _SequentialLedgerGateway implements CloudLedgerGateway {
+  final List<int> requestedCursors = <int>[];
+
+  @override
+  Future<CloudLedgerAcceptance> append({
+    required String storeId,
+    required CloudLedgerEntityType entityType,
+    required String entityId,
+    required Map<String, dynamic> entry,
+  }) async => CloudLedgerAcceptance(
+    entityType: entityType, entityId: entityId, version: 1, duplicate: false,
+  );
+
+  @override
+  Future<CloudLedgerPullPage> pull({
+    required String storeId,
+    required int afterVersion,
+    int limit = 50,
+  }) async {
+    requestedCursors.add(afterVersion);
+    if (afterVersion == 0) {
+      return CloudLedgerPullPage(
+        storeId: storeId,
+        afterVersion: 0,
+        nextCursor: 1,
+        hasMore: false,
+        changes: <CloudLedgerChange>[
+          CloudLedgerChange(
+            storeId: storeId,
+            eventId: 'inventoryMovement_move-1',
+            entityType: CloudLedgerEntityType.inventoryMovement,
+            entityId: 'move-1',
+            version: 1,
+            payload: <String, dynamic>{'id': 'move-1', 'quantityDelta': 2},
+          ),
+        ],
+      );
+    }
+    return CloudLedgerPullPage(
+      storeId: storeId,
+      afterVersion: afterVersion,
+      nextCursor: afterVersion,
+      hasMore: false,
+      changes: const <CloudLedgerChange>[],
+    );
+  }
+}
+
 class _FakeLedgerApplier implements CloudLedgerRemoteApplier {
   bool fail = false;
   final List<String> applied = <String>[];
@@ -178,6 +226,32 @@ void main() {
           expectedCursor: 4,
         ),
         throwsFormatException,
+      );
+    });
+  });
+
+  group('CloudLedgerPullCoordinator concurrency', () {
+    test('serializes simultaneous pulls for the same store and device', () async {
+      final gateway = _SequentialLedgerGateway();
+      final applier = _FakeLedgerApplier();
+      final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
+      final coordinator = CloudLedgerPullCoordinator(
+        gateway: gateway,
+        applier: applier,
+        cursors: cursors,
+      );
+
+      final results = await Future.wait(<Future<CloudLedgerPullPage>>[
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+      ]);
+
+      expect(gateway.requestedCursors, <int>[0, 1]);
+      expect(results.map((page) => page.changes.length), <int>[1, 0]);
+      expect(applier.applied, <String>['inventoryMovement_move-1']);
+      expect(
+        (await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version,
+        1,
       );
     });
   });
