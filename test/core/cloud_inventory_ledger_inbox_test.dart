@@ -142,6 +142,27 @@ void main() {
     expect(storage.flushCount, 1);
   });
 
+  test('rejects persisted inbox payloads with mismatched entity identity', () async {
+    final storage = _MemoryInboxStorage();
+    storage.data['store-a::purchase_purchase-1'] = <String, Object?>{
+      'storeId': 'store-a',
+      'eventId': 'purchase_purchase-1',
+      'entityType': 'purchase',
+      'entityId': 'purchase-1',
+      'operation': 'append',
+      'version': 1,
+      'status': 'pending',
+      'payload': <String, Object?>{'id': 'different-purchase', 'total': 12.5},
+      'movement': null,
+    };
+    final inbox = CloudInventoryLedgerInbox(storage: storage);
+
+    await expectLater(
+      inbox.pendingForStore('store-a'),
+      throwsFormatException,
+    );
+  });
+
   test('marks a ledger entry applied and preserves that status on replay', () async {
     final storage = _MemoryInboxStorage();
     final inbox = CloudInventoryLedgerInbox(storage: storage);
