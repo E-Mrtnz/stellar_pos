@@ -73,11 +73,27 @@ class CloudLedgerChange {
     final storeId = map['storeId'];
     final eventId = map['eventId'];
     final entityId = map['entityId'];
-    final validIdentifier = RegExp(r'^[A-Za-z0-9_-]{1,120}    return CloudLedgerChange(
-      storeId: map['storeId'] as String,
-      eventId: map['eventId'] as String,
+    final validIdentifier = RegExp(r'^[A-Za-z0-9_-]{1,120}$');
+    if (type.isEmpty ||
+        storeId is! String ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(storeId) ||
+        eventId is! String ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,200}$').hasMatch(eventId) ||
+        entityId is! String ||
+        !validIdentifier.hasMatch(entityId) ||
+        eventId != '${type.isEmpty ? '' : type.first.name}_$entityId' ||
+        map['operation'] != 'append' ||
+        map['version'] is! int ||
+        (map['version'] as int) < 1 ||
+        payload is! Map ||
+        payload['id'] != entityId) {
+      throw const FormatException('Cambio de ledger remoto inválido.');
+    }
+    return CloudLedgerChange(
+      storeId: storeId,
+      eventId: eventId,
       entityType: type.first,
-      entityId: map['entityId'] as String,
+      entityId: entityId,
       version: map['version'] as int,
       payload: Map<String, dynamic>.from(payload),
     );
