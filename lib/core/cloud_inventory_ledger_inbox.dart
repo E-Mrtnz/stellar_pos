@@ -99,10 +99,10 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
     return result.future;
   }
 
-  /// Returns durable movements awaiting reconciliation for one store.
+  /// Returns durable ledger records awaiting reconciliation for one store.
   ///
-  /// The inbox intentionally does not modify Product.stock. Consumers must
-  /// reconcile entries through a store-scoped inventory domain operation.
+  /// The inbox intentionally does not mutate commercial data. Consumers must
+  /// dispatch each record to an idempotent store-scoped domain operation.
   Future<List<CloudInventoryInboxEntry>> pendingForStore(String storeId) =>
       _serialize(() async {
         if (storeId.trim().isEmpty ||
