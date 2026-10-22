@@ -46,6 +46,10 @@ jobs:
           lib/core/cloud_sale_sync_coordinator.dart
           lib/core/cloud_mutation_journal.dart
           lib/core/cloud_sync_scheduler.dart
+          lib/core/cloud_inventory_movement.dart
+          lib/core/cloud_inventory_ledger_pull.dart
+          lib/core/cloud_inventory_ledger_inbox.dart
+          lib/core/cloud_inventory_ledger_sync_service.dart
           lib/core/cloud_sales_pull.dart
           lib/core/cloud_ledger_sync.dart
           lib/core/cloud_ledger_remote_applier.dart
@@ -85,6 +89,9 @@ jobs:
           test/core/cloud_sync_outbox_hive_test.dart
           test/core/cloud_sync_outbox_recovery_hive_test.dart
           test/core/cloud_sync_retry_policy_test.dart
+          test/core/cloud_inventory_ledger_pull_test.dart
+          test/core/cloud_inventory_ledger_inbox_test.dart
+          test/core/cloud_inventory_ledger_sync_service_test.dart
 
   firestore-rules-tests:
     runs-on: ubuntu-latest
