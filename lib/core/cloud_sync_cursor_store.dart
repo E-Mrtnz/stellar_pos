@@ -68,8 +68,9 @@ class CloudSyncCursorStore {
   }
 
   String _key(String storeId, String deviceId) {
-    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}
-      throw ArgumentError('storeId y deviceId deben ser segmentos no vacíos.');
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(storeId) ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(deviceId)) {
+      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
     return '$deviceId::$storeId';
   }
@@ -99,120 +100,7 @@ class CloudSyncCursorStore {
     required String deviceId,
     required CloudSyncCursor candidate,
   }) => _serialize(() async {
-    _key(storeId, deviceId); // Validate both scope segments.
-    if (candidate.storeId != storeId || candidate.version < 0) return false;
-    if (_storage is _HiveCursorStorage) await _storage.refresh();
-    final key = _key(storeId, deviceId);
-    final raw = _storage.get(key);
-    if (raw != null) {
-      if (raw is! Map || raw['storeId'] != storeId ||
-          raw['deviceId'] != deviceId || raw['version'] is! int ||
-          (raw['version'] as int) < 0) {
-        throw StateError('El cursor local de sincronización está corrupto.');
-      }
-      final currentVersion = raw['version'] as int;
-      if (candidate.version < currentVersion) return false;
-      if (candidate.version == currentVersion) return true;
-    }
-    await _storage.put(key, <String, Object?>{
-      'storeId': storeId,
-      'deviceId': deviceId,
-      'version': candidate.version,
-      'updatedAt': DateTime.now().toUtc().toIso8601String(),
-    });
-    await _storage.flush();
-    return true;
-  });
-}
-).hasMatch(storeId) ||
-        !RegExp(r'^[A-Za-z0-9_-]{1,120}
-      throw ArgumentError('storeId y deviceId deben ser segmentos no vacíos.');
-    }
-    return '$deviceId::$storeId';
-  }
-
-  Future<CloudSyncCursor?> read({
-    required String storeId,
-    required String deviceId,
-  }) => _serialize(() async {
-    if (_storage is _HiveCursorStorage) await _storage.refresh();
-    final raw = _storage.get(_key(storeId, deviceId));
-    if (raw == null) return null;
-    if (raw is! Map || raw['storeId'] != storeId ||
-        raw['deviceId'] != deviceId || raw['version'] is! int ||
-        (raw['version'] as int) < 0) {
-      throw StateError('El cursor local de sincronización está corrupto.');
-    }
-    return CloudSyncCursor(
-      storeId: storeId,
-      version: raw['version'] as int,
-    );
-  });
-
-  /// Persists a monotonic cursor. Returns false for a cross-store or backward
-  /// update and leaves the durable value unchanged.
-  Future<bool> advance({
-    required String storeId,
-    required String deviceId,
-    required CloudSyncCursor candidate,
-  }) => _serialize(() async {
-    _key(storeId, deviceId); // Validate both scope segments.
-    if (candidate.storeId != storeId || candidate.version < 0) return false;
-    if (_storage is _HiveCursorStorage) await _storage.refresh();
-    final key = _key(storeId, deviceId);
-    final raw = _storage.get(key);
-    if (raw != null) {
-      if (raw is! Map || raw['storeId'] != storeId ||
-          raw['deviceId'] != deviceId || raw['version'] is! int ||
-          (raw['version'] as int) < 0) {
-        throw StateError('El cursor local de sincronización está corrupto.');
-      }
-      final currentVersion = raw['version'] as int;
-      if (candidate.version < currentVersion) return false;
-      if (candidate.version == currentVersion) return true;
-    }
-    await _storage.put(key, <String, Object?>{
-      'storeId': storeId,
-      'deviceId': deviceId,
-      'version': candidate.version,
-      'updatedAt': DateTime.now().toUtc().toIso8601String(),
-    });
-    await _storage.flush();
-    return true;
-  });
-}
-).hasMatch(deviceId)) {
-      throw ArgumentError('storeId y deviceId deben ser segmentos no vacíos.');
-    }
-    return '$deviceId::$storeId';
-  }
-
-  Future<CloudSyncCursor?> read({
-    required String storeId,
-    required String deviceId,
-  }) => _serialize(() async {
-    if (_storage is _HiveCursorStorage) await _storage.refresh();
-    final raw = _storage.get(_key(storeId, deviceId));
-    if (raw == null) return null;
-    if (raw is! Map || raw['storeId'] != storeId ||
-        raw['deviceId'] != deviceId || raw['version'] is! int ||
-        (raw['version'] as int) < 0) {
-      throw StateError('El cursor local de sincronización está corrupto.');
-    }
-    return CloudSyncCursor(
-      storeId: storeId,
-      version: raw['version'] as int,
-    );
-  });
-
-  /// Persists a monotonic cursor. Returns false for a cross-store or backward
-  /// update and leaves the durable value unchanged.
-  Future<bool> advance({
-    required String storeId,
-    required String deviceId,
-    required CloudSyncCursor candidate,
-  }) => _serialize(() async {
-    _key(storeId, deviceId); // Validate both scope segments.
+    _key(storeId, deviceId);
     if (candidate.storeId != storeId || candidate.version < 0) return false;
     if (_storage is _HiveCursorStorage) await _storage.refresh();
     final key = _key(storeId, deviceId);
