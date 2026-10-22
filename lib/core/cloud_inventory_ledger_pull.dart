@@ -217,8 +217,11 @@ class CloudInventoryLedgerPullCoordinator {
     if (page.storeId != storeId ||
         page.afterVersion != current.version ||
         page.nextCursor < current.version ||
-        page.changes.length > limit) {
-      throw const FormatException('La página del ledger no coincide con el cursor solicitado.');
+        page.changes.length > limit ||
+        page.hasMore != (page.changes.length == limit)) {
+      throw const FormatException(
+        'La página del ledger no coincide con el cursor o el límite solicitado.',
+      );
     }
     var expectedVersion = current.version;
     for (final change in page.changes) {
