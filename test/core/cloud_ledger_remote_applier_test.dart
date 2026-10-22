@@ -83,6 +83,30 @@ void main() {
       );
     });
 
+    test('rejects malformed store and entity identifiers before applying', () async {
+      final receipts = _MemoryReceipts();
+      var applications = 0;
+      final applier = DurableCloudLedgerRemoteApplier(
+        receipts: receipts,
+        handlers: <CloudLedgerEntityType, CloudLedgerChangeHandler>{
+          CloudLedgerEntityType.inventoryMovement: (_) async { applications++; },
+        },
+      );
+
+      await expectLater(
+        applier.apply(_change(storeId: 'store/a')),
+        throwsFormatException,
+      );
+      await expectLater(
+        applier.apply(_change(id: 'move 1')),
+        throwsFormatException,
+      );
+
+      expect(applications, 0);
+      expect(receipts.values, isEmpty);
+      expect(receipts.flushes, 0);
+    });
+
     test('does not record a receipt when the local handler fails', () async {
       final receipts = _MemoryReceipts();
       final applier = DurableCloudLedgerRemoteApplier(
