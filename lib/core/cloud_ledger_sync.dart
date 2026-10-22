@@ -247,15 +247,49 @@ class CloudLedgerPullCoordinator {
   final CloudLedgerRemoteApplier _applier;
   final CloudSyncCursorStore _cursors;
 
+  // Serialize pulls for each store/device pair. Without this guard, two callers
+  // can read the same cursor, apply the same page concurrently, and race to
+  // advance it. Different stores/devices remain independent.
+  final Map<String, Future<void>> _pullLocks = <String, Future<void>>{};
+
+  Future<T> _runExclusive<T>(
+    String key,
+    Future<T> Function() action,
+  ) async {
+    final previous = _pullLocks[key] ?? Future<void>.value();
+    final release = Completer<void>();
+    final tail = release.future;
+    _pullLocks[key] = tail;
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release.complete();
+      if (identical(_pullLocks[key], tail)) _pullLocks.remove(key);
+    }
+  }
+
   Future<CloudLedgerPullPage> pullOnce({
     required String storeId,
     required String deviceId,
     int limit = 50,
-  }) async {
+  }) {
     if (storeId.trim().isEmpty || storeId.contains('/') ||
         deviceId.trim().isEmpty || deviceId.contains('/')) {
       throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
+    final key = '$deviceId::$storeId';
+    return _runExclusive(
+      key,
+      () => _pullOnce(storeId: storeId, deviceId: deviceId, limit: limit),
+    );
+  }
+
+  Future<CloudLedgerPullPage> _pullOnce({
+    required String storeId,
+    required String deviceId,
+    required int limit,
+  }) async {
     if (limit < 1 || limit > 100) {
       throw ArgumentError.value(limit, 'limit', 'El límite debe estar entre 1 y 100.');
     }
