@@ -208,7 +208,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
         if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
           await _storage._refresh();
         }
-        final key = '${storeId}::${eventId}';
+        final key = '$storeId::$eventId';
         final raw = _storage.get(key);
         if (raw is! Map ||
             raw['storeId'] != storeId ||
