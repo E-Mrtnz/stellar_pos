@@ -30,6 +30,34 @@ class _FakePullTransport implements CloudSyncSyntheticPullTransport {
   }
 }
 
+class _SequentialPullTransport implements CloudSyncSyntheticPullTransport {
+  final List<int> requestedCursors = <int>[];
+
+  @override
+  Future<CloudSyncSyntheticPullPage> fetchPage({
+    required String storeId,
+    required int afterVersion,
+    required int limit,
+  }) async {
+    requestedCursors.add(afterVersion);
+    if (afterVersion == 0) {
+      return CloudSyncSyntheticPullPage(
+        storeId: storeId,
+        afterVersion: 0,
+        changes: <CloudSyncSyntheticChange>[_change(1, 'event-1')],
+        nextCursor: 1,
+        hasMore: false,
+      );
+    }
+    return CloudSyncSyntheticPullPage(
+      storeId: storeId,
+      afterVersion: afterVersion,
+      changes: const <CloudSyncSyntheticChange>[],
+      nextCursor: afterVersion,
+      hasMore: false,
+    );
+  }
+}
 class _FakeApplier implements CloudSyncSyntheticChangeApplier {
   _FakeApplier({this.failAt});
   final int? failAt;
@@ -53,6 +81,29 @@ CloudSyncSyntheticChange _change(int version, String eventId) =>
 
 void main() {
   group('CloudSyncPullCoordinator', () {
+    test('serializes simultaneous pulls for the same store and device', () async {
+      final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
+      final transport = _SequentialPullTransport();
+      final applier = _FakeApplier();
+      final coordinator = CloudSyncPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
+
+      final pages = await Future.wait(<Future<CloudSyncSyntheticPullPage>>[
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+      ]);
+
+      expect(transport.requestedCursors, <int>[0, 1]);
+      expect(pages.map((page) => page.changes.length), <int>[1, 0]);
+      expect(applier.applied, <String>['event-1']);
+      expect(
+        (await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version,
+        1,
+      );
+    });
     test('applies a complete page before committing its cursor', () async {
       final cursorStorage = _MemoryCursorStorage();
       final cursors = CloudSyncCursorStore(storage: cursorStorage);
