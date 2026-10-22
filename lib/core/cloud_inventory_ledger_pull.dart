@@ -277,8 +277,18 @@ class CloudInventoryLedgerPullCoordinator {
     if (page.nextCursor != expectedCursor) {
       throw const FormatException('El cursor del ledger no coincide con el último movimiento.');
     }
+    // This inbox currently persists inventory movements only. Never skip
+    // another ledger entity and advance the shared cursor: doing so would
+    // permanently hide purchases, debts, or electronic-balance transactions
+    // from a future applier. Reject the whole page before applying any item.
+    if (page.changes.any((change) => !change.isInventoryMovement)) {
+      throw UnsupportedError(
+        'El ledger contiene entidades comerciales que aún no tienen un '
+        'aplicador durable.',
+      );
+    }
     for (final change in page.changes) {
-      if (change.isInventoryMovement) await _applier.apply(change);
+      await _applier.apply(change);
     }
     if (page.nextCursor > current.version) {
       final advanced = await _cursors.advance(
