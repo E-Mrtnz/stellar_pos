@@ -54,8 +54,30 @@ class CloudInventoryLedgerSyncService {
     required String deviceId,
     int limit = 50,
   }) async {
-    if (storeId.trim().isEmpty || storeId.contains('/') ||
-        deviceId.trim().isEmpty || deviceId.contains('/')) {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}
+      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
+    }
+    if (!await _sessionGate.canSyncStore(storeId)) return null;
+    return _coordinator.pullOnce(
+      storeId: storeId,
+      deviceId: deviceId,
+      limit: limit,
+    );
+  }
+}
+).hasMatch(storeId) ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,120}
+      throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
+    }
+    if (!await _sessionGate.canSyncStore(storeId)) return null;
+    return _coordinator.pullOnce(
+      storeId: storeId,
+      deviceId: deviceId,
+      limit: limit,
+    );
+  }
+}
+).hasMatch(deviceId)) {
       throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
     if (!await _sessionGate.canSyncStore(storeId)) return null;
