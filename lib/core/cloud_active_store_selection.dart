@@ -22,19 +22,26 @@ class SharedPreferencesActiveCloudStoreSelection
   @override
   Future<String?> read(String userId) async {
     final value = (await SharedPreferences.getInstance()).getString(_key(userId));
-    if (value == null || value.trim().isEmpty || value.contains('/')) return null;
+    if (value == null || !_isValidStoreId(value)) return null;
     return value;
   }
 
   @override
   Future<void> write(String userId, String storeId) async {
-    if (storeId.trim().isEmpty || storeId.contains('/')) {
+    if (!_isValidStoreId(storeId)) {
       throw ArgumentError.value(storeId, 'storeId', 'Identificador de tienda inválido.');
     }
     final saved = await (await SharedPreferences.getInstance())
         .setString(_key(userId), storeId);
     if (!saved) throw StateError('No se pudo persistir la tienda seleccionada.');
   }
+
+  bool _isValidStoreId(String value) =>
+      RegExp(r'^[A-Za-z0-9_-]{1,80}
+    await (await SharedPreferences.getInstance()).remove(_key(userId));
+  }
+}
+).hasMatch(value);
 
   @override
   Future<void> clear(String userId) async {
