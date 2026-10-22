@@ -38,13 +38,6 @@ class _HiveCloudInventoryLedgerInboxStorage
   final String boxName;
 
   Future<dynamic> get _box => LocalStorage.openBox(boxName);
-
-  @override
-  Object? get(String eventId) => _cache[eventId];
-
-  @override
-  Iterable<Object?> get values => _cache.values;
-
   Map<String, Object?> _cache = <String, Object?>{};
 
   Future<void> _refresh() async {
@@ -55,6 +48,12 @@ class _HiveCloudInventoryLedgerInboxStorage
           key: Map<String, Object?>.from(box.get(key) as Map),
     };
   }
+
+  @override
+  Object? get(String eventId) => _cache[eventId];
+
+  @override
+  Iterable<Object?> get values => _cache.values;
 
   @override
   Future<void> put(String eventId, Map<String, Object?> value) async {
@@ -100,130 +99,100 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
   /// reconcile entries through a store-scoped inventory domain operation.
   Future<List<CloudInventoryInboxEntry>> pendingForStore(String storeId) =>
       _serialize(() async {
-    if (storeId.trim().isEmpty ||
-        !RegExp(r'^[A-Za-z0-9_-]{1,80}  @override
-  Future<void> apply(CloudInventoryLedgerChange change) => _serialize(() async {
-    final movement = change.movement;
-    if (!change.isInventoryMovement || movement == null) {
-      throw ArgumentError('El inbox solo admite movimientos de inventario.');
-    }
-    if (change.eventId != 'inventoryMovement_${movement.movementId}' ||
-        change.entityId != movement.movementId ||
-        change.storeId != movement.storeId ||
-        change.version < 1) {
-      throw const FormatException('La identidad del movimiento del inbox no coincide.');
-    }
-    if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
-      await _storage._refresh();
-    }
-    final record = <String, Object?>{
-      'storeId': change.storeId,
-      'eventId': change.eventId,
-      'entityType': change.entityType,
-      'entityId': change.entityId,
-      'version': change.version,
-      'movement': movement.toPayload(),
-    };
-    // Movement IDs are unique only within a store; scope inbox keys to avoid
-    // collisions when two stores independently create the same event ID.
-    final inboxKey = '${change.storeId}::${change.eventId}';
-    final existing = _storage.get(inboxKey);
-    if (existing != null) {
-      if (existing is! Map ||
-          jsonEncode(existing) != jsonEncode(record)) {
-        throw StateError('Colisión de ID en el inbox de inventario.');
-      }
-      // A prior attempt may have written to Hive but failed while flushing.
-      // Re-flush an identical replay before allowing the caller to advance its
-      // ledger cursor.
-      await _storage.flush();
-      return;
-    }
-    await _storage.put(inboxKey, record);
-    await _storage.flush();
-  });
-}
-).hasMatch(storeId)) {
-      throw ArgumentError.value(storeId, 'storeId', 'Identificador de tienda inválido.');
-    }
-    if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
-      await _storage._refresh();
-    }
-    final entries = <CloudInventoryInboxEntry>[];
-    for (final value in _storage.values) {
-      if (value is! Map || value['storeId'] != storeId) continue;
-      final eventId = value['eventId'];
-      final entityId = value['entityId'];
-      final version = value['version'];
-      final rawMovement = value['movement'];
-      if (eventId is! String ||
-          entityId is! String ||
-          version is! int ||
-          version < 1 ||
-          rawMovement is! Map) {
-        throw const FormatException('Registro del inbox de inventario inválido.');
-      }
-      final movement = CloudInventoryMovement.fromPayload(
-        Map<String, dynamic>.from(rawMovement),
-        storeId: storeId,
-      );
-      if (eventId != 'inventoryMovement_${movement.movementId}' ||
-          entityId != movement.movementId) {
-        throw const FormatException('La identidad del inbox de inventario no coincide.');
-      }
-      entries.add(CloudInventoryInboxEntry(
-        storeId: storeId,
-        eventId: eventId,
-        entityId: entityId,
-        version: version,
-        movement: movement,
-      ));
-    }
-    entries.sort((a, b) => a.version.compareTo(b.version));
-    return List<CloudInventoryInboxEntry>.unmodifiable(entries);
-  });
+        if (storeId.trim().isEmpty ||
+            !RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(storeId)) {
+          throw ArgumentError.value(
+            storeId,
+            'storeId',
+            'Identificador de tienda inválido.',
+          );
+        }
+        if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
+          await _storage._refresh();
+        }
+        final entries = <CloudInventoryInboxEntry>[];
+        for (final value in _storage.values) {
+          if (value is! Map || value['storeId'] != storeId) continue;
+          final eventId = value['eventId'];
+          final entityId = value['entityId'];
+          final version = value['version'];
+          final rawMovement = value['movement'];
+          if (eventId is! String ||
+              entityId is! String ||
+              version is! int ||
+              version < 1 ||
+              rawMovement is! Map) {
+            throw const FormatException(
+              'Registro del inbox de inventario inválido.',
+            );
+          }
+          final movement = CloudInventoryMovement.fromPayload(
+            Map<String, dynamic>.from(rawMovement),
+            storeId: storeId,
+          );
+          if (eventId != 'inventoryMovement_' + movement.movementId ||
+              entityId != movement.movementId) {
+            throw const FormatException(
+              'La identidad del inbox de inventario no coincide.',
+            );
+          }
+          entries.add(CloudInventoryInboxEntry(
+            storeId: storeId,
+            eventId: eventId,
+            entityId: entityId,
+            version: version,
+            movement: movement,
+          ));
+        }
+        entries.sort((a, b) => a.version.compareTo(b.version));
+        return List<CloudInventoryInboxEntry>.unmodifiable(entries);
+      });
 
   /// Stores only inventory movements. Replaying an identical event is a
   /// no-op; reusing an event ID for different content is a hard error.
   @override
-  Future<void> apply(CloudInventoryLedgerChange change) => _serialize(() async {
-    final movement = change.movement;
-    if (!change.isInventoryMovement || movement == null) {
-      throw ArgumentError('El inbox solo admite movimientos de inventario.');
-    }
-    if (change.eventId != 'inventoryMovement_${movement.movementId}' ||
-        change.entityId != movement.movementId ||
-        change.storeId != movement.storeId ||
-        change.version < 1) {
-      throw const FormatException('La identidad del movimiento del inbox no coincide.');
-    }
-    if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
-      await _storage._refresh();
-    }
-    final record = <String, Object?>{
-      'storeId': change.storeId,
-      'eventId': change.eventId,
-      'entityType': change.entityType,
-      'entityId': change.entityId,
-      'version': change.version,
-      'movement': movement.toPayload(),
-    };
-    // Movement IDs are unique only within a store; scope inbox keys to avoid
-    // collisions when two stores independently create the same event ID.
-    final inboxKey = '${change.storeId}::${change.eventId}';
-    final existing = _storage.get(inboxKey);
-    if (existing != null) {
-      if (existing is! Map ||
-          jsonEncode(existing) != jsonEncode(record)) {
-        throw StateError('Colisión de ID en el inbox de inventario.');
-      }
-      // A prior attempt may have written to Hive but failed while flushing.
-      // Re-flush an identical replay before allowing the caller to advance its
-      // ledger cursor.
-      await _storage.flush();
-      return;
-    }
-    await _storage.put(inboxKey, record);
-    await _storage.flush();
-  });
+  Future<void> apply(CloudInventoryLedgerChange change) =>
+      _serialize(() async {
+        final movement = change.movement;
+        if (!change.isInventoryMovement || movement == null) {
+          throw ArgumentError(
+            'El inbox solo admite movimientos de inventario.',
+          );
+        }
+        if (change.eventId != 'inventoryMovement_' + movement.movementId ||
+            change.entityId != movement.movementId ||
+            change.storeId != movement.storeId ||
+            change.version < 1) {
+          throw const FormatException(
+            'La identidad del movimiento del inbox no coincide.',
+          );
+        }
+        if (_storage is _HiveCloudInventoryLedgerInboxStorage) {
+          await _storage._refresh();
+        }
+        final record = <String, Object?>{
+          'storeId': change.storeId,
+          'eventId': change.eventId,
+          'entityType': change.entityType,
+          'entityId': change.entityId,
+          'version': change.version,
+          'movement': movement.toPayload(),
+        };
+        // Movement IDs are unique only within a store; scope inbox keys to
+        // avoid collisions when stores independently create the same event ID.
+        final inboxKey = change.storeId + '::' + change.eventId;
+        final existing = _storage.get(inboxKey);
+        if (existing != null) {
+          if (existing is! Map ||
+              jsonEncode(existing) != jsonEncode(record)) {
+            throw StateError('Colisión de ID en el inbox de inventario.');
+          }
+          // A prior attempt may have written to Hive but failed while flushing.
+          // Re-flush an identical replay before allowing the cursor to advance.
+          await _storage.flush();
+          return;
+        }
+        await _storage.put(inboxKey, record);
+        await _storage.flush();
+      });
 }
