@@ -185,6 +185,10 @@ class CloudSyncWorker {
       return const CloudSyncRunSummary(paused: true);
     }
 
+    // Recover only this store's interrupted deliveries after membership passes.
+    // The transport is idempotent, so a request acknowledged remotely just
+    // before a crash can safely be replayed with the same event ID.
+    await _outbox.recoverInterruptedEvents(storeId: storeId);
     final pending = await _outbox.pendingForStore(storeId);
     var applied = 0;
     var duplicates = 0;
