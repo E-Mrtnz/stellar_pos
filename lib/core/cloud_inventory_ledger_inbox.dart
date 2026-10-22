@@ -145,6 +145,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
               version is! int ||
               version < 1 ||
               rawPayload is! Map ||
+              rawPayload['id'] != entityId ||
               !<String>{'pending', 'applied'}.contains(status) ||
               eventId != '${entityType}_$entityId') {
             throw const FormatException('Registro del inbox del ledger inválido.');
