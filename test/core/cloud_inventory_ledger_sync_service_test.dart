@@ -111,6 +111,14 @@ void main() {
       service.pullOnce(storeId: 'store/a', deviceId: 'device-a'),
       throwsArgumentError,
     );
+    await expectLater(
+      service.pullOnce(storeId: 'store a', deviceId: 'device-a'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      service.pullOnce(storeId: 'store-a', deviceId: 'device::a'),
+      throwsArgumentError,
+    );
     expect(gate.calls, 0);
   });
 }
