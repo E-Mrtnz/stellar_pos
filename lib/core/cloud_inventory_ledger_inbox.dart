@@ -235,6 +235,7 @@ class CloudInventoryLedgerInbox implements CloudInventoryLedgerChangeApplier {
             change.storeId.trim().isEmpty ||
             change.version < 1 ||
             change.operation != 'append' ||
+            change.payload['id'] != change.entityId ||
             change.eventId != '${change.entityType}_${change.entityId}') {
           throw const FormatException(
             'La identidad o el tipo del registro del inbox no coincide.',
