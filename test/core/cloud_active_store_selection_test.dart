@@ -35,10 +35,14 @@ void main() {
     const selection = SharedPreferencesActiveCloudStoreSelection();
 
     await expectLater(selection.write('user-a', 'bad/store'), throwsArgumentError);
+    await expectLater(selection.write('user-a', 'store with spaces'), throwsArgumentError);
+    await expectLater(selection.write('user-a', 'store!id'), throwsArgumentError);
     await expectLater(selection.read('bad/user'), throwsArgumentError);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('cloud_active_store_v1_user-a', 'bad/store');
+    expect(await selection.read('user-a'), isNull);
+    await prefs.setString('cloud_active_store_v1_user-a', 'store!id');
     expect(await selection.read('user-a'), isNull);
   });
 }
