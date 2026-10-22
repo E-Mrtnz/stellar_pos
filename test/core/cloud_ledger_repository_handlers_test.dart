@@ -28,7 +28,7 @@ CloudLedgerChange _change({
 }) =>
     CloudLedgerChange(
       storeId: storeId,
-      eventId: '${type.name}_${entityId}',
+      eventId: '${type.name}_$entityId',
       entityType: type,
       entityId: entityId,
       version: 1,
