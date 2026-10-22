@@ -147,9 +147,12 @@ class FirebaseCloudSyncSessionGate implements CloudSyncSessionGate {
     final membership = await _firestore
         .doc('stores/$storeId/members/${user.uid}')
         .get();
+    final data = membership.data();
     return membership.exists &&
-        membership.data()?['uid'] == user.uid &&
-        membership.data()?['status'] == 'active';
+        data?['uid'] == user.uid &&
+        data?['status'] == 'active' &&
+        const <String>{'owner', 'manager', 'cashier', 'viewer'}
+            .contains(data?['role']);
   }
 }
 
