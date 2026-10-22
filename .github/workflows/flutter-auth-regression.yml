@@ -92,6 +92,7 @@ jobs:
           test/core/cloud_inventory_ledger_pull_test.dart
           test/core/cloud_inventory_ledger_inbox_test.dart
           test/core/cloud_inventory_ledger_sync_service_test.dart
+          test/core/cloud_ledger_repository_handlers_test.dart
 
   firestore-rules-tests:
     runs-on: ubuntu-latest
