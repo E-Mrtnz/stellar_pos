@@ -97,6 +97,33 @@ void main() {
       expect(transport.calls, 1);
     });
 
+    test('concurrent workers claim a pending event only once', () async {
+      await outbox.enqueue(_event());
+      final transport = _Transport((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return CloudSyncDeliveryStatus.applied;
+      });
+      final first = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+      final second = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final results = await Future.wait([
+        first.runOnce(storeId: 'store-a'),
+        second.runOnce(storeId: 'store-a'),
+      ]);
+
+      expect(transport.calls, 1);
+      expect(results.fold<int>(0, (sum, result) => sum + result.applied), 1);
+      expect(storage.data['event-1'], containsPair('status', 'delivered'));
+    });
+
     test('marks a confirmed synthetic event delivered', () async {
       await outbox.enqueue(_event());
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
