@@ -130,6 +130,7 @@ void main() {
 
     expect(pending, hasLength(1));
     expect(pending.single.entityType, 'purchase');
+    expect(pending.single.operation, 'append');
     expect(pending.single.entityId, 'purchase-1');
     expect(pending.single.version, 4);
     expect(pending.single.movement, isNull);
