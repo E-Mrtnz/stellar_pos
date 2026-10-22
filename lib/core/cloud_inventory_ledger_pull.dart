@@ -236,12 +236,10 @@ class CloudInventoryLedgerPullCoordinator {
     required String deviceId,
     int limit = 50,
   }) {
-    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}').hasMatch(storeId) ||
-        storeId.length > 80 ||
-        !RegExp(r'^[A-Za-z0-9_-]{1,120}').hasMatch(deviceId) ||
+    if (storeId.length > 80 ||
         deviceId.length > 120 ||
-        !RegExp(r'^[A-Za-z0-9_-]+').hasMatch(storeId) ||
-        !RegExp(r'^[A-Za-z0-9_-]+').hasMatch(deviceId)) {
+        RegExp(r'[A-Za-z0-9_-]+').matchAsPrefix(storeId)?.group(0) != storeId ||
+        RegExp(r'[A-Za-z0-9_-]+').matchAsPrefix(deviceId)?.group(0) != deviceId) {
       throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
     final key = '$deviceId::$storeId';
