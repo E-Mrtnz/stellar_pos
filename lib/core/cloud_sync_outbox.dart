@@ -126,13 +126,16 @@ class CloudSyncOutbox {
 
   /// Recovers events left in-flight when the app stopped unexpectedly.
   /// A remote transport must be idempotent before this is used for business data.
-  Future<int> recoverInterruptedEvents() => _serialize(() async {
+  Future<int> recoverInterruptedEvents({String? storeId}) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     var recovered = 0;
     final interrupted = <CloudSyncEvent>[];
     for (final value in _storage.values) {
       final event = _decode(value);
-      if (event.status == CloudSyncEventStatus.inFlight) interrupted.add(event);
+      if (event.status == CloudSyncEventStatus.inFlight &&
+          (storeId == null || event.storeId == storeId)) {
+        interrupted.add(event);
+      }
     }
     for (final event in interrupted) {
       await _storage.put(

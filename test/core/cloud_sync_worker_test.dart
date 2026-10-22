@@ -76,6 +76,27 @@ void main() {
       expect((await outbox.pendingForStore('store-a')), hasLength(1));
     });
 
+    test('recovers interrupted events only for the authorized store', () async {
+      await outbox.enqueue(_event(id: 'store-a-inflight'));
+      await outbox.markInFlight('store-a-inflight');
+      await outbox.enqueue(_event(id: 'store-b-inflight').copyWith(storeId: 'store-b'));
+      await outbox.markInFlight('store-b-inflight');
+
+      final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      final result = await worker.runOnce(storeId: 'store-a');
+
+      expect(result.applied, 1);
+      expect(storage.data['store-a-inflight'], containsPair('status', 'delivered'));
+      expect(storage.data['store-b-inflight'], containsPair('status', 'inFlight'));
+      expect(transport.calls, 1);
+    });
+
     test('marks a confirmed synthetic event delivered', () async {
       await outbox.enqueue(_event());
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
