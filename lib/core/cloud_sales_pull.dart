@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_functions/cloud_functions.dart';
@@ -134,20 +135,51 @@ class CloudSalesPullCoordinator {
   final CloudSaleRemoteApplier _applier;
   final CloudSyncCursorStore _cursors;
 
+  // Prevent simultaneous triggers from applying the same sale page twice.
+  final Map<String, Future<void>> _pullLocks = <String, Future<void>>{};
+
+  Future<T> _runExclusive<T>(
+    String key,
+    Future<T> Function() action,
+  ) async {
+    final previous = _pullLocks[key] ?? Future<void>.value();
+    final release = Completer<void>();
+    final tail = release.future;
+    _pullLocks[key] = tail;
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release.complete();
+      if (identical(_pullLocks[key], tail)) _pullLocks.remove(key);
+    }
+  }
+
   Future<CloudSalesPullPage> pullOnce({
     required String storeId,
     required String deviceId,
     int limit = 50,
-  }) async {
+  }) {
     if (storeId.trim().isEmpty || storeId.contains('/') ||
         deviceId.trim().isEmpty || deviceId.contains('/')) {
       throw ArgumentError('storeId y deviceId deben ser identificadores válidos.');
     }
+    final key = '${deviceId}::${storeId}';
+    return _runExclusive(
+      key,
+      () => _pullOnce(storeId: storeId, deviceId: deviceId, limit: limit),
+    );
+  }
+
+  Future<CloudSalesPullPage> _pullOnce({
+    required String storeId,
+    required String deviceId,
+    required int limit,
+  }) async {
     if (limit < 1 || limit > 100) {
       throw ArgumentError.value(limit, 'limit', 'El límite debe estar entre 1 y 100.');
     }
-    final current = await _cursors.read(storeId: storeId, deviceId: deviceId) ??
-        CloudSyncCursor(storeId: storeId, version: 0);
+    final current = await _cursors.read(storeId: storeId, deviceId: deviceId) ??        CloudSyncCursor(storeId: storeId, version: 0);
     final page = await _transport.fetchPage(
       storeId: storeId, afterVersion: current.version, limit: limit,
     );
