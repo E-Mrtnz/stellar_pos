@@ -164,6 +164,30 @@ void main() {
     expect((await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version, 2);
   });
 
+  test('rejects inconsistent hasMore metadata before applying changes', () async {
+    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
+    final transport = _FakeTransport(CloudInventoryLedgerPage(
+      storeId: 'store-a',
+      afterVersion: 0,
+      changes: <CloudInventoryLedgerChange>[_change(1, 'movement-1')],
+      nextCursor: 1,
+      hasMore: true,
+    ));
+    final applier = _FakeApplier();
+    final coordinator = CloudInventoryLedgerPullCoordinator(
+      transport: transport,
+      applier: applier,
+      cursors: cursors,
+    );
+
+    await expectLater(
+      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+      throwsFormatException,
+    );
+    expect(applier.applied, isEmpty);
+    expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
+  });
+
   test('rejects gaps in ledger sequence before applying anything', () async {
     final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
     final transport = _FakeTransport(CloudInventoryLedgerPage(
