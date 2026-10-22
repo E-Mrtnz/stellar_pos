@@ -117,6 +117,30 @@ class CloudSyncOutbox {
     return List<CloudSyncEvent>.unmodifiable(events);
   });
 
+  /// Atomically claims a pending event for one store so concurrent workers
+  /// cannot deliver the same outbox record at the same time.
+  Future<bool> claimForDelivery({
+    required String eventId,
+    required String storeId,
+    required DateTime now,
+  }) => _serialize(() async {
+    if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
+    final raw = _storage.get(eventId);
+    if (raw == null) return false;
+    final event = _decode(raw);
+    if (event.storeId != storeId ||
+        event.status != CloudSyncEventStatus.pending ||
+        (event.nextAttemptAt != null && event.nextAttemptAt!.isAfter(now))) {
+      return false;
+    }
+    await _storage.put(
+      eventId,
+      _encode(event.copyWith(status: CloudSyncEventStatus.inFlight)),
+    );
+    await _storage.flush();
+    return true;
+  });
+
   Future<void> markInFlight(String eventId) =>
       _updateStatus(eventId, CloudSyncEventStatus.inFlight);
   Future<void> markDelivered(String eventId) =>
