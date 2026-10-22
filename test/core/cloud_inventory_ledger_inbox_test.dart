@@ -108,6 +108,39 @@ void main() {
     expect((await inbox.pendingForStore('store-b')), hasLength(1));
   });
 
+  test('durably retains supported non-inventory ledger payloads', () async {
+    final storage = _MemoryInboxStorage();
+    final inbox = CloudInventoryLedgerInbox(storage: storage);
+    final purchase = CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+      'storeId': 'store-a',
+      'eventId': 'purchase_purchase-1',
+      'entityType': 'purchase',
+      'entityId': 'purchase-1',
+      'operation': 'append',
+      'version': 4,
+      'payload': <String, Object?>{
+        'id': 'purchase-1',
+        'total': 12.5,
+        'providerId': 'provider-1',
+      },
+    });
+
+    await inbox.apply(purchase);
+    final pending = await inbox.pendingForStore('store-a');
+
+    expect(pending, hasLength(1));
+    expect(pending.single.entityType, 'purchase');
+    expect(pending.single.entityId, 'purchase-1');
+    expect(pending.single.version, 4);
+    expect(pending.single.movement, isNull);
+    expect(pending.single.payload, <String, dynamic>{
+      'id': 'purchase-1',
+      'total': 12.5,
+      'providerId': 'provider-1',
+    });
+    expect(storage.flushCount, 1);
+  });
+
   test('isolates identical event IDs across different stores', () async {
     final storage = _MemoryInboxStorage();
     final inbox = CloudInventoryLedgerInbox(storage: storage);
