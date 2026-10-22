@@ -8,7 +8,9 @@ class _CursorStorage implements CloudSyncCursorStorage {
   @override
   Object? get(String key) => values[key];
   @override
-  Future<void> put(String key, Object value) async => values[key] = value;
+  Future<void> put(String key, Object value) async {
+    values[key] = value;
+  }
   @override
   Future<void> flush() async {}
 }
