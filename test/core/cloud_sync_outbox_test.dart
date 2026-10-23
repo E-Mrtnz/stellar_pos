@@ -397,6 +397,48 @@ void main() {
       );
     });
 
+    test('rejects persisted events with a negative attempt counter', () async {
+      storage.data['negative-attempts'] = <String, Object?>{
+        'eventId': 'negative-attempts',
+        'storeId': 'store-a',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': 1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': -1,
+        'nextAttemptAt': null,
+        'payload': <String, Object?>{},
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('rejects persisted events with an invalid payload value', () async {
+      storage.data['invalid-payload-value'] = <String, Object?>{
+        'eventId': 'invalid-payload-value',
+        'storeId': 'store-a',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': 1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': 0,
+        'nextAttemptAt': null,
+        'payload': <String, Object?>{'price': double.nan},
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('unknown event status update fails explicitly', () async {
       await expectLater(
         outbox.markDelivered('missing'),
