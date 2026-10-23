@@ -81,6 +81,16 @@ class CloudSyncOutbox {
 
   Future<void> enqueue(CloudSyncEvent event) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
+    // Validate every incoming envelope before treating a matching ID as an
+    // idempotent retry. Otherwise malformed or non-pending events could be
+    // silently accepted merely because their ID already exists.
+    final validationError = validateCloudSyncEvent(
+      event,
+      activeStoreId: event.storeId,
+    );
+    if (validationError != null) {
+      throw StateError('El evento de sincronización no es válido: $validationError');
+    }
     final existing = _storage.get(event.eventId);
     if (existing != null) {
       final stored = _decode(existing);
@@ -96,13 +106,6 @@ class CloudSyncOutbox {
         );
       }
       return;
-    }
-    final validationError = validateCloudSyncEvent(
-      event,
-      activeStoreId: event.storeId,
-    );
-    if (validationError != null) {
-      throw StateError('El evento de sincronización no es válido: $validationError');
     }
     await _storage.put(event.eventId, _encode(event));
     await _storage.flush();
