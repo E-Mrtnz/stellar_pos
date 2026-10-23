@@ -353,6 +353,50 @@ void main() {
       );
     });
 
+    test('rejects a malformed persisted retry deadline instead of ignoring it',
+        () async {
+      storage.data['corrupt-deadline'] = <String, Object?>{
+        'eventId': 'corrupt-deadline',
+        'storeId': 'store-a',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': 1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': 0,
+        'nextAttemptAt': 42,
+        'payload': <String, Object?>{},
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('rejects malformed persisted payload instead of replacing it with empty data',
+        () async {
+      storage.data['corrupt-payload'] = <String, Object?>{
+        'eventId': 'corrupt-payload',
+        'storeId': 'store-a',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': 1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': 0,
+        'nextAttemptAt': null,
+        'payload': 'not-a-map',
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('unknown event status update fails explicitly', () async {
       await expectLater(
         outbox.markDelivered('missing'),
