@@ -59,17 +59,23 @@ class CloudSyncOutbox {
 
   final CloudSyncOutboxStorage _storage;
   final String boxName;
-  Future<void> _operationTail = Future<void>.value();
+
+  // Multiple outbox instances may target the same Hive box. Serialize them by
+  // box name, not only by instance, so stale reads cannot race with writes.
+  static final Map<String, Future<void>> _operationTailsByBox =
+      <String, Future<void>>{};
 
   Future<T> _serialize<T>(Future<T> Function() operation) {
     final result = Completer<T>();
-    _operationTail = _operationTail.then((_) async {
+    final previous = _operationTailsByBox[boxName] ?? Future<void>.value();
+    final next = previous.then((_) async {
       try {
         result.complete(await operation());
       } on Object catch (error, stackTrace) {
         result.completeError(error, stackTrace);
       }
     });
+    _operationTailsByBox[boxName] = next;
     return result.future;
   }
 
