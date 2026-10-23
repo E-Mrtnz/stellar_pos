@@ -46,6 +46,7 @@ class CloudSyncEvent {
     CloudSyncEventStatus? status,
     int? attemptCount,
     DateTime? nextAttemptAt,
+    bool clearNextAttemptAt = false,
     Map<String, Object?>? payload,
   }) {
     return CloudSyncEvent(
@@ -58,7 +59,9 @@ class CloudSyncEvent {
       createdAt: createdAt,
       status: status ?? this.status,
       attemptCount: attemptCount ?? this.attemptCount,
-      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+      nextAttemptAt: clearNextAttemptAt
+          ? null
+          : nextAttemptAt ?? this.nextAttemptAt,
       payload: payload ?? this.payload,
     );
   }
