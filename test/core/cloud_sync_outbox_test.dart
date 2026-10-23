@@ -52,6 +52,14 @@ void main() {
 
     test('enqueue is idempotent for a stable event ID', () async {
       await outbox.enqueue(event());
+      expect(
+        await outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: firstTime,
+        ),
+        isTrue,
+      );
       await outbox.markDelivered('evt-1');
       await outbox.enqueue(event());
 
@@ -224,12 +232,45 @@ void main() {
 
     test('status changes remove event from pending results', () async {
       await outbox.enqueue(event());
-      await outbox.markInFlight('evt-1');
+      expect(
+        await outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: firstTime,
+        ),
+        isTrue,
+      );
       expect(await outbox.pendingForStore('store-a'), isEmpty);
 
       await outbox.markDelivered('evt-1');
       expect(storage.data['evt-1'], containsPair('status', 'delivered'));
       expect(await outbox.pendingForStore('store-a'), isEmpty);
+    });
+
+    test('cannot mark a pending event delivered without claiming it', () async {
+      await outbox.enqueue(event());
+
+      await expectLater(
+        outbox.markDelivered('evt-1'),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data['evt-1'], containsPair('status', 'pending'));
+    });
+
+    test('cannot retry an event already delivered', () async {
+      await outbox.enqueue(event());
+      await outbox.claimForDelivery(
+        eventId: 'evt-1',
+        storeId: 'store-a',
+        now: firstTime,
+      );
+      await outbox.markDelivered('evt-1');
+
+      await expectLater(
+        outbox.retry('evt-1'),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data['evt-1'], containsPair('status', 'delivered'));
     });
 
     test('retry restores pending status and increments attempts', () async {
