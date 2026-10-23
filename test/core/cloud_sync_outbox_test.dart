@@ -92,6 +92,21 @@ void main() {
       expect(storage.flushCount, 1);
     });
 
+    test('rejects an event ID collision across stores without overwriting either identity', () async {
+      await outbox.enqueue(event(eventId: 'shared-event', storeId: 'store-a'));
+
+      await expectLater(
+        outbox.enqueue(event(eventId: 'shared-event', storeId: 'store-b')),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(storage.data, hasLength(1));
+      expect(storage.data['shared-event'], containsPair('storeId', 'store-a'));
+      expect(await outbox.pendingForStore('store-a'), hasLength(1));
+      expect(await outbox.pendingForStore('store-b'), isEmpty);
+      expect(storage.flushCount, 1);
+    });
+
     test('same event payload with different map key order is idempotent', () async {
       await outbox.enqueue(event(payload: <String, Object?>{
         'name': 'Milk',
