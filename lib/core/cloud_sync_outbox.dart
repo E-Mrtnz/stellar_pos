@@ -182,6 +182,9 @@ class CloudSyncOutbox {
   });
 
   Future<void> retry(String eventId, {Duration delay = Duration.zero}) => _serialize(() async {
+    if (delay.isNegative) {
+      throw ArgumentError.value(delay, 'delay', 'No puede ser negativo.');
+    }
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
