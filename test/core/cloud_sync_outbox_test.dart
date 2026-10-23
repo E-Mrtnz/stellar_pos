@@ -170,6 +170,58 @@ void main() {
           hasLength(1));
     });
 
+    test('only one outbox instance can claim an event for delivery', () async {
+      await outbox.enqueue(event());
+      final secondOutbox = CloudSyncOutbox(storage: storage);
+
+      final claims = await Future.wait<bool>([
+        outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: firstTime,
+        ),
+        secondOutbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: firstTime,
+        ),
+      ]);
+
+      expect(claims.where((claimed) => claimed), hasLength(1));
+      expect(storage.data['evt-1'], containsPair('status', 'inFlight'));
+    });
+
+    test('claim rejects another store and respects retry time', () async {
+      await outbox.enqueue(event().copyWith(
+        nextAttemptAt: DateTime.utc(2026, 10, 15),
+      ));
+
+      expect(
+        await outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-b',
+          now: firstTime,
+        ),
+        isFalse,
+      );
+      expect(
+        await outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: firstTime,
+        ),
+        isFalse,
+      );
+      expect(
+        await outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: DateTime.utc(2026, 10, 16),
+        ),
+        isTrue,
+      );
+    });
+
     test('status changes remove event from pending results', () async {
       await outbox.enqueue(event());
       await outbox.markInFlight('evt-1');
