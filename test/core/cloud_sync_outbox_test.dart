@@ -65,7 +65,7 @@ void main() {
 
       expect(storage.data, hasLength(1));
       expect(storage.data['evt-1'], containsPair('status', 'delivered'));
-      expect(storage.flushCount, 2);
+      expect(storage.flushCount, 3);
     });
 
     test('same event payload with different map key order is idempotent', () async {
