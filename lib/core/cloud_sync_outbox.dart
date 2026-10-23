@@ -202,9 +202,35 @@ class CloudSyncOutbox {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
-    await _storage.put(eventId, _encode(_decode(value).copyWith(status: status)));
+    final event = _decode(value);
+    if (!_canTransition(event.status, status)) {
+      throw StateError(
+        'Transición de estado no permitida: ${event.status.name} -> ${status.name}.',
+      );
+    }
+    if (event.status == status) return;
+    await _storage.put(eventId, _encode(event.copyWith(status: status)));
     await _storage.flush();
   });
+
+  bool _canTransition(
+    CloudSyncEventStatus current,
+    CloudSyncEventStatus next,
+  ) {
+    if (current == next) return true;
+    switch (next) {
+      case CloudSyncEventStatus.pending:
+        return current == CloudSyncEventStatus.inFlight ||
+            current == CloudSyncEventStatus.blocked;
+      case CloudSyncEventStatus.inFlight:
+        return current == CloudSyncEventStatus.pending;
+      case CloudSyncEventStatus.delivered:
+        return current == CloudSyncEventStatus.inFlight;
+      case CloudSyncEventStatus.blocked:
+        return current == CloudSyncEventStatus.pending ||
+            current == CloudSyncEventStatus.inFlight;
+    }
+  }
 
   Map<String, Object?> _encode(CloudSyncEvent event) => <String, Object?>{
         'eventId': event.eventId,
