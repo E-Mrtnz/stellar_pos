@@ -47,6 +47,29 @@ void main() {
       expect(receipts.flushes, 1);
     });
 
+    test('serializes concurrent replays of the same event', () async {
+      final receipts = _MemoryReceipts();
+      var applications = 0;
+      final applier = DurableCloudLedgerRemoteApplier(
+        receipts: receipts,
+        handlers: <CloudLedgerEntityType, CloudLedgerChangeHandler>{
+          CloudLedgerEntityType.inventoryMovement: (_) async {
+            applications++;
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          },
+        },
+      );
+
+      await Future.wait<void>(List<Future<void>>.generate(
+        8,
+        (_) => applier.apply(_change()),
+      ));
+
+      expect(applications, 1);
+      expect(receipts.values.keys, <String>['store-a::inventoryMovement_move-1']);
+      expect(receipts.flushes, 1);
+    });
+
     test('keeps identical entity IDs isolated across stores', () async {
       final receipts = _MemoryReceipts();
       var applications = 0;
