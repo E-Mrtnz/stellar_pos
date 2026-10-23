@@ -217,6 +217,31 @@ void main() {
           hasLength(1));
     });
 
+    test('corrupt records owned by another store do not block scoped reads or recovery', () async {
+      await outbox.enqueue(event(eventId: 'store-a-event', storeId: 'store-a'));
+      await outbox.markInFlight('store-a-event');
+      storage.data['corrupt-store-b'] = <String, Object?>{
+        'eventId': 'corrupt-store-b',
+        'storeId': 'store-b',
+        'status': 'inFlight',
+        'payload': 'malformed',
+      };
+
+      expect(await outbox.pendingForStore('store-a'), isEmpty);
+      expect(
+        await outbox.recoverInterruptedEvents(storeId: 'store-a'),
+        1,
+      );
+      expect(
+        storage.data['store-a-event'],
+        containsPair('status', 'pending'),
+      );
+      expect(
+        storage.data['corrupt-store-b'],
+        containsPair('payload', 'malformed'),
+      );
+    });
+
     test('only one outbox instance can claim an event for delivery', () async {
       await outbox.enqueue(event());
       final secondOutbox = CloudSyncOutbox(storage: storage);
