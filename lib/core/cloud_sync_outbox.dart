@@ -116,6 +116,14 @@ class CloudSyncOutbox {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final events = <CloudSyncEvent>[];
     for (final value in _storage.values) {
+      // A record explicitly owned by another store must not interfere with
+      // this store's queue, even if its payload is corrupt. Records without a
+      // trustworthy store identity still fail closed in _decode.
+      if (value is Map &&
+          value['storeId'] is String &&
+          value['storeId'] != storeId) {
+        continue;
+      }
       final event = _decode(value);
       if (event.storeId == storeId &&
           event.status == CloudSyncEventStatus.pending) {
@@ -164,6 +172,15 @@ class CloudSyncOutbox {
     var recovered = 0;
     final interrupted = <CloudSyncEvent>[];
     for (final value in _storage.values) {
+      // Recovery is scoped after membership validation in the worker. Skip
+      // records with an explicit different owner before decoding their payload,
+      // so corruption in another store cannot block this store's recovery.
+      if (storeId != null &&
+          value is Map &&
+          value['storeId'] is String &&
+          value['storeId'] != storeId) {
+        continue;
+      }
       final event = _decode(value);
       if (event.status == CloudSyncEventStatus.inFlight &&
           (storeId == null || event.storeId == storeId)) {
