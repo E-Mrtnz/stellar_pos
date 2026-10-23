@@ -315,6 +315,27 @@ void main() {
       expect(await outbox.pendingForStore('store-a'), hasLength(1));
     });
 
+    test('clears stale retry deadlines when recovering interrupted events', () async {
+      await outbox.enqueue(event().copyWith(
+        nextAttemptAt: DateTime.utc(2099, 1, 1),
+      ));
+      await outbox.markInFlight('evt-1');
+
+      expect(await outbox.recoverInterruptedEvents(), 1);
+
+      final stored = storage.data['evt-1']! as Map<String, Object?>;
+      expect(stored['status'], 'pending');
+      expect(stored['nextAttemptAt'], isNull);
+      expect(
+        await outbox.claimForDelivery(
+          eventId: 'evt-1',
+          storeId: 'store-a',
+          now: firstTime,
+        ),
+        isTrue,
+      );
+    });
+
     test('does not flush when there is nothing to recover', () async {
       await outbox.enqueue(event());
       final flushesBeforeRecovery = storage.flushCount;
