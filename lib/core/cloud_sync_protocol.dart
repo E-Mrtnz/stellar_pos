@@ -73,6 +73,9 @@ String? validateCloudSyncEvent(
   CloudSyncEvent event, {
   required String activeStoreId,
 }) {
+  if (event.storeId.trim().isEmpty || activeStoreId.trim().isEmpty) {
+    return 'missing-store-id';
+  }
   if (event.storeId != activeStoreId) return 'store-mismatch';
   if (event.status != CloudSyncEventStatus.pending) return 'not-pending';
   if (event.eventId.trim().isEmpty) return 'missing-event-id';
