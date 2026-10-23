@@ -287,6 +287,20 @@ void main() {
           'evt-1');
     });
 
+    test('rejects negative retry delays without changing the event', () async {
+      await outbox.enqueue(event());
+      await outbox.markBlocked('evt-1');
+
+      await expectLater(
+        outbox.retry('evt-1', delay: const Duration(seconds: -1)),
+        throwsArgumentError,
+      );
+
+      expect(storage.data['evt-1'], containsPair('status', 'blocked'));
+      expect(storage.data['evt-1'], containsPair('attemptCount', 0));
+      expect(storage.flushCount, 2);
+    });
+
     test('recovers interrupted in-flight events without crossing stores', () async {
       await outbox.enqueue(event());
       await outbox.enqueue(event(eventId: 'evt-2', storeId: 'store-b'));
