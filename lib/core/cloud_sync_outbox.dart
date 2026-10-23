@@ -267,7 +267,7 @@ class CloudSyncOutbox {
         throw StateError('La fecha de reintento guardada no es válida.');
       }
       final payloadRaw = map['payload'];
-      if (payloadRaw != null && payloadRaw is! Map) {
+      if (payloadRaw is! Map) {
         throw StateError('El contenido del evento guardado no es válido.');
       }
       final event = CloudSyncEvent(
@@ -283,9 +283,7 @@ class CloudSyncOutbox {
         nextAttemptAt: nextAttemptRaw is String
             ? DateTime.parse(nextAttemptRaw).toUtc()
             : null,
-        payload: payloadRaw is Map
-            ? Map<String, Object?>.from(payloadRaw)
-            : const <String, Object?>{},
+        payload: Map<String, Object?>.from(payloadRaw),
       );
       // Persisted records need semantic validation too; otherwise corrupted
       // identifiers, counters, or payload values could bypass enqueue checks.
