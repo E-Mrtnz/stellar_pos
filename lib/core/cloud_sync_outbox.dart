@@ -262,6 +262,14 @@ class CloudSyncOutbox {
     }
     try {
       final map = Map<String, Object?>.from(raw);
+      final nextAttemptRaw = map['nextAttemptAt'];
+      if (nextAttemptRaw != null && nextAttemptRaw is! String) {
+        throw StateError('La fecha de reintento guardada no es válida.');
+      }
+      final payloadRaw = map['payload'];
+      if (payloadRaw != null && payloadRaw is! Map) {
+        throw StateError('El contenido del evento guardado no es válido.');
+      }
       return CloudSyncEvent(
         eventId: map['eventId'] as String,
         storeId: map['storeId'] as String,
@@ -272,11 +280,11 @@ class CloudSyncOutbox {
         createdAt: DateTime.parse(map['createdAt'] as String).toUtc(),
         status: CloudSyncEventStatus.values.byName(map['status'] as String),
         attemptCount: map['attemptCount'] as int,
-        nextAttemptAt: map['nextAttemptAt'] is String
-            ? DateTime.parse(map['nextAttemptAt'] as String).toUtc()
+        nextAttemptAt: nextAttemptRaw is String
+            ? DateTime.parse(nextAttemptRaw).toUtc()
             : null,
-        payload: map['payload'] is Map
-            ? Map<String, Object?>.from(map['payload'] as Map)
+        payload: payloadRaw is Map
+            ? Map<String, Object?>.from(payloadRaw)
             : const <String, Object?>{},
       );
     } on StateError {
