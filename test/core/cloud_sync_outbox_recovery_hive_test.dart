@@ -73,6 +73,7 @@ void main() {
       createdAt: DateTime.utc(2026, 10, 20, 13),
     ));
 
+    await outbox.markBlocked('evt-retry-persisted');
     await outbox.retry(
       'evt-retry-persisted',
       delay: const Duration(minutes: 5),
