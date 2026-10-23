@@ -97,6 +97,22 @@ void main() {
       expect(stored['entityId'], 'product-1');
     });
 
+    test('serializes concurrent writes across outbox instances', () async {
+      final secondOutbox = CloudSyncOutbox(storage: storage);
+
+      final results = await Future.wait<Object?>([
+        outbox.enqueue(event(entityId: 'product-1')).then<Object?>((_) => null),
+        secondOutbox
+            .enqueue(event(entityId: 'product-2'))
+            .then<Object?>((_) => null, onError: (Object error) => error),
+      ]);
+
+      expect(results.whereType<StateError>(), hasLength(1));
+      expect(storage.data, hasLength(1));
+      final stored = storage.data['evt-1']! as Map<String, Object?>;
+      expect(stored['entityId'], anyOf('product-1', 'product-2'));
+    });
+
     test('a new outbox instance can resume persisted pending events', () async {
       await outbox.enqueue(event());
       final restartedOutbox = CloudSyncOutbox(storage: storage);
