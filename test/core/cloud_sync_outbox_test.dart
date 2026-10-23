@@ -68,6 +68,30 @@ void main() {
       expect(storage.flushCount, 3);
     });
 
+    test('rejects a non-pending event even when its ID already exists', () async {
+      await outbox.enqueue(event());
+
+      await expectLater(
+        outbox.enqueue(event().copyWith(status: CloudSyncEventStatus.delivered)),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(storage.data['evt-1'], containsPair('status', 'pending'));
+      expect(storage.flushCount, 1);
+    });
+
+    test('rejects invalid metadata even when its ID already exists', () async {
+      await outbox.enqueue(event());
+
+      await expectLater(
+        outbox.enqueue(event().copyWith(attemptCount: -1)),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(storage.data['evt-1'], containsPair('attemptCount', 0));
+      expect(storage.flushCount, 1);
+    });
+
     test('same event payload with different map key order is idempotent', () async {
       await outbox.enqueue(event(payload: <String, Object?>{
         'name': 'Milk',
