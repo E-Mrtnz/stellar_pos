@@ -29,6 +29,17 @@ void main() {
       );
     });
 
+    test('rejects blank event and active store identifiers', () {
+      expect(
+        validateCloudSyncEvent(event(storeId: '   '), activeStoreId: '   '),
+        'missing-store-id',
+      );
+      expect(
+        validateCloudSyncEvent(event(), activeStoreId: '   '),
+        'missing-store-id',
+      );
+    });
+
     test('blocks events belonging to a different store', () {
       expect(
         validateCloudSyncEvent(event(storeId: 'store-b'), activeStoreId: 'store-a'),
