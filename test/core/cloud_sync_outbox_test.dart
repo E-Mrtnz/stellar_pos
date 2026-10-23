@@ -439,6 +439,48 @@ void main() {
       );
     });
 
+    test('rejects persisted events with a negative local version', () async {
+      storage.data['negative-version'] = <String, Object?>{
+        'eventId': 'negative-version',
+        'storeId': 'store-a',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': -1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': 0,
+        'nextAttemptAt': null,
+        'payload': <String, Object?>{},
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('rejects persisted events with blank store identity', () async {
+      storage.data['blank-store'] = <String, Object?>{
+        'eventId': 'blank-store',
+        'storeId': '  ',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': 1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': 0,
+        'nextAttemptAt': null,
+        'payload': <String, Object?>{},
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('unknown event status update fails explicitly', () async {
       await expectLater(
         outbox.markDelivered('missing'),
