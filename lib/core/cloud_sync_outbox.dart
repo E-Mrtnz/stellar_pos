@@ -270,7 +270,7 @@ class CloudSyncOutbox {
       if (payloadRaw != null && payloadRaw is! Map) {
         throw StateError('El contenido del evento guardado no es válido.');
       }
-      return CloudSyncEvent(
+      final event = CloudSyncEvent(
         eventId: map['eventId'] as String,
         storeId: map['storeId'] as String,
         entityType: map['entityType'] as String,
@@ -287,6 +287,16 @@ class CloudSyncOutbox {
             ? Map<String, Object?>.from(payloadRaw)
             : const <String, Object?>{},
       );
+      // Persisted records need semantic validation too; otherwise corrupted
+      // identifiers, counters, or payload values could bypass enqueue checks.
+      final validationError = validateCloudSyncEvent(
+        event.copyWith(status: CloudSyncEventStatus.pending),
+        activeStoreId: event.storeId,
+      );
+      if (validationError != null) {
+        throw StateError('El evento guardado no supera la validación: $validationError');
+      }
+      return event;
     } on StateError {
       rethrow;
     } on Object catch (error) {
