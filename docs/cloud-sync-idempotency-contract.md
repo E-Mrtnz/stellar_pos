@@ -35,6 +35,10 @@ Dentro de una transacción de Firestore, el receptor debe:
 
 Si la mutación no puede ejecutarse en la misma transacción que el recibo, esta estrategia no es suficiente; se necesita un diseño de operación durable adicional con estados y recuperación, no una escritura independiente seguida de otra escritura.
 
+### Restricción actual de la outbox local
+
+El receptor remoto delimita la idempotencia por tienda y evento, pero la outbox local actual almacena sus claves por `eventId` global, no por el par `(storeId, eventId)`. Por eso, si dos tiendas intentan encolar el mismo ID con contenido o identidad distinta, la segunda operación debe rechazarse sin modificar el registro existente. Esta protección evita contaminación silenciosa entre tiendas, pero no elimina el conflicto de disponibilidad: antes de permitir IDs reutilizables entre tiendas se necesita una migración compatible a claves compuestas y operaciones de estado que también reciban la tienda. No se debe solucionar sobrescribiendo el registro existente ni generando un ID nuevo automáticamente en un reintento.
+
 ## Semántica de errores para el cliente
 
 - **Aplicado / duplicado confirmado:** marcar el evento local como entregado.
