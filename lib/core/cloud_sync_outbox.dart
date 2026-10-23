@@ -173,6 +173,7 @@ class CloudSyncOutbox {
         _encode(event.copyWith(
           status: CloudSyncEventStatus.pending,
           attemptCount: event.attemptCount + 1,
+          clearNextAttemptAt: true,
         )),
       );
       recovered++;
