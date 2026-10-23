@@ -186,6 +186,12 @@ class CloudSyncOutbox {
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     final event = _decode(value);
+    if (event.status != CloudSyncEventStatus.blocked &&
+        event.status != CloudSyncEventStatus.inFlight) {
+      throw StateError(
+        'Solo se pueden reintentar eventos bloqueados o interrumpidos.',
+      );
+    }
     await _storage.put(
       eventId,
       _encode(event.copyWith(
