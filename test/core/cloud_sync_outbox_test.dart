@@ -481,6 +481,26 @@ void main() {
       );
     });
 
+    test('rejects persisted events with a missing payload instead of using empty data', () async {
+      storage.data['missing-payload'] = <String, Object?>{
+        'eventId': 'missing-payload',
+        'storeId': 'store-a',
+        'entityType': 'product',
+        'entityId': 'product-1',
+        'operation': 'update',
+        'localVersion': 1,
+        'createdAt': firstTime.toIso8601String(),
+        'status': 'pending',
+        'attemptCount': 0,
+        'nextAttemptAt': null,
+      };
+
+      await expectLater(
+        outbox.pendingForStore('store-a'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('unknown event status update fails explicitly', () async {
       await expectLater(
         outbox.markDelivered('missing'),
