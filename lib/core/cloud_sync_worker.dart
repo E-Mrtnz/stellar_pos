@@ -220,14 +220,12 @@ class CloudSyncWorker {
         now: DateTime.now().toUtc(),
       );
       if (!claimed) continue;
+      late final CloudSyncDeliveryStatus deliveryResult;
       try {
-        final result = await _transport.send(event);
-        await _outbox.markDelivered(event.eventId, storeId: storeId);
-        if (result == CloudSyncDeliveryStatus.applied) {
-          applied++;
-        } else {
-          duplicates++;
-        }
+        // Keep transport failures separate from local persistence failures.
+        // If the server committed but saving the receipt locally fails, leave
+        // recovery to the outbox and replay the same idempotent event later.
+        deliveryResult = await _transport.send(event);
       } on CloudSyncTransportException catch (error) {
         if (error.retryable && _retryPolicy.canRetry(event.attemptCount + 1)) {
           final nextAttempt = event.attemptCount + 1;
@@ -241,9 +239,21 @@ class CloudSyncWorker {
           await _outbox.markBlocked(event.eventId, storeId: storeId);
           blocked++;
         }
+        continue;
       } on Object {
         await _outbox.markBlocked(event.eventId, storeId: storeId);
         blocked++;
+        continue;
+      }
+
+      // A local write/flush failure must escape to the caller. Treating it as
+      // a transport error could incorrectly block an event already committed
+      // remotely; recovery will replay it with the same idempotency key.
+      await _outbox.markDelivered(event.eventId, storeId: storeId);
+      if (deliveryResult == CloudSyncDeliveryStatus.applied) {
+        applied++;
+      } else {
+        duplicates++;
       }
     }
     return CloudSyncRunSummary(
