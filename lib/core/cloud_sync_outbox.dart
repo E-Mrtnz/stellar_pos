@@ -121,6 +121,7 @@ class CloudSyncOutbox {
       // trustworthy store identity still fail closed in _decode.
       if (value is Map &&
           value['storeId'] is String &&
+          (value['storeId']! as String).trim().isNotEmpty &&
           value['storeId'] != storeId) {
         continue;
       }
@@ -178,6 +179,7 @@ class CloudSyncOutbox {
       if (storeId != null &&
           value is Map &&
           value['storeId'] is String &&
+          (value['storeId']! as String).trim().isNotEmpty &&
           value['storeId'] != storeId) {
         continue;
       }
