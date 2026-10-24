@@ -93,8 +93,8 @@ void main() {
       operation: CloudSyncOperation.update, localVersion: 1,
       createdAt: DateTime.utc(2026, 10, 14, 11),
     ));
-    await outbox.markInFlight('evt-delivered');
-    await outbox.markDelivered('evt-delivered');
+    await outbox.markInFlight('evt-delivered', storeId: 'store-a');
+    await outbox.markDelivered('evt-delivered', storeId: 'store-a');
     await Hive.close();
 
     Hive.init(directory.path);
