@@ -77,6 +77,7 @@ void main() {
     await outbox.retry(
       'evt-retry-persisted',
       delay: const Duration(minutes: 5),
+      storeId: 'store-a',
     );
     final beforeRestart = DateTime.parse(
       (box.get('evt-retry-persisted') as Map)['nextAttemptAt'] as String,
