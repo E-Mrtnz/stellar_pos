@@ -37,7 +37,7 @@ Si la mutación no puede ejecutarse en la misma transacción que el recibo, esta
 
 ### Restricción actual de la outbox local
 
-Las transiciones del worker también validan la propiedad: las operaciones de marcar entregado, bloquear o reintentar reciben el `storeId` esperado y rechazan cualquier registro cuya tienda no coincida. Las APIs mantienen `storeId` opcional para tareas locales de mantenimiento y compatibilidad con pruebas antiguas; el worker de entrega siempre lo proporciona. Esto es una defensa adicional y no sustituye la validación de membresía ni la idempotencia del receptor remoto.
+Todas las transiciones de estado de la outbox exigen el `storeId` esperado y rechazan cualquier registro cuya tienda no coincida. No se permite cambiar el estado ni reintentar un evento usando únicamente su ID global. Esto es una defensa adicional y no sustituye la validación de membresía ni la idempotencia del receptor remoto.
 
 El receptor remoto delimita la idempotencia por tienda y evento, pero la outbox local actual almacena sus claves por `eventId` global, no por el par `(storeId, eventId)`. Por eso, si dos tiendas intentan encolar el mismo ID con contenido o identidad distinta, la segunda operación debe rechazarse sin modificar el registro existente. Esta protección evita contaminación silenciosa entre tiendas, pero no elimina el conflicto de disponibilidad: antes de permitir IDs reutilizables entre tiendas se necesita una migración compatible a claves compuestas y operaciones de estado que también reciban la tienda. No se debe solucionar sobrescribiendo el registro existente ni generando un ID nuevo automáticamente en un reintento.
 
