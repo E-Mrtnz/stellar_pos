@@ -74,6 +74,36 @@ void main() {
       expect(storage.flushes, 1);
     });
 
+    test('serializes cursor advances across store instances sharing a box', () async {
+      final first = CloudSyncCursorStore(
+        boxName: 'shared-cursor-box',
+        storage: storage,
+      );
+      final second = CloudSyncCursorStore(
+        boxName: 'shared-cursor-box',
+        storage: storage,
+      );
+
+      final results = await Future.wait(<Future<bool>>[
+        first.advance(
+          storeId: 'store-a',
+          deviceId: 'device-1',
+          candidate: const CloudSyncCursor(storeId: 'store-a', version: 5),
+        ),
+        second.advance(
+          storeId: 'store-a',
+          deviceId: 'device-1',
+          candidate: const CloudSyncCursor(storeId: 'store-a', version: 7),
+        ),
+      ]);
+
+      expect(results, <bool>[true, true]);
+      expect(
+        (await first.read(storeId: 'store-a', deviceId: 'device-1'))?.version,
+        7,
+      );
+    });
+
     test('same cursor is idempotent and does not write again', () async {
       const cursor = CloudSyncCursor(storeId: 'store-a', version: 2);
       await cursors.advance(storeId: 'store-a', deviceId: 'device-1', candidate: cursor);
