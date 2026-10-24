@@ -210,7 +210,7 @@ class CloudSyncWorker {
           _isValidInventoryMovementEnvelope(event);
       final invalid = validateCloudSyncEvent(event, activeStoreId: storeId);
       if (invalid != null || (!isSynthetic && !isInventoryMovement)) {
-        await _outbox.markBlocked(event.eventId);
+        await _outbox.markBlocked(event.eventId, storeId: storeId);
         blocked++;
         continue;
       }
@@ -222,7 +222,7 @@ class CloudSyncWorker {
       if (!claimed) continue;
       try {
         final result = await _transport.send(event);
-        await _outbox.markDelivered(event.eventId);
+        await _outbox.markDelivered(event.eventId, storeId: storeId);
         if (result == CloudSyncDeliveryStatus.applied) {
           applied++;
         } else {
@@ -233,15 +233,16 @@ class CloudSyncWorker {
           final nextAttempt = event.attemptCount + 1;
           await _outbox.retry(
             event.eventId,
+            storeId: storeId,
             delay: _retryPolicy.delayForAttempt(nextAttempt),
           );
           retried++;
         } else {
-          await _outbox.markBlocked(event.eventId);
+          await _outbox.markBlocked(event.eventId, storeId: storeId);
           blocked++;
         }
       } on Object {
-        await _outbox.markBlocked(event.eventId);
+        await _outbox.markBlocked(event.eventId, storeId: storeId);
         blocked++;
       }
     }
