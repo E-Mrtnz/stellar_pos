@@ -247,7 +247,7 @@ class CloudSyncOutbox {
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     final event = _decode(value);
-    if (storeId != null && event.storeId != storeId) {
+    if (event.storeId != storeId) {
       throw StateError('El evento no pertenece a la tienda solicitada.');
     }
     if (!_canTransition(event.status, status)) {
