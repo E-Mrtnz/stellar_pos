@@ -159,12 +159,14 @@ class CloudSyncOutbox {
     return true;
   });
 
-  Future<void> markInFlight(String eventId) =>
-      _updateStatus(eventId, CloudSyncEventStatus.inFlight);
-  Future<void> markDelivered(String eventId) =>
-      _updateStatus(eventId, CloudSyncEventStatus.delivered);
-  Future<void> markBlocked(String eventId) =>
-      _updateStatus(eventId, CloudSyncEventStatus.blocked);
+  /// Optional [storeId] preserves compatibility with local maintenance callers.
+  /// Delivery workers must always supply it to prevent cross-store transitions.
+  Future<void> markInFlight(String eventId, {String? storeId}) =>
+      _updateStatus(eventId, CloudSyncEventStatus.inFlight, storeId: storeId);
+  Future<void> markDelivered(String eventId, {String? storeId}) =>
+      _updateStatus(eventId, CloudSyncEventStatus.delivered, storeId: storeId);
+  Future<void> markBlocked(String eventId, {String? storeId}) =>
+      _updateStatus(eventId, CloudSyncEventStatus.blocked, storeId: storeId);
 
   /// Recovers events left in-flight when the app stopped unexpectedly.
   /// A remote transport must be idempotent before this is used for business data.
@@ -204,7 +206,11 @@ class CloudSyncOutbox {
     return recovered;
   });
 
-  Future<void> retry(String eventId, {Duration delay = Duration.zero}) => _serialize(() async {
+  Future<void> retry(
+    String eventId, {
+    Duration delay = Duration.zero,
+    String? storeId,
+  }) => _serialize(() async {
     if (delay.isNegative) {
       throw ArgumentError.value(delay, 'delay', 'No puede ser negativo.');
     }
@@ -212,6 +218,9 @@ class CloudSyncOutbox {
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     final event = _decode(value);
+    if (storeId != null && event.storeId != storeId) {
+      throw StateError('El evento no pertenece a la tienda solicitada.');
+    }
     if (event.status != CloudSyncEventStatus.blocked &&
         event.status != CloudSyncEventStatus.inFlight) {
       throw StateError(
@@ -229,12 +238,18 @@ class CloudSyncOutbox {
     await _storage.flush();
   });
 
-  Future<void> _updateStatus(String eventId, CloudSyncEventStatus status) =>
-      _serialize(() async {
+  Future<void> _updateStatus(
+    String eventId,
+    CloudSyncEventStatus status, {
+    String? storeId,
+  }) => _serialize(() async {
     if (_storage is _HiveCloudSyncOutboxStorage) await _storage._refresh();
     final value = _storage.get(eventId);
     if (value == null) throw StateError('No existe el evento solicitado.');
     final event = _decode(value);
+    if (storeId != null && event.storeId != storeId) {
+      throw StateError('El evento no pertenece a la tienda solicitada.');
+    }
     if (!_canTransition(event.status, status)) {
       throw StateError(
         'Transición de estado no permitida: ${event.status.name} -> ${status.name}.',
