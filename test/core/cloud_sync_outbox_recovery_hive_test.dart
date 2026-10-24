@@ -45,7 +45,7 @@ void main() {
       localVersion: 7,
       createdAt: DateTime.utc(2026, 10, 14, 12),
     ));
-    await outbox.markInFlight('evt-interrupted');
+    await outbox.markInFlight('evt-interrupted', storeId: 'store-a');
     await Hive.close();
 
     Hive.init(directory.path);
@@ -73,7 +73,7 @@ void main() {
       createdAt: DateTime.utc(2026, 10, 20, 13),
     ));
 
-    await outbox.markBlocked('evt-retry-persisted');
+    await outbox.markBlocked('evt-retry-persisted', storeId: 'store-a');
     await outbox.retry(
       'evt-retry-persisted',
       delay: const Duration(minutes: 5),
