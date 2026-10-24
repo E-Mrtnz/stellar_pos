@@ -79,9 +79,9 @@ void main() {
 
     test('recovers interrupted events only for the authorized store', () async {
       await outbox.enqueue(_event(id: 'store-a-inflight'));
-      await outbox.markInFlight('store-a-inflight');
+      await outbox.markInFlight('store-a-inflight', storeId: 'store-a');
       await outbox.enqueue(_event(id: 'store-b-inflight', storeId: 'store-b'));
-      await outbox.markInFlight('store-b-inflight');
+      await outbox.markInFlight('store-b-inflight', storeId: 'store-b');
 
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
       final worker = CloudSyncWorker(
