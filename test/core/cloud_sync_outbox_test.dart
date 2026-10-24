@@ -321,6 +321,29 @@ void main() {
       expect(storage.data['evt-1'], containsPair('status', 'pending'));
     });
 
+    test('store-scoped status changes reject events owned by another store', () async {
+      await outbox.enqueue(event(eventId: 'evt-b', storeId: 'store-b'));
+      await outbox.claimForDelivery(
+        eventId: 'evt-b',
+        storeId: 'store-b',
+        now: firstTime,
+      );
+
+      await expectLater(
+        outbox.markDelivered('evt-b', storeId: 'store-a'),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data['evt-b'], containsPair('status', 'inFlight'));
+
+      await outbox.markBlocked('evt-b', storeId: 'store-b');
+      await expectLater(
+        outbox.retry('evt-b', storeId: 'store-a'),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data['evt-b'], containsPair('status', 'blocked'));
+      expect(storage.data['evt-b'], containsPair('attemptCount', 0));
+    });
+
     test('cannot retry an event already delivered', () async {
       await outbox.enqueue(event());
       await outbox.claimForDelivery(
