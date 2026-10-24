@@ -5,6 +5,7 @@ import 'package:stellar_pos/core/cloud_sync_worker.dart';
 
 class _MemoryStorage implements CloudSyncOutboxStorage {
   final Map<String, Object> data = <String, Object>{};
+  bool failFlushWhenDelivered = false;
   @override
   Object? get(String key) => data[key];
   @override
@@ -14,7 +15,15 @@ class _MemoryStorage implements CloudSyncOutboxStorage {
     data[key] = value;
   }
   @override
-  Future<void> flush() async {}
+  Future<void> flush() async {
+    if (failFlushWhenDelivered &&
+        data.values.any(
+          (value) => value is Map && value['status'] == 'delivered',
+        )) {
+      failFlushWhenDelivered = false;
+      throw StateError('flush failed for delivered event');
+    }
+  }
 }
 
 class _Gate implements CloudSyncSessionGate {
@@ -138,6 +147,33 @@ void main() {
 
       expect(result.applied, 1);
       expect(result.blocked, 0);
+      expect(transport.calls, 1);
+      expect(storage.data['event-1'], containsPair('status', 'delivered'));
+    });
+
+    test('does not classify a local delivery flush failure as a transport failure', () async {
+      await outbox.enqueue(_event());
+      storage.failFlushWhenDelivered = true;
+      final transport = _Transport(
+        (_) async => CloudSyncDeliveryStatus.applied,
+      );
+      final worker = CloudSyncWorker(
+        outbox: outbox,
+        transport: transport,
+        sessionGate: _Gate(true),
+      );
+
+      await expectLater(
+        worker.runOnce(storeId: 'store-a'),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'flush failed for delivered event',
+          ),
+        ),
+      );
+
       expect(transport.calls, 1);
       expect(storage.data['event-1'], containsPair('status', 'delivered'));
     });
