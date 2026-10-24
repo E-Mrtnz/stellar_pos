@@ -323,6 +323,17 @@ void main() {
 
     test('store-scoped status changes reject events owned by another store', () async {
       await outbox.enqueue(event(eventId: 'evt-b', storeId: 'store-b'));
+
+      await expectLater(
+        outbox.markInFlight('evt-b', storeId: 'store-a'),
+        throwsA(isA<StateError>()),
+      );
+      await expectLater(
+        outbox.markBlocked('evt-b', storeId: 'store-a'),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.data['evt-b'], containsPair('status', 'pending'));
+
       await outbox.claimForDelivery(
         eventId: 'evt-b',
         storeId: 'store-b',
