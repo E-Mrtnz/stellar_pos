@@ -60,7 +60,7 @@ void main() {
         ),
         isTrue,
       );
-      await outbox.markDelivered('evt-1');
+      await outbox.markDelivered('evt-1', storeId: 'store-a');
       await outbox.enqueue(event());
 
       expect(storage.data, hasLength(1));
@@ -209,7 +209,7 @@ void main() {
       await outbox.enqueue(event(eventId: 'later', createdAt: secondTime));
       await outbox.enqueue(event(eventId: 'other', storeId: 'store-b'));
       await outbox.enqueue(event(eventId: 'earlier', createdAt: firstTime));
-      await outbox.markInFlight('earlier');
+      await outbox.markInFlight('earlier', storeId: 'store-a');
 
       final pending = await outbox.pendingForStore('store-a');
       expect(pending.map((e) => e.eventId), <String>['later']);
@@ -219,7 +219,7 @@ void main() {
 
     test('corrupt records owned by another store do not block scoped reads or recovery', () async {
       await outbox.enqueue(event(eventId: 'store-a-event', storeId: 'store-a'));
-      await outbox.markInFlight('store-a-event');
+      await outbox.markInFlight('store-a-event', storeId: 'store-a');
       storage.data['corrupt-store-b'] = <String, Object?>{
         'eventId': 'corrupt-store-b',
         'storeId': 'store-b',
@@ -306,7 +306,7 @@ void main() {
       );
       expect(await outbox.pendingForStore('store-a'), isEmpty);
 
-      await outbox.markDelivered('evt-1');
+      await outbox.markDelivered('evt-1', storeId: 'store-a');
       expect(storage.data['evt-1'], containsPair('status', 'delivered'));
       expect(await outbox.pendingForStore('store-a'), isEmpty);
     });
@@ -315,7 +315,7 @@ void main() {
       await outbox.enqueue(event());
 
       await expectLater(
-        outbox.markDelivered('evt-1'),
+        outbox.markDelivered('evt-1', storeId: 'store-a'),
         throwsA(isA<StateError>()),
       );
       expect(storage.data['evt-1'], containsPair('status', 'pending'));
@@ -351,10 +351,10 @@ void main() {
         storeId: 'store-a',
         now: firstTime,
       );
-      await outbox.markDelivered('evt-1');
+      await outbox.markDelivered('evt-1', storeId: 'store-a');
 
       await expectLater(
-        outbox.retry('evt-1'),
+        outbox.retry('evt-1', storeId: 'store-a'),
         throwsA(isA<StateError>()),
       );
       expect(storage.data['evt-1'], containsPair('status', 'delivered'));
@@ -362,8 +362,8 @@ void main() {
 
     test('retry restores pending status and increments attempts', () async {
       await outbox.enqueue(event());
-      await outbox.markBlocked('evt-1');
-      await outbox.retry('evt-1');
+      await outbox.markBlocked('evt-1', storeId: 'store-a');
+      await outbox.retry('evt-1', storeId: 'store-a');
 
       expect(storage.data['evt-1'], containsPair('status', 'pending'));
       expect(storage.data['evt-1'], containsPair('attemptCount', 1));
@@ -376,10 +376,10 @@ void main() {
 
     test('rejects negative retry delays without changing the event', () async {
       await outbox.enqueue(event());
-      await outbox.markBlocked('evt-1');
+      await outbox.markBlocked('evt-1', storeId: 'store-a');
 
       await expectLater(
-        outbox.retry('evt-1', delay: const Duration(seconds: -1)),
+        outbox.retry('evt-1', storeId: 'store-a', delay: const Duration(seconds: -1)),
         throwsArgumentError,
       );
 
@@ -391,7 +391,7 @@ void main() {
     test('recovers interrupted in-flight events without crossing stores', () async {
       await outbox.enqueue(event());
       await outbox.enqueue(event(eventId: 'evt-2', storeId: 'store-b'));
-      await outbox.markInFlight('evt-1');
+      await outbox.markInFlight('evt-1', storeId: 'store-a');
 
       final recovered = await outbox.recoverInterruptedEvents();
 
@@ -406,7 +406,7 @@ void main() {
       await outbox.enqueue(event().copyWith(
         nextAttemptAt: DateTime.utc(2099, 1, 1),
       ));
-      await outbox.markInFlight('evt-1');
+      await outbox.markInFlight('evt-1', storeId: 'store-a');
 
       expect(await outbox.recoverInterruptedEvents(), 1);
 
@@ -590,7 +590,7 @@ void main() {
 
     test('unknown event status update fails explicitly', () async {
       await expectLater(
-        outbox.markDelivered('missing'),
+        outbox.markDelivered('missing', storeId: 'store-a'),
         throwsA(isA<StateError>()),
       );
     });
