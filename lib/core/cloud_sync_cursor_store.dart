@@ -53,17 +53,23 @@ class CloudSyncCursorStore {
 
   final String boxName;
   final CloudSyncCursorStorage _storage;
-  Future<void> _tail = Future<void>.value();
+
+  // Cursor stores may be created independently by different coordinators. Share
+  // the serialization queue by Hive box so concurrent advances cannot race on
+  // stale reads and overwrite a newer durable cursor with an older version.
+  static final Map<String, Future<void>> _tailsByBox = <String, Future<void>>{};
 
   Future<T> _serialize<T>(Future<T> Function() action) {
     final result = Completer<T>();
-    _tail = _tail.then((_) async {
+    final previous = _tailsByBox[boxName] ?? Future<void>.value();
+    final next = previous.then((_) async {
       try {
         result.complete(await action());
       } on Object catch (error, stackTrace) {
         result.completeError(error, stackTrace);
       }
     });
+    _tailsByBox[boxName] = next;
     return result.future;
   }
 
