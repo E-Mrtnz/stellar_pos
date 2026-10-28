@@ -18,7 +18,6 @@ import 'package:stellar_pos/core/services/domain/sale_totals_service.dart';
 
 class SalesProvider extends ChangeNotifier {
   final List<SaleRecord> _sales = [];
-  int _nextTicketNumber = 1;
   bool _loaded = false;
   Future<void>? _loadFuture;
 
@@ -49,8 +48,7 @@ class SalesProvider extends ChangeNotifier {
 
   List<SaleRecord> get sales => List.unmodifiable(_sales);
   SaleRecord? get latestSale => _sales.isEmpty ? null : _sales.last;
-  String get nextTicketNumberPreview =>
-      _nextTicketNumber.toString().padLeft(8, '0');
+  String get nextTicketNumberPreview => 'PENDIENTE';
 
   Future<void> load() {
     if (_loaded) {
@@ -88,7 +86,9 @@ class SalesProvider extends ChangeNotifier {
     if (electronicSales.isNotEmpty && electronicBalanceProvider == null) {
       throw StateError('No se pudo acceder al saldo electrónico.');
     }
-    final ticketNumber = nextTicketNumberPreview;
+    // A global sequential number is assigned only by the cloud in the future.
+    // The sale itself is completed locally with its immutable saleId.
+    const ticketNumber = '';
     final saleId = _lifecycle.newSaleId();
     final items = <SaleItemRecord>[];
     for (final entry in cartQuantities.entries) {
@@ -218,7 +218,6 @@ class SalesProvider extends ChangeNotifier {
       }
     }
     _sales.add(sale);
-    _nextTicketNumber++;
     notifyListeners();
     _persist(sale);
     return sale;
@@ -671,12 +670,11 @@ class SalesProvider extends ChangeNotifier {
   }
 
   void clearSales() {
-    if (_sales.isEmpty && _nextTicketNumber == 1) {
+    if (_sales.isEmpty) {
       return;
     }
     final ids = _sales.map((sale) => sale.id).toList(growable: false);
     _sales.clear();
-    _nextTicketNumber = 1;
     notifyListeners();
     for (final id in ids) {
       _persistDelete(id);
@@ -703,12 +701,6 @@ class SalesProvider extends ChangeNotifier {
     _sales
       ..clear()
       ..addAll(stored);
-    if (_sales.isNotEmpty) {
-      final maxTicket = _sales
-          .map((sale) => int.tryParse(sale.ticketNumber) ?? 0)
-          .fold<int>(0, (max, value) => value > max ? value : max);
-      _nextTicketNumber = maxTicket + 1;
-    }
     _loaded = true;
     if (_sales.isNotEmpty) {
       notifyListeners();

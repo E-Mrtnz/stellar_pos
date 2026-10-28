@@ -7,7 +7,10 @@ class _MemoryCursorStorage implements CloudSyncCursorStorage {
   @override
   Object? get(String key) => data[key];
   @override
-  Future<void> put(String key, Object value) async { data[key] = value; }
+  Future<void> put(String key, Object value) async {
+    data[key] = value;
+  }
+
   @override
   Future<void> flush() async {}
 }
@@ -27,7 +30,8 @@ class _FakeTransport implements CloudInventoryLedgerPullTransport {
   }
 }
 
-class _SequentialTransport implements CloudInventoryLedgerPullTransport {
+class _SequentialTransport
+    implements CloudInventoryLedgerPullTransport {
   final List<int> requestedCursors = <int>[];
 
   @override
@@ -37,6 +41,7 @@ class _SequentialTransport implements CloudInventoryLedgerPullTransport {
     required int limit,
   }) async {
     requestedCursors.add(afterVersion);
+
     if (afterVersion == 0) {
       return CloudInventoryLedgerPage(
         storeId: storeId,
@@ -46,6 +51,7 @@ class _SequentialTransport implements CloudInventoryLedgerPullTransport {
         hasMore: false,
       );
     }
+
     return CloudInventoryLedgerPage(
       storeId: storeId,
       afterVersion: afterVersion,
@@ -62,7 +68,9 @@ class _FakeApplier implements CloudInventoryLedgerChangeApplier {
   @override
   Future<void> apply(CloudInventoryLedgerChange change) async {
     applied.add(change.eventId);
-    if (failAt == applied.length) throw StateError('simulated apply failure');
+    if (failAt == applied.length) {
+      throw StateError('simulated apply failure');
+    }
   }
 }
 
@@ -91,6 +99,41 @@ void main() {
     expect(change.movement!.delta, -2);
     expect(change.movement!.storeId, 'store-a');
   });
+
+  test(
+    'serializes simultaneous pulls for the same store and device',
+    () async {
+      final cursors = CloudSyncCursorStore(
+        storage: _MemoryCursorStorage(),
+      );
+      final transport = _SequentialTransport();
+      final applier = _FakeApplier();
+
+      final coordinator = CloudInventoryLedgerPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
+
+      final results = await Future.wait(<
+        Future<CloudInventoryLedgerPage>
+      >[
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+      ]);
+
+      expect(transport.requestedCursors, <int>[0, 1]);
+      expect(results.map((page) => page.changes.length), <int>[1, 0]);
+      expect(applier.applied, <String>['inventoryMovement_movement-1']);
+      expect(
+        (await cursors.read(
+          storeId: 'store-a',
+          deviceId: 'device-a',
+        ))?.version,
+        1,
+      );
+    },
+  );
 
   test('rejects mismatched identity and unsafe movement data', () {
     expect(
@@ -139,185 +182,262 @@ void main() {
     );
   });
 
-  test('rejects unsupported ledger entity types and mismatched event IDs', () {
-    final base = <String, dynamic>{
-      'storeId': 'store-a',
-      'eventId': 'purchase_purchase-1',
-      'entityType': 'purchase',
-      'entityId': 'purchase-1',
-      'operation': 'append',
-      'version': 1,
-      'payload': <String, Object?>{'id': 'purchase-1'},
-    };
-    expect(
-      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
-        ...base,
-        'entityType': 'futureEntity',
-        'eventId': 'futureEntity_item-1',
-        'entityId': 'item-1',
-      }),
-      throwsFormatException,
-    );
-    expect(
-      () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
-        ...base,
-        'eventId': 'purchase_another-id',
-      }),
-      throwsFormatException,
-    );
-  });
+  test(
+    'rejects unsupported ledger entity types and mismatched event IDs',
+    () {
+      final base = <String, dynamic>{
+        'storeId': 'store-a',
+        'eventId': 'purchase_purchase-1',
+        'entityType': 'purchase',
+        'entityId': 'purchase-1',
+        'operation': 'append',
+        'version': 1,
+        'payload': <String, Object?>{'id': 'purchase-1'},
+      };
+      expect(
+        () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+          ...base,
+          'entityType': 'futureEntity',
+          'eventId': 'futureEntity_item-1',
+          'entityId': 'item-1',
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+          ...base,
+          'eventId': 'purchase_another-id',
+        }),
+        throwsFormatException,
+      );
+    },
+  );
 
-  test('serializes simultaneous pulls for the same store and device', () async {
-    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
-    final transport = _SequentialTransport();
-    final applier = _FakeApplier();
-    final coordinator = CloudInventoryLedgerPullCoordinator(
-      transport: transport,
-      applier: applier,
-      cursors: cursors,
-    );
+  test(
+    'rejects non-inventory payloads with a mismatched entity ID',
+    () {
+      expect(
+        () => CloudInventoryLedgerChange.fromMap(<String, dynamic>{
+          'storeId': 'store-a',
+          'eventId': 'purchase_purchase-1',
+          'entityType': 'purchase',
+          'entityId': 'purchase-1',
+          'operation': 'append',
+          'version': 1,
+          'payload': <String, Object?>{
+            'id': 'another-purchase',
+            'total': 12.5,
+          },
+        }),
+        throwsFormatException,
+      );
+    },
+  );
 
-    final results = await Future.wait(<Future<CloudInventoryLedgerPage>>[
-      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
-      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
-    ]);
+  test(
+    'applies the page before advancing its durable cursor',
+    () async {
+      final cursors = CloudSyncCursorStore(
+        storage: _MemoryCursorStorage(),
+      );
+      final transport = _FakeTransport(
+        CloudInventoryLedgerPage(
+          storeId: 'store-a',
+          afterVersion: 0,
+          changes: <CloudInventoryLedgerChange>[
+            _change(1, 'movement-1'),
+            _change(2, 'movement-2'),
+          ],
+          nextCursor: 2,
+          hasMore: false,
+        ),
+      );
+      final applier = _FakeApplier();
+      final coordinator = CloudInventoryLedgerPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
+      final page = await coordinator.pullOnce(
+        storeId: 'store-a',
+        deviceId: 'device-a',
+      );
+      expect(page.nextCursor, 2);
+      expect(transport.requestedCursor, 0);
+      expect(applier.applied, <String>[
+        'inventoryMovement_movement-1',
+        'inventoryMovement_movement-2',
+      ]);
+      expect(
+        (await cursors.read(
+          storeId: 'store-a',
+          deviceId: 'device-a',
+        ))?.version,
+        2,
+      );
+    },
+  );
 
-    expect(transport.requestedCursors, <int>[0, 1]);
-    expect(results.map((page) => page.changes.length), <int>[1, 0]);
-    expect(applier.applied, <String>['inventoryMovement_movement-1']);
-    expect(
-      (await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version,
-      1,
-    );
-  });
+  test(
+    'does not advance cursor when applying a movement fails',
+    () async {
+      final cursors = CloudSyncCursorStore(
+        storage: _MemoryCursorStorage(),
+      );
+      final transport = _FakeTransport(
+        CloudInventoryLedgerPage(
+          storeId: 'store-a',
+          afterVersion: 0,
+          changes: <CloudInventoryLedgerChange>[
+            _change(1, 'movement-1'),
+          ],
+          nextCursor: 1,
+          hasMore: false,
+        ),
+      );
+      final applier = _FakeApplier()..failAt = 1;
+      final coordinator = CloudInventoryLedgerPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
+      await expectLater(
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await cursors.read(storeId: 'store-a', deviceId: 'device-a'),
+        isNull,
+      );
+    },
+  );
 
-  test('applies the page before advancing its durable cursor', () async {
-    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
-    final transport = _FakeTransport(CloudInventoryLedgerPage(
-      storeId: 'store-a',
-      afterVersion: 0,
-      changes: <CloudInventoryLedgerChange>[
-        _change(1, 'movement-1'),
-        _change(2, 'movement-2'),
-      ],
-      nextCursor: 2,
-      hasMore: false,
-    ));
-    final applier = _FakeApplier();
-    final coordinator = CloudInventoryLedgerPullCoordinator(
-      transport: transport,
-      applier: applier,
-      cursors: cursors,
-    );
-    final page = await coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a');
-    expect(page.nextCursor, 2);
-    expect(transport.requestedCursor, 0);
-    expect(applier.applied, <String>[
-      'inventoryMovement_movement-1',
-      'inventoryMovement_movement-2',
-    ]);
-    expect((await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version, 2);
-  });
+  test(
+    'durably hands every supported ledger entity to the inbox before cursor advance',
+    () async {
+      final cursors = CloudSyncCursorStore(
+        storage: _MemoryCursorStorage(),
+      );
+      final other = CloudInventoryLedgerChange.fromMap(
+        <String, dynamic>{
+          'storeId': 'store-a',
+          'eventId': 'purchase_purchase-1',
+          'entityType': 'purchase',
+          'entityId': 'purchase-1',
+          'operation': 'append',
+          'version': 2,
+          'payload': <String, Object?>{
+            'id': 'purchase-1',
+            'total': 12.5,
+          },
+        },
+      );
+      final transport = _FakeTransport(
+        CloudInventoryLedgerPage(
+          storeId: 'store-a',
+          afterVersion: 0,
+          changes: <CloudInventoryLedgerChange>[
+            _change(1, 'movement-1'),
+            other,
+          ],
+          nextCursor: 2,
+          hasMore: false,
+        ),
+      );
+      final applier = _FakeApplier();
+      final coordinator = CloudInventoryLedgerPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
 
-  test('does not advance cursor when applying a movement fails', () async {
-    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
-    final transport = _FakeTransport(CloudInventoryLedgerPage(
-      storeId: 'store-a',
-      afterVersion: 0,
-      changes: <CloudInventoryLedgerChange>[_change(1, 'movement-1')],
-      nextCursor: 1,
-      hasMore: false,
-    ));
-    final applier = _FakeApplier()..failAt = 1;
-    final coordinator = CloudInventoryLedgerPullCoordinator(
-      transport: transport,
-      applier: applier,
-      cursors: cursors,
-    );
-    await expectLater(
-      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
-      throwsA(isA<StateError>()),
-    );
-    expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
-  });
+      await coordinator.pullOnce(
+        storeId: 'store-a',
+        deviceId: 'device-a',
+      );
+      expect(applier.applied, <String>[
+        'inventoryMovement_movement-1',
+        'purchase_purchase-1',
+      ]);
+      expect(
+        (await cursors.read(
+          storeId: 'store-a',
+          deviceId: 'device-a',
+        ))?.version,
+        2,
+      );
+    },
+  );
 
+  test(
+    'rejects inconsistent hasMore metadata before applying changes',
+    () async {
+      final cursors = CloudSyncCursorStore(
+        storage: _MemoryCursorStorage(),
+      );
+      final transport = _FakeTransport(
+        CloudInventoryLedgerPage(
+          storeId: 'store-a',
+          afterVersion: 0,
+          changes: <CloudInventoryLedgerChange>[
+            _change(1, 'movement-1'),
+          ],
+          nextCursor: 1,
+          hasMore: true,
+        ),
+      );
+      final applier = _FakeApplier();
+      final coordinator = CloudInventoryLedgerPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
 
-  test('advances shared ledger cursor across other immutable entity types', () async {
-    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
-    final other = CloudInventoryLedgerChange.fromMap(<String, dynamic>{
-      'storeId': 'store-a',
-      'eventId': 'purchase_purchase-1',
-      'entityType': 'purchase',
-      'entityId': 'purchase-1',
-      'operation': 'append',
-      'version': 1,
-      'payload': <String, Object?>{'id': 'purchase-1'},
-    });
-    final transport = _FakeTransport(CloudInventoryLedgerPage(
-      storeId: 'store-a',
-      afterVersion: 0,
-      changes: <CloudInventoryLedgerChange>[other, _change(2, 'movement-2')],
-      nextCursor: 2,
-      hasMore: false,
-    ));
-    final applier = _FakeApplier();
-    final coordinator = CloudInventoryLedgerPullCoordinator(
-      transport: transport,
-      applier: applier,
-      cursors: cursors,
-    );
-    await coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a');
-    expect(applier.applied, <String>['inventoryMovement_movement-2']);
-    expect((await cursors.read(storeId: 'store-a', deviceId: 'device-a'))?.version, 2);
-  });
+      await expectLater(
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        throwsFormatException,
+      );
+      expect(applier.applied, isEmpty);
+      expect(
+        await cursors.read(storeId: 'store-a', deviceId: 'device-a'),
+        isNull,
+      );
+    },
+  );
 
-  test('rejects inconsistent hasMore metadata before applying changes', () async {
-    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
-    final transport = _FakeTransport(CloudInventoryLedgerPage(
-      storeId: 'store-a',
-      afterVersion: 0,
-      changes: <CloudInventoryLedgerChange>[_change(1, 'movement-1')],
-      nextCursor: 1,
-      hasMore: true,
-    ));
-    final applier = _FakeApplier();
-    final coordinator = CloudInventoryLedgerPullCoordinator(
-      transport: transport,
-      applier: applier,
-      cursors: cursors,
-    );
-
-    await expectLater(
-      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
-      throwsFormatException,
-    );
-    expect(applier.applied, isEmpty);
-    expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
-  });
-
-  test('rejects gaps in ledger sequence before applying anything', () async {
-    final cursors = CloudSyncCursorStore(storage: _MemoryCursorStorage());
-    final transport = _FakeTransport(CloudInventoryLedgerPage(
-      storeId: 'store-a',
-      afterVersion: 0,
-      changes: <CloudInventoryLedgerChange>[
-        _change(1, 'movement-1'),
-        _change(3, 'movement-3'),
-      ],
-      nextCursor: 3,
-      hasMore: false,
-    ));
-    final applier = _FakeApplier();
-    final coordinator = CloudInventoryLedgerPullCoordinator(
-      transport: transport,
-      applier: applier,
-      cursors: cursors,
-    );
-    await expectLater(
-      coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
-      throwsFormatException,
-    );
-    expect(applier.applied, isEmpty);
-    expect(await cursors.read(storeId: 'store-a', deviceId: 'device-a'), isNull);
-  });
+  test(
+    'rejects gaps in ledger sequence before applying anything',
+    () async {
+      final cursors = CloudSyncCursorStore(
+        storage: _MemoryCursorStorage(),
+      );
+      final transport = _FakeTransport(
+        CloudInventoryLedgerPage(
+          storeId: 'store-a',
+          afterVersion: 0,
+          changes: <CloudInventoryLedgerChange>[
+            _change(1, 'movement-1'),
+            _change(3, 'movement-3'),
+          ],
+          nextCursor: 3,
+          hasMore: false,
+        ),
+      );
+      final applier = _FakeApplier();
+      final coordinator = CloudInventoryLedgerPullCoordinator(
+        transport: transport,
+        applier: applier,
+        cursors: cursors,
+      );
+      await expectLater(
+        coordinator.pullOnce(storeId: 'store-a', deviceId: 'device-a'),
+        throwsFormatException,
+      );
+      expect(applier.applied, isEmpty);
+      expect(
+        await cursors.read(storeId: 'store-a', deviceId: 'device-a'),
+        isNull,
+      );
+    },
+  );
 }

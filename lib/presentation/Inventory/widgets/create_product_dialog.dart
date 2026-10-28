@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stellar_pos/core/constants/app_constants.dart';
@@ -72,6 +74,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   Timer? _validationTimer;
   String? _imageData;
   bool _isPickingImage = false;
+  final AudioPlayer _scannerFeedbackPlayer = AudioPlayer();
 
   List<String> get _tags => context.watch<CatalogProvider>().tags;
   List<String> get _brands => context.watch<CatalogProvider>().brands;
@@ -151,6 +154,84 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           );
         }
       });
+    });
+  }
+
+  Future<void> _playScannerSuccess() async {
+    try {
+      await _scannerFeedbackPlayer.stop();
+      await _scannerFeedbackPlayer.play(AssetSource('audio/barcode_success.mp3'));
+    } catch (_) {
+      // Audio feedback must never interrupt barcode scanning.
+    }
+  }
+
+  Future<void> _scanBarcode() async {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
+    final barcode = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        var handled = false;
+        return Dialog(
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 420,
+            height: 480,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Escanear código de barras',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: MobileScanner(
+                    onDetect: (capture) {
+                      if (handled) return;
+                      for (final item in capture.barcodes) {
+                        final value = item.rawValue?.trim();
+                        if (value == null || value.isEmpty) continue;
+                        handled = true;
+                        unawaited(_playScannerSuccess());
+                        Navigator.of(dialogContext).pop(value);
+                        break;
+                      }
+                    },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Centra el código de barras dentro de la cámara.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (barcode == null || !mounted) return;
+    setState(() {
+      _barcodeController.text = barcode;
+      _invalidFields.remove('barcode');
     });
   }
 
@@ -411,6 +492,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   @override
   void dispose() {
     _validationTimer?.cancel();
+    unawaited(_scannerFeedbackPlayer.dispose());
     _validationOverlay?.remove();
     for (final c in [
       _nameController,
@@ -560,11 +642,23 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           _field(
                             _barcodeController,
                             AppStrings.barcodeHint,
-                            suffix: const Icon(
-                              Icons.qr_code_scanner,
-                              color: AppColors.textSecondary,
-                              size: 20,
-                            ),
+                            suffix: !kIsWeb &&
+                                    (defaultTargetPlatform == TargetPlatform.android ||
+                                        defaultTargetPlatform == TargetPlatform.iOS)
+                                ? IconButton(
+                                    tooltip: 'Escanear código de barras',
+                                    onPressed: _scanBarcode,
+                                    icon: const Icon(
+                                      Icons.qr_code_scanner,
+                                      color: AppColors.primary,
+                                      size: 22,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.qr_code_scanner,
+                                    color: AppColors.textSecondary,
+                                    size: 20,
+                                  ),
                           ),
                           const SizedBox(height: 10),
                           Row(
@@ -869,7 +963,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Vender producto preparado',
+                  'Vender producto con costo adicional',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -907,7 +1001,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
               children: [
                 const Expanded(
                   child: Text(
-                    'Activar venta preparada',
+                    'Activar costo adicional',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -929,7 +1023,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                   flex: 2,
                   child: _field(
                     _preparationExtraController,
-                    'Extra por preparación',
+                    'Costo adicional',
                     prefix: '\$ ',
                     invalid: _invalid('preparationExtra'),
                     changed: (_) => _clearError('preparationExtra'),
@@ -1187,10 +1281,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
             ],
           ),
         ),
-        const DropdownMenuItem<String?>(
+        DropdownMenuItem<String?>(
           value: null,
           child: Text(
-            'Sin seleccionar',
+            hint,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),

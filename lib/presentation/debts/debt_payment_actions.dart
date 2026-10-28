@@ -25,10 +25,13 @@ class DebtPaymentActions {
       return false;
     }
 
-    final updated = debtProvider.updatePayment(
+    final updated = await debtProvider.updatePayment(
       paymentId: movement.id,
       amount: amount,
     );
+    if (!context.mounted) {
+      return false;
+    }
     if (!updated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -148,8 +151,12 @@ class DebtPaymentActions {
                     child: SizedBox(
                       height: 38,
                       child: FilledButton.icon(
-                        onPressed: () {
-                          final deleted = context.read<DebtProvider>().deletePayment(movement.id);
+                        onPressed: () async {
+                          final debtProvider = context.read<DebtProvider>();
+                          final deleted = await debtProvider.deletePayment(movement.id);
+                          if (!dialogContext.mounted) {
+                            return;
+                          }
                           if (!deleted) {
                             ScaffoldMessenger.of(dialogContext).showSnackBar(
                               const SnackBar(content: Text('No se pudo eliminar el abono.')),

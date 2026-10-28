@@ -1,5 +1,5 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+# iOS deployment target for STELLAR POS
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -31,6 +31,15 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Keep Firebase on the 11.4.x line for compatibility with Xcode 15.2.
+  pod 'FirebaseCore', '11.4.0'
+  pod 'FirebaseCoreInternal', '11.4.0'
+  pod 'FirebaseCoreExtension', '11.4.1'
+  pod 'FirebaseAppCheckInterop', '11.4.0'
+  pod 'FirebaseSharedSwift', '11.4.0'
+  pod 'FirebaseFirestore', '11.4.0'
+  pod 'FirebaseFirestoreInternal', '11.4.0'
   target 'RunnerTests' do
     inherit! :search_paths
   end

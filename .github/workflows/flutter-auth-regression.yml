@@ -1,0 +1,118 @@
+name: Flutter and cloud access regression tests
+
+on:
+  push:
+    branches:
+      - feature/cloud-storage-v2
+  pull_request:
+    branches:
+      - feature/cloud-storage-v2
+
+jobs:
+  flutter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.0'
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Verify provider dependencies resolve
+        run: flutter pub deps --style=compact
+      - name: Preserve resolved dependency lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-pubspec-lock
+          path: pubspec.lock
+          if-no-files-found: error
+      - name: Analyze cloud access and sync files
+        run: >-
+          flutter analyze
+          lib/core/cloud_auth_gateway.dart
+          lib/core/cloud_auth_screen.dart
+          lib/core/cloud_account_settings_tile.dart
+          lib/core/cloud_account_screen.dart
+          lib/core/cloud_store_repository.dart
+          lib/core/cloud_sync_protocol.dart
+          lib/core/cloud_sync_outbox.dart
+          lib/core/cloud_sync_retry_policy.dart
+          lib/core/cloud_active_store_selection.dart
+          lib/core/cloud_sale_acceptance_transport.dart
+          lib/core/cloud_sale_sync_coordinator.dart
+          lib/core/cloud_mutation_journal.dart
+          lib/core/cloud_sync_scheduler.dart
+          lib/core/cloud_inventory_movement.dart
+          lib/core/cloud_inventory_ledger_pull.dart
+          lib/core/cloud_inventory_ledger_inbox.dart
+          lib/core/cloud_inventory_ledger_sync_service.dart
+          lib/core/cloud_sales_pull.dart
+          lib/core/cloud_ledger_sync.dart
+          lib/core/cloud_ledger_remote_applier.dart
+          lib/core/hive_cloud_ledger_apply_receipt_store.dart
+          lib/core/cloud_ledger_repository_handlers.dart
+          lib/core/cloud_ledger_sync_coordinator.dart
+          lib/core/cloud_ledger_sync_composition.dart
+          lib/core/cloud_ledger_pull_sync_coordinator.dart
+      - name: Run cloud access and incremental sync regression tests
+        run: >-
+          flutter test
+          test/core/cloud_auth_gateway_test.dart
+          test/core/cloud_auth_screen_test.dart
+          test/core/cloud_account_settings_tile_test.dart
+          test/core/cloud_account_screen_test.dart
+          test/core/cloud_active_store_selection_test.dart
+          test/core/cloud_sale_acceptance_transport_test.dart
+          test/core/cloud_sale_sync_coordinator_test.dart
+          test/core/cloud_mutation_journal_test.dart
+          test/core/cloud_sales_pull_test.dart
+          test/core/cloud_ledger_sync_test.dart
+          test/core/cloud_ledger_remote_applier_test.dart
+          test/core/hive_cloud_ledger_apply_receipt_store_test.dart
+          test/core/cloud_ledger_sync_coordinator_test.dart
+          test/core/cloud_ledger_pull_sync_coordinator_test.dart
+          test/core/cloud_sync_scheduler_test.dart
+          test/core/cloud_sync_worker_test.dart
+          test/core/cloud_sync_pull_test.dart
+          test/core/cloud_sync_cursor_store_test.dart
+          test/core/cloud_sync_cursor_store_hive_test.dart
+          test/core/cloud_store_repository_test.dart
+          test/cloud_store_access_test.dart
+          test/core/cloud_paths_test.dart
+          test/core/cloud_firestore_repository_test.dart
+          test/core/cloud_sync_protocol_test.dart
+          test/core/cloud_sync_outbox_test.dart
+          test/core/cloud_sync_outbox_hive_test.dart
+          test/core/cloud_sync_outbox_recovery_hive_test.dart
+          test/core/cloud_sync_retry_policy_test.dart
+          test/core/cloud_inventory_ledger_pull_test.dart
+          test/core/cloud_inventory_ledger_inbox_test.dart
+          test/core/cloud_inventory_ledger_sync_service_test.dart
+          test/core/cloud_ledger_repository_handlers_test.dart
+
+  firestore-rules-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install rules-test dependencies
+        run: npm install
+      - name: Test Firestore rules in the local emulator
+        run: npm run test:rules
+      - name: Install receiver dependencies
+        run: npm --prefix functions install
+      - name: Test synthetic receiver in Auth, Firestore and Functions emulators
+        run: npm run test:receiver

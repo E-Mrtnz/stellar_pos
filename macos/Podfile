@@ -1,6 +1,6 @@
 platform :osx, '10.15'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+# CocoaPods analytics sends network stats synchronously affecting Flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -30,6 +30,19 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+
+  # Xcode 15.2 cannot compile newer FirebaseSharedSwift sources that use
+  # Swift concurrency syntax introduced after the toolchain supported here.
+  # Keep the complete Firebase 11.4.x family aligned instead of allowing
+  # CocoaPods to resolve transitive Firebase pods to newer releases.
+  pod 'FirebaseCore', '11.4.2'
+  pod 'FirebaseCoreInternal', '11.4.2'
+  pod 'FirebaseCoreExtension', '11.4.1'
+  pod 'FirebaseAppCheckInterop', '11.4.0'
+  pod 'FirebaseSharedSwift', '11.4.0'
+  pod 'FirebaseFirestore', '11.4.0'
+  pod 'FirebaseFirestoreInternal', '11.4.0'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -38,5 +51,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    # Xcode 15.2 no longer supports the legacy deployment targets
+    # used by some transitive pods (10.11 / 10.12).
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+    end
   end
 end

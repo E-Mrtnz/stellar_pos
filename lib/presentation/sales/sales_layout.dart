@@ -219,45 +219,17 @@ class _SalesLayoutState extends State<SalesLayout> {
 
   Map<String, double> _paidBySale(
     List<SaleRecord> allSales,
-    List<DebtMovement> movements,
+    DebtProvider debtProvider,
   ) {
-    final credits =
-        allSales
-            .where(
-              (sale) =>
-                  sale.paymentMethod == AppStrings.creditPayment &&
-                  sale.clientId != null,
-            )
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    final paid = <String, double>{
-      for (final sale in credits) sale.id: 0,
-    };
-    final payments =
-        movements
-            .where(
-              (movement) => movement.type == DebtMovementType.payment,
-            )
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    for (final payment in payments) {
-      var remaining = payment.amount;
-      for (final sale in credits.where(
-        (sale) => sale.clientId == payment.clientId,
-      )) {
-        final outstanding = sale.effectiveTotal - (paid[sale.id] ?? 0);
-        if (outstanding <= 0.005) {
-          continue;
-        }
-        final applied = remaining > outstanding
-            ? outstanding
-            : remaining;
-        paid[sale.id] = (paid[sale.id] ?? 0) + applied;
-        remaining -= applied;
-        if (remaining <= 0.005) {
-          break;
-        }
-      }
+    final paid = <String, double>{};
+    final clientIds = allSales
+        .where((sale) =>
+            sale.paymentMethod == AppStrings.creditPayment &&
+            sale.clientId != null)
+        .map((sale) => sale.clientId!)
+        .toSet();
+    for (final clientId in clientIds) {
+      paid.addAll(debtProvider.paidBySaleForClient(clientId));
     }
     return paid;
   }
@@ -342,7 +314,7 @@ class _SalesLayoutState extends State<SalesLayout> {
       ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final paidBySale = _paidBySale(
         salesProvider.sales,
-        debtProvider.movements,
+        debtProvider,
       );
       final range = _range();
       final totalSold = sales.fold(
@@ -425,21 +397,33 @@ class _SalesLayoutState extends State<SalesLayout> {
             _buildFilters(),
             const SizedBox(height: 12),
             Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: _buildList(history, paidBySale),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: PeriodSummaryPanel(
-                      metrics: summaryMetrics,
-                      rangeLabel:
-                          '${_date(range.start)} → ${_date(range.end.subtract(const Duration(days: 1)))}',
-                    ),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final keyboardVisible =
+                      MediaQuery.viewInsetsOf(context).bottom > 0;
+                  // Keep the history usable while the on-screen keyboard is open.
+                  // Hide the side summary temporarily rather than squeezing it into
+                  // the reduced height and causing a bottom overflow.
+                  if (keyboardVisible) {
+                    return _buildList(history, paidBySale);
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildList(history, paidBySale),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PeriodSummaryPanel(
+                          metrics: summaryMetrics,
+                          rangeLabel:
+                              '${_date(range.start)} → ${_date(range.end.subtract(const Duration(days: 1)))}',
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 7),
@@ -857,7 +841,7 @@ class _SalesLayoutState extends State<SalesLayout> {
             style: AppTextStyles.ticketLabel,
           ),
         ),
-        SizedBox(width: 66),
+        SizedBox(width: 44),
       ],
     ),
   );
@@ -965,7 +949,7 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
             ),
             SizedBox(
-              width: 66,
+              width: 44,
               child: const Align(
                 alignment: Alignment.centerRight,
                 child: Icon(
@@ -1072,37 +1056,48 @@ class _SalesLayoutState extends State<SalesLayout> {
               ),
             ),
             SizedBox(
-              width: 66,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    tooltip: 'Editar abono',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    onPressed: () =>
-                        DebtPaymentActions.edit(context, movement),
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    color: AppColors.textSecondary,
+              width: 44,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: PopupMenuButton<String>(
+                  tooltip: 'Acciones del abono',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
                   ),
-                  IconButton(
-                    tooltip: 'Eliminar abono',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
+                  iconSize: 17,
+                  onSelected: (action) {
+                    if (action == 'edit') {
+                      DebtPaymentActions.edit(context, movement);
+                    } else if (action == 'delete') {
+                      DebtPaymentActions.delete(context, movement);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18),
+                          SizedBox(width: 10),
+                          Text('Editar abono'),
+                        ],
+                      ),
                     ),
-                    onPressed: () =>
-                        DebtPaymentActions.delete(context, movement),
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    color: AppColors.dangerRed,
-                  ),
-                ],
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 18),
+                          SizedBox(width: 10),
+                          Text('Eliminar abono'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  icon: const Icon(Icons.more_vert),
+                ),
               ),
             ),
           ],

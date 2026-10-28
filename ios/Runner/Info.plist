@@ -24,6 +24,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Stellar POS necesita acceso a la cámara para escanear códigos de barras durante las ventas.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Stellar POS necesita acceso a tus fotos para agregar imágenes a los productos.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

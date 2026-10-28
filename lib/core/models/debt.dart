@@ -69,9 +69,9 @@ class DebtMovement implements SyncableEntity {
       );
 
   static DateTime _date(dynamic value) => value is DateTime
-      ? value.toUtc()
-      : DateTime.tryParse(value?.toString() ?? '')?.toUtc() ??
-            DateTime.now().toUtc();
+      ? value.toLocal()
+      : DateTime.tryParse(value?.toString() ?? '')?.toLocal() ??
+            DateTime.now();
 
   static double _double(dynamic value) => value is num
       ? value.toDouble()

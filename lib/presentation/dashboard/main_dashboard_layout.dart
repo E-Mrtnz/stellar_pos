@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:stellar_pos/core/constants/app_constants.dart';
 import 'package:stellar_pos/core/models/sale.dart';
@@ -12,6 +15,7 @@ import 'package:stellar_pos/core/providers/product_provider.dart';
 import 'package:stellar_pos/core/providers/sales_provider.dart';
 import 'package:stellar_pos/presentation/Inventory/inventory_layout.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/central_product_grid.dart';
+import 'package:stellar_pos/presentation/dashboard/widgets/compact_camera_barcode_scanner.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_management_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/electronic_balance_sale_dialog.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sale_detail_dialog.dart';
@@ -19,6 +23,7 @@ import 'package:stellar_pos/presentation/dashboard/widgets/sale_success_dialog.d
 import 'package:stellar_pos/presentation/dashboard/widgets/sales_summary_with_keypad.dart';
 import 'package:stellar_pos/presentation/dashboard/widgets/sidebar_drawer.dart';
 import 'package:stellar_pos/presentation/debts/debts_layout.dart';
+import 'package:stellar_pos/presentation/mobile/mobile_pos_layout.dart';
 import 'package:stellar_pos/presentation/sales/sales_layout.dart';
 import 'package:stellar_pos/presentation/providers/providers_layout.dart';
 import 'package:stellar_pos/presentation/purchases/purchases_layout.dart';
@@ -36,10 +41,13 @@ class MainDashboardLayout extends StatefulWidget {
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   int _selectedNavIndex = AppNavigation.home;
+  bool _mobileMoreVisible = false;
   int _selectedTagIndex = 0;
   String? _selectedFilter;
   String _searchQuery = '';
   bool _isSidebarExpanded = true;
+  bool _showTabletCameraScanner = false;
+  final AudioPlayer _saleFeedbackPlayer = AudioPlayer();
   final Map<String, int> _cartQuantities = {};
   final Set<String> _preparedProductIds = {};
   List<ElectronicBalanceCartItem> _electronicBalanceSelection = [];
@@ -72,6 +80,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     SaleDetailDialog.changeHandler = null;
     _productNotFoundTimer?.cancel();
     _productNotFoundOverlay?.remove();
+    unawaited(_saleFeedbackPlayer.dispose());
     _discountAmountController.dispose();
     _discountPercentController.dispose();
     _cashReceivedController.dispose();
@@ -111,13 +120,17 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return KeyEventResult.ignored;
   }
 
-  void _handleScannedBarcode(String barcode) {
+  String? _handleScannedBarcode(String barcode) {
     final product = context.read<ProductProvider>().findByBarcode(barcode);
     if (product != null) {
+      _productNotFoundTimer?.cancel();
+      _productNotFoundOverlay?.remove();
+      _productNotFoundOverlay = null;
       _addToCart(product.id);
-      return;
+      return product.id;
     }
     _showProductNotFoundAlert();
+    return null;
   }
 
   void _showProductNotFoundAlert() {
@@ -292,7 +305,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     for (final item in _electronicBalanceSelection) {
       products.add({
         'id': item.key,
-        'name': '$item.companyName · $item.category',
+        'name': '${item.companyName} · ${item.category}',
         'unit': 'Recarga',
         'price': item.amount,
         'imageData': item.imageData,
@@ -799,7 +812,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             (item) => SaleItemRecord(
               productId:
                   'electronic:$item.accountId:$item.category:${item.amount.toStringAsFixed(4)}',
-              productName: '$item.companyName · $item.category',
+              productName: '${item.companyName} · ${item.category}',
               unit: item.category,
               barcode: '',
               cost: item.amount,
@@ -1024,6 +1037,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       );
       return;
     }
+    unawaited(_playSaleSuccessSound());
     _clearCart();
     setState(() {
       _selectedPaymentMethod = AppPaymentMethods.cash;
@@ -1037,6 +1051,18 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       sale: sale,
       onPrint: () => _printSale(sale),
     );
+  }
+
+  Future<void> _playSaleSuccessSound() async {
+    final prefs = SharedPreferencesAsync();
+    if (await prefs.getBool('general.sound.sale_success') == false) return;
+    try {
+      await _saleFeedbackPlayer.stop();
+      await _saleFeedbackPlayer.play(AssetSource('audio/sales_success.mp3'));
+    } catch (_) {
+      // Do not interrupt a successfully registered sale if audio is unavailable.
+      unawaited(SystemSound.play(SystemSoundType.alert));
+    }
   }
 
   Future<bool> _printSale(SaleRecord sale) async {
@@ -1061,8 +1087,23 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   void _onTagChanged(int index) => setState(() => _selectedTagIndex = index);
   void _onFilterChanged(String? filter) =>
       setState(() => _selectedFilter = filter);
+  bool _isTabletCameraSupported(BuildContext context) =>
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.iOS &&
+      MediaQuery.sizeOf(context).shortestSide >= 600;
+
+  bool _isMobilePlatform(BuildContext context) =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android) &&
+      MediaQuery.sizeOf(context).shortestSide < 600;
+
   @override
   Widget build(BuildContext context) {
+    if (_isMobilePlatform(context)) {
+      return _buildMobileShell(context);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.inputBackground,
       body: SafeArea(
@@ -1078,13 +1119,224 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                 onItemSelected: _onNavigationChanged,
               ),
-              Expanded(child: _buildMainContent()),
+              Expanded(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildMainContent(),
+                    if (_showTabletCameraScanner &&
+                        _isTabletCameraSupported(context) &&
+                        _selectedNavIndex == AppNavigation.home)
+                      Positioned(
+                        top: 76,
+                        left: 24,
+                        child: CompactCameraBarcodeScanner(
+                          onBarcodeDetected: _handleScannedBarcode,
+                          onClose: () => setState(
+                            () => _showTabletCameraScanner = false,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildMobileShell(BuildContext context) {
+    final productProvider = context.watch<ProductProvider>();
+    final catalog = context.watch<CatalogProvider>();
+    final salesProvider = context.watch<SalesProvider>();
+    final isHome = _selectedNavIndex == AppNavigation.home;
+
+    Widget content;
+    if (_mobileMoreVisible) {
+      content = MobileMoreView(
+        onSelect: (index) => setState(() {
+          _selectedNavIndex = index;
+          _mobileMoreVisible = false;
+        }),
+      );
+    } else if (isHome) {
+      // Inicio is intentionally omitted on phones; Ventas is the default.
+      content = MobilePosLayout(
+        products: productProvider.productMaps,
+        isLoading: productProvider.isLoading,
+        cartQuantities: _combinedCartQuantities,
+        preparedProductIds: _preparedProductIds,
+        tags: catalog.tags,
+        selectedTagIndex: _selectedTagIndex,
+        onTagSelected: _onTagChanged,
+        selectedFilter: _selectedFilter,
+        onFilterChanged: _onFilterChanged,
+        onAddToCart: _addToCart,
+        onRemoveFromCart: _removeFromCart,
+        onPreparedChanged: _togglePrepared,
+        electronicBalanceSelection: _electronicBalanceSelection,
+        searchQuery: _searchQuery,
+        onSearchChanged: (value) => setState(() => _searchQuery = value),
+        total: _total,
+        onCreateSale: _createSale,
+        onBarcodeDetected: _handleScannedBarcode,
+        onDecrementQuantity: _decrementQuantity,
+        onQuantityChanged: _setCartQuantity,
+        onRemoveCartItem: _removeFromCart,
+        selectedPaymentMethod: _selectedPaymentMethod,
+        onPaymentMethodChanged: (value) =>
+            setState(() => _selectedPaymentMethod = value),
+        selectedDebtor: _selectedDebtor,
+        debtorsList: catalog.clients.map((client) => client.name).toList(),
+        onDebtorChanged: (value) =>
+            setState(() => _selectedDebtor = value),
+        discountAmountController: _discountAmountController,
+        discountPercentController: _discountPercentController,
+        cashReceivedController: _cashReceivedController,
+        onDiscountAmountChanged: _onDiscountAmountChanged,
+        onDiscountPercentChanged: _onDiscountPercentChanged,
+        onCashReceivedChanged: (_) => setState(() {}),
+        subtotal: _subtotal,
+        cardFeeAmount: _cardFeeAmount,
+        change: _change,
+        onClearCart: _clearCart,
+        ticketNumber: salesProvider.nextTicketNumberPreview,
+      );
+    } else {
+      content = Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _mobileSectionTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          Expanded(child: _buildMainContent()),
+        ],
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.inputBackground,
+      body: SafeArea(
+        maintainBottomViewPadding: true,
+        child: content,
+      ),
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          indicatorColor: Colors.transparent,
+          iconTheme: WidgetStateProperty.resolveWith<IconThemeData?>(
+            (states) => IconThemeData(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
+          ),
+          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>(
+            (states) => TextStyle(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+            ),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _mobileNavigationIndex,
+          onDestinationSelected: _onMobileNavigationSelected,
+          height: 72,
+          maintainBottomViewPadding: true,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.point_of_sale_outlined),
+              selectedIcon: Icon(Icons.point_of_sale_rounded),
+              label: 'Ventas',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+              label: 'Cobrar',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined),
+              selectedIcon: Icon(Icons.inventory_2_rounded),
+              label: 'Inventario',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.apps_outlined),
+              selectedIcon: Icon(Icons.apps_rounded),
+              label: 'Más',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int get _mobileNavigationIndex {
+    if (_mobileMoreVisible) return 3;
+    if (_selectedNavIndex == AppNavigation.debts) return 1;
+    if (_selectedNavIndex == AppNavigation.inventory) return 2;
+    // Sales history remains under More; the primary Ventas destination opens POS.
+    if (_selectedNavIndex == AppNavigation.electronicBalance ||
+        _selectedNavIndex == AppNavigation.home) {
+      return 0;
+    }
+    return 3;
+  }
+
+  void _onMobileNavigationSelected(int index) {
+    setState(() {
+      _mobileMoreVisible = false;
+      switch (index) {
+        case 0:
+          _selectedNavIndex = AppNavigation.home;
+          break;
+        case 1:
+          _selectedNavIndex = AppNavigation.debts;
+          break;
+        case 2:
+          _selectedNavIndex = AppNavigation.inventory;
+          break;
+        case 3:
+          _mobileMoreVisible = true;
+          break;
+      }
+    });
+  }
+
+  String get _mobileSectionTitle {
+    switch (_selectedNavIndex) {
+      case AppNavigation.electronicBalance:
+        return 'Ventas';
+      case AppNavigation.purchases:
+        return 'Compras';
+      case AppNavigation.debts:
+        return 'Cuentas por cobrar';
+      case AppNavigation.stats:
+        return 'Estadísticas';
+      case AppNavigation.providers:
+        return 'Proveedores';
+      case AppNavigation.inventory:
+        return 'Inventario';
+      case AppNavigation.settings:
+        return 'Ajustes';
+      default:
+        return AppStrings.appName;
+    }
+  }
+
 
   Widget _buildMainContent() {
     if (_selectedNavIndex == AppNavigation.home) {
@@ -1140,6 +1392,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           child: CentralProductGrid(
             products: products,
             isLoading: productProvider.isLoading,
+            onOpenCameraScanner: _isTabletCameraSupported(context)
+                ? () => setState(
+                    () => _showTabletCameraScanner = !_showTabletCameraScanner,
+                  )
+                : null,
             cartQuantities: combinedCart,
             preparedProductIds: _preparedProductIds,
             tags: tags,

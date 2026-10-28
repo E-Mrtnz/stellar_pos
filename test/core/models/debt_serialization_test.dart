@@ -20,9 +20,14 @@ void main() {
     expect(restored.clientId, movement.clientId);
     expect(restored.type, DebtMovementType.payment);
     expect(restored.amount, 12.50);
-    expect(restored.createdAt, movement.createdAt);
+    // fromMap intentionally normalizes parsed timestamps to local time.
+    // Compare the instant rather than DateTime's UTC/local representation.
+    expect(restored.createdAt.isAtSameMomentAs(movement.createdAt), isTrue);
     expect(restored.reference, 'sale-1');
-    expect(restored.metadata.createdAt, movement.metadata.createdAt);
+    expect(
+      restored.metadata.createdAt.isAtSameMomentAs(movement.metadata.createdAt),
+      isTrue,
+    );
   });
 
   test('DebtAccount preserves totals and derived balance', () {
