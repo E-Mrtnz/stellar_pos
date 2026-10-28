@@ -89,7 +89,18 @@ void main() {
     test('recovers interrupted events only for the authorized store', () async {
       await outbox.enqueue(_event(id: 'store-a-inflight'));
       await outbox.markInFlight('store-a-inflight', storeId: 'store-a');
-      await outbox.enqueue(_event(id: 'store-b-inflight', storeId: 'store-b'));
+      await outbox.enqueue(
+        CloudSyncEvent(
+          eventId: 'store-b-inflight',
+          storeId: 'store-b',
+          entityType: 'syntheticTestValue',
+          entityId: 'entity-1',
+          operation: CloudSyncOperation.update,
+          localVersion: 1,
+          createdAt: DateTime.utc(2026, 10, 15),
+          payload: const <String, Object?>{'value': 'test'},
+        ),
+      );
       await outbox.markInFlight('store-b-inflight', storeId: 'store-b');
 
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);
@@ -133,7 +144,6 @@ void main() {
       expect(results.fold<int>(0, (sum, result) => sum + result.applied), 1);
       expect(storage.data['event-1'], containsPair('status', 'delivered'));
     });
-
     test('marks a confirmed synthetic event delivered', () async {
       await outbox.enqueue(_event());
       final transport = _Transport((_) async => CloudSyncDeliveryStatus.applied);

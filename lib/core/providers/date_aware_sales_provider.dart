@@ -39,6 +39,10 @@ class DateAwareSalesProvider extends SalesProvider {
     List<ElectronicBalanceCartSale> electronicSales = const [],
     ElectronicBalanceProvider? electronicBalanceProvider,
   }) {
+    // The provider may stay alive across midnight. Always resolve the date
+    // at transaction time so the first sale of a new day cannot inherit the
+    // date captured when the app was opened.
+    _selectedSaleDate = _dateOnly(DateTime.now());
     SaleRecord.setCreationDateOverride(_selectedSaleDate);
     try {
       return super.createSale(
