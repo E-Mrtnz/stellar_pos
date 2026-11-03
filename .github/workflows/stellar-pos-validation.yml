@@ -5,10 +5,12 @@ on:
   push:
     branches:
       - feature/cloud-storage-v2
+      - feature/extra-updates
   pull_request:
     branches:
       - main
       - feature/cloud-storage-v2
+      - feature/extra-updates
 
 permissions:
   contents: read
