@@ -86,11 +86,11 @@ class DateAwareSalesProvider extends SalesProvider {
     );
     await _saleRepository.save(updated);
 
-    final baseSales = super.sales;
-    final baseIndex = baseSales.indexWhere((item) => item.id == saleId);
-    if (baseIndex >= 0) {
-      baseSales[baseIndex].createdAt = updated.createdAt;
-    }
+    // Keep the in-memory instance fully aligned with the persisted copy.
+    // Updating only createdAt would leave its sync metadata stale until reload.
+    sale
+      ..createdAt = updated.createdAt
+      ..metadata = updated.metadata;
 
     notifyListeners();
     return updated;
