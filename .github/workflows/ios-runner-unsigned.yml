@@ -1,0 +1,61 @@
+name: Build iOS Runner.app (unsigned)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-runner-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Build Runner.app without installing to a device
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Select Xcode 16.4
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.4'
+
+      - name: Show build environment
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          sw_vers
+
+      - name: Set up Flutter 3.35.0
+        uses: subosito/flutter-action@v2
+        with:
+          Flutter-version: '3.35.0'
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Build iOS app without code signing
+        run: flutter build ios --debug --no-codesign
+
+      - name: Verify generated app bundle
+        run: |
+          test -d build/ios/iphoneos/Runner.app
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/ios/iphoneos/Runner.app/Info.plist
+          du -sh build/ios/iphoneos/Runner.app
+
+      - name: Upload unsigned Runner.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: stellar-pos-runner-app-unsigned
+          path: build/ios/iphoneos/Runner.app
+          if-no-files-found: error
+          retention-days: 7
