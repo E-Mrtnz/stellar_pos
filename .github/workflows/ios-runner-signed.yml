@@ -99,10 +99,10 @@ jobs:
           target.build_configurations.each do |config|
             settings = config.build_settings
             settings['DEVELOPMENT_TEAM'] = 'B289A7CGJ5'
-            settings['CODE_SIGN_STYLE'] = 'Manual'
+            settings['CODE_SIGN_STYLE'] = 'Automatic'
             settings['CODE_SIGN_IDENTITY'] = 'Apple Development'
-            settings['PROVISIONING_PROFILE'] = ENV.fetch('PROFILE_UUID')
-            settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV.fetch('PROFILE_UUID')
+            settings.delete('PROVISIONING_PROFILE')
+            settings.delete('PROVISIONING_PROFILE_SPECIFIER')
           end
 
           project.save
@@ -137,16 +137,9 @@ jobs:
             <key>destination</key>
             <string>export</string>
             <key>signingStyle</key>
-            <string>manual</string>
+            <string>automatic</string>
             <key>teamID</key>
             <string>B289A7CGJ5</string>
-            <key>signingCertificate</key>
-            <string>Apple Development</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.example.stellarPos</key>
-              <string>$PROFILE_UUID</string>
-            </dict>
           </dict>
           </plist>
           EOF
