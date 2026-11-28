@@ -1,0 +1,147 @@
+name: Build and sign iOS Runner.app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-runner-signed-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-sign-ios:
+    name: Build and sign Stellar POS for the registered iPad
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Select Xcode 16.4
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.4'
+
+      - name: Set up Flutter 3.35.0
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+          cache: true
+
+      - name: Install Apple signing certificate and provisioning profile
+        env:
+          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+
+          for name in IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_KEYCHAIN_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required GitHub Actions secret is missing: $name"
+              exit 1
+            fi
+          done
+
+          CERT_PATH="$RUNNER_TEMP/ios_development.p12"
+          PROFILE_PATH="$RUNNER_TEMP/ios_development.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/stellar-build.keychain-db"
+
+          printf '%s' "$IOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+          security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          security cms -D -i "$PROFILE_PATH" -o "$RUNNER_TEMP/profile.plist"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
+          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")
+
+          test "$PROFILE_TEAM" = "B289A7CGJ5"
+          test "$PROFILE_APP_ID" = "B289A7CGJ5.com.example.stellarPos"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+
+          echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+          echo "PROFILE_TEAM=$PROFILE_TEAM" >> "$GITHUB_ENV"
+          echo "PROFILE_APP_ID=$PROFILE_APP_ID" >> "$GITHUB_ENV"
+
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate iOS build files
+        run: flutter build ios --debug --no-codesign
+
+      - name: Build and sign with Xcode
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios/derived \
+            DEVELOPMENT_TEAM=B289A7CGJ5 \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Development' \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=YES \
+            build
+
+      - name: Verify signed app and embedded profile
+        run: |
+          set -euo pipefail
+          APP="build/ios/derived/Build/Products/Debug-iphoneos/Runner.app"
+          test -d "$APP"
+          test -f "$APP/embedded.mobileprovision"
+
+          APP_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+          test "$APP_ID" = "com.example.stellarPos"
+
+          security cms -D -i "$APP/embedded.mobileprovision" -o "$RUNNER_TEMP/embedded-profile.plist"
+          EMBEDDED_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/embedded-profile.plist")
+          EMBEDDED_APP_ID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/embedded-profile.plist")
+          test "$EMBEDDED_TEAM" = "B289A7CGJ5"
+          test "$EMBEDDED_APP_ID" = "B289A7CGJ5.com.example.stellarPos"
+
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv --verbose=4 "$APP" 2> "$RUNNER_TEMP/app-signature.txt"
+          grep -q 'Authority=Apple Development' "$RUNNER_TEMP/app-signature.txt"
+          grep -q 'TeamIdentifier=B289A7CGJ5' "$RUNNER_TEMP/app-signature.txt"
+
+          echo "Verified app: $APP_ID"
+          echo "Verified team: $EMBEDDED_TEAM"
+          du -sh "$APP"
+
+      - name: Package signed Runner.app without flattening its bundle
+        run: |
+          set -euo pipefail
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/derived/Build/Products/Debug-iphoneos/Runner.app \
+            stellar-pos-runner-app-signed.zip
+
+      - name: Upload signed Runner.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: stellar-pos-runner-app-signed
+          path: stellar-pos-runner-app-signed.zip
+          if-no-files-found: error
+          retention-days: 7
