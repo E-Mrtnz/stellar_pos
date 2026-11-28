@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build-sign-ios:
-    name: Build and sign Stellar POS for the registered iPad
+    name: Archive and sign Stellar POS for the registered iPad
     runs-on: macos-15
     timeout-minutes: 60
 
@@ -77,7 +77,6 @@ jobs:
 
           echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
           echo "PROFILE_TEAM=$PROFILE_TEAM" >> "$GITHUB_ENV"
-          echo "PROFILE_APP_ID=$PROFILE_APP_ID" >> "$GITHUB_ENV"
 
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
@@ -87,7 +86,7 @@ jobs:
       - name: Generate iOS build files
         run: flutter build ios --debug --no-codesign
 
-      - name: Build and sign with Xcode
+      - name: Archive and sign with Xcode
         run: |
           set -euo pipefail
           xcodebuild \
@@ -96,7 +95,7 @@ jobs:
             -configuration Debug \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios/derived \
+            -archivePath "$RUNNER_TEMP/StellarPOS.xcarchive" \
             DEVELOPMENT_TEAM=B289A7CGJ5 \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY='Apple Development' \
@@ -104,12 +103,48 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGNING_REQUIRED=YES \
-            build
+            archive
 
-      - name: Verify signed app and embedded profile
+      - name: Export development IPA
         run: |
           set -euo pipefail
-          APP="build/ios/derived/Build/Products/Debug-iphoneos/Runner.app"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>destination</key>
+            <string>export</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>B289A7CGJ5</string>
+            <key>signingCertificate</key>
+            <string>Apple Development</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.example.stellarPos</key>
+              <string>$PROFILE_UUID</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/StellarPOS.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+      - name: Verify signed IPA
+        run: |
+          set -euo pipefail
+          IPA=$(find "$RUNNER_TEMP/export" -maxdepth 1 -name '*.ipa' -print -quit)
+          test -n "$IPA"
+          mkdir "$RUNNER_TEMP/ipa"
+          ditto -x -k "$IPA" "$RUNNER_TEMP/ipa"
+          APP="$RUNNER_TEMP/ipa/Payload/Runner.app"
           test -d "$APP"
           test -f "$APP/embedded.mobileprovision"
 
@@ -129,19 +164,12 @@ jobs:
 
           echo "Verified app: $APP_ID"
           echo "Verified team: $EMBEDDED_TEAM"
-          du -sh "$APP"
+          du -sh "$IPA"
 
-      - name: Package signed Runner.app without flattening its bundle
-        run: |
-          set -euo pipefail
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/derived/Build/Products/Debug-iphoneos/Runner.app \
-            stellar-pos-runner-app-signed.zip
-
-      - name: Upload signed Runner.app
+      - name: Upload signed development IPA
         uses: actions/upload-artifact@v4
         with:
-          name: stellar-pos-runner-app-signed
-          path: stellar-pos-runner-app-signed.zip
+          name: stellar-pos-development-ipa
+          path: ${{ runner.temp }}/export/*.ipa
           if-no-files-found: error
           retention-days: 7
